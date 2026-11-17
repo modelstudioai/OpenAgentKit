@@ -4,9 +4,9 @@ import {
 	type MemberUsageLimitView,
 	type MemberUsageSummary,
 	type MemberView,
-	type ModelUsagePage,
 	PROTOCOL_VERSION,
 	SESSION_USAGE_METRICS,
+	type UsageSummary,
 } from "@openagentpack/kit-sdk/protocol";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures.ts";
@@ -20,7 +20,12 @@ function summary(count: number, value: number | null): MemberUsageSummary {
 		metrics: Object.fromEntries(
 			SESSION_USAGE_METRICS.map((metric) => [metric, { value, covered_sessions: value === null ? 0 : count }]),
 		) as MemberUsageSummary["metrics"],
-		agents: count ? ["agent-a", "agent-b"] : [],
+		agents: count
+			? [
+					{ slug: "agent-a", display_name: "Agent A" },
+					{ slug: "agent-b", display_name: null },
+				]
+			: [],
 		refresh_status: "idle",
 		completed_sessions: count,
 		refreshed_at: "2026-10-23T01:00:00Z",
@@ -58,18 +63,42 @@ function session(id: string, agent: string, deleted = false): MemberSessionUsage
 	};
 }
 
+/** 用量汇总空快照：无统计记录时 total 各项为 0（已知零值）、明细为空、data_updated_at 为 null。 */
+function summaryFixture(): UsageSummary {
+	const metric = (value: number, unit: string) => ({ value, unit });
+	const zero = (unit: string) => metric(0, unit);
+	return {
+		query_range: { start_time: "2026-10-23T00:00:00+08:00", end_time: "2026-10-23T01:00:00+08:00" },
+		data_updated_at: null,
+		usage: {
+			total: {
+				input_tokens: zero("tokens"),
+				output_tokens: zero("tokens"),
+				total_tokens: zero("tokens"),
+				cache_read_tokens: zero("tokens"),
+				cache_creation_tokens: zero("tokens"),
+				cache_hit_ratio: zero("ratio"),
+				model_call_count: zero("count"),
+				tool_call_count: zero("count"),
+				builtin_tool_call_count: zero("count"),
+				mcp_tool_call_count: zero("count"),
+				custom_tool_call_count: zero("count"),
+				turns: zero("count"),
+				steps: zero("count"),
+				interrupt_error_count: zero("count"),
+				model_failed_count: zero("count"),
+				tool_failed_count: zero("count"),
+				runtime_ms: zero("ms"),
+			},
+			models: [],
+			tools: [],
+		},
+	};
+}
+
 function adminContextFixture(url: URL): unknown {
 	if (url.pathname.endsWith("/identity")) return { role: "admin", subject: "admin:admin:usage-fixture" };
-	if (/\/usage\/(model-usage|tool-usage)$/.test(url.pathname)) {
-		return {
-			items: [],
-			total: 0,
-			total_call_count: 0,
-			page_no: 1,
-			page_size: 20,
-			data_updated_at: Date.parse("2026-10-23T01:00:00Z"),
-		} satisfies ModelUsagePage;
-	}
+	if (url.pathname.endsWith("/usage/summary")) return summaryFixture();
 	if (url.pathname.endsWith("/templates/daily-trend"))
 		return { days: 7, from_day: "2026-10-17", to_day: "2026-10-23", since_day: null, data: [] };
 	if (url.pathname.endsWith("/usage-limits/policy")) {
@@ -80,10 +109,22 @@ function adminContextFixture(url: URL): unknown {
 		member_id: url.pathname.split("/").at(-2) ?? "",
 		month: "2026-10",
 		reset_at: "2026-11-01T00:00:00Z",
-		limits: { monthly_tokens: null, monthly_active_seconds: null },
+		limits: {
+			monthly_tokens: null,
+			monthly_active_seconds: null,
+			daily_tokens: null,
+			daily_active_seconds: null,
+		},
 		override: null,
 		tokens: { limit: null, used: 0, remaining: null, status: "ok" },
 		active_seconds: { limit: null, used: 0, remaining: null, status: "ok" },
+		day_state: {
+			day: "2026-10-23",
+			reset_at: "2026-10-24T00:00:00Z",
+			tokens: { limit: null, used: 0, remaining: null, status: "ok" },
+			active_seconds: { limit: null, used: 0, remaining: null, status: "ok" },
+		},
+		daily: [],
 		accounting_started_at: "2026-10-26T00:00:00Z",
 	} satisfies MemberUsageLimitView;
 }

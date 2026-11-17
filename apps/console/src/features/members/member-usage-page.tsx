@@ -2,8 +2,9 @@ import type {
 	MemberSessionUsage,
 	MemberUsageSummary,
 	MemberView,
-	ModelUsagePage,
-	ToolUsagePage,
+	UsageModelRow,
+	UsageSummary,
+	UsageToolRow,
 } from "@openagentpack/kit-sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Button, Empty, Result, Select, Spin, Table } from "antd";
@@ -25,56 +26,52 @@ function captureTime(value?: string) {
 
 const SESSION_TELEMETRY_PAGE_SIZE = 20;
 
-function usageTotalText(page?: ModelUsagePage | ToolUsagePage) {
-	return page ? page.total_call_count.toLocaleString("zh-CN") : "—";
+/** 指标值可能为 null（上游未知指标），统一显示破折号而不是 0。 */
+function countText(value: number | null) {
+	return value === null ? "—" : value.toLocaleString("zh-CN");
 }
 
-type TelemetryQueryState = { loading: boolean; data?: unknown; error?: string | null };
-
-function telemetryLoading(...queries: TelemetryQueryState[]) {
-	return queries.some((query) => query.loading || (!query.data && !query.error));
+/** 本地分页：上游一次返回全量明细，分页只在展示层切片。 */
+function slicePage<T>(rows: T[], pageNo: number) {
+	return rows.slice((pageNo - 1) * SESSION_TELEMETRY_PAGE_SIZE, pageNo * SESSION_TELEMETRY_PAGE_SIZE);
 }
 
-function telemetryHasNext(page: { total: number } | undefined, pageNo: number, pageSize: number) {
-	return page ? pageNo * pageSize < page.total : false;
+/** 任一明细长度超过单页即仍有下一页。 */
+function telemetryHasNext(summary: UsageSummary | undefined, pageNo: number) {
+	const longest = Math.max(summary?.usage.models.length ?? 0, summary?.usage.tools.length ?? 0);
+	return pageNo * SESSION_TELEMETRY_PAGE_SIZE < longest;
 }
 
-type ModelRow = ModelUsagePage["items"][number];
-
-function countText(value: number) {
-	return value.toLocaleString("zh-CN");
-}
-
-const modelColumns: TableColumnsType<ModelRow> = [
-	{ title: "模型名", dataIndex: "model_name" },
-	{ title: "调用次数", dataIndex: "call_count", align: "right", render: (value: number) => countText(value) },
-	{ title: "失败次数", dataIndex: "failed_count", align: "right", render: (value: number) => countText(value) },
+const modelColumns: TableColumnsType<UsageModelRow> = [
+	{ title: "模型名", dataIndex: "model_name", render: (value: string | null) => value ?? "未归因" },
+	{ title: "调用次数", align: "right", render: (_, row) => countText(row.usage.call_count.value) },
+	{ title: "失败次数", align: "right", render: (_, row) => countText(row.usage.failed_count.value) },
 	{
 		title: "输入",
 		align: "right",
-		render: (_, row) => <span className={styles.tabularNum}>{countText(row.tokens.input_tokens)}</span>,
+		render: (_, row) => <span className={styles.tabularNum}>{countText(row.usage.input_tokens.value)}</span>,
 	},
 	{
 		title: "输出",
 		align: "right",
-		render: (_, row) => <span className={styles.tabularNum}>{countText(row.tokens.output_tokens)}</span>,
+		render: (_, row) => <span className={styles.tabularNum}>{countText(row.usage.output_tokens.value)}</span>,
 	},
 	{
 		title: "缓存读取",
 		align: "right",
-		render: (_, row) => <span className={styles.tabularNum}>{countText(row.tokens.cache_read_tokens)}</span>,
+		render: (_, row) => <span className={styles.tabularNum}>{countText(row.usage.cache_read_tokens.value)}</span>,
 	},
 	{
 		title: "缓存创建",
 		align: "right",
-		render: (_, row) => <span className={styles.tabularNum}>{countText(row.tokens.cache_creation_tokens)}</span>,
+		render: (_, row) => <span className={styles.tabularNum}>{countText(row.usage.cache_creation_tokens.value)}</span>,
 	},
 ];
 
-function SessionModelTable({ rows, loading }: { rows: ModelUsagePage["items"]; loading?: boolean }) {
+function SessionModelTable({ rows, loading }: { rows: UsageModelRow[]; loading?: boolean }) {
 	return (
 		<Table
-			rowKey="model_name"
+			rowKey={(row) => row.model_name ?? "unknown"}
 			size="small"
 			loading={loading}
 			columns={modelColumns}
@@ -86,19 +83,17 @@ function SessionModelTable({ rows, loading }: { rows: ModelUsagePage["items"]; l
 	);
 }
 
-type ToolRow = ToolUsagePage["items"][number];
-
-const toolColumns: TableColumnsType<ToolRow> = [
-	{ title: "工具名", dataIndex: "tool_name" },
-	{ title: "来源", dataIndex: "source" },
-	{ title: "调用次数", dataIndex: "call_count", align: "right", render: (value: number) => countText(value) },
-	{ title: "失败次数", dataIndex: "failed_count", align: "right", render: (value: number) => countText(value) },
+const toolColumns: TableColumnsType<UsageToolRow> = [
+	{ title: "工具名", dataIndex: "tool_name", render: (value: string | null) => value ?? "未知" },
+	{ title: "来源", dataIndex: "source", render: (value: string | null) => value ?? "未知" },
+	{ title: "调用次数", align: "right", render: (_, row) => countText(row.usage.call_count.value) },
+	{ title: "失败次数", align: "right", render: (_, row) => countText(row.usage.failed_count.value) },
 ];
 
-function SessionToolTable({ rows, loading }: { rows: ToolUsagePage["items"]; loading?: boolean }) {
+function SessionToolTable({ rows, loading }: { rows: UsageToolRow[]; loading?: boolean }) {
 	return (
 		<Table
-			rowKey={(row) => `${row.source}/${row.tool_name}`}
+			rowKey={(row) => `${row.source ?? "unknown"}/${row.tool_name ?? "unknown"}`}
 			size="small"
 			loading={loading}
 			columns={toolColumns}
@@ -118,7 +113,7 @@ function SessionTelemetryView({
 	hasNext,
 	onPage,
 }: {
-	shown: { models: ModelUsagePage; tools: ToolUsagePage };
+	shown: UsageSummary;
 	loading: boolean;
 	pageNo: number;
 	hasNext: boolean;
@@ -132,12 +127,16 @@ function SessionTelemetryView({
 				</p>
 			) : null}
 			<div>
-				<p className={styles.telemetryTitle}>模型调用明细 · 全部模型调用 {usageTotalText(shown.models)} 次</p>
-				<SessionModelTable rows={shown.models.items} />
+				<p className={styles.telemetryTitle}>
+					模型调用明细 · 全部模型调用 {countText(shown.usage.total.model_call_count.value)} 次
+				</p>
+				<SessionModelTable rows={slicePage(shown.usage.models, pageNo)} />
 			</div>
 			<div>
-				<p className={styles.telemetryTitle}>工具调用明细 · 全部工具调用 {usageTotalText(shown.tools)} 次</p>
-				<SessionToolTable rows={shown.tools.items} />
+				<p className={styles.telemetryTitle}>
+					工具调用明细 · 全部工具调用 {countText(shown.usage.total.tool_call_count.value)} 次
+				</p>
+				<SessionToolTable rows={slicePage(shown.usage.tools, pageNo)} />
 			</div>
 			{hasNext || pageNo > 1 ? (
 				<nav aria-label="会话用量明细分页" className={styles.telemetryPager}>
@@ -154,31 +153,24 @@ function SessionTelemetryView({
 	);
 }
 
-/** 单会话的 Provider 侧模型/工具用量（session 口径：按会话自身窗口统计，无时间筛选）。
+/** 单会话的 Provider 侧模型/工具用量（session 维度：按会话自身窗口统计，无时间筛选）。
  *  切换会话/页码期间保留上一次已就绪的内容直到新数据到位（或确认出错），明细区不塌缩，避免整页闪动。 */
 function SessionUsageTelemetry({ sessionId }: { sessionId: string }) {
 	const client = useMemo(getAdminClient, []);
 	/** 页码随会话自动归位：会话变了视同第 1 页。组件跨会话保持挂载（重挂会丢掉上次内容导致闪动）。 */
 	const [page, setPage] = useState({ sessionId, pageNo: 1 });
 	const pageNo = page.sessionId === sessionId ? page.pageNo : 1;
-	const models = useAdminQuery(`member-session-model:${sessionId}:${pageNo}`, (signal) =>
-		client.usage.modelUsage({ session_id: sessionId, page_no: pageNo, page_size: SESSION_TELEMETRY_PAGE_SIZE }, signal),
+	const query = useAdminQuery(`member-session-usage:${sessionId}`, (signal) =>
+		client.usage.summary({ session_id: sessionId }, signal),
 	);
-	const tools = useAdminQuery(`member-session-tool:${sessionId}:${pageNo}`, (signal) =>
-		client.usage.toolUsage({ session_id: sessionId, page_no: pageNo, page_size: SESSION_TELEMETRY_PAGE_SIZE }, signal),
-	);
-	/** 最近一次双接口都就绪的内容；加载期间继续展示它，就绪后原子替换。 */
-	const [shown, setShown] = useState<{ key: string; models: ModelUsagePage; tools: ToolUsagePage } | null>(null);
-	const queryKey = `${sessionId}:${pageNo}`;
+	/** 最近一次就绪的内容；加载期间继续展示它，避免明细区塌缩。 */
+	const [shown, setShown] = useState<UsageSummary | null>(null);
 	useEffect(() => {
-		if (models.data && tools.data) setShown({ key: queryKey, models: models.data, tools: tools.data });
-	}, [models.data, tools.data, queryKey]);
-	const loading = telemetryLoading(models, tools);
-	const error = models.error ?? tools.error;
-	// 加载中沿用上次内容的分页状态，避免分页栏闪现闪没。
-	const hasNext =
-		telemetryHasNext(models.data ?? shown?.models, pageNo, SESSION_TELEMETRY_PAGE_SIZE) ||
-		telemetryHasNext(tools.data ?? shown?.tools, pageNo, SESSION_TELEMETRY_PAGE_SIZE);
+		if (query.data) setShown(query.data);
+	}, [query.data]);
+	const loading = query.loading || (!query.data && !query.error);
+	const error = query.error;
+	const hasNext = telemetryHasNext(query.data ?? shown ?? undefined, pageNo);
 	return (
 		<div className={styles.telemetryRoot}>
 			{error ? (
@@ -186,12 +178,7 @@ function SessionUsageTelemetry({ sessionId }: { sessionId: string }) {
 					status="error"
 					title={error}
 					extra={
-						<Button
-							size="small"
-							onClick={() => {
-								void Promise.all([models.refresh(), tools.refresh()]);
-							}}
-						>
+						<Button size="small" onClick={() => void query.refresh()}>
 							重试
 						</Button>
 					}
@@ -399,7 +386,7 @@ export function MemberUsagePage({
 					className={styles.agentFilterSelect}
 					options={[
 						{ value: "", label: "全部 Agent" },
-						...usage.agents.map((agent) => ({ value: agent, label: agent })),
+						...usage.agents.map((agent) => ({ value: agent.slug, label: agent.display_name ?? agent.slug })),
 					]}
 				/>
 			</label>

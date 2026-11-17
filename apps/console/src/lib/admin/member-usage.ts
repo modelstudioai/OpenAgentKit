@@ -6,7 +6,7 @@ export interface MemberUsageSnapshot {
 	summary: MemberUsageSummary | undefined;
 	sessions: MemberSessionUsage[];
 	agentSlug: string;
-	agents: string[];
+	agents: MemberUsageSummary["agents"];
 	page: number;
 	hasNext: boolean;
 	loading: boolean;

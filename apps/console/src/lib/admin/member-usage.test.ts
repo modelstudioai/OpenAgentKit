@@ -14,7 +14,10 @@ function summary(value: number, count = 21, status: MemberUsageSummary["refresh_
 		metrics: Object.fromEntries(
 			SESSION_USAGE_METRICS.map((key) => [key, { value, covered_sessions: count }]),
 		) as MemberUsageSummary["metrics"],
-		agents: ["agent/a", "agent-b"],
+		agents: [
+			{ slug: "agent/a", display_name: "Agent A" },
+			{ slug: "agent-b", display_name: null },
+		],
 		refresh_status: status,
 		completed_sessions: count,
 	};
@@ -64,7 +67,14 @@ describe("成员用量查询编排", () => {
 		expect(controller.getSnapshot().page).toBe(2);
 		controller.setAgent("agent/a");
 		await vi.waitFor(() => expect(controller.getSnapshot().summary?.metrics.input_tokens.value).toBe(500));
-		expect(controller.getSnapshot()).toMatchObject({ page: 1, agentSlug: "agent/a", agents: ["agent/a", "agent-b"] });
+		expect(controller.getSnapshot()).toMatchObject({
+			page: 1,
+			agentSlug: "agent/a",
+			agents: [
+				{ slug: "agent/a", display_name: "Agent A" },
+				{ slug: "agent-b", display_name: null },
+			],
+		});
 		for (const url of urls.slice(-2)) {
 			expect(url.pathname).toContain("/kit/api/admin/members/member%20one/");
 			expect(url.searchParams.get("agent_slug")).toBe("agent/a");

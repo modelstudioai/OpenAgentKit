@@ -400,12 +400,12 @@ Kit 不查询或复制库内 Credential，不提供创建库、生成密钥或�
 | `admin.members.create` | `POST /api/admin/members` | 创建本地账号：`username`、`display_name`、可选 `email`、`auth_type: local`、`password_mode: auto\|custom`；custom 须带 `password`。返回 `{data:{member,initial_password?}}`，只有 auto 首次创建响应含初始密码；同名 `409 conflict`，审计不记密码 | ✅ |
 | `admin.members.usage` | `GET /api/admin/members/:memberId/usage` | `{data: MemberUsageSummary}`；可选 `agent_slug` 筛选，`refresh=1` 强制调度后台刷新并立即返回当前缓存与进度；管理员与 auditor 可读 | ✅ |
 | `admin.members.sessions` | `GET /api/admin/members/:memberId/sessions` | 成员会话累计用量明细，含已删除快照；`?agent_slug=&cursor=&limit=`，limit 默认 20、最多 100；返回 `{data,next_cursor?}`；汇总不受明细分页大小限制 | ✅ |
-| `admin.usage.templates` | `GET /api/admin/usage/templates` | 以模版为主键聚合体验会话用量：只统计从该模版上架条目发起的会话（跨成员、含已删除）；模版全量返回，0 会话也出现，行含 `remote_agent_id`（模版绑定智能体，控制台用它按 agent_id 过滤模型/工具用量明细）；与成员用量的 `agent_slug` 明细同口径。读取即登记新会话并按成员后台补采，返回当前缓存；管理员与 auditor 可读 | ✅ |
+| `admin.usage.templates` | `GET /api/admin/usage/templates` | 以模版为主键聚合体验会话用量：只统计从该模版上架条目发起的会话（跨成员、含已删除）；模版全量返回，0 会话也出现，行含 `remote_agent_id`（模版绑定智能体，控制台用它按 agent_id 过滤模型/工具用量明细）；与成员用量的 `agent_slug` 明细同口径；`?search=` 过滤模版名/智能体名/模版 ID。读取即登记新会话并按成员后台补采，返回当前缓存；管理员与 auditor 可读 | ✅ |
 | `admin.usage.templateSessions` | `GET /api/admin/usage/templates/:templateId/sessions` | 模版会话用量明细（跨成员、含已删除快照）；`?cursor=&limit=`，limit 默认 20、最多 100；行附带成员 `member_display_name`/`member_username`；返回 `{data,next_cursor?}`；模版不存在 404 | ✅ |
 | `admin.usage.templateTrend` | `GET /api/admin/usage/templates/daily-trend` | 模版用量逐日趋势（管理端「使用趋势」柱状图）：来自限额账本条目逐日账 `kit_usage_limit_agent_days`，`tokens`=输入+输出 Token 增量、`active_seconds`=执行时长增量，按采集确认日（UTC 日键）归属，自模版限额账本启用起记录、不含更早历史；`?template_id=&days=`，`days` 仅支持 7/14/28（缺省 7），`template_id` 缺省为全部模版条目求和（非模版条目不计入；同一条目被多模版引用时随各模版重复计入，与「全部=各模版求和」一致）；区间零值补全到今天，返回 `{data:{days,from_day,to_day,since_day,data:[{day,tokens,active_seconds}]}}`（`since_day` 为逐日账最早记录日，无记录为 null）；模版不存在 404，管理员与 auditor 可读 | ✅ |
 | `admin.usage.templateLimit.get` / `.put` / `.delete` | `GET` · `PUT` · `DELETE /api/admin/usage/templates/:templateId/usage-limit` | 模版限额（月度与日度，同成员限额口径，主体为该模版上架条目下全部成员合计）；PUT body 为 `UsageLimitConfig`（月度与日度两组字段，未设置覆盖时不限量）；超限发送返回 403 `quota_exceeded`；模版不存在 404，auditor 只读 | ✅ |
-| `admin.usage.modelUsage` | `GET /api/admin/usage/model-usage` | Provider 侧（app-control usage.*）模型用量明细：`{items,total,total_call_count,page_no,page_size,data_updated_at}`，行含 `workspace_id/model_name/call_count/failed_count/tokens`；`?start_time=&end_time=`（毫秒，缺省最近 7 天）+ `agent_id/model_name/page_no/page_size/sort_by/sort_order`；workspace 由服务端凭据配置注入，前端不可传；传 `?session_id=` 时按会话口径（scope=session，忽略时间区间与 agent_id，按会话自身窗口统计）；sdk 网关调百炼、mock 返回演示数据；管理员与 auditor 可读 | ✅ |
-| `admin.usage.toolUsage` | `GET /api/admin/usage/tool-usage` | Provider 侧工具调用明细：行含 `workspace_id/tool_name/source(builtin\|mcp\|custom)/call_count/failed_count`；筛选与分页同 modelUsage（`source/tool_name`、`sort_by` 限 call_count/failed_count）；管理员与 auditor 可读 | ✅ |
+| `admin.usage.summary` | `GET /api/admin/usage/summary` | Provider 侧用量汇总（app-control usage.summary，对应上游 `POST /v1/agentstudio/usage/summary`）：维度由参数决定——传 `session_id` 为 `dimension:"session"`（按会话自身窗口，不传 `time_range`/`granularity`），传 `agent_id` 为 `dimension:"agent"`，都不传为 `dimension:"workspace"`；`?start_time=&end_time=`（毫秒，缺省最近 7 天）在服务端转成 UTC+8 偏移的 RFC 3339 字符串；返回 `{data:{query_range,data_updated_at,usage:{total,models,tools}}}`，指标统一为 `{value,unit}`（未知为 `null`、已知零值为 `0`）；模型/工具明细同一次响应返回，无分页、无服务端名称筛选，单次明细合计上限 10 万条；workspace 由服务端凭据隐式确定，前端不可传；sdk 网关调百炼、mock 返回账本演示数据；管理员与 auditor 可读 | ✅ |
+| `admin.usage.trend` | `GET /api/admin/usage/trend` | 用量分桶趋势：传 `agent_id` 为 `dimension:"agent"`，否则 `dimension:"workspace"`（Provider 侧，对应上游 `POST /v1/agentstudio/usage/trend`）；`?start_time=&end_time=`（毫秒，缺省最近 7 天）服务端转 UTC+8 RFC 3339；粒度由 `?granularity=` 参数决定（`hour`/`day`/`month`，缺省 `day`；UTC+8 对齐，上游不支持 session 维度）；无数据的时间桶省略而非补零；服务端以 `page_size=100` 聚合全部分页后返回 `{data:{query_range,data_updated_at,granularity,points:[{start_time,end_time,usage:{total,models,tools}}],has_more,next_page_token}}`（`has_more` 恒为 `false`；`page_token` 15 分钟过期（上游 410）时清空聚合从第一页整轮重查一次）；管理员与 auditor 可读 | ✅ |
 
 - `member` 包含 `member_id`、`username`、`display_name`、可选 `email`、`auth_type: local`、
   `status: active`、`created_at`、`updated_at`。时间均为 ISO-8601 UTC。
@@ -464,7 +464,8 @@ Kit 不查询或复制库内 Credential，不提供创建库、生成密钥或�
   缺失与错误均不能当成零，时长保持秒单位，不读取 SSE 正文推算 token。
 - `MemberUsageSummary` 包含 `session_count`、`deleted_session_count`、各指标
   `metrics.{name}.{value,covered_sessions}`、`refreshed_at?`、`refresh_status` 和
-  `completed_sessions`；`agents` 始终是该成员全部 Agent slug，用于筛选器。
+  `completed_sessions`；`agents` 始终是该成员全部 Agent 的 `{slug, display_name}` 列表，用于筛选器；
+  `display_name` 来自 catalog 条目，条目已删除时为 `null`，界面回退显示 slug。
   `refresh_status` 为 `idle | refreshing | partial | failed`。无会话返回 0；存在会话但
   某指标全部未知时 `value=null`，部分已知时只汇总已知值并附覆盖数。上次采集成功但本次失败
   可以保留旧数值，成员列表与详情均须同时显示状态和采集时间；即使 coverage 完整，也

@@ -28,8 +28,8 @@ import {
 	type ProjectRuntimeContext,
 	type ProviderSessionEvent,
 	type ProviderSessionInfo,
-	listModelUsage as sdkListModelUsage,
-	listToolUsage as sdkListToolUsage,
+	getUsageSummary as sdkGetUsageSummary,
+	getUsageTrend as sdkGetUsageTrend,
 	sendRemoteSessionEvents,
 	streamSessionEvents,
 	unmountRemoteSessionResource,
@@ -546,11 +546,11 @@ export function createSdkGateway(credentials: BailianCredentials): ProviderGatew
 				throw new KitError("provider_error", "文件信息查询失败，请稍后重试", { retryable: true });
 			}
 		},
-		async listModelUsage(request, options) {
-			return sdkListModelUsage(managedCtx(), request, options);
+		async getUsageSummary(request, options) {
+			return sdkGetUsageSummary(managedCtx(), request, options);
 		},
-		async listToolUsage(request, options) {
-			return sdkListToolUsage(managedCtx(), request, options);
+		async getUsageTrend(request, options) {
+			return sdkGetUsageTrend(managedCtx(), request, options);
 		},
 		...createSdkAgentVersionGateway(ctx),
 		...createSdkPresetPackGateway(ctx, credentials.apiKey),

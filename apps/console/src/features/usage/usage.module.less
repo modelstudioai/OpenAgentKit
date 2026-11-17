@@ -11,11 +11,6 @@
 	min-width: 0;
 }
 
-/* flex column 容器默认 stretch 会把 Segmented 轨道拉满整行，恢复内容自适应宽度 */
-.viewToggle {
-	align-self: flex-start;
-}
-
 .pageTitle {
 	font-size: 18px;
 	font-weight: 600;
@@ -25,6 +20,11 @@
 	margin-top: 4px;
 	font-size: 14px;
 	color: var(--ant-color-text-secondary);
+}
+
+/* flex column 容器默认 stretch 会把 Segmented 轨道拉满整行，恢复内容自适应宽度 */
+.viewToggle {
+	align-self: flex-start;
 }
 
 .mutedNote {
@@ -126,6 +126,17 @@ input.searchInput {
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
+}
+
+.rangeRow {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+.rangeLabel {
+	font-size: 14px;
 }
 
 .telemetrySection {
@@ -289,10 +300,6 @@ input.searchInput {
 	gap: 8px;
 }
 
-.datePicker {
-	width: 208px;
-}
-
 .selectName {
 	width: 176px;
 }
@@ -331,10 +338,6 @@ input.searchInput {
 	flex-wrap: wrap;
 	align-items: center;
 	gap: 8px;
-}
-
-.daysSelect {
-	width: 112px;
 }
 
 .loadingText {
@@ -432,6 +435,7 @@ input.searchInput {
 
 .barSlot {
 	display: flex;
+	gap: 2px;
 	height: 100%;
 	min-width: 0;
 	flex: 1 1 0%;
@@ -447,13 +451,22 @@ input.searchInput {
 	transition: height var(--kit-duration-base) var(--kit-ease-out);
 }
 
-.barToday {
+.barAccentToday {
 	background: var(--kit-accent);
 }
 
 /* 历史日期柱：同色半透明弱调 */
-.barPast {
+.barAccentPast {
 	background: var(--kit-accent);
+	opacity: 0.3;
+}
+
+.barSecondaryToday {
+	background: var(--kit-success);
+}
+
+.barSecondaryPast {
+	background: var(--kit-success);
 	opacity: 0.3;
 }
 
@@ -474,6 +487,38 @@ input.searchInput {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	text-align: center;
+}
+
+/* 双系列图例（Token 消耗 = 总 Token + 缓存 Token），居中显示在图表下方 */
+.chartLegend {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 4px 16px;
+	margin-top: 8px;
+	font-size: 13px;
+	color: var(--kit-fg-muted);
+}
+
+.legendItem {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.legendAccent,
+.legendSecondary {
+	width: 10px;
+	height: 10px;
+	border-radius: 2px;
+}
+
+.legendAccent {
+	background: var(--kit-accent);
+}
+
+.legendSecondary {
+	background: var(--kit-success);
 }
 
 .emptyChart {

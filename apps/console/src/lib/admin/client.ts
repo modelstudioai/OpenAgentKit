@@ -28,7 +28,6 @@ import {
 	type MemberUsageLimitView,
 	type MemberUsageSummary,
 	type MemberView,
-	type ModelUsagePage,
 	type OperationView,
 	OperationViewSchema,
 	type PlanResponse,
@@ -82,16 +81,17 @@ import {
 	type TemplateUpdateInput,
 	type TemplateUsageLimitView,
 	type TemplateUsageRow,
-	type TemplateUsageTrend,
 	type TemplateVersionsPage,
 	type TemplateVersionsQuery,
 	type TemplateVersionView,
 	type TemplateView,
 	type ToolApprovalDecision,
 	type ToolApprovalsResponse,
-	type ToolUsagePage,
+	type UsageGranularity,
 	type UsageLimitConfig,
 	type UsageLimitPolicy,
+	type UsageSummary,
+	type UsageTrend,
 } from "@openagentpack/kit-sdk/protocol";
 import type { StreamSessionOptions, ThreadQueryOptions } from "@openagentpack/kit-sdk/providers";
 import { streamProtocolFrames } from "@openagentpack/kit-sdk/providers/kit";
@@ -99,27 +99,15 @@ import { createRequest, type RequestClient, type RequestOptions } from "@openage
 
 export type AdminClientOptions = RequestOptions | { request: RequestClient };
 
-/** Provider 侧用量明细的公共筛选；workspace 由服务端注入，前端不传。 */
+/** Provider 侧用量汇总的筛选；维度由服务端按 session_id / agent_id 推导，前端只传窗口。 */
 export interface UsageTelemetryQuery {
-	/** 传 session_id 时按会话口径查询（scope=session，忽略时间区间与 agent_id）。 */
+	/** 传 session_id 时按会话维度查询（dimension=session，忽略时间区间与 agent_id）。 */
 	session_id?: string;
-	/** 毫秒时间戳；缺省为最近 7 天（session 口径下不传）。 */
+	/** 毫秒时间戳；缺省为最近 7 天（session 维度下不传）。 */
 	start_time?: number;
 	end_time?: number;
 	agent_id?: string;
-	page_no?: number;
-	page_size?: number;
-	sort_order?: "asc" | "desc";
 }
-export type ModelUsageQuery = UsageTelemetryQuery & {
-	model_name?: string;
-	sort_by?: "call_count" | "failed_count" | "input_tokens" | "output_tokens";
-};
-export type ToolUsageQuery = UsageTelemetryQuery & {
-	source?: "builtin" | "mcp" | "custom";
-	tool_name?: string;
-	sort_by?: "call_count" | "failed_count";
-};
 
 export interface DeclarationWrite {
 	base_revision: string;
@@ -159,10 +147,8 @@ export function createAdminClient(options: AdminClientOptions) {
 	}
 	const groupPath = (id: string) => `/api/admin/groups/${encodeURIComponent(id)}`;
 	const memberGroupsPath = (id: string) => `/api/admin/members/${encodeURIComponent(id)}/groups`;
-	/** 用量明细 query 全量字段非空即拼；布尔外的值统一 String 化。 */
-	function usageTelemetryQuery(
-		query: UsageTelemetryQuery & { model_name?: string; source?: string; tool_name?: string; sort_by?: string },
-	) {
+	/** 用量汇总 query 全量字段非空即拼；布尔外的值统一 String 化。 */
+	function usageTelemetryQuery(query: UsageTelemetryQuery) {
 		const params = new URLSearchParams();
 		for (const [key, value] of Object.entries(query)) {
 			if (value !== undefined && value !== "") params.set(key, String(value));
@@ -358,12 +344,9 @@ export function createAdminClient(options: AdminClientOptions) {
 			setPolicy: (limits: UsageLimitConfig) => write<UsageLimitPolicy>("/api/admin/usage-limits/policy", "PUT", limits),
 		},
 		usage: {
-			/** Provider 侧模型用量明细（workspace scope 由服务端注入）；默认统计最近 7 天。 */
-			modelUsage: (query: ModelUsageQuery = {}, signal?: AbortSignal) =>
-				get<ModelUsagePage>(`/api/admin/usage/model-usage${usageTelemetryQuery(query)}`, signal),
-			/** Provider 侧工具调用明细（workspace scope 由服务端注入）；默认统计最近 7 天。 */
-			toolUsage: (query: ToolUsageQuery = {}, signal?: AbortSignal) =>
-				get<ToolUsagePage>(`/api/admin/usage/tool-usage${usageTelemetryQuery(query)}`, signal),
+			/** Provider 侧用量汇总（模型与工具明细同一次响应）；默认统计最近 7 天。 */
+			summary: (query: UsageTelemetryQuery = {}, signal?: AbortSignal) =>
+				get<UsageSummary>(`/api/admin/usage/summary${usageTelemetryQuery(query)}`, signal),
 			/** 以模版为主键聚合的体验会话用量（管理端「模版用量」视角）；search 按模版名/智能体名/模版 ID 过滤。 */
 			templates: (query: { search?: string } = {}, signal?: AbortSignal) => {
 				const params = new URLSearchParams();
@@ -379,15 +362,22 @@ export function createAdminClient(options: AdminClientOptions) {
 					{ signal },
 				);
 			},
-			/** 模版用量逐日趋势（限额账本条目逐日账）；templateId 缺省为全部模版求和，days 支持 7/14/28。 */
-			templateTrend: (query: { templateId?: string; days?: 7 | 14 | 28 } = {}, signal?: AbortSignal) => {
+			/** 用量分桶趋势：agentId 缺省为 workspace 维度；granularity 缺省 day；时间毫秒，服务端按该粒度（UTC+8）分桶并聚合全部分页。 */
+			trend: (
+				query: {
+					agentId?: string;
+					startTime?: number;
+					endTime?: number;
+					granularity?: UsageGranularity;
+				} = {},
+				signal?: AbortSignal,
+			) => {
 				const params = new URLSearchParams();
-				if (query.templateId) params.set("template_id", query.templateId);
-				if (query.days) params.set("days", String(query.days));
-				return get<TemplateUsageTrend>(
-					`/api/admin/usage/templates/daily-trend${params.size ? `?${params}` : ""}`,
-					signal,
-				);
+				if (query.agentId) params.set("agent_id", query.agentId);
+				if (query.granularity) params.set("granularity", query.granularity);
+				if (query.startTime !== undefined) params.set("start_time", String(query.startTime));
+				if (query.endTime !== undefined) params.set("end_time", String(query.endTime));
+				return get<UsageTrend>(`/api/admin/usage/trend${params.size ? `?${params}` : ""}`, signal);
 			},
 			templateLimit: (templateId: string, signal?: AbortSignal) =>
 				get<TemplateUsageLimitView>(`/api/admin/usage/templates/${encodeURIComponent(templateId)}/usage-limit`, signal),

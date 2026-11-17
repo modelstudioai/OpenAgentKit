@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
+import type { UsageGranularity, UsageTrend, UsageTrendPoint } from "@openagentpack/kit-sdk/protocol";
 import {
 	CatalogAgentInputSchema,
 	CreateQuotaPackSchema,
@@ -7,8 +8,6 @@ import {
 	EvalRunSummarySchema,
 	EvalWorkspaceViewSchema,
 	KitError,
-	ModelUsagePageSchema,
-	ModelUsageSortBySchema,
 	PutQuotaOverrideSchema,
 	PutQuotaPolicySchema,
 	QuotaOverrideViewSchema,
@@ -21,13 +20,14 @@ import {
 	TemplateSessionsPageSchema,
 	TemplateUsagePageSchema,
 	TemplateUsageTrendSchema,
-	ToolUsagePageSchema,
-	ToolUsageSortBySchema,
-	UsageToolSourceSchema,
+	UsageGranularitySchema,
+	UsageSummarySchema,
+	UsageTrendSchema,
 } from "@openagentpack/kit-sdk/protocol";
-import type { ModelUsageRequest, ToolUsageRequest } from "@openagentpack/sdk";
+import { ApiError, type UsageSummaryRequest, type UsageTrendRequest } from "@openagentpack/sdk";
 import type { AppEnv } from "../app-env.ts";
-import { redactSecrets, type ServerConfig } from "../config.ts";
+import { redactSecrets } from "../config.ts";
+import type { ProviderGateway } from "../gateway/types.ts";
 import { prepareCatalogResources, updateCatalogResources } from "../services/catalog-resources.ts";
 import { requireAdmin, requireAdminWrite } from "../services/identity.ts";
 import { registerAgentVersionRoutes } from "./agent-versions.ts";
@@ -480,129 +480,150 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 		},
 	);
 
-	/** 用量明细的 workspace scope 由服务端组装：workspace_id 来自服务端凭据配置，不接受前端传入。 */
+	/** 用量汇总时间窗口固定按 UTC+8 拼 RFC 3339 字符串（上游契约），默认最近 7 天。 */
 	const USAGE_DEFAULT_RANGE_MS = 7 * 24 * 60 * 60 * 1000;
-	function usageTimeRange(query: { start_time?: number; end_time?: number }) {
+	/** 毫秒时间戳 → 带 +08:00 偏移的 RFC 3339（秒级，无毫秒）。 */
+	function utc8Rfc3339(ms: number) {
+		return `${new Date(ms + 8 * 60 * 60 * 1000).toISOString().slice(0, 19)}+08:00`;
+	}
+	function usageTimeWindowMs(query: { start_time?: number; end_time?: number }) {
 		const end = query.end_time ?? Date.now();
 		const start = query.start_time ?? end - USAGE_DEFAULT_RANGE_MS;
 		if (start > end) throw new KitError("invalid_request", "时间区间无效：start_time 不能晚于 end_time");
-		return { start_time: start, end_time: end };
+		return { start, end };
 	}
-	/** mock 网关无凭据配置，用演示工作空间标识占位；sdk 模式必须从有效配置解析工作空间，
-	 * 缺 BAILIAN_WORKSPACE_ID 时明确报错，不得用演示值代替（会把查询发到错误范围）。 */
-	function telemetryWorkspaceId(config: ServerConfig) {
-		if (config.resolvedGateway === "mock") return "ws-mock";
-		const workspaceId = config.bailian?.workspaceId;
-		if (!workspaceId)
-			throw new KitError(
-				"invalid_request",
-				"服务端未配置 BAILIAN_WORKSPACE_ID，无法确定用量查询的工作空间；请补充配置后重试",
-				{
-					details: { workspace_unconfigured: true },
-				},
-			);
-		return workspaceId;
-	}
-	function usagePaging(query: { page_no?: number; page_size?: number; sort_order?: "asc" | "desc" }) {
-		return {
-			...(query.page_no ? { page_no: query.page_no } : {}),
-			...(query.page_size ? { page_size: query.page_size } : {}),
-			...(query.sort_order ? { sort_order: query.sort_order } : {}),
-		};
+	function usageTimeRange(query: { start_time?: number; end_time?: number }) {
+		const { start, end } = usageTimeWindowMs(query);
+		return { start_time: utc8Rfc3339(start), end_time: utc8Rfc3339(end) };
 	}
 
 	const usageTelemetryCommonQuery = {
 		start_time: z.coerce.number().int().nonnegative().optional(),
 		end_time: z.coerce.number().int().nonnegative().optional(),
-		/** 传 session_id 时按会话口径查询（scope=session，忽略时间区间与 agent_id，按会话自身窗口统计）。 */
+		/** 传 session_id 时按会话维度查询（dimension=session，忽略时间区间与 agent_id，按会话自身窗口统计）。 */
 		session_id: z.string().min(1).max(128).optional(),
 		agent_id: z.string().min(1).max(128).optional(),
-		page_no: z.coerce.number().int().min(1).optional(),
-		page_size: z.coerce.number().int().min(1).max(100).optional(),
-		sort_order: z.enum(["asc", "desc"]).optional(),
 	};
-	/** scope 组装：session_id 优先（会话口径），否则 workspace 口径（workspace_ids 来自服务端配置）。 */
-	function usageScope(query: { session_id?: string; agent_id?: string }, config: ServerConfig) {
-		return query.session_id
-			? { type: "session" as const, session_id: query.session_id }
-			: {
-					type: "workspace" as const,
-					workspace_ids: [telemetryWorkspaceId(config)],
-					...(query.agent_id ? { agent_id: query.agent_id } : {}),
-				};
-	}
-	function usageTimeRangeFor(query: { session_id?: string; start_time?: number; end_time?: number }) {
-		// session 口径按整个会话汇总，契约禁止 time_range。
-		return query.session_id ? undefined : usageTimeRange(query);
+	/** 维度组装：session_id 优先（会话维度），其次 agent_id（agent 维度），否则 workspace 维度。 */
+	function usageSummaryRequest(query: {
+		session_id?: string;
+		agent_id?: string;
+		start_time?: number;
+		end_time?: number;
+	}): UsageSummaryRequest {
+		if (query.session_id) return { dimension: "session", session_id: query.session_id };
+		const time_range = usageTimeRange(query);
+		return query.agent_id
+			? { dimension: "agent", agent_id: query.agent_id, time_range }
+			: { dimension: "workspace", time_range };
 	}
 
 	app.openapi(
 		{
 			method: "get",
-			path: "/api/admin/usage/model-usage",
+			path: "/api/admin/usage/summary",
 			tags: ["admin"],
 			request: {
-				query: z.object({
-					...usageTelemetryCommonQuery,
-					model_name: z.string().min(1).max(128).optional(),
-					sort_by: ModelUsageSortBySchema.optional(),
-				}),
+				query: z.object(usageTelemetryCommonQuery),
 			},
 			responses: {
 				200: {
-					description: "Provider 侧模型用量明细（workspace scope，workspace_ids 来自服务端配置）；默认统计最近 7 天",
-					content: { "application/json": { schema: z.object({ data: ModelUsagePageSchema }) } },
+					description:
+						"Provider 侧用量汇总（app-control usage.summary）：维度由参数决定（session_id → session，agent_id → agent，否则 workspace），一次返回 total 与模型/工具明细；时间按 UTC+8 RFC 3339 传入，默认最近 7 天；无分页，明细合计上限 10 万条",
+					content: { "application/json": { schema: z.object({ data: UsageSummarySchema }) } },
 				},
 				...errors,
 			},
 		},
 		async (c) => {
-			const { gateway, config } = c.get("services");
-			const query = c.req.valid("query");
-			const request: ModelUsageRequest = {
-				scope: usageScope(query, config),
-				time_range: usageTimeRangeFor(query),
-				...(query.model_name ? { model_name: query.model_name } : {}),
-				...(query.sort_by ? { sort_by: query.sort_by } : {}),
-				...usagePaging(query),
-			};
-			return c.json({ data: await gateway.listModelUsage(request) }, 200);
+			const { gateway } = c.get("services");
+			const result = await gateway.getUsageSummary(usageSummaryRequest(c.req.valid("query")));
+			return c.json({ data: result.data }, 200);
 		},
 	);
 
+	/** 趋势查询：上游仅支持 workspace/agent 维度，无 session 维度；粒度可传 hour/day/month，缺省按天（UTC+8 对齐）。 */
+	function usageTrendRequest(query: {
+		agent_id?: string;
+		start_time?: number;
+		end_time?: number;
+		granularity?: UsageGranularity;
+	}): UsageTrendRequest {
+		const time_range = usageTimeRange(query);
+		const granularity: UsageGranularity = query.granularity ?? "day";
+		return query.agent_id
+			? { dimension: "agent", agent_id: query.agent_id, time_range, granularity }
+			: { dimension: "workspace", time_range, granularity };
+	}
+
+	const USAGE_TREND_PAGE_SIZE = 100;
+
+	/** 单轮分页聚合为单响应。 */
+	async function usageTrendPages(
+		gateway: Pick<ProviderGateway, "getUsageTrend">,
+		request: UsageTrendRequest,
+	): Promise<UsageTrend> {
+		let first: UsageTrend | null = null;
+		const points: UsageTrendPoint[] = [];
+		let pageToken: string | null | undefined;
+		do {
+			const page = await gateway.getUsageTrend({
+				...request,
+				page_size: USAGE_TREND_PAGE_SIZE,
+				...(pageToken ? { page_token: pageToken } : {}),
+			});
+			first ??= page.data;
+			points.push(...page.data.points);
+			if (page.data.has_more && !page.data.next_page_token)
+				throw new KitError("provider_error", "用量趋势缺少下一页游标，请稍后重试", { retryable: true });
+			pageToken = page.data.next_page_token;
+		} while (pageToken);
+		return { ...first, points, has_more: false, next_page_token: null };
+	}
+
+	/** page_token 15 分钟过期（Provider 410）→ 清空聚合从第一页整轮重查一次（趋势只读幂等）。 */
+	function isExpiredTrendToken(error: unknown): boolean {
+		return error instanceof ApiError && error.statusCode === 410;
+	}
+
+	async function usageTrendAggregated(
+		gateway: Pick<ProviderGateway, "getUsageTrend">,
+		request: UsageTrendRequest,
+	): Promise<UsageTrend> {
+		let trend = await usageTrendPages(gateway, request).catch((error: unknown) => {
+			if (!isExpiredTrendToken(error)) throw error;
+			return null;
+		});
+		if (!trend) trend = await usageTrendPages(gateway, request);
+		return trend;
+	}
+
 	app.openapi(
 		{
 			method: "get",
-			path: "/api/admin/usage/tool-usage",
+			path: "/api/admin/usage/trend",
 			tags: ["admin"],
 			request: {
 				query: z.object({
-					...usageTelemetryCommonQuery,
-					source: UsageToolSourceSchema.optional(),
-					tool_name: z.string().min(1).max(128).optional(),
-					sort_by: ToolUsageSortBySchema.optional(),
+					start_time: usageTelemetryCommonQuery.start_time,
+					end_time: usageTelemetryCommonQuery.end_time,
+					agent_id: usageTelemetryCommonQuery.agent_id,
+					granularity: UsageGranularitySchema.optional(),
 				}),
 			},
 			responses: {
 				200: {
-					description: "Provider 侧工具调用明细（workspace scope，workspace_ids 来自服务端配置）；默认统计最近 7 天",
-					content: { "application/json": { schema: z.object({ data: ToolUsagePageSchema }) } },
+					description:
+						"用量分桶趋势：agent_id → agent 维度，否则 workspace（Provider 侧，UTC+8 对齐，无数据的时间桶省略）；粒度由 granularity 参数决定（hour/day/month，缺省 day）；服务端聚合全部分页返回，has_more 恒为 false",
+					content: { "application/json": { schema: z.object({ data: UsageTrendSchema }) } },
 				},
 				...errors,
 			},
 		},
 		async (c) => {
-			const { gateway, config } = c.get("services");
+			const { gateway } = c.get("services");
 			const query = c.req.valid("query");
-			const request: ToolUsageRequest = {
-				scope: usageScope(query, config),
-				time_range: usageTimeRangeFor(query),
-				...(query.source ? { source: query.source } : {}),
-				...(query.tool_name ? { tool_name: query.tool_name } : {}),
-				...(query.sort_by ? { sort_by: query.sort_by } : {}),
-				...usagePaging(query),
-			};
-			return c.json({ data: await gateway.listToolUsage(request) }, 200);
+			return c.json({ data: await usageTrendAggregated(gateway, usageTrendRequest(query)) }, 200);
 		},
 	);
 

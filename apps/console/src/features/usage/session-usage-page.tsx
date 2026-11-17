@@ -241,6 +241,8 @@ function TemplatePicker({
 				resource="模版"
 				placeholder="全部"
 				defaultOption={{ id: "", name: "全部" }}
+				/* 候选与下方统计卡同源，展开重拉会连带整页刷新。 */
+				refreshOnOpen={false}
 				remote={{
 					data: rows.map((row) => ({ id: row.template_id, name: row.name, detail: row.remote_agent_name })),
 					loading: templatesList.loading || (!templatesList.data && !templatesList.error),
@@ -388,16 +390,6 @@ export function SessionUsagePage() {
 				/>
 			)}
 			<UsageLimitsArea tab={tab} access={access} />
-			<UsageControls
-				tab={tab}
-				members={members}
-				memberSearch={memberSearch}
-				onMemberSearch={setMemberSearch}
-				onMemberSearchSubmit={() => members.searchFor(memberSearch)}
-				templatesList={templatesList}
-				selectedTemplateId={selectedTemplateId}
-				onTemplateSelect={setSelectedTemplateId}
-			/>
 			<Segmented
 				aria-label="用量视角"
 				className={styles.viewToggle}
@@ -407,6 +399,16 @@ export function SessionUsagePage() {
 					{ label: "模版用量", value: "templates" },
 					{ label: "成员用量", value: "members" },
 				]}
+			/>
+			<UsageControls
+				tab={tab}
+				members={members}
+				memberSearch={memberSearch}
+				onMemberSearch={setMemberSearch}
+				onMemberSearchSubmit={() => members.searchFor(memberSearch)}
+				templatesList={templatesList}
+				selectedTemplateId={selectedTemplateId}
+				onTemplateSelect={setSelectedTemplateId}
 			/>
 			{tab === "templates" ? (
 				<TemplateUsagePanel

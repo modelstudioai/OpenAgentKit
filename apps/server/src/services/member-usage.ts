@@ -108,7 +108,7 @@ export function createMemberUsageService({
 	}
 	return {
 		refresh,
-		/** 按模版聚合全部成员的体验会话用量；登记新会话并按成员调度后台补采，返回当前缓存；search 过滤模版名/智能体名/模版 ID。 */
+		/** 按模版聚合全部成员的体验会话用量；登记新会话并按成员调度后台补采，返回当前缓存。 */
 		summaryByTemplate(options: { search?: string } = {}): TemplateUsageRow[] {
 			for (const memberId of store.syncAll()) schedule(memberId);
 			return store.summaryByTemplate(options.search ?? "");

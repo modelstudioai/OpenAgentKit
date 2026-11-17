@@ -218,6 +218,28 @@ export function createSessionUsageStore(db: DatabaseSync) {
 				| undefined;
 			return row?.sessions ? row : null;
 		},
+		/** mock 遥测数据源：UTC 小时键（created_at 前 13 位）×模版绑定智能体，供 mock trend 重分桶到 UTC+8。 */
+		telemetryByAgentHour() {
+			return db
+				.prepare(`SELECT t.remote_agent_id AS agent_key, substr(u.created_at, 1, 13) AS hour, COUNT(*) AS sessions,
+				COALESCE(SUM(u.input_tokens), 0) AS input_tokens, COALESCE(SUM(u.output_tokens), 0) AS output_tokens,
+				COALESCE(SUM(u.cache_read_input_tokens), 0) AS cache_read_tokens,
+				COALESCE(SUM(u.cache_creation_input_tokens), 0) AS cache_creation_tokens
+				FROM kit_session_usage u
+				JOIN catalog_agents c ON c.slug = u.agent_slug
+				JOIN kit_template_listings l ON l.catalog_id = c.id
+				JOIN kit_templates t ON t.template_id = l.template_id
+				GROUP BY t.remote_agent_id, hour`)
+				.all() as {
+				agent_key: string;
+				hour: string;
+				sessions: number;
+				input_tokens: number;
+				output_tokens: number;
+				cache_read_tokens: number;
+				cache_creation_tokens: number;
+			}[];
+		},
 		isMemberSession(sessionId: string) {
 			return Boolean(
 				db
@@ -332,11 +354,14 @@ export function createSessionUsageStore(db: DatabaseSync) {
 				FROM kit_session_usage WHERE ${filter}`)
 				.get(...params) as Record<string, number | null>;
 			const metrics = metricSummary(totals, counts.total);
-			const agents = (
-				db
-					.prepare("SELECT DISTINCT agent_slug FROM kit_session_usage WHERE member_id = ? ORDER BY agent_slug")
-					.all(memberId) as { agent_slug: string }[]
-			).map((row) => row.agent_slug);
+			const agents = db
+				.prepare(`SELECT u.agent_slug AS slug, c.display_name AS display_name
+				FROM kit_session_usage u
+				LEFT JOIN catalog_agents c ON c.slug = u.agent_slug
+				WHERE u.member_id = ?
+				GROUP BY u.agent_slug
+				ORDER BY u.agent_slug`)
+				.all(memberId) as { slug: string; display_name: string | null }[];
 			return {
 				session_count: counts.total,
 				deleted_session_count: counts.deleted,

@@ -30,6 +30,8 @@ type RemoteResourcePickerProps = {
 	triggerRef?: Ref<{ focus: () => void }>;
 	showId?: boolean;
 	emptyText?: string;
+	/** 展开时是否重拉远端候选（数据与页面主内容同源时关闭，避免展开触发整页刷新）。 */
+	refreshOnOpen?: boolean;
 } & (
 	| {
 			multiple?: false;
@@ -101,7 +103,18 @@ function sourceOf(option: DefaultOptionType | undefined, byId: Map<string, Resou
 
 /** 远端资源共用的表单下拉：展示全部候选，键盘与搜索交互保持一致。 */
 export function RemoteResourcePicker(props: RemoteResourcePickerProps) {
-	const { remote, label, resource, placeholder, required, error, disabled, triggerRef, showId = true } = props;
+	const {
+		remote,
+		label,
+		resource,
+		placeholder,
+		required,
+		error,
+		disabled,
+		triggerRef,
+		showId = true,
+		refreshOnOpen = true,
+	} = props;
 	const selectRef = useRef<ComponentRef<typeof Select>>(null);
 	useImperativeHandle(triggerRef, () => ({ focus: () => selectRef.current?.focus() }), []);
 	const [search, setSearch] = useState("");
@@ -123,7 +136,7 @@ export function RemoteResourcePicker(props: RemoteResourcePickerProps) {
 		if (disabled) return;
 		if (next) {
 			setSearch("");
-			void remote.refresh();
+			if (refreshOnOpen) void remote.refresh();
 		}
 	};
 

@@ -53,6 +53,7 @@ export function createKitServices(config: ServerConfig, db?: DatabaseSync): KitS
 	const gateway = createGateway(config, {
 		byAgent: () => Promise.resolve(usageSnapshots.telemetryByAgent()),
 		bySession: (sessionId) => Promise.resolve(usageSnapshots.telemetryBySession(sessionId)),
+		byAgentHour: () => Promise.resolve(usageSnapshots.telemetryByAgentHour()),
 	});
 	const buffers = createEventBufferRegistry();
 	const sessionIndex = createSessionIndex(database);

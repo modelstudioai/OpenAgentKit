@@ -1,16 +1,142 @@
 import { ErrorState } from "@openagentpack/kit-chat-ui";
-import type { TemplateUsageTrendPoint } from "@openagentpack/kit-sdk/protocol";
-import { Segmented, Select } from "antd";
+import type { UsageGranularity, UsageTrend, UsageTrendPoint } from "@openagentpack/kit-sdk/protocol";
+import { Segmented } from "antd";
 import { useMemo, useState } from "react";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import styles from "./usage.module.less";
 
+const HOUR_MS = 3_600_000;
+const DAY_MS = 24 * HOUR_MS;
+
 function shortDay(day: string) {
 	return day.slice(5).replace("-", "/");
 }
 
-type TrendMetric = "tokens" | "active_seconds";
+/** 粒度 → start_time 键长：hour "YYYY-MM-DDTHH"、day "YYYY-MM-DD"、month "YYYY-MM"。 */
+const BUCKET_KEY_LENGTH = { hour: 13, day: 10, month: 7 } as const;
+
+/** 桶键：统一在 UTC+8 墙钟域生成（Provider start_time 为 +08:00 RFC 3339，两种来源 slice 结果一致）。 */
+function bucketKey(granularity: UsageGranularity, ms: number) {
+	return new Date(ms + 8 * HOUR_MS).toISOString().slice(0, BUCKET_KEY_LENGTH[granularity]);
+}
+
+/** 桶起点（毫秒）：hour 按 UTC 整点（+08:00 是整小时偏移），day/month 在 UTC+8 墙钟域对齐。 */
+function bucketStart(granularity: UsageGranularity, ms: number) {
+	if (granularity === "hour") return Math.floor(ms / HOUR_MS) * HOUR_MS;
+	const shifted = ms + 8 * HOUR_MS;
+	const date = new Date(shifted);
+	if (granularity === "month") return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1) - 8 * HOUR_MS;
+	return Math.floor(shifted / DAY_MS) * DAY_MS - 8 * HOUR_MS;
+}
+
+function nextBucketStart(granularity: UsageGranularity, ms: number) {
+	if (granularity === "month") {
+		const date = new Date(ms + 8 * HOUR_MS);
+		return Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1) - 8 * HOUR_MS;
+	}
+	return ms + (granularity === "hour" ? HOUR_MS : DAY_MS);
+}
+
+/** 桶展示文案：hour "11-17 10:00"、day "11/17"、month "2026-11"。 */
+function bucketLabel(granularity: UsageGranularity, key: string) {
+	if (granularity === "hour") return `${key.slice(5).replace("T", " ")}:00`;
+	if (granularity === "month") return key;
+	return shortDay(key);
+}
+
+/** 柱状图系列：Token 消耗视图为同桶双柱（总 Token + 缓存 Token），其余指标单柱；variant 区分用色。 */
+interface TrendChartSeries {
+	meta: TrendChartMeta;
+	variant: "accent" | "secondary";
+	points: { key: string; value: number }[];
+}
+
+/** 柱状图元数据：TREND_METRICS 的条目与缓存 Token 系列共用；缓存 Token 仅作 Token 消耗视图的第二根柱，不进指标切换。 */
+interface TrendChartMeta {
+	label: string;
+	/** 悬停文案的数值后缀；Token 系列的标签本身已含 Token，留空避免重复。 */
+	unit: string;
+	/** 图例中的口径说明；仅双系列图展示图例。 */
+	legendHint?: string;
+	decimals: number;
+	pick: (total: UsageTrendPoint["usage"]["total"]) => number | null;
+}
+
+/** 趋势指标视图：Token 消耗 / 调用次数 / 失败次数（模型+工具失败，不含中断）/ 运行时长（runtime_ms 换算成秒展示）。 */
+const TREND_METRICS = {
+	tokens: {
+		label: "Token 消耗",
+		unit: "",
+		legendHint: "输入+输出",
+		decimals: 0,
+		pick: (total: UsageTrendPoint["usage"]["total"]) => total.total_tokens.value,
+	},
+	calls: {
+		label: "调用次数",
+		unit: " 次",
+		decimals: 0,
+		pick: (total: UsageTrendPoint["usage"]["total"]) => total.model_call_count.value,
+	},
+	failures: {
+		label: "失败次数",
+		unit: " 次",
+		decimals: 0,
+		pick: (total: UsageTrendPoint["usage"]["total"]) =>
+			(total.model_failed_count.value ?? 0) + (total.tool_failed_count.value ?? 0),
+	},
+	runtime: {
+		label: "运行时长",
+		unit: " 秒",
+		decimals: 1,
+		pick: (total: UsageTrendPoint["usage"]["total"]) => (total.runtime_ms.value ?? 0) / 1000,
+	},
+} as const;
+type TrendMetric = keyof typeof TREND_METRICS;
+
+/** 缓存 Token = 缓存读取 + 缓存写入；与总 Token 构成 Token 消耗视图的同桶双柱。 */
+const CACHE_TOKEN_META: TrendChartMeta = {
+	label: "缓存 Token",
+	unit: "",
+	legendHint: "缓存读取+缓存写入",
+	decimals: 0,
+	pick: (total) => (total.cache_read_tokens.value ?? 0) + (total.cache_creation_tokens.value ?? 0),
+};
+
+/** 系列 → 柱色：accent 为主系列（主题蓝），secondary 为次系列（--kit-success 绿）。 */
+const BAR_CLASSES = {
+	accent: { today: styles.barAccentToday, past: styles.barAccentPast },
+	secondary: { today: styles.barSecondaryToday, past: styles.barSecondaryPast },
+} as const;
+
+/** 任意时间窗的隐含分桶粒度：≤24h 按小时、≤120 天按天、更长按月（对齐原时间窗预设的口径）。 */
+function granularityOf(spanMs: number): UsageGranularity {
+	if (spanMs <= 24 * HOUR_MS) return "hour";
+	if (spanMs <= 120 * DAY_MS) return "day";
+	return "month";
+}
+
+/** Provider 省略无数据的桶；按响应粒度逐桶补 0 得到稳定柱位（仅展示口径）。 */
+function filledBuckets(
+	trend: UsageTrend,
+	pick: (total: UsageTrendPoint["usage"]["total"]) => number | null,
+): { key: string; value: number }[] {
+	const length = BUCKET_KEY_LENGTH[trend.granularity];
+	const byKey = new Map(
+		trend.points.map((point): [string, number] => [point.start_time.slice(0, length), pick(point.usage.total) ?? 0]),
+	);
+	const end = Date.parse(trend.query_range.end_time) - 1;
+	const buckets: { key: string; value: number }[] = [];
+	for (
+		let ms = bucketStart(trend.granularity, Date.parse(trend.query_range.start_time));
+		ms <= end;
+		ms = nextBucketStart(trend.granularity, ms)
+	) {
+		const key = bucketKey(trend.granularity, ms);
+		buckets.push({ key, value: byKey.get(key) ?? 0 });
+	}
+	return buckets;
+}
 
 /** 单个汇总数字：小标签 + 大号数字（与统计卡同款结构，趋势卡内独立声明避免跨文件导出私有组件）。 */
 function TrendTotal({ label, value, unit }: { label: string; value: number; unit?: string }) {
@@ -25,92 +151,192 @@ function TrendTotal({ label, value, unit }: { label: string; value: number; unit
 	);
 }
 
-/** 指标切换：Token 消耗 / 运行时长（两者量级悬殊，图内一次展示一个，汇总行始终同时给出两个总数）。 */
+/** 指标切换：Token 消耗 / 调用次数 / 失败次数 / 运行时长（量级悬殊，图内一次展示一个，汇总行始终同时给出五个总数）。 */
 function TrendMetricToggle({ value, onChange }: { value: TrendMetric; onChange: (metric: TrendMetric) => void }) {
 	return (
 		<Segmented
 			aria-label="趋势指标"
 			value={value}
 			onChange={(next) => onChange(next as TrendMetric)}
-			options={[
-				{ label: "Token 消耗", value: "tokens" },
-				{ label: "运行时长", value: "active_seconds" },
-			]}
+			options={(Object.keys(TREND_METRICS) as TrendMetric[]).map((value) => ({
+				value,
+				label: TREND_METRICS[value].label,
+			}))}
 		/>
 	);
 }
 
-/** 每日单指标柱状图：div 柱 + 三档虚线刻度 + 底部日期；今天（to_day）用实色强调，柱高变化走冻结动效 token。 */
+/** 柱状图：div 柱 + 三档虚线刻度 + 底部时间；同桶可并排多系列柱，当前桶（小时/日/月）实色强调，柱高变化走冻结动效 token。
+ * 小时粒度每 4 桶出一个 x 刻度（占位保留柱位对齐），日/月逐桶出刻度。 */
 function TrendChart({
-	points,
-	metric,
-	toDay,
+	series,
+	granularity,
+	currentKey,
 }: {
-	points: TemplateUsageTrendPoint[];
-	metric: TrendMetric;
-	toDay: string;
+	series: TrendChartSeries[];
+	granularity: UsageGranularity;
+	currentKey: string;
 }) {
-	const max = Math.max(...points.map((point) => point[metric]), 0);
-	const unit = metric === "tokens" ? " Token" : " 秒";
-	const fmt = (value: number) => value.toLocaleString("zh-CN", { maximumFractionDigits: metric === "tokens" ? 0 : 1 });
+	const [primary] = series;
+	if (!primary) return null;
+	const max = Math.max(...series.flatMap((s) => s.points.map((point) => point.value)), 0) || 1;
+	const fmtFor = (meta: TrendChartMeta) => (value: number) =>
+		value.toLocaleString("zh-CN", { maximumFractionDigits: meta.decimals });
+	const axisFmt = fmtFor(primary.meta);
+	const buckets = primary.points.map((point) => ({
+		key: point.key,
+		current: point.key === currentKey,
+		label: bucketLabel(granularity, point.key),
+		bars: series.map((s) => ({
+			meta: s.meta,
+			variant: s.variant,
+			value: s.points.find((candidate) => candidate.key === point.key)?.value ?? 0,
+		})),
+	}));
 	return (
-		<div className={styles.chart}>
-			{/* pt-3 给 y 轴最上方的 max 刻度留出上溢空间（-translate-y-1/2 会探出容器半行），避免与汇总行重叠。 */}
-			<div className={styles.chartAxis}>
-				{[0, 1, 2, 3].map((step) => (
-					<span key={step} className={styles.axisTick} style={{ bottom: `${(step * 100) / 3}%` }}>
-						{fmt((max * step) / 3)}
-					</span>
-				))}
-			</div>
-			<div className={styles.chartPlot}>
-				<div className={styles.chartArea}>
+		<>
+			<div className={styles.chart}>
+				{/* pt-3 给 y 轴最上方的 max 刻度留出上溢空间（-translate-y-1/2 会探出容器半行），避免与汇总行重叠。 */}
+				<div className={styles.chartAxis}>
 					{[0, 1, 2, 3].map((step) => (
-						<div
-							key={step}
-							className={step === 0 ? styles.gridLine : `${styles.gridLine} ${styles.gridLineDashed}`}
-							style={{ bottom: `${(step * 100) / 3}%` }}
-						/>
-					))}
-					<div className={styles.barsRow}>
-						{points.map((point) => (
-							<div
-								key={point.day}
-								className={styles.barSlot}
-								title={`${shortDay(point.day)} · ${fmt(point[metric])}${unit}`}
-							>
-								<div
-									className={`${styles.bar} ${point.day === toDay ? styles.barToday : styles.barPast}`}
-									style={{ height: `${(point[metric] / max) * 100}%` }}
-								/>
-							</div>
-						))}
-					</div>
-				</div>
-				<div className={styles.chartXAxis}>
-					{points.map((point) => (
-						<span key={point.day} className={styles.xLabel}>
-							{shortDay(point.day)}
+						<span key={step} className={styles.axisTick} style={{ bottom: `${(step * 100) / 3}%` }}>
+							{axisFmt((max * step) / 3)}
 						</span>
 					))}
 				</div>
+				<div className={styles.chartPlot}>
+					<div className={styles.chartArea}>
+						{[0, 1, 2, 3].map((step) => (
+							<div
+								key={step}
+								className={step === 0 ? styles.gridLine : `${styles.gridLine} ${styles.gridLineDashed}`}
+								style={{ bottom: `${(step * 100) / 3}%` }}
+							/>
+						))}
+						<div className={styles.barsRow}>
+							{buckets.map((bucket) => (
+								<div
+									key={bucket.key}
+									className={styles.barSlot}
+									title={`${bucket.label} · ${bucket.bars
+										.map((bar) => `${bar.meta.label} ${fmtFor(bar.meta)(bar.value)}${bar.meta.unit}`)
+										.join(" · ")}`}
+								>
+									{bucket.bars.map((bar) => (
+										<div
+											key={bar.meta.label}
+											className={`${styles.bar} ${BAR_CLASSES[bar.variant][bucket.current ? "today" : "past"]}`}
+											style={{ height: `${(bar.value / max) * 100}%` }}
+										/>
+									))}
+								</div>
+							))}
+						</div>
+					</div>
+					<div className={styles.chartXAxis}>
+						{primary.points.map((point) => (
+							<span key={point.key} className={styles.xLabel}>
+								{granularity === "hour" && Number(point.key.slice(11, 13)) % 4 !== 0
+									? ""
+									: bucketLabel(granularity, point.key)}
+							</span>
+						))}
+					</div>
+				</div>
 			</div>
-		</div>
+			{series.length > 1 ? (
+				<div className={styles.chartLegend}>
+					{series.map((s) => (
+						<span key={s.meta.label} className={styles.legendItem}>
+							<i aria-hidden="true" className={s.variant === "accent" ? styles.legendAccent : styles.legendSecondary} />
+							{s.meta.label}
+							{s.meta.legendHint ? `（${s.meta.legendHint}）` : ""}
+						</span>
+					))}
+				</div>
+			) : null}
+		</>
 	);
 }
 
-/** 模版用量逐日趋势卡：柱状图展示每日 Token 消耗与运行时长；数据来自限额账本条目逐日账（启用后开始记录）。
- * templateId 缺省为「全部」视角（全部模版条目求和），由服务端零值补全到今天（UTC 日键）。 */
-export function TemplateUsageTrendCard({ templateId }: { templateId?: string }) {
+/** 图表区：Token 消耗视图为总 Token + 缓存 Token 同桶双柱，其余指标单柱。 */
+function TrendChartArea({ metric, trend, currentKey }: { metric: TrendMetric; trend: UsageTrend; currentKey: string }) {
+	if (metric !== "tokens") {
+		return (
+			<TrendChart
+				series={[
+					{
+						meta: TREND_METRICS[metric],
+						variant: "accent",
+						points: filledBuckets(trend, TREND_METRICS[metric].pick),
+					},
+				]}
+				granularity={trend.granularity}
+				currentKey={currentKey}
+			/>
+		);
+	}
+	return (
+		<TrendChart
+			series={[
+				{
+					meta: TREND_METRICS.tokens,
+					variant: "accent",
+					points: filledBuckets(trend, TREND_METRICS.tokens.pick),
+				},
+				{
+					meta: CACHE_TOKEN_META,
+					variant: "secondary",
+					points: filledBuckets(trend, CACHE_TOKEN_META.pick),
+				},
+			]}
+			granularity={trend.granularity}
+			currentKey={currentKey}
+		/>
+	);
+}
+
+/** 模版用量趋势卡：数据来自 Provider 用量趋势（usage.trend，服务端聚合全部分页，UTC+8 对齐分桶）。
+ * 统计时间来自面板顶部选择器（range 毫秒）；粒度按区间跨度隐含（≤24h 小时桶、≤120 天天桶、更长月桶）。
+ * agentId 缺省为 workspace 维度（「全部」视角）；选中模版时由面板传入其绑定智能体。 */
+export function TemplateUsageTrendCard({
+	agentId,
+	range,
+}: {
+	agentId?: string;
+	range: { start: number; end: number };
+}) {
 	const client = useMemo(getAdminClient, []);
-	const [days, setDays] = useState<7 | 14 | 28>(7);
 	const [metric, setMetric] = useState<TrendMetric>("tokens");
-	const query = useAdminQuery(`usage:template-trend:${templateId ?? "all"}:${days}`, (signal) =>
-		client.usage.templateTrend({ ...(templateId ? { templateId } : {}), days }, signal),
+	const granularity = granularityOf(range.end - range.start);
+	const query = useAdminQuery(`usage:trend:${agentId ?? "workspace"}:${range.start}:${range.end}`, (signal) =>
+		client.usage.trend(
+			{ ...(agentId ? { agentId } : {}), startTime: range.start, endTime: range.end, granularity },
+			signal,
+		),
 	);
 	const loading = query.loading || (!query.data && !query.error);
 	const trend = query.data;
-	const points = trend?.data ?? [];
+	const currentKey = trend ? bucketKey(trend.granularity, Date.now()) : "";
+	const totals = trend
+		? {
+				tokens: trend.points.reduce((sum, point) => sum + (point.usage.total.total_tokens.value ?? 0), 0),
+				cache: trend.points.reduce(
+					(sum, point) =>
+						sum +
+						(point.usage.total.cache_read_tokens.value ?? 0) +
+						(point.usage.total.cache_creation_tokens.value ?? 0),
+					0,
+				),
+				calls: trend.points.reduce((sum, point) => sum + (point.usage.total.model_call_count.value ?? 0), 0),
+				failures: trend.points.reduce(
+					(sum, point) =>
+						sum + (point.usage.total.model_failed_count.value ?? 0) + (point.usage.total.tool_failed_count.value ?? 0),
+					0,
+				),
+				runtime: trend.points.reduce((sum, point) => sum + (point.usage.total.runtime_ms.value ?? 0), 0) / 1000,
+			}
+		: null;
 	return (
 		<section aria-labelledby="template-usage-trend-heading" className={styles.card}>
 			<div className={styles.cardHeader}>
@@ -119,17 +345,6 @@ export function TemplateUsageTrendCard({ templateId }: { templateId?: string }) 
 				</h3>
 				<div className={styles.headerControls}>
 					<TrendMetricToggle value={metric} onChange={setMetric} />
-					<Select
-						aria-label="趋势统计天数"
-						className={styles.daysSelect}
-						value={days}
-						onChange={(value) => setDays(value as 7 | 14 | 28)}
-						options={[
-							{ value: 7, label: "近 7 天" },
-							{ value: 14, label: "近 14 天" },
-							{ value: 28, label: "近 28 天" },
-						]}
-					/>
 				</div>
 			</div>
 			{loading ? (
@@ -138,27 +353,28 @@ export function TemplateUsageTrendCard({ templateId }: { templateId?: string }) 
 				</p>
 			) : null}
 			{query.error ? <ErrorState message={query.error} onRetry={() => void query.refresh()} /> : null}
-			{!loading && !query.error && trend ? (
+			{!loading && !query.error && trend && totals ? (
 				<>
 					<dl className={styles.totals}>
-						<TrendTotal
-							label={`近 ${days} 天 Token 消耗`}
-							value={points.reduce((sum, point) => sum + point.tokens, 0)}
-						/>
-						<TrendTotal
-							label={`近 ${days} 天运行时长`}
-							value={points.reduce((sum, point) => sum + point.active_seconds, 0)}
-							unit="秒"
-						/>
+						<TrendTotal label={TREND_METRICS.tokens.label} value={totals.tokens} />
+						<TrendTotal label={CACHE_TOKEN_META.label} value={totals.cache} />
+						<TrendTotal label={TREND_METRICS.calls.label} value={totals.calls} />
+						<TrendTotal label={TREND_METRICS.failures.label} value={totals.failures} />
+						<TrendTotal label={TREND_METRICS.runtime.label} value={totals.runtime} unit="秒" />
 					</dl>
-					{points.some((point) => point[metric] > 0) ? (
-						<TrendChart points={points} metric={metric} toDay={trend.to_day} />
+					{totals.tokens || totals.cache || totals.calls || totals.failures || totals.runtime ? (
+						<TrendChartArea metric={metric} trend={trend} currentKey={currentKey} />
 					) : (
-						<p className={styles.emptyChart}>统计区间内暂无逐日用量记录</p>
+						<p className={styles.emptyChart}>统计区间内暂无用量记录</p>
 					)}
 					<p className={styles.footnote}>
-						统计周期：{shortDay(trend.from_day)} – {shortDay(trend.to_day)} · 逐日数值按限额账本增量统计
-						{trend.since_day ? `，自 ${trend.since_day} 起记录，不含更早历史` : "，暂无记录"}
+						统计周期：
+						{bucketLabel(trend.granularity, bucketKey(trend.granularity, Date.parse(trend.query_range.start_time)))}
+						{" – "}
+						{bucketLabel(trend.granularity, bucketKey(trend.granularity, Date.parse(trend.query_range.end_time) - 1))}
+						{trend.data_updated_at
+							? ` · 数据更新于 ${new Date(trend.data_updated_at).toLocaleString("zh-CN", { hour12: false })}`
+							: " · 暂无用量数据"}
 					</p>
 				</>
 			) : null}

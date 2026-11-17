@@ -7,8 +7,16 @@ import type {
 	TemplateSessionUsage,
 	TemplateUsageRow,
 	TemplateUsageTrend,
+	UsageSummary,
+	UsageTrend,
 } from "@openagentpack/kit-sdk/protocol";
-import type { ModelUsagePage, ModelUsageRequest, ToolUsagePage } from "@openagentpack/sdk";
+import {
+	ApiError,
+	type UsageSummaryRequest,
+	type UsageSummaryResponse,
+	type UsageTrendRequest,
+	type UsageTrendResponse,
+} from "@openagentpack/sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
@@ -102,7 +110,10 @@ describe("成员累计会话用量", () => {
 		const filtered = services.memberUsage.summary("member_a", { agent_slug: "agent-b" });
 		expect(filtered.session_count).toBe(62);
 		expect(filtered.metrics.input_tokens.value).toBe(744);
-		expect(filtered.agents).toEqual(["agent-a", "agent-b"]);
+		expect(filtered.agents).toEqual([
+			{ slug: "agent-a", display_name: null },
+			{ slug: "agent-b", display_name: null },
+		]);
 		const ids = new Set<string>();
 		let cursor: string | undefined;
 		do {
@@ -578,16 +589,16 @@ describe("成员累计会话用量", () => {
 		expect((await app.request("/api/admin/usage/templates/daily-trend")).status).toBe(401);
 	});
 
-	it("模型/工具用量明细：auditor 可读、workspace 由服务端注入、区间与参数校验", async () => {
+	it("模型/工具用量汇总：auditor 可读、维度映射与时间格式校验", async () => {
 		const { db, services, app, member, session } = setup();
-		let captured: ModelUsageRequest | undefined;
-		const original = services.gateway.listModelUsage.bind(services.gateway);
-		services.gateway.listModelUsage = async (request) => {
+		let captured: UsageSummaryRequest | undefined;
+		const original = services.gateway.getUsageSummary.bind(services.gateway);
+		services.gateway.getUsageSummary = async (request) => {
 			captured = request;
 			return original(request);
 		};
 
-		expect((await app.request("/api/admin/usage/model-usage")).status).toBe(401);
+		expect((await app.request("/api/admin/usage/summary")).status).toBe(401);
 
 		// mock 遥测以本地账本为源，且只算模版上架条目的会话：登记模版条目会话与一条手动条目会话。
 		// 两者都属于 member_a、各采集一次快照（输入 10）；只有模版条目的会话应进入明细。
@@ -604,80 +615,177 @@ describe("成员累计会话用量", () => {
 		session("s-manual", "member_a", "agent-manual");
 		vi.spyOn(services.gateway, "getSession").mockImplementation(async (id) => detail(id));
 		await services.memberUsage.refresh("member_a", true);
+		// 成员筛选候选带 catalog 展示名；未登记 catalog 条目的 agent 回落 null。
+		expect(services.memberUsage.summary("member_a").agents).toEqual([
+			{ slug: "agent-manual", display_name: null },
+			{ slug: "template_t1", display_name: "模版条目" },
+		]);
 
 		const now = Date.now();
-		const ok = await app.request(
-			`/api/admin/usage/model-usage?start_time=${now - 3_600_000}&end_time=${now}&page_size=1`,
-			{ headers: auditor },
-		);
+		const ok = await app.request(`/api/admin/usage/summary?start_time=${now - 3_600_000}&end_time=${now}`, {
+			headers: auditor,
+		});
 		expect(ok.status).toBe(200);
-		const page = (await ok.json()) as { data: ModelUsagePage };
-		expect(page.data.items[0]?.workspace_id).toBe("ws-mock");
+		const summary = (await ok.json()) as { data: UsageSummary };
 		// 全量只含模版条目的那 1 个会话（输入 10），手动条目的 10 个 input 不计入。
-		expect(page.data.items[0]?.tokens.input_tokens).toBe(10);
-		expect(page.data.items[0]?.call_count).toBe(1);
-		expect(captured?.scope).toEqual({ type: "workspace", workspace_ids: ["ws-mock"] });
+		expect(summary.data.usage.models[0]?.usage.input_tokens.value).toBe(10);
+		expect(summary.data.usage.models[0]?.usage.call_count.value).toBe(1);
+		expect(summary.data.usage.total.model_call_count.value).toBe(1);
+		// 未传 agent_id/session_id：workspace 维度，时间统一成 UTC+8 RFC 3339 字符串。
+		expect(captured?.dimension).toBe("workspace");
+		expect(captured?.time_range?.start_time).toMatch(/\+08:00$/);
+		expect(captured?.time_range?.end_time).toMatch(/\+08:00$/);
+		const range = captured?.time_range;
+		expect(Boolean(range && range.start_time < range.end_time)).toBe(true);
 
-		// agent_id 归集：模版上架条目的会话命中，手动条目与无关智能体都不命中。
-		const scoped = await app.request("/api/admin/usage/model-usage?agent_id=agent-a", { headers: auditor });
-		expect(((await scoped.json()) as { data: ModelUsagePage }).data.total).toBe(1);
-		const manual = await app.request("/api/admin/usage/model-usage?agent_id=agent-manual", { headers: auditor });
-		expect(((await manual.json()) as { data: ModelUsagePage }).data.total).toBe(0);
-		const missed = await app.request("/api/admin/usage/model-usage?agent_id=agent-missing", { headers: auditor });
-		expect(((await missed.json()) as { data: ModelUsagePage }).data.total).toBe(0);
+		// agent 归集：模版上架条目的会话命中，手动条目与无关智能体都不命中。
+		const scoped = await app.request("/api/admin/usage/summary?agent_id=agent-a", { headers: auditor });
+		expect(((await scoped.json()) as { data: UsageSummary }).data.usage.models).toHaveLength(1);
+		expect(captured).toMatchObject({ dimension: "agent", agent_id: "agent-a" });
+		const manual = await app.request("/api/admin/usage/summary?agent_id=agent-manual", { headers: auditor });
+		expect(((await manual.json()) as { data: UsageSummary }).data.usage.models).toHaveLength(0);
+		const missed = await app.request("/api/admin/usage/summary?agent_id=agent-missing", { headers: auditor });
+		expect(((await missed.json()) as { data: UsageSummary }).data.usage.models).toHaveLength(0);
 
-		// session 口径：只传 session_id，无时间区间与 workspace_ids。
-		const sessionScoped = await app.request("/api/admin/usage/model-usage?session_id=sesn_abc", { headers: auditor });
+		// session 维度：只传 dimension/session_id，不带 time_range 与 granularity。
+		const sessionScoped = await app.request("/api/admin/usage/summary?session_id=sesn_abc", { headers: auditor });
 		expect(sessionScoped.status).toBe(200);
-		expect(captured?.scope).toEqual({ type: "session", session_id: "sesn_abc" });
-		expect(captured?.time_range).toBeUndefined();
+		expect(captured).toEqual({ dimension: "session", session_id: "sesn_abc" });
 
-		const reversed = await app.request(`/api/admin/usage/model-usage?start_time=${now}&end_time=${now - 3_600_000}`, {
+		const reversed = await app.request(`/api/admin/usage/summary?start_time=${now}&end_time=${now - 3_600_000}`, {
 			headers: admin,
 		});
 		expect(reversed.status).toBe(400);
-		expect((await app.request("/api/admin/usage/model-usage?sort_by=nonsense", { headers: admin })).status).toBe(400);
-		expect((await app.request("/api/admin/usage/tool-usage?page_size=101", { headers: admin })).status).toBe(400);
+		expect((await app.request("/api/admin/usage/summary?start_time=abc", { headers: admin })).status).toBe(400);
 
-		const tools = await app.request("/api/admin/usage/tool-usage?source=mcp", { headers: auditor });
+		// 工具明细与模型明细同在响应里（mock 演示轮数 → builtin 工具行）。
+		const tools = await app.request("/api/admin/usage/summary", { headers: auditor });
 		expect(tools.status).toBe(200);
-		const toolPage = (await tools.json()) as { data: ToolUsagePage };
-		expect(toolPage.data.items.every((row) => row.source === "mcp")).toBe(true);
+		const toolSummary = (await tools.json()) as { data: UsageSummary };
+		expect(toolSummary.data.usage.tools.length).toBeGreaterThan(0);
+		expect(toolSummary.data.usage.tools[0]?.source).toBe("builtin");
 	});
 
-	it("遥测 workspace 注入跟随网关模式：sdk 显式工作空间生效，仅 Base URL 配置时明确报错", async () => {
-		const explicit = setup({
-			KIT_GATEWAY: "sdk",
-			BAILIAN_API_KEY: "sk-telemetry",
-			BAILIAN_WORKSPACE_ID: "ws-real",
-		});
-		const captured: ModelUsageRequest[] = [];
-		vi.spyOn(explicit.services.gateway, "listModelUsage").mockImplementation(async (request) => {
-			captured.push(request);
-			return {
-				items: [],
-				total: 0,
-				total_call_count: 0,
-				data_updated_at: 0,
-				page_no: 1,
-				page_size: 20,
-				has_more: false,
-			} as unknown as ModelUsagePage;
-		});
-		const ok = await explicit.app.request("/api/admin/usage/model-usage", { headers: auditor });
-		expect(ok.status).toBe(200);
-		expect(captured[0]?.scope).toEqual({ type: "workspace", workspace_ids: ["ws-real"] });
-
-		// 仅凭 BAILIAN_API_KEY + BAILIAN_BASE_URL 是合法启动配置；查询无法确定工作空间时
-		// 明确报错，不得退回演示值 ws-mock（会把查询发到错误范围）。
-		const missing = setup({
+	it("用量汇总不依赖工作空间配置：sdk 模式只配基础凭据即可查询", async () => {
+		const sdkOnly = setup({
 			KIT_GATEWAY: "sdk",
 			BAILIAN_API_KEY: "sk-telemetry",
 			BAILIAN_BASE_URL: "https://provider.example.test/api/v1/agentstudio",
 		});
-		const failed = await missing.app.request("/api/admin/usage/model-usage", { headers: auditor });
-		expect(failed.status).toBe(400);
-		const body = (await failed.json()) as { error: { details?: { workspace_unconfigured?: boolean } } };
-		expect(body.error.details?.workspace_unconfigured).toBe(true);
+		const captured: UsageSummaryRequest[] = [];
+		// 这里只验证路由组装，响应体用最小占位对象（不关心具体指标）。
+		const stub = { request_id: "req_stub", data: {} } as unknown as UsageSummaryResponse;
+		vi.spyOn(sdkOnly.services.gateway, "getUsageSummary").mockImplementation(async (request) => {
+			captured.push(request);
+			return stub;
+		});
+		const ok = await sdkOnly.app.request("/api/admin/usage/summary", { headers: auditor });
+		expect(ok.status).toBe(200);
+		expect(captured[0]?.dimension).toBe("workspace");
+		expect(captured[0]?.time_range?.start_time).toMatch(/\+08:00$/);
+
+		const agent = await sdkOnly.app.request("/api/admin/usage/summary?agent_id=agent-a", { headers: auditor });
+		expect(agent.status).toBe(200);
+		expect(captured[1]).toMatchObject({ dimension: "agent", agent_id: "agent-a" });
+	});
+
+	it("用量趋势：auditor 可读、维度映射、分页聚合与过期令牌整轮重查", async () => {
+		const { services, app } = setup();
+		/** 最小占位的 Provider trend 页（路由组装测试不关心具体指标）。 */
+		function trendPage(days: string[], overrides: Partial<UsageTrend> = {}): UsageTrendResponse {
+			return {
+				request_id: "req_stub",
+				data: {
+					query_range: { start_time: "2026-11-11T00:00:00+08:00", end_time: "2026-11-18T00:00:00+08:00" },
+					data_updated_at: null,
+					granularity: "day",
+					points: days.map((day) => ({
+						start_time: day,
+						end_time: day,
+						usage: { total: {}, models: [], tools: [] },
+					})),
+					has_more: false,
+					next_page_token: null,
+					...overrides,
+				},
+			} as unknown as UsageTrendResponse;
+		}
+		let captured: UsageTrendRequest[] = [];
+		let pages: UsageTrendResponse[] = [];
+		let failOnCall: number | null = null;
+		vi.spyOn(services.gateway, "getUsageTrend").mockImplementation(async (request) => {
+			captured.push(request);
+			if (captured.length === failOnCall) throw new ApiError(410, "page token expired", "usage.trend");
+			const page = pages[captured.length - 1];
+			if (!page) throw new Error(`测试脚本缺少第 ${captured.length} 页响应`);
+			return page;
+		});
+
+		expect((await app.request("/api/admin/usage/trend")).status).toBe(401);
+
+		// 维度映射：缺省 workspace + 缺省 day 粒度 + page_size 100；agent_id → agent 维度；granularity 原样透传。
+		pages = [
+			trendPage(["2026-11-17T00:00:00+08:00"]),
+			trendPage(["2026-11-17T00:00:00+08:00"]),
+			trendPage(["2026-11-17T10:00:00+08:00"]),
+		];
+		const ok = await app.request("/api/admin/usage/trend", { headers: auditor });
+		expect(ok.status).toBe(200);
+		const body = (await ok.json()) as { data: UsageTrend };
+		expect(body.data.points.map((point) => point.start_time)).toEqual(["2026-11-17T00:00:00+08:00"]);
+		expect(body.data.granularity).toBe("day");
+		expect(body.data.has_more).toBe(false);
+		expect(body.data.next_page_token).toBeNull();
+		expect(captured[0]).toMatchObject({ dimension: "workspace", granularity: "day", page_size: 100 });
+		expect(captured[0]?.time_range?.start_time).toMatch(/\+08:00$/);
+		const agent = await app.request("/api/admin/usage/trend?agent_id=agent-a", { headers: auditor });
+		expect(agent.status).toBe(200);
+		expect(captured[1]).toMatchObject({ dimension: "agent", agent_id: "agent-a", granularity: "day" });
+		const hourly = await app.request("/api/admin/usage/trend?granularity=hour", { headers: auditor });
+		expect(hourly.status).toBe(200);
+		expect(captured[2]).toMatchObject({ dimension: "workspace", granularity: "hour" });
+		expect((await app.request("/api/admin/usage/trend?granularity=week", { headers: auditor })).status).toBe(400);
+		const now = Date.now();
+		const reversed = await app.request(`/api/admin/usage/trend?start_time=${now}&end_time=${now - 3_600_000}`, {
+			headers: admin,
+		});
+		expect(reversed.status).toBe(400);
+
+		// 分页聚合：page_token 透传续页，points 顺序合并，响应不再暴露分页字段。
+		captured = [];
+		pages = [
+			trendPage(["2026-11-16T00:00:00+08:00"], { has_more: true, next_page_token: "token-2" }),
+			trendPage(["2026-11-17T00:00:00+08:00"]),
+		];
+		const merged = await app.request("/api/admin/usage/trend", { headers: auditor });
+		expect(merged.status).toBe(200);
+		const mergedBody = (await merged.json()) as { data: UsageTrend };
+		expect(mergedBody.data.points.map((point) => point.start_time)).toEqual([
+			"2026-11-16T00:00:00+08:00",
+			"2026-11-17T00:00:00+08:00",
+		]);
+		expect(captured[1]?.page_token).toBe("token-2");
+
+		// page_token 过期（Provider 410）：清空聚合，从第一页整轮重查一次（重查请求不带 page_token）。
+		captured = [];
+		failOnCall = 2;
+		pages = [
+			trendPage(["2026-11-16T00:00:00+08:00"], { has_more: true, next_page_token: "expired" }),
+			trendPage(["2026-11-17T00:00:00+08:00"]),
+			trendPage(["2026-11-17T00:00:00+08:00"]),
+		];
+		const retried = await app.request("/api/admin/usage/trend", { headers: auditor });
+		expect(retried.status).toBe(200);
+		const retriedBody = (await retried.json()) as { data: UsageTrend };
+		expect(retriedBody.data.points.map((point) => point.start_time)).toEqual(["2026-11-17T00:00:00+08:00"]);
+		expect(captured.map((request) => request.page_token ?? null)).toEqual([null, "expired", null]);
+
+		// has_more 而无游标：拒绝 502 provider_error，不静默截断。
+		captured = [];
+		failOnCall = null;
+		pages = [trendPage([], { has_more: true, next_page_token: null })];
+		const broken = await app.request("/api/admin/usage/trend", { headers: auditor });
+		expect(broken.status).toBe(502);
+		expect(((await broken.json()) as { error: { code: string } }).error.code).toBe("provider_error");
 	});
 });
