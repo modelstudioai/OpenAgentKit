@@ -7,7 +7,7 @@
 
 ## 源与生成物
 
-只编辑 `src/`：
+编辑各 Skill 的 `src/`，共用的复制说明在 `copy-in.md`，脚本来自 `../kit/`：
 
 ```text
 scripts/skills/src/<name>/
@@ -28,9 +28,12 @@ assets/skills/<name>/
   references/examples.md
   references/...   从 src 复制
   examples/        从 src 复制
+  scripts/         共享的 copy-in 脚本
 ```
 
-`assets/skills/dist/` 是离线包产物，已 gitignore。
+`assets/skills/dist/` 是离线包产物，已 gitignore。打包时在各离线包中加入
+`assets/kit/`，包含组件 registry、组件源码、主题、本地 Kit SDK 以及用相对路径导入的示例。
+安装脚本的 `--example` 参数会复制示例及其随附文件和组件。
 
 ## 常用命令
 
@@ -39,11 +42,12 @@ pnpm gen:skills       # 生成 assets/skills、API 参考和文档示例
 pnpm check:skills     # 检查中文说明和产物漂移，不写文件
 pnpm typecheck:skills # 编译示例与公开 API fixture
 pnpm test:skills      # 生成、链接、打包和浏览器依赖边界
-pnpm pack:skills      # 生成 assets/skills/dist/*.tgz
+pnpm pack:skills      # 生成带组件和 SDK 源码的离线包
 ```
 
 文档站的 `skill-example` 代码块与 Skill 示例来自同一份源文件；改示例后必须重新生成。
-发布或复制 Skill 时，使用 `assets/skills/<name>/` 或 `assets/skills/dist/<name>.tgz`。
+从仓库浏览 Skill 时使用 `assets/skills/<name>/`；分发给目标项目时使用
+`assets/skills/dist/<name>.tgz` 的完整目录。
 
 ## 新增或修改内容
 

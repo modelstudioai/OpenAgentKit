@@ -1,27 +1,10 @@
 # 安装与源码归属
 
-## 从包导入
+## 接入组件和主题
 
-示例从 `@openagentpack/kit-chat-ui` 导入公开 API，并从 `@openagentpack/kit-sdk/messages`
-及 `@openagentpack/kit-sdk/protocol` 导入类型。使用示例的 workspace 需要能访问这些包，
-并提供兼容的 React 和 React DOM。当前仓库的 Kit 包为私有 workspace 包，以实际发布情况为准。
-
-在已有 Tailwind v4 样式入口导入主题。
-
-```css
-@import "tailwindcss";
-@import "@openagentpack/kit-chat-ui/theme.css";
-```
-
-为组件实际源码位置添加 Tailwind `@source`。自动扫描跳过 `node_modules`，也可能漏掉
-workspace 符号链接。仓库的 `apps/web/src/styles.css` 使用以下路径。
-
-```css
-@source "../../../packages/chat-ui/src/**/*.{ts,tsx}";
-```
-
-该路径相对于样式表。copy-in 项目应改为扫描本地组件目录。
-在生成的 CSS 中检查响应式工具类和主题工具类。
+按[复制组件和 Kit SDK](copy-in.md)接入私有 Kit 依赖。复制的组件通过应用内源码路径导入，
+类型通过 `src/sdk/messages/index.ts` 与 `src/sdk/protocol/index.ts` 读取。
+在已有 Tailwind v4 样式入口导入本地主题，检查生成的 CSS 包含所需的响应式工具类和主题工具类。
 
 主题默认浅色，在主题作用域上设置 `data-kit-theme="dark"` 切换为深色。
 员工端配色显式设置 `data-kit-appearance="workspace"`，支持的组件用 `variant="workspace"`
@@ -30,9 +13,8 @@ workspace 符号链接。仓库的 `apps/web/src/styles.css` 使用以下路径�
 
 ## 复制组件源码
 
-从 Kit 仓库运行 `pnpm kit:add <entry> --dir <project>`，将组件源码及登记的依赖复制到现有项目。
-也可以在目标项目通过绝对路径运行 `scripts/kit/add-component.mjs`。
-Registry 按源码文件分组，完整的公开组件名单见 [API 参考](api.md)。
+将下表的 registry 条目名传给 Skill 的复制脚本。Registry 按源码文件分组，
+完整的公开组件名单见 [API 参考](api.md)。
 
 | Registry 条目 | 可用组件 |
 | --- | --- |
@@ -58,11 +40,8 @@ Registry 按源码文件分组，完整的公开组件名单见 [API 参考](api
 | `mermaid` | `Mermaid`、Actions 和 CodeHighlighter |
 | `tool-approval` | `ToolApprovalCard` 和 `ToolApprovalGroup` |
 
-使用 copy-in 时在目标项目另行安装 npm 依赖。Markdown 使用 `react-markdown`、`remark-gfm`、
-`rehype-sanitize`、`lowlight` 和 `mermaid`。工具审批与确认使用 `@radix-ui/react-alert-dialog`。
-Layout 使用 `@radix-ui/react-dialog` 和 `@openagentpack/kit-sdk/hooks`。
-版本以目标项目与组件 registry、包清单共同支持的范围为准。更新已复制的组件前先查看源码差异，
-合并需要保留的本地修改。
+组件所需的 npm 依赖随 registry 选择。Layout 还通过本地 SDK 的 `src/sdk/hooks/index.ts`
+获取屏幕尺寸；确认弹窗通过 `@radix-ui/react-alert-dialog` 管理显式确认。
 
 ## 运行时边界
 

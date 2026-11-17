@@ -71,6 +71,7 @@ function renderApi(name, entries, model, root, renderedDocs) {
 		"本页由 `pnpm gen:skills` 生成。更新公开 TypeScript 声明或中文 catalog 后重新生成。",
 		"字段类型和必填性来自公开 API，行为说明依据所列文档整理。",
 		"组件表格列出 Kit 自有属性。组件按声明继承标准的 React/DOM 属性。",
+		"参考中的包名用于仓库内导入。业务项目按[复制组件和 Kit SDK](copy-in.md)改用本地源码入口。",
 		"",
 		"## 目录",
 		"",
@@ -110,7 +111,7 @@ function renderExamples(root, name) {
 	return [
 		"# 可编译示例",
 		"",
-		"本页由随附的示例源文件生成。请按应用需求调整回调和运行时配置。",
+		"本页展示仓库中的示例源文件。按[复制组件和 Kit SDK](copy-in.md)用 `--example` 接入应用，脚本会生成相对导入路径。",
 		"",
 		...examples.flatMap((file) => [
 			`## ${portablePath(relative(resolve(directory, "examples"), file))}`,
@@ -207,6 +208,15 @@ function buildSkillOutputs(root, name, model, renderedDocs) {
 	skillFiles.set("agents/openai.yaml", renderOpenAi(metadata));
 	skillFiles.set("references/api.md", renderApi(name, entries, model, root, renderedDocs));
 	skillFiles.set("references/examples.md", renderExamples(root, name));
+	for (const [file, source] of [
+		["references/copy-in.md", "./copy-in.md"],
+		["scripts/install.mjs", "../kit/skill-install.mjs"],
+		["scripts/copy-in.mjs", "../kit/copy-in.mjs"],
+	]) {
+		const text = readFileSync(new URL(source, import.meta.url), "utf8");
+		if (file.endsWith(".md")) validateChineseMarkdown(text, source);
+		skillFiles.set(file, text);
+	}
 	for (const file of filesUnder(resolve(source, "references"))) {
 		const text = readFileSync(file, "utf8");
 		if (file.endsWith(".md")) validateChineseMarkdown(text, portablePath(relative(root, file)));

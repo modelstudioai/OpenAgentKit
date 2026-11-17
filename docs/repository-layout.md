@@ -236,8 +236,11 @@ assets/skills/
   三者共用现有公开类型，不复制协议实现、不引入第二套事件模型。
 - Skill 正文、参考、元数据、示例注释与示例界面文案使用中文；Skill ID、文件名、API
   标识符和协议值沿用公开合同。
-- `pnpm gen:skills` 从 `scripts/skills/src/` 生成 `assets/skills/`、API 参考与 MDX 示例；
-  `pnpm check:skills` 只检查，`pnpm pack:skills` 生成离线包。生成区不手改。
+- `pnpm gen:skills` 从 `scripts/skills/src/` 及共享 copy-in 脚本和说明生成 `assets/skills/`、
+  API 参考与 MDX 示例；`pnpm check:skills` 只检查。生成区不手改。
+- `pnpm pack:skills` 给每个离线包附上 UI registry、组件源码、主题、SDK 源码和可复制的示例。
+  脚本按需复制组件及示例，生成指向 `src/sdk/` 公开入口的相对路径，交给目标应用构建。
+  源码资产只进入离线包和文档站下载目录，在各自的包内维护。
 - `pnpm typecheck:skills` 编译示例，`pnpm test:skills` 检查生成漂移、链接、
   独立离线包和浏览器依赖边界。语义说明与 API 结构分别维护并共同校验。
 - 文档站入口为 `apps/storybook/content/docs/skill/index.mdx`，保留 `/docs/skill/` URL。

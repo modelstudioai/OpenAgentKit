@@ -5,6 +5,7 @@ description: 从仓库或离线包获取中文 Skill，并在更新时保留本�
 
 Skill 通过完整目录交付。每个目录中的 `SKILL.md` 是入口，`references/` 提供按需阅读的
 API 和行为说明，`examples/` 提供可复用的 TypeScript 示例。
+`scripts/` 和 `assets/kit/` 提供 copy-in 脚本、组件源码、主题和 Kit SDK。
 
 ## 获取离线包
 
@@ -27,18 +28,38 @@ Skill 目录。单个压缩包的顶层目录就是 Skill 名称；全部压缩�
     SKILL.md
     references/
     examples/
+    scripts/
+    assets/
   use-kit-chat/
     SKILL.md
     references/
     examples/
+    scripts/
+    assets/
   kit-chat-provider/
     SKILL.md
     references/
     examples/
+    scripts/
+    assets/
 ```
 
-不要只复制 `SKILL.md`：入口中的相对链接需要同目录下的参考与示例。
-三个 Skill 可以独立安装；跨 Skill 的建议不会替代各自必需的参考内容。
+请保留离线包中每个 Skill 的完整目录和 assets。三个 Skill 可以独立安装。
+
+## 接入业务项目
+
+在目标项目使用 Skill 时，让 coding agent 阅读其中的 `references/copy-in.md`。
+从解压的 Skill 目录运行脚本，传入应用目录和所需组件：
+
+```bash
+node "<Skill 目录>/scripts/install.mjs" --dir "<应用目录>" chat
+```
+
+所选组件、传递依赖和主题会放入应用的 `src/components/kit/`。省略组件名和示例时只复制 Kit SDK。
+SDK 源码会放入 `src/sdk/`，复制后的组件通过相对路径导入它的公开入口。
+复制示例时，使用 `--example <文件名>`，例如在 `use-kit-chat` 的脚本中传入
+`--example experience.tsx`。脚本会带上所需组件和随附文件，示例落在
+`src/kit-examples/use-kit-chat/`。应用统一构建这些源码，并用自己的包管理器安装第三方依赖。
 
 ## 从仓库生成
 
@@ -51,14 +72,13 @@ pnpm pack:skills
 ```
 
 源文件位于 `scripts/skills/src/<skill-name>/`；最终目录生成到 `assets/skills/<skill-name>/`，
-离线包写入 `assets/skills/dist/`。`assets/skills/<skill-name>/` 是生成物，不要直接手改。
+包含组件和 SDK 资产的完整离线包写入 `assets/skills/dist/`。生成物由上述命令维护。
 文档站构建会校验同步结果并准备下载文件，不会替开发者自动改写已跟踪的源或示例。
 
 压缩包保留打包时源文件的实际修改时间（精确到秒），解压后可直接查看。该时间来自当前
 工作目录的文件，不代表 Git 最后提交时间；内容或修改时间变化都会改变压缩包。
 
-Skill 不再作为独立 workspace 包存在，也不需要加入应用的运行时依赖。当前没有安装器命令
-或 npm 发布流程。
+Skill 安装在 coding agent 的工具目录。应用运行时使用复制后的组件源码和本地 SDK。
 
 ## 更新已有 Skill
 
