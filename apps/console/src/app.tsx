@@ -1,3 +1,4 @@
+import { KitLocaleProvider } from "@openagentpack/kit-chat-ui";
 import { App as AntdApp, ConfigProvider } from "antd";
 import enUS from "antd/locale/en_US";
 import zhCN from "antd/locale/zh_CN";
@@ -48,13 +49,16 @@ export function App() {
 	// button/wave 对齐百炼 BailianConfigProvider：按钮无点击波纹、两字按钮不自动拆分
 	return (
 		<ConfigProvider theme={antdTheme} locale={antdLocale} button={{ autoInsertSpace: false }} wave={{ disabled: true }}>
-			<AntdApp>
-				<TemplateExitConfirmationProvider>
-					<ConsoleRouter>
-						<ConsoleApp />
-					</ConsoleRouter>
-				</TemplateExitConfirmationProvider>
-			</AntdApp>
+			{/* chat-ui 词典与 antd 共用同一语言来源，保证三处文案一致（方案 §3.2）。 */}
+			<KitLocaleProvider locale={i18n.resolvedLanguage === "en" ? "en" : "zh-CN"}>
+				<AntdApp>
+					<TemplateExitConfirmationProvider>
+						<ConsoleRouter>
+							<ConsoleApp />
+						</ConsoleRouter>
+					</TemplateExitConfirmationProvider>
+				</AntdApp>
+			</KitLocaleProvider>
 		</ConfigProvider>
 	);
 }
