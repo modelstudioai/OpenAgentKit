@@ -161,7 +161,14 @@ apps/<web|console>/src/i18n/
 | --- | --- | --- |
 | 打样 | sender | 8 |
 | 批次 1 | actions、message、message-list、processing-indicator、status-indicator | 约 25 |
-| 待迁 | session-list、session-sidebar、file-card、plaza-card、tool-approval-*、sub-agent-*、process 细节、layout、mermaid 等 | 约 115 |
+| 批次 2a | error-state、message-skeleton、confirm-dialog、meter-bar、category-tabs、markdown、activity-heatmap | 约 20 |
+| 批次 2b | file-card、session-list、plaza-card | 约 27 |
+| 待迁 | session-sidebar、tool-approval-card/group、sub-agent-card/panel、attachments、tool-call-card、tool-summary、reasoning-block、execution-group、step、mermaid、code-highlighter、layout、chat、suggestion、message-anchor-rail、agent-header、thread-panel | 约 90 |
+
+批次 2 附带：`kit-i18n` 新增 `format(template, values)` 轻量插值（公开名 `formatKitStrings`，已登记 Skill 目录）；
+`relativeUsedLabel(iso, strings, now?)` 公开签名加入词典参数（非根入口导出，无 Skill 目录影响）。
+遗留协议词汇：`PLAZA_CATEGORY_LABELS`（SDK protocol 中的中文兜底名）与 web 广场标题共用，
+属 §6「错误/枚举词表映射」议题，与 server error `params` 一起另行立项，不在组件词典批次内私改 SDK。
 
 待迁清单以 `rg --pcre2 '"[^"]*\p{Han}' packages/chat-ui/src/components -g '!*strings.ts' -g '!*.test.*'` 为准；
 每个组件按 sender 形态迁移后由 `check:i18n` 自动纳管，无需改脚本。
