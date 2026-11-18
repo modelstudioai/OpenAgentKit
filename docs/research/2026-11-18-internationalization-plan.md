@@ -138,3 +138,19 @@ apps/<web|console>/src/i18n/
 - 新增 `scripts/check-i18n.mjs`：zh-CN ⇄ en 命名空间与键双向对齐（失败），未引用键告警（不阻断）；
   `pnpm check:i18n` 已挂入 `gate` 与 `verify:push`，根 AGENTS.md 命令块同步。
 - 未包含：chat-ui 词典、业务存量文案迁移、server error `params`、账号级语言偏好持久化（后续阶段）。
+
+### 2026-11-18 阶段 1（打样）：chat-ui 词典机制 + sender 迁移
+
+- `components/kit-i18n/`：`KitLocale` 类型、`KitLocaleProvider`（函数组件，避免 context 对象暴露
+  `.Provider/.Consumer` 触发 Skill 目录覆盖检查）、`useKitLocale`、纯函数 `resolveStrings`、`useKitStrings`。
+- 词典形态：组件同目录 `strings.ts`，default 导出 `{ "zh-CN": T, en: T }`；
+  `Sender` 新增公共 prop `strings?: Partial<SenderStrings>`，经 `SenderContext` 下发到按钮/占位符/aria 标签。
+- copy-in：registry 条目新增 `extraFiles`（词典）与 `deps: ["kit-i18n"]`；
+  `copy-in.mjs/componentSourceFiles`、`add-component.mjs` 与闭包导入断言同步。
+- `check:i18n` 扩展 chat-ui 模式：递归找 `components/**/strings.ts`，校验默认导出形态与 zh/en 键对齐。
+- 双端桥接：web `ChatUILocaleBridge` 包裹根渲染；console 在 `ConfigProvider` 内包 `KitLocaleProvider`，
+  与 antd/dayjs 共用同一语言来源。
+- 文档与 Skill：`docs/components/general/i18n.mdx` + meta 导航；
+  kit-components catalog 登记 4 个新公开导出（Skill 生成器要求 helper 在示例中有真实调用，补
+  `examples/locale-provider.tsx` / `examples/custom-strings.tsx`）；`pnpm gen:skills` 已同步产物。
+- 其余组件（约 700 处）按同一形态批量迁移，属阶段 1 后续批次；message 时间戳拍板格式不变。
