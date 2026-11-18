@@ -3,8 +3,8 @@ import { useKitClient } from "@openagentpack/kit-sdk/providers/kit/react";
 import { useQuota, useQuotaRequests } from "@openagentpack/kit-sdk/usage/hooks";
 import { useState } from "react";
 
-// Mount inside the same KitProvider as the default chat page.
-// These hooks use KitClient; an explicit ChatProvider does not redirect them.
+// 与默认会话页挂载在同一个 KitProvider 内。
+// 这些 Hook 使用 KitClient，显式 ChatProvider 只接管对话操作。
 export function DiscoveryAndUsage() {
 	const client = useKitClient();
 	const plaza = usePlaza({ category: "general" });
@@ -18,11 +18,11 @@ export function DiscoveryAndUsage() {
 		setPending(true);
 		setError(null);
 		try {
-			await client.createQuotaRequest({ requestedCredits: 100, reason: "Additional project work" });
+			await client.createQuotaRequest({ requestedCredits: 100, reason: "项目新增工作需要更多额度" });
 			usage.reload();
 			history.reload();
 		} catch (cause) {
-			setError(cause instanceof Error ? cause.message : "Request failed");
+			setError(cause instanceof Error ? cause.message : "请求失败");
 		} finally {
 			setPending(false);
 		}
@@ -30,22 +30,22 @@ export function DiscoveryAndUsage() {
 
 	return (
 		<section>
-			<h2>Available agents</h2>
+			<h2>可用 Agent</h2>
 			{plaza.error ? <p role="alert">{plaza.error}</p> : null}
 			<ul>
 				{plaza.view?.agents.map((agent) => (
 					<li key={agent.slug}>{agent.display_name}</li>
 				))}
 			</ul>
-			<h2>Monthly usage</h2>
+			<h2>月度用量</h2>
 			{usage.error ? <p role="alert">{usage.error}</p> : null}
-			<p>{usage.quota ? `${usage.quota.used} credits used` : "Loading usage"}</p>
+			<p>{usage.quota ? `已用 ${usage.quota.used} Credits` : "正在加载用量"}</p>
 			<button
 				type="button"
 				disabled={pending || usage.loading || !usage.quota || Boolean(usage.quota.pending_request)}
 				onClick={() => void requestCredits()}
 			>
-				Request 100 credits
+				申请 100 Credits
 			</button>
 			{error ? <p role="alert">{error}</p> : null}
 			<ul>

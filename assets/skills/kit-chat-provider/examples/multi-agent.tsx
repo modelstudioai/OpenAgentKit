@@ -8,8 +8,8 @@ import {
 } from "@openagentpack/kit-sdk/providers/bailian";
 import { useState } from "react";
 
-// Normalized backends implement these two optional operations using public DTOs.
-// Event pages must be oldest-to-newest; next_page_token points to older history.
+// 标准事件后端使用公开 DTO 实现这两个可选操作。
+// 每页事件从旧到新排列，next_page_token 指向更早的历史。
 export function withNormalizedThreads(
 	provider: ChatProvider,
 	queries: Required<Pick<ChatProvider, "listThreads" | "listThreadEvents">>,
@@ -17,8 +17,8 @@ export function withNormalizedThreads(
 	return { ...provider, ...queries };
 }
 
-// The backend proxies the two standard Bailian REST paths and { data, next_page }.
-// Application authentication stays in options.request; provider secrets stay server-side.
+// 后端代理两条百炼标准 REST 路径及 { data, next_page } 响应。
+// 应用鉴权由 options.request 提供，Provider 凭据保留在服务端。
 export function withBailianThreads(options: BailianChatProviderOptions) {
 	return createBailianChatProvider({
 		...options,
@@ -26,8 +26,8 @@ export function withBailianThreads(options: BailianChatProviderOptions) {
 	});
 }
 
-// Both Provider variants use the same native Chat, without KitProvider or Kit Server.
-// Supply one stable provider instance; errors from writes remain visible to the caller.
+// 两种 Provider 均可直接使用同一个 Chat，无需 KitProvider 或 Kit Server。
+// 传入稳定的 Provider 实例，写入失败时向调用方报告错误。
 export function MultiAgentChat({ sessionId, provider }: { sessionId: string; provider: ChatProvider }) {
 	const chat = useChat({ sessionId, provider });
 	const [error, setError] = useState<string | null>(null);
@@ -45,7 +45,7 @@ export function MultiAgentChat({ sessionId, provider }: { sessionId: string; pro
 					try {
 						await chat.send(text);
 					} catch (cause) {
-						setError(cause instanceof Error ? cause.message : "Sending failed. Your draft was kept.");
+						setError(cause instanceof Error ? cause.message : "发送失败，已保留草稿。");
 						throw cause;
 					}
 				}}

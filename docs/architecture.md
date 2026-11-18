@@ -17,7 +17,8 @@ API Key 输入隐藏回显，凭据和管理员令牌不写启动日志。已有
 引导取消不创建配置，独占创建防止并发覆盖。默认使用成员登录，Mock 与真实百炼分别使用
 `.scratch/local-demo/data` 与 `.data`。配置完成后接续 `scripts/dev.mjs`，默认启动 server、web、console，
 也可传入指定目标。`pnpm dev` 保留原有默认四个目标；两者都在启动应用前构建其工作区依赖。
-启动器按 Node dotenv 语义解析根 `.env`，非空值覆盖 shell 同名变量，不改写进程全局环境变量。
+启动器按 Node dotenv 语义解析根 `.env`，非空值覆盖 shell 同名变量。`BAILIAN_BASE_URL` 与
+`BAILIAN_WORKSPACE_ID` 中一项已配置地址时，另一项的显式空值也覆盖 shell。合并结果只传给子进程。
 
 ## 分层与依赖方向
 
@@ -134,7 +135,7 @@ apps/web / apps/console / packages/chat-ui
 - 由 `.dependency-cruiser.cjs` 强制，规则名与包级 `AGENTS.md` 一一对应。
 
 Skill 是开发期内容，不加入上述运行时分层。人工源与生成脚本位于 `scripts/skills/`，
-最终 Skill 生成到 `assets/skills/`。脚本读取 Kit 公开 TypeScript 类型与导出，生成英文
+最终 Skill 生成到 `assets/skills/`。脚本读取 Kit 公开 TypeScript 类型与导出，生成中文
 API 参考和文档站示例。这些示例只引用公开包入口，按文档编译用途排除孤立入口检查，
 不放宽实际运行时代码的依赖边界。Skill 不执行网络接入，不取代 `ChatProvider`、hooks
 或 SDK 的实现。

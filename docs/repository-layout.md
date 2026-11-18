@@ -217,9 +217,9 @@ scripts/skills/
   src/<skill-name>/
     metadata.json   name / description / displayName / shortDescription / defaultPrompt
     skill.md        SKILL.md 正文
-    catalog.json    公开 API 到英文用途、文档与示例的映射
-    references/     英文行为说明
-    examples/       英文 TS/TSX 示例，参与类型检查并同步到文档站
+    catalog.json    公开 API 到中文用途、文档与示例的映射
+    references/     中文行为说明
+    examples/       TS/TSX 示例，含中文注释和文案，参与类型检查并同步到文档站
   generate.mjs      生成、校验与 API 模型入口
   pack.mjs          确定性离线打包
   tests/            生成、链接、打包与浏览器边界测试
@@ -234,10 +234,11 @@ assets/skills/
   为范围依据，不能只检查 registry 顶层项。内部实现组件不进入公开 API。
 - `use-kit-chat` 指导 Hook 与生命周期；`kit-chat-provider` 指导默认及自建百炼后端合同。
   三者共用现有公开类型，不复制协议实现、不引入第二套事件模型。
-- Skill 正文、参考、元数据、示例注释与示例界面文案使用英文；本站说明与权威文档仍为中文。
+- Skill 正文、参考、元数据、示例注释与示例界面文案使用中文；Skill ID、文件名、API
+  标识符和协议值沿用公开合同。
 - `pnpm gen:skills` 从 `scripts/skills/src/` 生成 `assets/skills/`、API 参考与 MDX 示例；
   `pnpm check:skills` 只检查，`pnpm pack:skills` 生成离线包。生成区不手改。
-- `pnpm typecheck:skills` 编译示例，`pnpm test:skills` 保护生成漂移、链接、英文内容、
+- `pnpm typecheck:skills` 编译示例，`pnpm test:skills` 检查生成漂移、链接、
   独立离线包和浏览器依赖边界。语义说明与 API 结构分别维护并共同校验。
 - 文档站入口为 `apps/storybook/content/docs/skill/index.mdx`，保留 `/docs/skill/` URL。
   下载文件由构建准备到 `apps/storybook/public/skills/`，不提交这些复制件或压缩包。

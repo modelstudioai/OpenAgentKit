@@ -29,7 +29,7 @@
 | `packages/sdk` | 按功能组织的数据 SDK、协议、Provider 和可选 React hooks |
 | `packages/chat-ui` | 可 copy-in 的 Chat 产品组件、主题与 registry |
 | `packages/eval` | Node 侧 Skill 评测库及命令入口 |
-| `scripts/skills` / `assets/skills` | 英文开发 Skill 的人工源及生成物 |
+| `scripts/skills` / `assets/skills` | 中文开发 Skill 的人工源及生成物 |
 | `scripts/kit` | 组件复制与组件目录脚本 |
 | `docs` / `.scratch` | 权威文档与研究 / 被忽略的临时探针、日志、截图 |
 
@@ -81,7 +81,7 @@
 ## 修改与文档维护
 
 - 项目文档使用中文；标识符、命令、Schema 及必要上游原文保留原语言，对外发布时补英文版。
-  开发 Skill 的入口、参考、元数据和示例使用英文（ADR-0027）。
+  开发 Skill 的入口、参考、元数据和示例文案使用中文，保留 Skill ID 与 API 标识符（见 ADR-0027 状态更新）。
 - 根文件保留全仓规则，局部 AGENTS.md 保留职责、不变量、修改步骤与验收入口。
   产品合同、页面细节和长期证据分别回到现有权威文档或 `docs/research/`，
   不创建平行规范或堆积逐次工作记录。
@@ -127,7 +127,7 @@ Skill 漂移，不能代替规范语义审查。仅文档调整的验证选择�
 
 仓库 `.githooks/` 提供暂存区 lint、提交格式和推送验证；只有 `core.hooksPath` 指向它时才生效，
 不要假定个人全局 hook 已执行仓库门禁。Hook 可被 `--no-verify` 绕过，是便利而非强制。
-仓库不提供 CI 流水线配置；需要完整验收时运行 `pnpm gate`。
+文档站通过 GitHub Actions 发布到 GitHub Pages。完整验收使用 `pnpm gate`。
 
 提交信息使用简体中文 Conventional Commits：`<type>(scope): <description>`，每行不超过
 100 字符。scope 使用 `sdk`、`chat-ui`、`eval`、`server`、`web`、`console`、

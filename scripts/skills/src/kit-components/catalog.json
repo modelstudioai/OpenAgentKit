@@ -2,566 +2,567 @@
 	{
 		"name": "Actions",
 		"export": "Actions",
-		"description": "Compose response actions, nested menus, copy, and controlled feedback.",
+		"description": "组合回复操作、嵌套菜单、复制和受控反馈。",
 		"doc": "apps/storybook/content/docs/components/feedback/actions.mdx",
 		"example": "examples/content.tsx",
 		"notes": [
-			"Defaults: items=[], variant=\"borderless\".",
-			"Item callbacks run before the group onClick callback."
+			"默认 items=[]、variant=\"borderless\"。",
+			"先执行单项回调，再执行组的 onClick。"
 		]
 	},
 	{
 		"name": "ActionsCopy",
 		"export": "ActionsCopy",
-		"description": "Named export of the asynchronous copy action.",
+		"description": "异步复制操作的独立导出。",
 		"doc": "apps/storybook/content/docs/components/feedback/actions.mdx",
 		"example": "examples/content.tsx",
 		"notes": [
-			"Same component as Actions.Copy.",
-			"Without onCopy, uses the browser clipboard; rejected copies show failure.",
-			"Empty text and pending copy disable the button."
+			"与 Actions.Copy 是同一组件。",
+			"省略 onCopy 时使用浏览器剪贴板，复制失败会显示失败状态。",
+			"文本为空或正在复制时禁用按钮。"
 		]
 	},
 	{
 		"name": "ActionsFeedback",
 		"export": "ActionsFeedback",
-		"description": "Named export of controlled like/dislike feedback.",
+		"description": "受控的点赞和点踩操作的独立导出。",
 		"doc": "apps/storybook/content/docs/components/feedback/actions.mdx",
 		"example": "examples/content.tsx",
 		"notes": [
-			"Same component as Actions.Feedback.",
-			"Required value is default, like, or dislike; selecting the active choice resets it to default.",
-			"The caller persists feedback."
+			"与 Actions.Feedback 是同一组件。",
+			"必需的 value 为 default、like 或 dislike。再次选择当前项恢复 default。",
+			"反馈由调用方持久化。"
 		]
 	},
 	{
 		"name": "Actions.Copy",
 		"export": "Actions",
 		"member": "Copy",
-		"description": "Copy text with caller-supplied or browser clipboard behavior.",
+		"description": "使用调用方提供的回调或浏览器剪贴板复制文本。",
 		"doc": "apps/storybook/content/docs/components/feedback/actions.mdx",
 		"example": "examples/content.tsx",
 		"notes": [
-			"Defaults: disabled=false, variant=\"borderless\".",
-			"onCopy must reject on failure rather than reporting a false success."
+			"默认 disabled=false、variant=\"borderless\"。",
+			"onCopy 失败时须返回拒绝的 Promise。"
 		]
 	},
 	{
 		"name": "Actions.Feedback",
 		"export": "Actions",
 		"member": "Feedback",
-		"description": "Render mutually exclusive controlled positive and negative feedback.",
+		"description": "渲染互斥的受控正向和负向反馈。",
 		"doc": "apps/storybook/content/docs/components/feedback/actions.mdx",
 		"example": "examples/content.tsx",
 		"notes": [
-			"Defaults: disabled=false, variant=\"borderless\".",
-			"No backend write is performed by the component."
+			"默认 disabled=false、variant=\"borderless\"。",
+			"后端写入由调用方负责。"
 		]
 	},
 	{
 		"name": "AttachmentFileCard",
 		"export": "AttachmentFileCard",
-		"description": "Named export of the single-attachment status and removal card.",
+		"description": "单个附件状态和移除卡片的独立导出。",
 		"doc": "apps/storybook/content/docs/components/express/attachments.mdx",
 		"example": "examples/content.tsx",
 		"notes": [
-			"Same component as Attachments.FileCard.",
-			"Uploading or disabled cards hide removal; missing percent uses indeterminate progress."
+			"与 Attachments.FileCard 是同一组件。",
+			"上传中或禁用时隐藏移除，缺少 percent 时显示不确定进度。"
 		]
 	},
 	{
 		"name": "Attachments",
 		"export": "Attachments",
-		"description": "Select, drag, and display input files while the caller owns upload state.",
+		"description": "选择、拖放及展示输入文件，上传状态由调用方管理。",
 		"doc": "apps/storybook/content/docs/components/express/attachments.mdx",
 		"example": "examples/attachment-sender.tsx",
 		"notes": [
-			"Defaults: items=[], multiple=true, disabled=false, overflow=\"wrap\".",
-			"onPick replaces the native picker; onSelectFiles is still required for drag/drop.",
-			"maxCount limits native selection/drop; enforce the same limit for pasted files.",
-			"Uploading does not mount a file into a session."
+			"默认 items=[]、multiple=true、disabled=false、overflow=\"wrap\"。",
+			"onPick 替换原生选择器，拖放仍需提供 onSelectFiles。",
+			"maxCount 限制原生选择及拖放，粘贴文件时应用同样限制。",
+			"上传后还需显式将文件挂载到会话。"
 		]
 	},
 	{
 		"name": "Attachments.FileCard",
 		"export": "Attachments",
 		"member": "FileCard",
-		"description": "Display one AttachmentItem without a file picker.",
+		"description": "展示单个 AttachmentItem，文件选择使用外部组件。",
 		"doc": "apps/storybook/content/docs/components/express/attachments.mdx",
 		"example": "examples/content.tsx",
 		"notes": [
-			"disabled defaults to false.",
-			"onRemove only notifies the caller; it does not delete a remote file."
+			"disabled 默认 false。",
+			"onRemove 通知调用方更新本地列表，删除远端文件是独立操作。"
 		]
 	},
 	{
 		"name": "Layout",
 		"export": "Layout",
-		"description": "Compose a desktop sidebar, mobile drawer, page header, and bounded content area without owning application state.",
+		"description": "组合会话导航、页头、限高聊天区和响应式 Agent 资源面板。",
 		"doc": "apps/storybook/content/docs/components/layout.mdx",
 		"example": "examples/layout.tsx",
 		"notes": [
-			"sidebar accepts content or a render callback receiving closeSidebar and closeButton; compose the rail frame (width, border, mobile hiding) yourself.",
-			"header receives the mobile menu toggle; without header, mobileTitle labels the mobile fallback header.",
-			"sidebarLabel defaults to the built-in navigation label; fitViewport defaults to true and can be disabled by a host that owns viewport sizing.",
-			"Keep route, identity, session, and pending-confirmation state in the caller; pass controlled dialogs through the dialogs slot.",
-			"Select the workspace theme explicitly and provide a bounded parent height."
+			"sidebar 接受内容或获得 closeSidebar、closeButton 的渲染回调。侧栏尺寸、边框和移动端显示由调用方配置。",
+			"header 可接收移动端菜单开关。省略 header 时，mobileTitle 为移动端备用页头提供标题。",
+			"aside 在桌面端展示右侧停靠面板，在移动端展示全屏弹窗。将 asideOpen 和 onAsideOpenChange 接到页头的资源开关。",
+			"sidebarLabel 使用内置导航标签，fitViewport 默认 true。宿主自行管理视口尺寸时可关闭 fitViewport。",
+			"路由、身份、会话及待确认状态由调用方持有，通过 dialogs 插槽传入受控弹窗。",
+			"显式启用 workspace 主题，并提供高度有界的父容器。"
 		]
 	},
 	{
 		"name": "Chat",
 		"export": "Chat",
-		"description": "Compose a message list with inline child Agent cards, a default Sender, and main Agent approvals.",
+		"description": "组合消息列表、内联子 Agent 卡片、默认 Sender 和主 Agent 审批。",
 		"doc": "apps/storybook/content/docs/components/chat.mdx",
 		"example": "examples/chat-runtime.tsx",
 		"notes": [
-			"Defaults: variant=default, turnRunning=false, canSend=true. Select workspace explicitly for the employee layout.",
-			"Pass useChat().multiAgent for child discovery, read-only history, pagination, retry, and preserved main drafts.",
-			"Children expand within the main message stream; Chat does not switch Agent tabs.",
-			"Pass skills to enable inline chips; adapt onSend(text, skills) to chat.send(text, { skills }).",
-			"Child status never completes the main turn; approvals belong to the main Agent and must be null when absent.",
-			"The default draft clears only after a successful send and only if unchanged.",
-			"A custom sender slot owns its send, stop, loading, and submit-disabled wiring.",
-			"scrollKey changes reset list following without remounting the input.",
-			"composerDisabled disables the default input while preserving stop; canSend only gates submission."
+			"默认 variant=default、turnRunning=false、canSend=true。员工端布局需显式使用 workspace。",
+			"传入 useChat().multiAgent，以查找子 Agent、浏览只读历史、分页和重试，并保留主会话草稿。",
+			"子卡片在主消息流中原位展开。",
+			"传入 skills 启用行内技能标签，将 onSend(text, skills) 适配为 chat.send(text, { skills })。",
+			"主回合是否结束以主会话为准，审批也只属于主 Agent。无待审批项时传 null。",
+			"默认输入仅在发送成功且草稿仍未改变时清理。",
+			"自定义 sender 插槽自行接入发送、停止、生成中和提交禁用状态。",
+			"更改 scrollKey 重置列表跟随状态，输入框保持挂载。",
+			"composerDisabled 禁用默认输入框但仍允许停止，canSend 只限制提交。"
 		]
 	},
 	{
 		"name": "AgentHeader",
 		"export": "AgentHeader",
-		"description": "Display the selected agent and an application-owned action area.",
+		"description": "显示所选 Agent 和由应用控制的操作区。",
 		"doc": "apps/storybook/content/docs/components/general/agent-header.mdx",
 		"example": "examples/general.tsx",
 		"notes": [
-			"actions replaces the default new-session button; actions=null hides the area.",
-			"Session creation is a caller responsibility.",
-			"A non-empty agents list with onPickAgent enables a controlled title selector.",
-			"Icons accept image URLs, relative paths, and text such as emoji."
+			"actions 替换默认的新建会话按钮，actions=null 隐藏操作区。",
+			"创建会话由调用方负责。",
+			"非空 agents 列表和 onPickAgent 启用受控标题选择器。",
+			"图标支持图片 URL、相对路径和 Emoji 等文本。"
 		]
 	},
 	{
 		"name": "isIconImageSource",
 		"export": "isIconImageSource",
 		"kind": "helper",
-		"description": "Use the shared Agent icon rule when rendering an application-owned icon layout.",
+		"description": "自定义 Agent 图标布局可复用统一的图标判断规则。",
 		"doc": "apps/storybook/content/docs/components/general/agent-header.mdx",
 		"example": "examples/agent-icon.tsx",
 		"notes": [
-			"Returns true only for values starting with http:, https:, data:, /, or ./.",
-			"Missing values and text such as emoji return false; the caller renders the text or a fallback.",
-			"This is a pure helper, not a React component; it does not fetch or validate image availability."
+			"仅当值以 http:、https:、data:、/ 或 ./ 开头时返回 true。",
+			"值缺失或为 Emoji 等文本时返回 false，由调用方展示文本或备用内容。",
+			"这是纯判断函数，仅检查字符串前缀，图片是否可用由调用方处理。"
 		]
 	},
 	{
 		"name": "ConfirmDialog",
 		"export": "ConfirmDialog",
-		"description": "Display an explicit confirmation or cancellation choice.",
+		"description": "展示显式确认和取消选项。",
 		"doc": "apps/storybook/content/docs/components/chrome.mdx",
 		"example": "examples/general.tsx",
 		"notes": [
-			"danger defaults to true; the caller conditionally mounts the dialog.",
-			"Radix AlertDialog manages focus containment and restoration; busy disables confirmation, cancellation, and Escape.",
-			"The caller owns the actual plan, confirmation token, pending state, and close-on-success behavior."
+			"danger 默认 true，由调用方按条件挂载。",
+			"Radix AlertDialog 管理焦点限制和恢复。busy 禁用确认、取消以及 Escape。",
+			"调用方负责计划、本次确认令牌、请求状态及成功后的关闭。"
 		]
 	},
 	{
 		"name": "EmptyState",
 		"export": "EmptyState",
-		"description": "Display a titled empty-state message with an optional hint.",
+		"description": "显示带标题和可选提示的空态。",
 		"doc": "apps/storybook/content/docs/components/chrome.mdx",
 		"example": "examples/general.tsx"
 	},
 	{
 		"name": "ErrorState",
 		"export": "ErrorState",
-		"description": "Display an accessible error message and optional retry action.",
+		"description": "展示可访问的错误消息及可选重试操作。",
 		"doc": "apps/storybook/content/docs/components/chrome.mdx",
 		"example": "examples/general.tsx",
 		"notes": [
-			"Retry is shown only when onRetry is supplied; the caller defines its effect."
+			"提供 onRetry 时才显示重试按钮，由调用方定义重试行为。"
 		]
 	},
 	{
 		"name": "SessionSidebar",
 		"export": "SessionSidebar",
-		"description": "Render the session directory area: agent groups with lazy per-group pagination, a recent section, search filtering, and caller-owned selection and row actions.",
+		"description": "展示会话目录，包含 Agent 分组按需分页、最近会话、搜索及调用方提供的选择与行操作。",
 		"doc": "apps/storybook/content/docs/components/general/session-sidebar.mdx",
 		"example": "examples/general.tsx",
 		"notes": [
-			"Renders only the directory; the rail frame, brand header, new-chat entry, navigation, and account areas belong to the caller.",
-			"Groups and recent carry their own page state; onLoad fires when a group expands, and onRetry/onLoadMore back the retry card and load-more affordances.",
-			"onSelect reports the clicked session summary and section, so navigation can read agent_slug without re-lookup; activeSection attributes the active highlight to one section, and activeGroupId auto-expands the open session's group (open-only, never auto-closes).",
-			"Inline rename is controlled per section via editing {id, section}; the menu render prop receives (session, section) so rename stays scoped to the clicked section.",
-			"Clean stale index status out of sessions before passing them in; the component renders the data it receives.",
-			"Archive/delete callbacks do not bypass application confirmation."
+			"侧栏外框、品牌页头、新建会话、导航及账号区域由调用方组合。",
+			"分组与最近会话各有分页状态。展开分组触发 onLoad，onRetry 和 onLoadMore 分别处理重试与加载更多。",
+			"onSelect 返回被点击的会话摘要及区域，导航可直接读取 agent_slug。activeSection 指定高亮区域，activeGroupId 自动展开当前会话分组，其他分组保留原状。",
+			"行内重命名通过 editing {id, section} 按区域控制。menu 渲染回调接收 (session, section)，编辑只作用于对应区域。",
+			"传入 sessions 前清理过期索引状态，组件按收到的数据渲染。",
+			"归档和删除回调须经过应用确认。"
 		]
 	},
 	{
 		"name": "StatusIndicator",
 		"export": "StatusIndicator",
-		"description": "Display transport connection and execution phase independently.",
+		"description": "分别显示传输连接与执行阶段。",
 		"doc": "apps/storybook/content/docs/components/chrome.mdx",
 		"example": "examples/general.tsx",
 		"notes": [
-			"Required compatibility props are connected and turnRunning.",
-			"New integrations should also pass phase, connection, and streamError as error."
+			"兼容用的必填 Props 为 connected 和 turnRunning。",
+			"新接入同时传入 phase、connection，并将 streamError 传给 error。"
 		]
 	},
 	{
 		"name": "SubAgentPanel",
 		"export": "SubAgentPanel",
-		"description": "Aside resources section listing the session's sub-agents deduped by display name; expanding a name reveals its dispatches and a task row opens a dialog with that dispatch's event timeline.",
+		"description": "在资源侧栏中按显示名对会话子 Agent 去重。展开对应名称后展示派发记录，点击任务行在弹窗中打开事件时间线。",
 		"doc": "apps/storybook/content/docs/components/general/sub-agent-panel.mdx",
 		"example": "examples/general.tsx",
 		"notes": [
-			"Pass the multiAgent snapshot from useChat; the section renders nothing until sub-agent threads exist.",
-			"The dialog loads the sub-thread's own event history, so it does not depend on main-stream message pagination."
+			"传入 useChat 的 multiAgent 快照。存在子 Agent 线程时才渲染。",
+			"弹窗加载子线程自己的事件历史，独立于主消息流的分页。"
 		]
 	},
 	{
 		"name": "ThreadPanel",
 		"export": "ThreadPanel",
-		"description": "Render projected child-thread messages with shared copy and download callbacks.",
+		"description": "展示投影后的子线程消息，共用复制和下载回调。",
 		"doc": "apps/storybook/content/docs/components/chrome.mdx",
 		"example": "examples/general.tsx",
 		"notes": [
-			"An empty threads record renders nothing.",
-			"This is a compatibility display for already projected messages; new conversation pages should pass multiAgent to Chat.",
-			"ThreadPanel does not discover threads, load history, or paginate. Child-thread state is not the main turn's completion signal."
+			"threads 为空时不渲染。",
+			"该组件兼容已有消息投影，新会话页可将 multiAgent 传给 Chat。",
+			"线程发现、历史加载和分页由调用方承担。主回合是否结束以主会话为准。"
 		]
 	},
 	{
 		"name": "CodeHighlighter",
 		"export": "CodeHighlighter",
-		"description": "Display syntax-highlighted code with optional line numbers and copying.",
+		"description": "展示高亮代码，可选行号与复制。",
 		"doc": "apps/storybook/content/docs/components/feedback/code-highlighter.mdx",
 		"example": "examples/content.tsx",
 		"notes": [
-			"Defaults: copyable=true, showLineNumbers=false; missing language uses text.",
-			"Unsupported languages and inputs over 50,000 characters retain full plain text.",
-			"header=false hides the header and its copy action."
+			"默认 copyable=true、showLineNumbers=false，语言缺失时按文本展示。",
+			"语言不受支持或输入超过 50,000 字符时展示完整纯文本。",
+			"header=false 隐藏头部和其中的复制操作。"
 		]
 	},
 	{
 		"name": "FileCard",
 		"export": "FileCard",
-		"description": "Display file identity, thumbnail, metadata, and injected open/download actions.",
+		"description": "展示文件标识、缩略图和元数据，打开与下载通过注入的操作处理。",
 		"doc": "apps/storybook/content/docs/components/feedback/file-card.mdx",
 		"example": "examples/content.tsx",
 		"notes": [
-			"Defaults: loading=false, disabled=false.",
-			"onClick is the primary action when present; otherwise onDownload is primary.",
-			"The caller supplies src and performs downloads."
+			"默认 loading=false、disabled=false。",
+			"有 onClick 时以它为主操作，否则使用 onDownload。",
+			"调用方提供 src 并执行下载。"
 		]
 	},
 	{
 		"name": "Markdown",
 		"export": "Markdown",
-		"description": "Render sanitized GFM text, code blocks, and complete Mermaid fences.",
+		"description": "渲染经净化的 GFM 文本、代码块和完整 Mermaid 围栏。",
 		"doc": "apps/storybook/content/docs/components/message.mdx",
 		"example": "examples/content.tsx",
 		"notes": [
-			"children must be a string.",
-			"Keep rehype-sanitize when customizing untrusted message content.",
-			"Incomplete Mermaid fences remain source during streaming."
+			"children 须为字符串。",
+			"自定义渲染不可信的消息正文时，保留 rehype-sanitize。",
+			"流式期间未闭合的 Mermaid 围栏按源码展示。"
 		]
 	},
 	{
 		"name": "Mermaid",
 		"export": "Mermaid",
-		"description": "Display a Mermaid diagram or source with safe streaming fallback.",
+		"description": "展示 Mermaid 图表或源码，支持流式过程中的安全回退。",
 		"doc": "apps/storybook/content/docs/components/feedback/mermaid.mdx",
 		"example": "examples/content.tsx",
 		"notes": [
-			"Defaults: defaultRenderType=\"image\", copyable=true, streaming=false.",
-			"Streaming, invalid, or resource-loading syntax falls back to source.",
-			"SVG is rendered as an image under strict Mermaid security."
+			"默认 defaultRenderType=\"image\"、copyable=true、streaming=false。",
+			"流式生成、无效语法或加载外部资源的语法均回退为源码。",
+			"在 Mermaid 严格安全模式下将 SVG 作为图片渲染。"
 		]
 	},
 	{
 		"name": "ArtifactCard",
 		"export": "ArtifactCard",
-		"description": "Adapt output artifact metadata to FileCard and injected preview and download actions.",
+		"description": "将输出产物元数据适配到 FileCard，并注入预览与下载操作。",
 		"doc": "apps/storybook/content/docs/components/message.mdx",
 		"example": "examples/content.tsx",
 		"notes": [
-			"Output artifacts are distinct from input attachments.",
-			"The caller provides filename and optional contentType, onOpen, and onDownload."
+			"用于输出产物，输入文件使用附件组件。",
+			"调用方提供 filename，以及可选的 contentType、onOpen 和 onDownload。"
 		]
 	},
 	{
 		"name": "Message",
 		"export": "Message",
-		"description": "Render one projected ChatMessage with ordered rich parts and execution status.",
+		"description": "展示一条已投影的 ChatMessage，保持富文本分片顺序和执行状态。",
 		"doc": "apps/storybook/content/docs/components/general/message.mdx",
 		"example": "examples/content.tsx",
 		"notes": [
-			"Consumes core ChatMessage; does not parse provider SSE.",
-			"Only adjacent text/reasoning parts are combined, preserving tool and artifact order.",
-			"Copy is exposed for completed assistant messages with text."
+			"直接消费由核心层提供的 ChatMessage。Provider SSE 在上层解析。",
+			"仅组合相邻的文本或推理分片，保留工具及产物的顺序。",
+			"包含文本的已完成助手消息支持复制。"
 		]
 	},
 	{
 		"name": "MessageList",
 		"export": "MessageList",
-		"description": "Render a scrollable message sequence with empty-state and follow controls.",
+		"description": "展示可滚动的消息列表、空态和滚动跟随。",
 		"doc": "apps/storybook/content/docs/components/general/message-list.mdx",
 		"example": "examples/content.tsx",
 		"notes": [
-			"autoScroll defaults to true; the parent needs a bounded height.",
-			"Reading older messages pauses following; returning to the bottom restores it.",
-			"scrollKey changes or empty messages reset following; autoScroll=false still prevents scrolling."
+			"autoScroll 默认 true，父容器需设置有界高度。",
+			"浏览较早消息时暂停跟随，回到底部时恢复。",
+			"切换 scrollKey 或清空消息会重置跟随状态，autoScroll=false 时始终禁止自动滚动。"
 		]
 	},
 	{
 		"name": "MessageAnchorRail",
 		"export": "MessageAnchorRail",
-		"description": "Render the right-edge conversation anchor rail: evenly spaced ticks per user turn, hover tooltip with turn title and reply summary, active turn highlighted.",
+		"description": "显示会话右侧锚点轨道。每轮用户消息有一个等距锚点，悬停显示回合标题和回复摘要，并高亮当前回合。",
 		"doc": "apps/storybook/content/docs/components/general/message-list.mdx",
 		"example": "examples/general.tsx",
 		"notes": [
-			"Renders nothing with fewer than two turns; hidden below the md breakpoint.",
-			"MessageList.anchorRail derives turns, syncs the active tick on scroll, and jumps by scrolling only its own container."
+			"至少两个回合时才渲染，小于 md 断点时隐藏。",
+			"MessageList.anchorRail 派生回合，随滚动更新当前锚点。跳转只滚动自身容器。"
 		]
 	},
 	{
 		"name": "MessageListSkeleton",
 		"export": "MessageListSkeleton",
-		"description": "Render the session-loading skeleton: placeholder blocks mirroring the message layout (user bubbles right, assistant cards left) with a sweeping shimmer.",
+		"description": "展示会话加载骨架屏。占位块对应消息布局，用户气泡在右、助手卡片在左，带扫过的微光。",
 		"doc": "apps/storybook/content/docs/components/general/message-list.mdx",
 		"example": "examples/general.tsx",
 		"notes": [
-			"role=status with an aria-label keeps the loading state legible to assistive tech; the skeleton has no visible text.",
-			"Colors and sweep timing come from the --kit-skeleton-* tokens and --kit-animate-skeleton in theme.css; reduced motion degrades to static blocks."
+			"通过 role=status 和 aria-label 让辅助技术读取加载状态，界面只显示占位块。",
+			"颜色及扫光时序来自 theme.css 的 --kit-skeleton-* token 和 --kit-animate-skeleton。减少动效偏好下显示静态块。"
 		]
 	},
 	{
 		"name": "ReasoningBlock",
 		"export": "ReasoningBlock",
-		"description": "Display collapsible reasoning text and its lifecycle state.",
+		"description": "显示可折叠的推理文本和生命周期状态。",
 		"doc": "apps/storybook/content/docs/components/message.mdx",
 		"example": "examples/reasoning.tsx",
 		"notes": [
-			"Reasoning starts collapsed, including while streaming; status changes and text updates preserve manual disclosure choices.",
-			"Use the reasoning part's own status, not the overall message status. Missing status does not imply completion.",
-			"contentMaxHeight replaces the default max-h-80 class for the expanded content area."
+			"初始折叠，流式期间也如此。内容或状态更新时保留用户的手动展开选择。",
+			"使用推理分片自己的状态。缺少状态时无法判定完成。",
+			"contentMaxHeight 可覆盖展开内容区默认的 max-h-80。"
 		]
 	},
 	{
 		"name": "ToolCallCard",
 		"export": "ToolCallCard",
-		"description": "Display a projected tool call, structured parameters, output, and status.",
+		"description": "展示已投影的工具调用、结构化参数、输出和状态。",
 		"doc": "apps/storybook/content/docs/components/message.mdx",
 		"example": "examples/content.tsx",
 		"notes": [
-			"part must be the tool variant of MessagePart.",
-			"The component neither executes tools nor requests approval."
+			"part 必须是 MessagePart 的 tool 分支。",
+			"工具执行与审批由相应的业务操作负责。"
 		]
 	},
 	{
 		"name": "Prompts",
 		"export": "Prompts",
-		"description": "Offer starter questions or grouped shortcuts without sending automatically.",
+		"description": "提供开场问题或分组快捷入口，发送由调用方触发。",
 		"doc": "apps/storybook/content/docs/components/wake/prompts.mdx",
 		"example": "examples/prompts-suggestion.tsx",
 		"notes": [
-			"Defaults: items=[], vertical=false, wrap=false, fadeIn=false, fadeInLeft=false.",
-			"Empty items render nothing; grouped parent cards are not selectable.",
-			"The caller chooses draft insertion or submission."
+			"默认 items=[]、vertical=false、wrap=false、fadeIn=false、fadeInLeft=false。",
+			"items 为空时不渲染，分组父卡片不可选。",
+			"由调用方决定填入草稿还是发送。"
 		]
 	},
 	{
 		"name": "Sender",
 		"export": "Sender",
-		"description": "Compose text, submit, stop, and integrate caller-owned attachments or suggestions.",
+		"description": "编辑、提交或停止消息，并接入调用方管理的附件与建议。",
 		"doc": "apps/storybook/content/docs/components/express/sender.mdx",
 		"example": "examples/attachment-sender.tsx",
 		"notes": [
-			"Defaults: defaultValue=\"\", submitType=\"enter\", loading=false, submitDisabled=false, disabled=false, readOnly=false.",
-			"Default autoSize is one to six rows.",
-			"variant=workspace places editing above a toolbar, with prefix on the left and send/stop on the right; the default variant keeps the inline layout.",
-			"onSubmit does not clear text; submitDisabled preserves editing.",
-			"skills only projects known /name markers as atomic chips; the slash picker is composed with Suggestion.",
-			"File upload and session mounting belong to the caller."
+			"默认 defaultValue=\"\"、submitType=\"enter\"、loading=false、submitDisabled=false、disabled=false、readOnly=false。",
+			"autoSize 默认在一到六行间自适应。",
+			"variant=workspace 把编辑区放在工具栏上方，前缀在左，发送或停止在右。默认 variant 使用行内布局。",
+			"onSubmit 后由调用方清理文本，submitDisabled 禁止提交但保留编辑。",
+			"skills 将已知 /name 标记显示为原子标签，斜杠选择器通过 Suggestion 组合。",
+			"文件上传和会话挂载由调用方负责。"
 		]
 	},
 	{
 		"name": "SenderHeader",
 		"export": "SenderHeader",
-		"description": "Named export of the optional Sender header panel.",
+		"description": "可选 Sender 顶部面板的独立导出。",
 		"doc": "apps/storybook/content/docs/components/express/sender.mdx",
 		"example": "examples/content.tsx",
 		"notes": [
-			"Same component as Sender.Header; defaults: open=false, closable=true."
+			"与 Sender.Header 是同一组件，默认 open=false、closable=true。"
 		]
 	},
 	{
 		"name": "Sender.Header",
 		"export": "Sender",
 		"member": "Header",
-		"description": "Show a controlled expandable header above the text input.",
+		"description": "在文本输入框上方显示受控的可展开面板。",
 		"doc": "apps/storybook/content/docs/components/express/sender.mdx",
 		"example": "examples/attachment-sender.tsx",
 		"notes": [
-			"Defaults: open=false, closable=true.",
-			"Closing the panel does not remove attachments or clear input."
+			"默认 open=false、closable=true。",
+			"关闭面板后保留附件和输入。"
 		]
 	},
 	{
 		"name": "SessionList",
 		"export": "SessionList",
-		"description": "Render controlled session selection with status marks and a business-owned row menu slot.",
+		"description": "展示受控的会话选择、状态标记和由应用管理的行菜单插槽。",
 		"doc": "apps/storybook/content/docs/components/general/session-list.mdx",
 		"example": "examples/general.tsx",
 		"notes": [
-			"sessions, activeId, and onSelect are required.",
-			"menu is a render prop: called per row as menu(session) and the returned element closes over that session; the trigger, menu surface, and items are rendered by the caller, whose onClick handlers read that session directly.",
-			"Inline rename is controlled: set editingId to enter edit mode; onEdited reports the trimmed title truncated to 120 chars (empty or unchanged skips), onEditEnd fires on commit or Escape and the caller clears editingId.",
-			"The component owns the action slot visibility (hover reveal, hidden while editing); callers own containers, destructive-action confirmation, and backend requests."
+			"sessions、activeId、onSelect 为必填。",
+			"menu 是逐行调用的渲染参数 menu(session)。返回的元素绑定对应会话，由调用方渲染触发器、菜单和选项，onClick 直接读取该会话。",
+			"行内重命名受控。设置 editingId 进入编辑，onEdited 返回去首尾空格并截断为 120 字符的标题，空值或未变更时跳过。提交或 Escape 触发 onEditEnd，由调用方清理 editingId。",
+			"组件控制操作槽何时出现，悬停时显示、编辑时隐藏。容器、破坏性操作确认和请求由调用方负责。"
 		]
 	},
 	{
 		"name": "Tooltip",
 		"export": "Tooltip",
-		"description": "Show a hover/focus tooltip bubble above, below, or beside a trigger.",
+		"description": "在触发器的上方、下方或侧面显示由悬停或聚焦触发的提示。",
 		"doc": "apps/storybook/content/docs/components/basic/tooltip.mdx",
 		"example": "examples/general.tsx",
 		"notes": [
-			"Trigger renders inline; the caller className carries truncation and layout classes.",
-			"overflowOnly shows the bubble only when the trigger content is actually clipped.",
-			"The bubble is hoverable, hides on outside scroll and resize, scrolls internally past a max height, and never renders during SSR."
+			"触发器行内渲染，截断和布局类通过调用方的 className 传入。",
+			"overflowOnly 只在触发器内容确实被截断时显示浮层。",
+			"浮层可悬停，外部滚动或调整窗口时隐藏，超过最大高度可在内部滚动，仅在客户端渲染。"
 		]
 	},
 	{
 		"name": "Menu",
 		"export": "Menu",
-		"description": "Open a keyboard-accessible command menu anchored to a trigger.",
+		"description": "在触发器旁打开可用键盘操作的命令菜单。",
 		"doc": "apps/storybook/content/docs/components/basic/menu.mdx",
 		"example": "examples/general.tsx",
 		"notes": [
-			"Thin wrapper over the Radix DropdownMenu root; pass open/onOpenChange for controlled usage."
+			"基于 Radix DropdownMenu 根组件，受控用法传入 open 和 onOpenChange。"
 		]
 	},
 	{
 		"name": "MenuTrigger",
 		"export": "MenuTrigger",
-		"description": "Mark the element that toggles the attached menu.",
+		"description": "标记用于切换菜单的元素。",
 		"doc": "apps/storybook/content/docs/components/basic/menu.mdx",
 		"example": "examples/general.tsx",
 		"notes": [
-			"Use asChild to keep your own button styling; Radix adds aria-haspopup and aria-expanded."
+			"使用 asChild 保留自己的按钮样式，Radix 补齐 aria-haspopup 和 aria-expanded。"
 		]
 	},
 	{
 		"name": "MenuContent",
 		"export": "MenuContent",
-		"description": "Render the themed floating menu surface (border, shadow, entrance motion) in a portal.",
+		"description": "通过 Portal 渲染带主题的悬浮菜单，包含边框、阴影和入场动效。",
 		"doc": "apps/storybook/content/docs/components/basic/menu.mdx",
 		"example": "examples/general.tsx",
 		"notes": [
-			"Defaults: align=start, sideOffset=6; Radix flips the side when viewport space runs out."
+			"默认 align=start、sideOffset=6，视口不够时 Radix 会翻转显示方向。"
 		]
 	},
 	{
 		"name": "MenuItem",
 		"export": "MenuItem",
-		"description": "Render one selectable menu row with shared hover and keyboard highlight.",
+		"description": "渲染一个可选菜单行，鼠标悬停和键盘焦点共用高亮。",
 		"doc": "apps/storybook/content/docs/components/basic/menu.mdx",
 		"example": "examples/general.tsx",
 		"notes": [
-			"Put icons and labels directly in children; onSelect fires on click and Enter."
+			"图标和标签直接放进 children，点击或按 Enter 触发 onSelect。"
 		]
 	},
 	{
 		"name": "Suggestion",
 		"export": "Suggestion",
-		"description": "Compose a keyboard-accessible command menu with a controlled text input.",
+		"description": "将可用键盘操作的命令菜单与受控文本输入框组合。",
 		"doc": "apps/storybook/content/docs/components/express/suggestion.mdx",
 		"example": "examples/prompts-suggestion.tsx",
 		"notes": [
-			"Defaults: items=[], block=false; with trigger omitted the popup stays closed until onTrigger.",
-			"Automatic mode takes controlled value/caret plus trigger; Escape dismisses the current query until it changes.",
-			"Forward both onKeyDown and inputProps to Sender so Enter/Tab selects without sending.",
-			"The caller defines filter and insertion behavior through onSelect(value, item, context)."
+			"默认 items=[]、block=false。未提供 trigger 时，调用 onTrigger 才打开。",
+			"自动模式接收受控 value、caret 和 trigger。Escape 关闭本次查询，直至查询值变化。",
+			"将 onKeyDown 和 inputProps 同时传给 Sender，确保 Enter 或 Tab 选择选项时不发送消息。",
+			"调用方通过 onSelect(value, item, context) 定义筛选后的插入行为。"
 		]
 	},
 	{
 		"name": "ToolApprovalCard",
 		"export": "ToolApprovalCard",
-		"description": "Review actual tool parameters and explicitly approve or deny one pending call.",
+		"description": "审阅真实工具参数并明确允许或拒绝一个待处理调用。",
 		"doc": "apps/storybook/content/docs/components/feedback/tool-approval.mdx",
 		"example": "examples/approval-card.tsx",
 		"notes": [
-			"Only actionable pending requests permit decisions.",
-			"Allow and deny submit directly without a confirmation dialog; the server re-validates against Provider state.",
-			"Uncertain outcomes require refresh; submitted does not mean execution completed.",
-			"The caller supplies submitApproval, refreshApprovals, and optionally stop."
+			"只有可操作的待审批请求允许做决定。",
+			"允许和拒绝直接提交，服务端按 Provider 状态再次校验。",
+			"结果不确定时须刷新。submitted 只表示审批决定已提交。",
+			"调用方提供 submitApproval、refreshApprovals，以及可选的 stop。"
 		]
 	},
 	{
 		"name": "ToolApprovalGroup",
 		"export": "ToolApprovalGroup",
-		"description": "Page horizontally through multiple pending tool approvals, one card at a time.",
+		"description": "横向分页展示多个待审批工具，每次显示一张卡片。",
 		"doc": "apps/storybook/content/docs/components/feedback/tool-approval.mdx",
 		"example": "examples/approvals.tsx",
 		"notes": [
-			"Renders only the current approval with a 1/N pager; decided items auto-advance to the next pending request.",
-			"Manual pager selection is preserved while the item stays in the list.",
-			"Renders nothing when approvals is empty; accepts the same callbacks as ToolApprovalCard."
+			"仅渲染当前项和 1/N 分页指示，决定当前项后自动前往下一个待审批项。",
+			"只要所选项仍在列表中，手动分页选择就会保留。",
+			"approvals 为空时不渲染，回调与 ToolApprovalCard 相同。"
 		]
 	},
 	{
 		"name": "PlazaCard",
 		"export": "PlazaCard",
-		"description": "Display one discovery entry and notify the caller when its agent is opened.",
+		"description": "展示一个广场条目，在打开 Agent 时通知调用方。",
 		"doc": "apps/storybook/content/docs/components/plaza.mdx",
 		"example": "examples/discovery-usage.tsx",
 		"notes": [
-			"onOpen receives the entry slug; navigation and Session selection belong to the caller."
+			"onOpen 接收条目 slug，导航及会话选择由调用方负责。"
 		]
 	},
 	{
 		"name": "CategoryTabs",
 		"export": "CategoryTabs",
-		"description": "Select a controlled discovery category or the featured tab.",
+		"description": "受控选择广场分类或推荐标签页。",
 		"doc": "apps/storybook/content/docs/components/plaza.mdx",
 		"example": "examples/discovery-usage.tsx",
 		"notes": [
-			"Prepends featured to the supplied categories.",
-			"Category counts are accepted but not displayed."
+			"在传入分类的开头插入 featured。",
+			"分类数据可包含数量，当前界面只展示分类。"
 		]
 	},
 	{
 		"name": "MeterBar",
 		"export": "MeterBar",
-		"description": "Render quota usage as a bounded fill or an unlimited track.",
+		"description": "将额度用量展示为有界进度或不限量轨道。",
 		"doc": "apps/storybook/content/docs/components/plaza.mdx",
 		"example": "examples/discovery-usage.tsx",
 		"notes": [
-			"Defaults: unlimited=false, className=\"\".",
-			"Visual fill is clamped to zero through 100 percent; nonpositive max has no fill."
+			"默认 unlimited=false、className=\"\"。",
+			"填充限制在 0–100%，max 为非正数时不填充。"
 		]
 	},
 	{
 		"name": "ActivityHeatmap",
 		"export": "ActivityHeatmap",
-		"description": "Render caller-supplied daily activity with relative intensity.",
+		"description": "展示调用方提供的每日活动及相对强度。",
 		"doc": "apps/storybook/content/docs/components/plaza.mdx",
 		"example": "examples/discovery-usage.tsx",
 		"notes": [
-			"Preserves input order; day strings must be unique.",
-			"Does not fetch, sort, or fill missing dates."
+			"保留输入顺序，日期字符串须唯一。",
+			"查询、排序和补齐缺失日期由调用方负责。"
 		]
 	},
 	{
 		"name": "SkillGlyph",
 		"export": "SkillGlyph",
-		"description": "Render the shared book glyph used by skill chips and suggestion items.",
+		"description": "渲染技能标签和建议条目共用的书本图标。",
 		"doc": "apps/storybook/content/docs/components/express/suggestion.mdx",
 		"example": "examples/prompts-suggestion.tsx",
 		"notes": [
-			"Decorative SVG with aria-hidden=true; size and color come from className.",
-			"Use it in Suggestion item icons so custom skill pickers match Sender chips."
+			"装饰性 SVG 带 aria-hidden=true，尺寸和颜色由 className 指定。",
+			"可用作 Suggestion 条目图标，使自定义技能选择器与 Sender 的技能标签一致。"
 		]
 	}
 ]

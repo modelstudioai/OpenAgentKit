@@ -35,8 +35,9 @@ pnpm gate          # 以上全部
 pnpm verify:push   # pre-push hook 子集
 ```
 
-当前仓库不提供 CI 流水线配置；验收在本地执行 `pnpm gate` 与 `pnpm e2e`，结果记录在 PR 描述中。
-本地 hook 可被 `--no-verify` 绕过；后续接入 CI 时需单独配置并核实实际运行结果。
+文档站由 GitHub Actions 检查、构建并发布到 GitHub Pages，配置见[文档站部署说明](../apps/storybook/README.md#github-pages-部署)。
+完整验收在本地执行 `pnpm gate` 与 `pnpm e2e`，结果记录在 PR 描述中。
+本地 hook 可被 `--no-verify` 绕过。
 
 ### 环境与文档站准备
 

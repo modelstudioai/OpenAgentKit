@@ -1,10 +1,11 @@
 import { expect, test } from "./fixtures.ts";
+import { sitePath } from "./paths.ts";
 
 // 步骤默认收起；生命周期更新保留用户开合，停止后不被迟到的本地流覆盖。
 test("Chat 预览：思考默认收起、手动选择保留，停止后保持中断", async ({ page }) => {
 	await page.clock.install();
-	await page.goto("/previews/chat/");
-	const input = page.getByRole("textbox", { name: "消息输入", exact: true });
+	await page.goto(sitePath("/previews/chat/"));
+	const input = page.getByRole("combobox", { name: "消息输入", exact: true });
 	const send = page.getByRole("button", { name: "发送", exact: true });
 	const stop = page.getByRole("button", { name: "停止", exact: true });
 	const reasoning = page.locator('details[aria-label="思考过程"]');
@@ -15,7 +16,7 @@ test("Chat 预览：思考默认收起、手动选择保留，停止后保持中
 	await expect(reasoning).toHaveJSProperty("open", false);
 	await reasoning.locator("summary").click();
 	await expect(reasoning).toHaveJSProperty("open", true);
-	await expect(reasoning.locator(":scope > div").getByText("先确认问题的目标。", { exact: true })).toBeVisible();
+	await expect(reasoning.getByText("先确认问题的目标。", { exact: true }).last()).toBeVisible();
 	await expect(reasoning).toContainText("已思考", { timeout: 10_000 });
 	await expect(reasoning).toHaveJSProperty("open", true);
 	await expect(stop).toHaveCount(0, { timeout: 10_000 });
@@ -40,7 +41,7 @@ test("Chat 预览：思考默认收起、手动选择保留，停止后保持中
 
 // 同阶段正文更新不能重挂 details，或把用户刚刚手动选择的开合状态重置。
 test("思考状态预览：追加内容保留手动开合，四种状态可真实切换", async ({ page }) => {
-	await page.goto("/previews/tools/");
+	await page.goto(sitePath("/previews/tools/"));
 	const controls = page.getByRole("group", { name: "思考状态演示", exact: true });
 	const reasoning = page.locator('details[aria-label="思考过程"]');
 	const append = controls.getByRole("button", { name: "追加思考内容", exact: true });
@@ -76,8 +77,8 @@ test("思考状态预览：追加内容保留手动开合，四种状态可真�
 
 // 子 Agent 以流内嵌卡呈现；展开即拉取消息，失败可在卡内重试，主输入草稿始终保留。
 test("Multi-Agent 预览：卡片展开加载与失败重试保留消息，主输入草稿保留", async ({ page }) => {
-	await page.goto("/previews/multi-agent/");
-	const input = page.getByRole("textbox", { name: "消息输入", exact: true });
+	await page.goto(sitePath("/previews/multi-agent/"));
+	const input = page.getByRole("combobox", { name: "消息输入", exact: true });
 	await input.fill("切换协作 Agent 后继续发送的草稿");
 	const research = page.locator('details[aria-label="子 Agent 资料研究员"]');
 	await expect(research).toContainText("整理资料并交叉验证来源");

@@ -1,8 +1,7 @@
 import { type MessageTransformer, transformSessionEvent } from "@openagentpack/kit-sdk/messages";
 import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
 
-// A display-only label replacement. Reapplying it is safe when later events
-// rebuild the same thread. The original SessionEvent and lifecycle stay intact.
+// 幂等替换展示标签，后续事件重建线程时可重复调用，原始 SessionEvent 与生命周期保持原样。
 const replaceDisplayLabel: MessageTransformer = (input) => {
 	const result = transformSessionEvent(input);
 	return {
@@ -10,16 +9,15 @@ const replaceDisplayLabel: MessageTransformer = (input) => {
 		messages: result.messages.map((message) => ({
 			...message,
 			parts: message.parts.map((part) =>
-				part.type === "text" ? { ...part, text: part.text.replaceAll("[[agent-name]]", "Support assistant") } : part,
+				part.type === "text" ? { ...part, text: part.text.replaceAll("[[agent-name]]", "客服助手") } : part,
 			),
 		})),
 	};
 };
 
-// Construct this wrapper once with the backend binding, not on every render.
-// Chat owns returned messages; this shared Provider stores no Session messages.
+// 每次后端绑定只创建一次包装，返回的消息由 Chat 持有。
 export function withDisplayLabel(provider: ChatProvider): ChatProvider {
-	// Forward calls on the original instance, including class prototype methods.
+	// 在原始实例上转发所有方法，包括类的原型方法。
 	return {
 		transformMessage: replaceDisplayLabel,
 		stream: (sessionId, options) => provider.stream(sessionId, options),

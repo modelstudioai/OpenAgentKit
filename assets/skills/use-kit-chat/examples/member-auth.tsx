@@ -7,21 +7,21 @@ import { useMemberAuth } from "@openagentpack/kit-sdk/auth/hooks";
 import { KitProvider } from "@openagentpack/kit-sdk/providers/kit/react";
 import type { FormEvent, ReactNode } from "react";
 
-// Call once after public config resolves the final API URL. The host's storage
-// must be scoped to that full URL, including its path prefix. Store no password.
+// 公开配置解析出最终 API URL 后调用一次。宿主存储按带路径前缀的完整 URL 隔离，
+// 只保存会话令牌及有效期。
 export function createLogin(options: MemberAuthOptions) {
 	return createMemberAuthController(options);
 }
 
 export function MemberRoot({ controller, children }: { controller: MemberAuthController; children: ReactNode }) {
 	const auth = useMemberAuth(controller);
-	if (auth.status === "checking") return <p>Restoring sign-in…</p>;
+	if (auth.status === "checking") return <p>正在恢复登录…</p>;
 	if (auth.status === "error") {
 		return (
 			<section>
 				<p role="alert">{auth.error}</p>
 				<button type="button" onClick={() => void auth.retry()}>
-					Retry
+					重试
 				</button>
 			</section>
 		);
@@ -37,7 +37,7 @@ export function MemberRoot({ controller, children }: { controller: MemberAuthCon
 					password: String(data.get("password") ?? ""),
 				});
 			} catch {
-				// The controller exposes a safe error in its snapshot.
+				// 控制器在快照中提供可安全展示的错误。
 			} finally {
 				const password = form.elements.namedItem("password");
 				if (password instanceof HTMLInputElement) password.value = "";
@@ -46,15 +46,15 @@ export function MemberRoot({ controller, children }: { controller: MemberAuthCon
 		return (
 			<form onSubmit={submit}>
 				<label>
-					Username <input name="username" autoComplete="username" required disabled={auth.pending} />
+					用户名 <input name="username" autoComplete="username" required disabled={auth.pending} />
 				</label>
 				<label>
-					Password{" "}
+					密码{" "}
 					<input name="password" type="password" autoComplete="current-password" required disabled={auth.pending} />
 				</label>
 				{auth.error && <p role="alert">{auth.error}</p>}
 				<button type="submit" disabled={auth.pending}>
-					Sign in
+					登录
 				</button>
 			</form>
 		);
@@ -65,7 +65,7 @@ export function MemberRoot({ controller, children }: { controller: MemberAuthCon
 				{auth.member?.display_name}
 				{auth.member && (
 					<button type="button" onClick={() => void auth.logout()}>
-						Sign out
+						退出登录
 					</button>
 				)}
 			</header>

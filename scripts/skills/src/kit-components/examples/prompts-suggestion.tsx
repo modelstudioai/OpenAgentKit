@@ -9,8 +9,8 @@ import {
 import { useRef, useState } from "react";
 
 const promptText: Record<string, string> = {
-	summary: "Summarize the current report.",
-	compare: "Compare these two alternatives.",
+	summary: "总结当前报告。",
+	compare: "比较这两个方案。",
 };
 
 export function PromptComposer({ onSend, canSend }: { onSend: (text: string) => Promise<void>; canSend: boolean }) {
@@ -30,7 +30,7 @@ export function PromptComposer({ onSend, canSend }: { onSend: (text: string) => 
 			await onSend(text);
 			setDraft((current) => (current === text ? "" : current));
 		} catch {
-			setError("Send failed. Your draft is preserved.");
+			setError("发送失败，已保留草稿。");
 		} finally {
 			sending.current = false;
 			setSubmitting(false);
@@ -40,11 +40,11 @@ export function PromptComposer({ onSend, canSend }: { onSend: (text: string) => 
 	return (
 		<div className="flex flex-col gap-3" data-kit-appearance="workspace">
 			<Prompts
-				title="Try a question"
+				title="试着问一个问题"
 				wrap
 				items={[
-					{ key: "summary", label: "Summarize", description: "Extract the main points." },
-					{ key: "compare", label: "Compare", description: "Review two alternatives." },
+					{ key: "summary", label: "总结", description: "提取主要内容。" },
+					{ key: "compare", label: "比较", description: "分析两个可选方案。" },
 				]}
 				onItemClick={({ data }) => {
 					setDraft(promptText[data.key] ?? "");
@@ -54,8 +54,8 @@ export function PromptComposer({ onSend, canSend }: { onSend: (text: string) => 
 			<Suggestion
 				block
 				items={[
-					{ value: "summary", label: "Summarize the report", icon: <SkillGlyph className="size-4" /> },
-					{ value: "compare", label: "Compare alternatives", icon: <SkillGlyph className="size-4" /> },
+					{ value: "summary", label: "总结报告", icon: <SkillGlyph className="size-4" /> },
+					{ value: "compare", label: "比较方案", icon: <SkillGlyph className="size-4" /> },
 				]}
 				value={draft}
 				caret={selection.end}
@@ -71,14 +71,14 @@ export function PromptComposer({ onSend, canSend }: { onSend: (text: string) => 
 						variant="workspace"
 						ref={sender}
 						value={draft}
-						placeholder="Type / to choose a command"
+						placeholder="输入 / 选择命令"
 						onChange={setDraft}
 						onSelectionChange={setSelection}
 						onKeyDown={onKeyDown}
 						inputProps={inputProps}
 						submitDisabled={!canSend || submitting}
 						onSubmit={(text) => void send(text)}
-						suffix={(_origin, { components }) => <components.SendButton>Send</components.SendButton>}
+						suffix={(_origin, { components }) => <components.SendButton>发送</components.SendButton>}
 					/>
 				)}
 			</Suggestion>

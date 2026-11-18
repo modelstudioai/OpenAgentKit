@@ -3,9 +3,8 @@ import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
 import { createSessionEventChatProvider } from "@openagentpack/kit-sdk/providers/session-events";
 import { type BackendConfig, createBackendHttp } from "./backend-http.ts";
 
-// The Web app uses the same public factory with its own paths and { data } mapping.
-// This independent backend instead uses /sessions, { result } and application auth.
-// It adopts the documented SessionEvent/control-frame wire contract.
+// Web 应用复用此公开工厂，配置自己的路径和 { data } 映射。
+// 此示例使用 /sessions、{ result } 和应用鉴权，遵循公开的 SessionEvent 和控制帧协议。
 export function createNormalizedProvider(config: BackendConfig): ChatProvider {
 	const backend = createBackendHttp(config);
 	return createSessionEventChatProvider({

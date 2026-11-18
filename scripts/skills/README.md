@@ -1,6 +1,6 @@
 # scripts/skills — Coding Agent Skill 源与生成器
 
-这里维护三个面向 coding agent 的英文 Skill：`kit-components`、`use-kit-chat` 和
+这里维护三个面向 coding agent 的中文 Skill：`kit-components`、`use-kit-chat` 和
 `kit-chat-provider`。Skill 不参与应用运行时，也不是 npm 包。
 
 本文件面向人类读者；维护不变量见 [AGENTS.md](./AGENTS.md)。
@@ -13,7 +13,7 @@
 scripts/skills/src/<name>/
   metadata.json   name、description、displayName、shortDescription、defaultPrompt
   skill.md        SKILL.md 正文
-  catalog.json    公开 API 到英文用途、文档与示例的映射
+  catalog.json    公开 API 到中文用途、文档与示例的映射
   references/     人工维护的行为说明
   examples/       可编译的 TS/TSX 示例
 ```
@@ -36,7 +36,7 @@ assets/skills/<name>/
 
 ```bash
 pnpm gen:skills       # 生成 assets/skills、API 参考和文档示例
-pnpm check:skills     # 只检查漂移，不写文件
+pnpm check:skills     # 检查中文说明和产物漂移，不写文件
 pnpm typecheck:skills # 编译示例与公开 API fixture
 pnpm test:skills      # 生成、链接、打包和浏览器依赖边界
 pnpm pack:skills      # 生成 assets/skills/dist/*.tgz
@@ -52,7 +52,9 @@ pnpm pack:skills      # 生成 assets/skills/dist/*.tgz
 - 修改行为说明时，编辑 `src/<name>/references/`；生成器只复制，不覆盖人工正文。
 - 新增 Skill 时，在 `src/` 下建立完整目录并补齐 metadata、catalog、references 和 examples；
   生成器和文档站会按目录自动发现。
-- API 签名、Props 和类型以公开 TypeScript 导出为准；英文用途与约束以 catalog 和
+- 生成、检查和打包都会校验元数据文案、catalog 用途和备注、入口正文以及手写 Markdown 参考是否包含中文。
+  示例注释与界面文案在 TS/TSX 源文件中维护。
+- API 签名、Props 和类型以公开 TypeScript 导出为准；中文用途与约束以 catalog 和
   references 为准，两者共同校验。
 
 ## 相关文档

@@ -3,21 +3,21 @@
 		"name": "createSessionEventChatProvider",
 		"export": "createSessionEventChatProvider",
 		"module": "providers/session-events",
-		"description": "Connect a backend that emits standard SessionEvent snapshots and documented lifecycle frames through configurable HTTP operations.",
+		"description": "通过可配置的 HTTP 操作连接返回标准 SessionEvent 快照和公开生命周期帧的后端。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/normalized-provider.ts",
 		"notes": [
-			"Web and self-owned backends use this same public factory; paths, identity headers and JSON envelopes are application configuration.",
-			"Requires reset/ready/event/ping/done/error control frames; it does not parse original Bailian deltas.",
-			"Defaults: connectTimeoutMs 30000, idleTimeoutMs 45000. An unexpected EOF remains retryable.",
-			"Protocol version headers are explicit request configuration. Writes are never automatically retried."
+			"Web 应用和自建后端共用这个公开工厂。路径、身份请求头和 JSON 包装由应用配置。",
+			"接收 reset、ready、event、ping、done、error 帧。百炼原始增量流使用专用工厂。",
+			"connectTimeoutMs 默认 30000，idleTimeoutMs 默认 45000。意外 EOF 可重试。",
+			"协议版本头通过请求配置显式传入。禁止自动重试写请求。"
 		]
 	},
 	{
 		"name": "SessionEventChatProviderOptions",
 		"export": "SessionEventChatProviderOptions",
 		"module": "providers/session-events",
-		"description": "Injected RequestClient, one stream operation, four required mutations/queries, optional thread queries and message conversion.",
+		"description": "注入 RequestClient，配置一个订阅操作、四个必需的请求操作、可选线程查询及消息转换策略。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/normalized-provider.ts"
 	},
@@ -25,7 +25,7 @@
 		"name": "SessionEventStreamOperation",
 		"export": "SessionEventStreamOperation",
 		"module": "providers/session-events",
-		"description": "Build the subscription path and request from Session identity and an opaque update cursor.",
+		"description": "根据会话 ID 和不透明的更新游标构建订阅路径与请求。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/normalized-provider.ts"
 	},
@@ -33,7 +33,7 @@
 		"name": "BackendOperation",
 		"export": "BackendOperation",
 		"module": "providers",
-		"description": "Typed backend request construction and response mapping executed once by the shared Request layer.",
+		"description": "描述有类型的后端请求构建与响应映射，由共享 Request 层执行一次。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/normalized-provider.ts"
 	},
@@ -41,7 +41,7 @@
 		"name": "BackendRequestContext",
 		"export": "BackendRequestContext",
 		"module": "providers",
-		"description": "Provider-owned cancellation propagated through request construction and response mapping.",
+		"description": "Provider 持有的取消上下文，随请求构建和响应映射传递。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/normalized-provider.ts"
 	},
@@ -49,7 +49,7 @@
 		"name": "BackendRequestSpec",
 		"export": "BackendRequestSpec",
 		"module": "providers",
-		"description": "A backend path and optional RequestInit whose signal is owned by the Provider.",
+		"description": "描述后端路径和可选的 RequestInit，其 signal 由 Provider 管理。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/normalized-provider.ts"
 	},
@@ -57,20 +57,20 @@
 		"name": "createSseStream",
 		"export": "createSseStream",
 		"module": "stream",
-		"description": "Decode an existing byte stream into raw SSE frames without network or business conversion.",
+		"description": "将现有字节流解码为原始 SSE 帧，网络请求和业务转换由上层处理。",
 		"doc": "apps/storybook/content/docs/sdk/stream.mdx",
 		"example": "examples/sse-stream.ts",
 		"notes": [
-			"Use for await; data remains a string and the Provider validates its business meaning.",
-			"Defaults: utf8Fatal false; flushOnEnd true; no frame limit unless maxFrameChars is supplied.",
-			"Cancellation, early iterator exit, and parse failure release the reader. EOF is not Agent execution completion."
+			"使用 for await 迭代。data 保持为字符串，由 Provider 校验其业务含义。",
+			"utf8Fatal 默认 false，flushOnEnd 默认 true，只有传入 maxFrameChars 才限制帧大小。",
+			"取消、提前退出迭代和解析失败都会释放 reader。Agent 是否执行完成由业务状态判断。"
 		]
 	},
 	{
 		"name": "SseStreamOptions",
 		"export": "SseStreamOptions",
 		"module": "stream",
-		"description": "Cancellation, UTF-8 strictness, frame size, comment notification and tail-frame delivery.",
+		"description": "配置取消、UTF-8 严格模式、帧大小、注释通知及末尾帧交付。",
 		"doc": "apps/storybook/content/docs/sdk/stream.mdx",
 		"example": "examples/sse-stream.ts"
 	},
@@ -78,61 +78,61 @@
 		"name": "SseStreamError",
 		"export": "SseStreamError",
 		"module": "stream",
-		"description": "Safe decoding or framing failure, distinct from a reader transport failure.",
+		"description": "表示安全的解码或分帧错误，reader 的传输错误沿用原有语义。",
 		"doc": "apps/storybook/content/docs/sdk/stream.mdx",
 		"example": "examples/sse-stream.ts",
 		"notes": [
-			"Providers decide whether failures are retryable; malformed framing is not a successful completion."
+			"Provider 决定错误是否可重试。帧格式错误须显式报告。"
 		]
 	},
 	{
 		"name": "createRequest",
 		"export": "createRequest",
 		"module": "request",
-		"description": "Create an independent HTTP client that composes SSE reading with createSseStream.",
+		"description": "创建独立 HTTP 客户端，通过 createSseStream 读取 SSE。",
 		"doc": "apps/storybook/content/docs/sdk/request.mdx",
 		"example": "examples/request.ts",
 		"notes": [
-			"No automatic retries, timeouts, Kit protocol header or Content-Type.",
-			"Application identity headers are resolved for each request; per-request headers take precedence."
+			"重试、超时、Kit 协议头和 Content-Type 均由调用方配置。",
+			"每次请求解析应用身份头，单次请求头优先。"
 		]
 	},
 	{
 		"name": "RequestClient",
 		"export": "RequestClient",
 		"module": "request",
-		"description": "Response, JSON, raw SSE and URL methods for an application backend.",
+		"description": "为应用后端提供响应、JSON、原始 SSE 和 URL 方法。",
 		"doc": "apps/storybook/content/docs/sdk/request.mdx",
 		"example": "examples/request.ts",
 		"notes": [
-			"response hands body ownership to its consumer; stream releases it when iteration ends.",
-			"json parses JSON without validating its business schema; HTTP 204 returns undefined."
+			"response 将响应体交给调用方。stream 在迭代结束时释放 reader。",
+			"json 解析 JSON，业务 Schema 另行校验。HTTP 204 返回 undefined。"
 		]
 	},
 	{
 		"name": "RequestOptions",
 		"export": "RequestOptions",
 		"module": "request",
-		"description": "Explicit base URL, asynchronous HeadersInit, injected fetch and safe HTTP error mapping.",
+		"description": "配置显式 base URL、异步 HeadersInit、注入的 fetch 和安全的 HTTP 错误映射。",
 		"doc": "apps/storybook/content/docs/sdk/request.mdx",
 		"example": "examples/request.ts",
 		"notes": [
-			"Provider credentials remain on the backend.",
-			"mapHttpError returns an Error, not an arbitrary backend body."
+			"Provider 凭据保留在后端。",
+			"mapHttpError 返回 Error，避免直接透传任意后端响应体。"
 		]
 	},
 	{
 		"name": "ChatProvider",
 		"export": "ChatProvider",
 		"module": "providers",
-		"description": "Frontend adapter with five required Session operations, optional thread queries and message transformation.",
+		"description": "前端会话适配器，含五个必需操作、可选线程查询及消息转换。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/normalized-provider.ts",
 		"notes": [
-			"This contract connects the existing Bailian upstream; it is not a second provider abstraction.",
-			"Session creation/listing and file upload/download are outside this contract.",
-			"Each stream invocation manages one connection; the Controller owns retry scheduling.",
-			"Chat owns the event ledger and returned messages; an omitted strategy uses transformSessionEvent."
+			"复用同一合同接入已有的百炼上游。",
+			"创建和列出会话、上传及下载文件分别走独立操作。",
+			"每次 stream 管理一条连接，重试由控制器调度。",
+			"Chat 持有事件账本及返回的消息。省略转换策略时使用 transformSessionEvent。"
 		]
 	},
 	{
@@ -140,13 +140,13 @@
 		"export": "ChatProvider",
 		"member": "stream",
 		"module": "providers",
-		"description": "Open one abortable persistent subscription delivering SessionEvent snapshots and lifecycle callbacks.",
+		"description": "建立一条可取消的持久订阅，交付 SessionEvent 快照和生命周期回调。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/normalized-provider.ts",
 		"notes": [
-			"Announce ready only after authoritative history and live updates are reconciled.",
-			"Do not reconnect internally or use a business event ID as an update cursor.",
-			"Unexpected EOF is a recoverable transport failure, not business completion."
+			"历史和实时更新完成权威对账后才报告 ready。",
+			"由控制器重连，续传使用不透明的更新游标。",
+			"意外 EOF 属于可恢复的传输故障，业务完成由会话状态决定。"
 		]
 	},
 	{
@@ -154,11 +154,11 @@
 		"export": "ChatProvider",
 		"member": "sendMessage",
 		"module": "providers",
-		"description": "Submit the text and client identity once and return the actual acceptance response.",
+		"description": "提交一次文本及客户端标识，返回实际的受理结果。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/backend-http.ts",
 		"notes": [
-			"Preserve client_message_id and event_ids for optimistic message reconciliation."
+			"保留 client_message_id 和 event_ids，用于乐观消息对账。"
 		]
 	},
 	{
@@ -166,7 +166,7 @@
 		"export": "ChatProvider",
 		"member": "interrupt",
 		"module": "providers",
-		"description": "Request remote interruption; subscription cancellation alone does not interrupt execution.",
+		"description": "请求中断远端执行，取消订阅只影响本地连接。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/backend-http.ts"
 	},
@@ -175,11 +175,11 @@
 		"export": "ChatProvider",
 		"member": "toolApprovals",
 		"module": "providers",
-		"description": "Retrieve current pending batch/calls and complete frozen tool arguments.",
+		"description": "获取当前待审批批次及调用，以及完整的冻结工具参数。",
 		"doc": "apps/storybook/content/docs/sdk/tool-approvals.mdx",
 		"example": "examples/backend-http.ts",
 		"notes": [
-			"Historical requests alone must not activate a current approval."
+			"只有当前有效的待处理请求可以激活审批。"
 		]
 	},
 	{
@@ -187,11 +187,11 @@
 		"export": "ChatProvider",
 		"member": "submitToolApproval",
 		"module": "providers",
-		"description": "Submit one real allow or deny decision after backend ownership and pending-state validation.",
+		"description": "由后端校验归属及待处理状态后，提交一次允许或拒绝决定。",
 		"doc": "apps/storybook/content/docs/sdk/tool-approvals.mdx",
 		"example": "examples/backend-http.ts",
 		"notes": [
-			"No automatic POST retries; refresh after an uncertain response before renewed user confirmation."
+			"禁止自动重试 POST。响应结果不确定时先刷新，再由用户重新确认。"
 		]
 	},
 	{
@@ -201,10 +201,10 @@
 		"module": "providers",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/message-transform.ts",
-		"description": "Optional synchronous event-to-message strategy invoked by Chat while rebuilding the latest snapshots.",
+		"description": "可选的同步事件到消息转换策略，由 Chat 用最新快照重建消息时调用。",
 		"notes": [
-			"Omission preserves the default transformSessionEvent behavior.",
-			"Do not hold cross-Session messages in the Provider or treat cumulative snapshots as new deltas."
+			"省略时沿用 transformSessionEvent。",
+			"转换期间的消息由 Chat 持有，使用累计快照替换内容，避免跨会话缓存或重复追加。"
 		]
 	},
 	{
@@ -213,11 +213,11 @@
 		"module": "messages",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/message-transform.ts",
-		"description": "Default pure SessionEvent-to-ChatMessage strategy shared by the Kit and raw Bailian Providers.",
+		"description": "Kit 与百炼原始流 Provider 共用的纯函数，将 SessionEvent 转换为 ChatMessage。",
 		"notes": [
-			"Use the supplied identity to preserve stable message and part IDs.",
-			"Changes only presentation; Chat retains execution, optimistic reconciliation, approval, and reconnect state.",
-			"This function does not parse raw Bailian SSE or load the SDK normalizer."
+			"使用传入的 identity 保留稳定的消息和分片 ID。",
+			"转换只影响展示。Chat 持有执行、乐观对账、审批和重连状态。",
+			"百炼原始 SSE 由上游公开归一工具处理，本函数只接受标准事件。"
 		]
 	},
 	{
@@ -226,7 +226,7 @@
 		"module": "messages",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/message-transform.ts",
-		"description": "Synchronous message transformation function, without persistent state or network access."
+		"description": "同步转换消息的函数，只处理本次传入的数据。"
 	},
 	{
 		"name": "MessageTransformInput",
@@ -234,9 +234,9 @@
 		"module": "messages",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/message-transform.ts",
-		"description": "Current-thread temporary messages, one latest SessionEvent snapshot, and its stable Chat-assigned identity.",
+		"description": "当前线程的临时消息、一条最新 SessionEvent 快照及 Chat 为它分配的稳定标识。",
 		"notes": [
-			"The array belongs to the current reconstruction; do not retain it after the call or mutate the event."
+			"数组归本次重建所有，调用完成后不保留数组，也不修改原事件。"
 		]
 	},
 	{
@@ -245,16 +245,16 @@
 		"module": "messages",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/message-transform.ts",
-		"description": "The updated or replacement message array and optional artifacts, owned by Chat after return.",
+		"description": "更新后的或替换用的消息数组及可选产物，返回后由 Chat 持有。",
 		"notes": [
-			"Preserve message and part IDs and reconciliation fields when adapting the default result."
+			"适配默认结果时保留消息 ID、分片 ID 和对账字段。"
 		]
 	},
 	{
 		"name": "createKitChatProvider",
 		"export": "createKitChatProvider",
 		"module": "providers/kit",
-		"description": "Wrap an existing KitClient with the default transformSessionEvent strategy, preserving request paths, cursors, and retry behavior.",
+		"description": "包装已有 KitClient 并使用默认 transformSessionEvent，沿用其请求路径、游标及重试行为。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/kit-client-provider.ts"
 	},
@@ -262,40 +262,40 @@
 		"name": "StreamSessionOptions",
 		"export": "StreamSessionOptions",
 		"module": "providers",
-		"description": "Abort signal, optional opaque replay cursor, and reset/event/ready/done/ping callbacks.",
+		"description": "取消信号、可选不透明重放游标，以及 reset、event、ready、done、ping 回调。",
 		"doc": "apps/storybook/content/docs/sdk/stream.mdx",
 		"example": "examples/normalized-provider.ts",
 		"notes": [
-			"onEvent receives cumulative SDK snapshots, including updates to existing event IDs.",
-			"onReset starts reconstruction and onReady commits its complete authoritative result.",
-			"onDone is explicit transport termination; onPing signals transport liveness."
+			"onEvent 接收累计 SDK 快照，包括对已有事件 ID 的更新。",
+			"onReset 开始重建，onReady 提交完整的权威结果。",
+			"onDone 表示传输明确终止，onPing 表示传输仍活跃。"
 		]
 	},
 	{
 		"name": "createBailianChatProvider",
 		"export": "createBailianChatProvider",
 		"module": "providers/bailian",
-		"description": "Adapt six required and two optional thread operations through RequestClient into ChatProvider.",
+		"description": "通过 RequestClient 将六个必需操作和两个可选线程操作适配为 ChatProvider。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/raw-bailian-provider.ts",
 		"notes": [
-			"Requires the SDK session-events public normalizer. Kit Server thread queries additionally require the new SDK thread APIs; the local candidate must be published and pinned before deployment.",
-			"Kit owns framing and recovery; SDK owns cumulative event conversion.",
-			"Subscription and message submission are separate requests, not one POST returning a single response stream.",
-			"Uses transformSessionEvent for presentation; SDK normalization remains a separate step."
+			"事件转换使用 SDK 的 session-events 公开归一器。Kit Server 查询线程历史使用 SDK 的公开线程接口。",
+			"Kit 负责分帧和恢复，SDK 负责累计事件的转换。",
+			"订阅和发送消息通过两个独立请求完成。",
+			"使用 transformSessionEvent 生成展示数据，SDK 归一化在此前完成。"
 		]
 	},
 	{
 		"name": "BailianChatProviderOptions",
 		"export": "BailianChatProviderOptions",
 		"module": "providers/bailian",
-		"description": "Required RequestClient and six buildRequest/mapResponse operations with bounded recovery settings.",
+		"description": "包括必需的 RequestClient、六个 buildRequest 和 mapResponse 操作，以及有上限的恢复配置。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/raw-bailian-provider.ts",
 		"notes": [
-			"Defaults: connectTimeoutMs 30000; idleTimeoutMs 45000; maxBufferedFrames 1024; maxBufferedBytes 8388608; maxHistoryEvents 10000.",
-			"Limits fail explicitly rather than silently truncating history or dropping buffered updates.",
-			"Every reconnect rebuilds full history; no Kit after cursor is forwarded to raw Bailian."
+			"默认 connectTimeoutMs 为 30000、idleTimeoutMs 为 45000、maxBufferedFrames 为 1024、maxBufferedBytes 为 8388608、maxHistoryEvents 为 10000。",
+			"达到上限时明确失败，保留历史和缓冲更新的完整性要求。",
+			"每次重连重建完整历史，Kit 的 after 游标不传给百炼原始流。"
 		]
 	},
 	{
@@ -303,14 +303,14 @@
 		"export": "BailianChatProviderOptions",
 		"member": "openStream",
 		"module": "providers/bailian",
-		"description": "Describe the raw subscription request and map its untouched Response with a real upstream-ready promise.",
+		"description": "描述原始订阅请求，映射未经消费的 Response 和真实的上游就绪 Promise。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/raw-bailian-provider.ts",
 		"notes": [
-			"Provider injects cancellation throughout request construction, HTTP and response mapping.",
-			"mapResponse must not consume the body or await ready; return both so reading begins while ready is pending.",
-			"HTTP 200 or the first business event is not an independent readiness guarantee.",
-			"The example accepts x-upstream-ready only under its documented backend subscription-before-headers contract."
+			"Provider 在请求构建、HTTP 执行和响应映射时传入取消信号。",
+			"mapResponse 立即返回响应和 ready，使工厂可在等待就绪期间开始读取。",
+			"HTTP 200 或首条业务事件无法单独证明订阅已就绪。",
+			"示例只在后端保证先建立订阅再发送响应头时接受 x-upstream-ready。"
 		]
 	},
 	{
@@ -318,20 +318,20 @@
 		"export": "BailianChatProviderOptions",
 		"member": "listEvents",
 		"module": "providers/bailian",
-		"description": "Describe one ascending history-page request and map complete raw events with an opaque next-page token.",
+		"description": "描述单次升序历史分页请求，将完整原始事件与不透明的下一页游标映射给 Provider。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/raw-bailian-provider.ts",
 		"notes": [
-			"Preserve event identity, timestamps, content, lifecycle information, and main Session status.",
-			"History must be complete; same-ID snapshot conflicts need update evidence.",
-			"created_at is not a version of a changed snapshot."
+			"保留事件身份、时间戳、内容、生命周期信息和主会话状态。",
+			"须返回完整历史。同 ID 快照冲突时需要更新依据。",
+			"created_at 只表示创建时间，快照更新须使用相应版本依据。"
 		]
 	},
 	{
 		"name": "BailianStreamResponse",
 		"export": "BailianStreamResponse",
 		"module": "providers/bailian",
-		"description": "Raw streaming HTTP response plus a real upstream-readiness promise.",
+		"description": "原始流式 HTTP 响应及表示上游真实就绪的 Promise。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/raw-bailian-provider.ts"
 	},
@@ -339,30 +339,30 @@
 		"name": "BailianEventsPage",
 		"export": "BailianEventsPage",
 		"module": "providers/bailian",
-		"description": "Complete raw history objects in ascending order with an optional next page token.",
+		"description": "按升序排列的完整原始历史对象及可选的下一页游标。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/raw-bailian-provider.ts",
 		"notes": [
-			"End pagination with null or no token; never reuse a business event ID as a per-update cursor."
+			"游标为 null 或缺失时结束分页。更新重放须使用独立游标。"
 		]
 	},
 	{
 		"name": "SessionEvent",
 		"export": "SessionEvent",
 		"module": "protocol",
-		"description": "SDK-owned business event contract consumed by Kit's normalized stream and message projection.",
+		"description": "由 SDK 定义的业务事件合同，供 Kit 的标准事件流和消息投影使用。",
 		"doc": "apps/storybook/content/docs/sdk/stream.mdx",
 		"example": "examples/normalized-provider.ts",
 		"notes": [
-			"Unknown event types and content blocks remain available for safe fallback rendering.",
-			"ready, reset, ping, and done are transport controls rather than business events."
+			"保留未知事件类型和内容块，供界面安全兜底展示。",
+			"ready、reset、ping 和 done 属于传输控制帧。"
 		]
 	},
 	{
 		"name": "SendMessageRequest",
 		"export": "SendMessageRequest",
 		"module": "protocol",
-		"description": "Text submission with optional optimistic identity; mounting files is a Session-creation operation.",
+		"description": "提交消息文本，可携带乐观消息标识、技能名单和随消息挂载的附件引用。",
 		"doc": "apps/storybook/content/docs/sdk/client.mdx",
 		"example": "examples/backend-http.ts"
 	},
@@ -370,7 +370,7 @@
 		"name": "SendMessageResponse",
 		"export": "SendMessageResponse",
 		"module": "protocol",
-		"description": "Actual Session ID, acceptance flag, and submitted event IDs returned by a write.",
+		"description": "写请求返回的真实会话 ID、受理标记和已提交的事件 ID。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/backend-http.ts"
 	},
@@ -378,7 +378,7 @@
 		"name": "ToolApprovalsResponse",
 		"export": "ToolApprovalsResponse",
 		"module": "protocol",
-		"description": "Current requires_action state, pending batch/calls, and frozen tool requests.",
+		"description": "当前 requires_action 状态、待审批批次及调用，以及冻结的工具请求。",
 		"doc": "apps/storybook/content/docs/sdk/tool-approvals.mdx",
 		"example": "examples/backend-http.ts"
 	},
@@ -386,7 +386,7 @@
 		"name": "ToolApprovalDecision",
 		"export": "ToolApprovalDecision",
 		"module": "protocol",
-		"description": "One explicit allow or deny decision identified by the current batch and call.",
+		"description": "由当前批次及调用唯一标识的一次显式允许或拒绝决定。",
 		"doc": "apps/storybook/content/docs/sdk/tool-approvals.mdx",
 		"example": "examples/backend-http.ts"
 	},
@@ -394,19 +394,19 @@
 		"name": "KitError",
 		"export": "KitError",
 		"module": "protocol",
-		"description": "Safe error code and summary with explicit retryability for Controller recovery.",
+		"description": "通过安全错误码、摘要和明确的可重试标记指导控制器恢复。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/backend-http.ts",
 		"notes": [
-			"Do not expose backend response bodies, authorization headers, or provider credentials in errors.",
-			"Authorization and contract failures stop automatic reconnect; temporary transport failures may retry."
+			"错误中须隐藏后端响应体、鉴权请求头及 Provider 凭据。",
+			"鉴权和合同错误停止自动重连，临时传输故障可重试。"
 		]
 	},
 	{
 		"name": "BailianOperation",
 		"export": "BailianOperation",
 		"module": "providers/bailian",
-		"description": "Backend request description and response conversion; HTTP execution belongs to the Provider and RequestClient.",
+		"description": "描述后端请求及响应转换，HTTP 请求由 Provider 与 RequestClient 执行。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/raw-bailian-provider.ts"
 	},
@@ -414,7 +414,7 @@
 		"name": "BailianRequestSpec",
 		"export": "BailianRequestSpec",
 		"module": "providers/bailian",
-		"description": "Application path and RequestInit without signal; cancellation is owned by the Provider.",
+		"description": "应用路径及不含 signal 的 RequestInit，取消由 Provider 管理。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/raw-bailian-provider.ts"
 	},
@@ -422,7 +422,7 @@
 		"name": "BailianRequestContext",
 		"export": "BailianRequestContext",
 		"module": "providers/bailian",
-		"description": "Provider cancellation context shared by request construction and response mapping.",
+		"description": "请求构建和响应映射共用的 Provider 取消上下文。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/raw-bailian-provider.ts"
 	},
@@ -430,7 +430,7 @@
 		"name": "createBailianThreadOperations",
 		"export": "createBailianThreadOperations",
 		"module": "providers/bailian",
-		"description": "Standard Bailian thread-list and thread-event operation configs; customize proxy basePath or mappings.",
+		"description": "提供百炼标准线程列表和线程事件操作配置。代理可自定义 basePath 或映射。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/multi-agent.tsx"
 	},
@@ -438,7 +438,7 @@
 		"name": "BailianThreadOperations",
 		"export": "BailianThreadOperations",
 		"module": "providers/bailian",
-		"description": "Optional thread query configurations for the raw Bailian Provider.",
+		"description": "百炼原始流 Provider 的可选线程查询配置。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/multi-agent.tsx"
 	},
@@ -446,7 +446,7 @@
 		"name": "BailianThreadQuery",
 		"export": "BailianThreadQuery",
 		"module": "providers/bailian",
-		"description": "Session identity and opaque pagination options for a thread query.",
+		"description": "包含会话标识和不透明的线程查询分页选项。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/multi-agent.tsx"
 	},
@@ -454,7 +454,7 @@
 		"name": "ThreadQueryOptions",
 		"export": "ThreadQueryOptions",
 		"module": "providers",
-		"description": "Optional page size, cursor and AbortSignal for normalized thread queries.",
+		"description": "标准事件线程查询的可选页大小、游标和 AbortSignal。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/multi-agent.tsx"
 	},
@@ -463,7 +463,7 @@
 		"export": "ChatProvider",
 		"member": "listThreads",
 		"module": "providers",
-		"description": "Optional child Agent history query; keep Session ownership and cancellation intact.",
+		"description": "可选的子 Agent 线程列表查询，须保留会话归属和取消信号。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/multi-agent.tsx"
 	},
@@ -472,7 +472,7 @@
 		"export": "ChatProvider",
 		"member": "listThreadEvents",
 		"module": "providers",
-		"description": "Optional child Agent history query; keep Session ownership and cancellation intact.",
+		"description": "可选的子 Agent 线程历史查询，须保留会话归属和取消信号。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/multi-agent.tsx"
 	},
@@ -480,7 +480,7 @@
 		"name": "ClientOperations",
 		"export": "ClientOperations",
 		"module": "providers/kit",
-		"description": "Typed optional operations configured with buildRequest and mapResponse.",
+		"description": "通过 buildRequest 和 mapResponse 配置的可选类型化操作。",
 		"doc": "apps/storybook/content/docs/sdk/client.mdx",
 		"example": "examples/backend-data.ts"
 	},
@@ -488,7 +488,7 @@
 		"name": "ClientOperation",
 		"export": "ClientOperation",
 		"module": "providers/kit",
-		"description": "A supported data Client operation name.",
+		"description": "数据 Client 支持的操作名。",
 		"doc": "apps/storybook/content/docs/sdk/client.mdx",
 		"example": "examples/backend-data.ts"
 	},
@@ -496,7 +496,7 @@
 		"name": "ExplicitKitClientOptions",
 		"export": "ExplicitKitClientOptions",
 		"module": "providers/kit",
-		"description": "Inject Request and operations without hidden Kit routes.",
+		"description": "接收显式注入的 Request 和 operations，业务路径由调用方配置。",
 		"doc": "apps/storybook/content/docs/sdk/client.mdx",
 		"example": "examples/backend-data.ts"
 	},
@@ -504,7 +504,7 @@
 		"name": "createMemberSessionStorage",
 		"export": "createMemberSessionStorage",
 		"module": "auth",
-		"description": "Create injected identity storage scoped to the complete backend URL.",
+		"description": "创建注入式身份存储，按完整后端 URL 隔离。",
 		"doc": "apps/storybook/content/docs/sdk/client.mdx",
 		"example": "examples/backend-data.ts"
 	},
@@ -512,7 +512,7 @@
 		"name": "normalizeMemberApiBaseUrl",
 		"export": "normalizeMemberApiBaseUrl",
 		"module": "auth",
-		"description": "Validate and normalize an HTTP backend URL without credentials.",
+		"description": "校验并规范化不含凭据的 HTTP 后端 URL。",
 		"doc": "apps/storybook/content/docs/sdk/client.mdx",
 		"example": "examples/backend-data.ts"
 	},
@@ -520,13 +520,13 @@
 		"name": "streamProtocolFrames",
 		"export": "streamProtocolFrames",
 		"module": "providers/kit",
-		"description": "Consume documented protocol frames through an injected RequestClient, with cancellation and valid-frame idle detection.",
+		"description": "通过注入的 RequestClient 消费公开协议帧，支持取消和基于有效帧的空闲检测。",
 		"doc": "apps/storybook/content/docs/sdk/stream.mdx",
 		"example": "examples/protocol-frames.ts",
 		"notes": [
-			"The caller owns the path, identity and protocol headers; this helper does not reconnect or maintain Chat state.",
-			"done ends one subscription; error and unexpected EOF reject. The default idle timeout is 45000 ms.",
-			"Use only for the documented protocol frames, not original Bailian SSE deltas."
+			"路径、身份和协议头由调用方管理，重连和 Chat 状态由控制器负责。",
+			"done 结束单次订阅，error 和意外 EOF 导致拒绝。默认空闲超时 45000 毫秒。",
+			"只接收公开协议帧，百炼原始 SSE 增量应走其专用入口。"
 		]
 	}
 ]

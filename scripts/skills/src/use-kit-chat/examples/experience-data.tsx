@@ -5,30 +5,30 @@ import type { KitClient } from "@openagentpack/kit-sdk/providers/kit";
 import { useSessionDetails } from "@openagentpack/kit-sdk/sessions/hooks";
 import { useUsageLimits } from "@openagentpack/kit-sdk/usage/hooks";
 
-// Data hooks accept an explicit Client; Context remains an optional compatibility path.
+// 数据 Hook 支持显式 Client，也可通过 Context 兼容接入。
 export function AgentResourceSummary({ slug }: { slug: string | null }) {
 	const resources = useAgentResources(slug);
 	return (
 		<div>
-			<p>{resources?.skills?.map((skill) => skill.name).join(", ") || "No skill metadata"}</p>
-			<p>{resources?.memory_stores?.map((store) => store.name).join(", ") || "No memory stores"}</p>
+			<p>{resources?.skills?.map((skill) => skill.name).join("、") || "暂无技能信息"}</p>
+			<p>{resources?.memory_stores?.map((store) => store.name).join("、") || "暂无记忆库"}</p>
 		</div>
 	);
 }
 
 export function MemberLimitSummary() {
 	const limits = useUsageLimits({ days: 30 });
-	if (limits.loading) return <p role="status">Loading usage limits…</p>;
+	if (limits.loading) return <p role="status">正在加载限额…</p>;
 	if (limits.error) return <p role="alert">{String(limits.error)}</p>;
-	if (!limits.data) return <p>Not a local Kit member</p>;
+	if (!limits.data) return <p>当前身份不是 Kit 本地成员</p>;
 	return (
 		<button type="button" onClick={() => void limits.reload()}>
-			Refresh usage limits
+			刷新用量限制
 		</button>
 	);
 }
 
-// File associations belong to application metadata, not SSE message text.
+// 文件关联记录来自应用元数据。
 export function ChatWithFileMetadata({
 	client,
 	sessionId,
@@ -40,11 +40,11 @@ export function ChatWithFileMetadata({
 }) {
 	const chat = useChat({ sessionId, provider });
 	const details = useSessionDetails({ client, sessionId, setMessageFiles: chat.setMessageFiles });
-	return details.error ? <p role="alert">{details.error}</p> : <p>{chat.messages.length} messages</p>;
+	return details.error ? <p role="alert">{details.error}</p> : <p>{chat.messages.length} 条消息</p>;
 }
 
 export async function readUploadStatus(client: KitClient, fileId: string) {
 	const status = await client.fileStatus(fileId);
-	// Keep the draft until ready; the server enforces readiness and ownership too.
+	// 文件就绪前保留草稿，服务端也会校验文件状态和归属。
 	return { ready: status.available, status: status.status };
 }

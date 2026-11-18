@@ -1,70 +1,55 @@
-# Kit Chat Provider
+# 接入 Kit 对话后端
 
-Use this skill for the frontend adapter between an existing business backend and
-Kit's chat Controller. The upstream service remains Bailian Managed Agent. This is
-not a second provider abstraction, backend deployment tool, or React context component.
+使用本 Skill 在已有业务后端与 Kit 对话控制器之间编写前端适配。上游仍是百炼托管 Agent。
+适配层的职责限于连接现有后端、映射响应及订阅生命周期。
 
-## Choose the path
+## 选择接入方式
 
-| Existing backend | Implementation |
+| 现有后端 | 实现 |
 | --- | --- |
-| Standard SDK `SessionEvent` snapshots and control frames, including Kit Server | Configure `createSessionEventChatProvider`; read [normalized events](references/normalized-events.md) |
-| Standard snapshots with a different transport | Implement the five-method `ChatProvider` and map lifecycle callbacks |
-| Relays original Bailian SSE | Use `createBailianChatProvider` from `@openagentpack/kit-sdk/providers/bailian`; read [raw SSE](references/raw-sse.md) |
+| 返回标准 SDK `SessionEvent` 快照和控制帧，例如 Kit Server | 配置 `createSessionEventChatProvider`，参考[标准事件接入](references/normalized-events.md) |
+| 返回标准快照，但采用其他传输方式 | 实现 `ChatProvider` 的五个方法并映射生命周期回调 |
+| 转发百炼原始 SSE | 使用 `@openagentpack/kit-sdk/providers/bailian` 的 `createBailianChatProvider`，参考[原始 SSE 接入](references/raw-sse.md) |
 
-The Web app uses the same public configuration as self-owned backends. Existing
-KitClient applications can retain their context entry or use the
-[compatibility wrapper](examples/kit-client-provider.ts).
+Web 应用与自建后端共用同一套公开配置。已有 KitClient 的应用可以继续通过 Context 接入，
+也可以使用[兼容封装](examples/kit-client-provider.ts)。
 
-Inspect actual request, response, readiness, and history contracts before choosing.
-Raw text chunks without event identity and execution state are not sufficient.
-The raw factory uses a persistent subscription and a separate send request; a POST
-that returns only one response stream needs a different, explicitly designed adapter.
+先核对真实的请求、响应、就绪信号和历史合同。事件需要可识别的身份和执行状态，只有文本片段无法满足合同。
+原始流工厂使用持久订阅和独立的发送请求。若 POST 仅返回本次响应流，需按该传输方式单独设计适配器。
 
-## Integration workflow
+## 接入步骤
 
-1. Compare backend capabilities with [the contract](references/contract.md).
-   Session creation/listing and file operations remain outside ChatProvider.
-2. Create one `RequestClient` with the runtime base URL and application-auth headers.
-   Configure each HTTP operation with `buildRequest` and `mapResponse`; the Provider
-   executes HTTP. Read [the four layers](references/layers.md). Use
-   [the compiled examples](references/examples.md) and [the API reference](references/api.md).
-   Example routes and wrappers are explicitly sample business contracts, not Bailian URLs.
-3. Keep the Provider instance stable and pass it to
-   `useChat({ sessionId, provider })`. A null ID postpones the subscription.
-   Use `transformSessionEvent` as its message strategy; customize `transformMessage`
-   only when the display requires it. Read [message transformation](references/message-transform.md).
-4. Verify idle-session readiness, full-history/live overlap, same-ID updates,
-   aborted requests, and approval outcomes against the backend's real contract.
-5. For Multi-Agent, add optional thread queries and pass `chat.multiAgent` to `Chat`.
-   Use [the shared example](examples/multi-agent.tsx) for normalized snapshots or the
-   Bailian standard API preset. Do not build a second thread state machine in the page.
+1. 对照[接入合同](references/contract.md)核实后端能力。会话创建、列表和文件操作由 ChatProvider 之外的调用方负责。
+2. 使用运行时 base URL 和应用鉴权头创建一个 `RequestClient`。通过 `buildRequest` 和
+   `mapResponse` 配置各 HTTP 操作，由 Provider 执行请求。阅读[四层职责](references/layers.md)，
+   查阅[可编译示例](references/examples.md)和 [API 参考](references/api.md)。示例路由和响应包装仅用于演示业务合同。
+3. 保持 Provider 实例稳定，并传给 `useChat({ sessionId, provider })`。ID 为 `null` 时延后订阅。
+   消息转换默认复用 `transformSessionEvent`，有展示需求时再自定义 `transformMessage`。
+   参考[消息转换](references/message-transform.md)。
+4. 按真实后端合同验证空闲会话能否就绪、完整历史和实时事件重叠时的合并、同 ID 更新、
+   请求取消及工具审批结果。
+5. 接入多 Agent 时，可增加线程查询并将 `chat.multiAgent` 传给 `Chat`。
+   标准快照后端和百炼标准 API 预设均可参考[共享示例](examples/multi-agent.tsx)。
+   线程状态复用 SDK 实现。
 
-The Provider defines message conversion; Chat rebuilds from the latest event ledger
-and owns the resulting messages. The Controller owns reconnect scheduling, optimistic
-messages, and approval orchestration. Each Provider `stream` invocation owns one connection. Do not add a
-second retry loop or automatically resend message/approval POSTs.
+Provider 定义消息转换规则。Chat 根据最新事件账本重建并持有消息，控制器负责编排重连、
+乐观消息和工具审批。每次 Provider `stream` 调用只管理一条连接。保持单一重试循环，
+消息和审批的 POST 由显式操作发起，禁止自动重发。
 
-Use `createSseStream` for an existing byte stream, or `createRequest` for independent
-HTTP and SSE requests. Stream leaves data as text; Request can parse JSON syntax
-without validating its business schema. Neither infers readiness or maintains chat
-state. The raw factory requires Request plus six operation configurations;
-free request callbacks are not an alternate input form.
+已有字节流时使用 `createSseStream`，独立 HTTP 或 SSE 请求使用 `createRequest`。
+Stream 将帧数据保留为文本。Request 可解析 JSON 语法，业务 Schema 校验归调用方。
+订阅就绪与会话状态由上层管理。原始流工厂接受 Request 和六个操作配置，
+每个请求通过对应的操作配置接入。
 
-## Ownership and dependencies
+## 职责与依赖
 
-Reuse the SDK's `SessionEvent` contract and public normalization. Do not copy its
-accumulator, concatenate snapshots as deltas, or import SDK `internal/*` paths.
-The browser may use the SDK `session-events` entry; never its Node-oriented main
-entry at runtime. Provider credentials remain on the backend; frontend requests
-carry application identity only.
+复用 SDK 的 `SessionEvent` 合同与公开的事件归一工具。保留快照语义，勿复制 SDK 的累加器、
+把快照当作增量拼接或导入 SDK 的 `internal/*` 路径。浏览器运行时通过 SDK 的 `session-events`
+入口访问事件能力。Provider 凭据保留在后端，前端请求只携带应用身份。
 
-The repository pins the published npm package `@openagentpack/sdk` to the exact
-version `0.10.0`, with package contents locked by `pnpm-lock.yaml` integrity.
-Its browser-safe `@openagentpack/sdk/session-events` entry
-exports `SessionEvent` and `createBailianSessionEventNormalizer`; its server entry
-provides `listSessionThreads` and `listSessionThreadEvents`.
-Verify resolved public exports and run the relevant contract and browser bundle
-tests when changing dependencies. Registry availability does not establish live
-backend/Cloud validation.
-Do not publish or modify SDK defaults as part of backend integration.
+本仓库使用已发布的 npm 包 `@openagentpack/sdk`，固定版本为 `0.10.0`，
+包内容由 `pnpm-lock.yaml` 中的完整性摘要锁定。`@openagentpack/sdk/session-events` 可在浏览器使用，
+提供 `SessionEvent` 和 `createBailianSessionEventNormalizer`。
+服务端入口提供 `listSessionThreads` 和 `listSessionThreadEvents`。
+升级依赖时，检查解析到的公开导出并运行相关合同测试和浏览器打包测试。
+真实后端和 Cloud 接入需独立验收。集成现有后端时沿用已发布的 SDK 与默认配置。

@@ -161,6 +161,34 @@ test("pnpm start 复用已有配置，并通过真实 dev 入口构建后启动�
 	);
 });
 
+const shellAddresses = {
+	BAILIAN_BASE_URL: "https://shell.example.invalid/agentstudio",
+	BAILIAN_WORKSPACE_ID: "workspace-shell",
+};
+
+for (const [label, baseUrl, workspaceId, expected] of [
+	["Workspace ID", "", "workspace-local", { BAILIAN_BASE_URL: "", BAILIAN_WORKSPACE_ID: "workspace-local" }],
+	[
+		"Base URL",
+		"https://local.example.invalid/agentstudio",
+		"",
+		{ BAILIAN_BASE_URL: "https://local.example.invalid/agentstudio", BAILIAN_WORKSPACE_ID: "" },
+	],
+	["shell 地址", "", "", shellAddresses],
+]) {
+	test(`pnpm start 使用 ${label} 启动服务`, (t) => {
+		const envContent = `KIT_GATEWAY=sdk\nBAILIAN_BASE_URL=${baseUrl}\nBAILIAN_WORKSPACE_ID=${workspaceId}\n`;
+		const result = runDev(t, ["server"], {
+			entry: "start",
+			envContent,
+			inheritedEnv: { ...shellAddresses, TEST_EXPECT_ENV: JSON.stringify(expected) },
+		});
+		assert.equal(result.status, 0, result.stderr);
+		assert.deepEqual(result.trace.at(-1), { stage: "dev", target: "@openagentpack/kit-server" });
+		assert.equal(result.envContent, envContent);
+	});
+}
+
 test("pnpm start 支持指定目标，依赖构建失败时不启动服务且保留配置", (t) => {
 	const envContent = "KIT_GATEWAY=mock\nADMIN_TOKEN=existing-token\n";
 	const result = runDev(t, ["server"], { entry: "start", envContent, buildExit: 17 });

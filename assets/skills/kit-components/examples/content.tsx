@@ -28,7 +28,7 @@ export interface ContentExamplesProps {
 	onCopy: (text: string) => Promise<void>;
 }
 
-// Render the message list inside a host with a bounded height.
+// 在高度有界的容器内渲染消息列表。
 export function ContentExamples({ messages, tool, attachment, onDownload, onCopy }: ContentExamplesProps) {
 	const [feedback, setFeedback] = useState<ActionsFeedbackValue>("default");
 	const message = messages[0];
@@ -44,10 +44,10 @@ export function ContentExamples({ messages, tool, attachment, onDownload, onCopy
 					autoScroll={false}
 					onArtifactDownload={onDownload}
 					onCopy={onCopy}
-					empty={<p>No messages yet.</p>}
+					empty={<p>暂无消息</p>}
 				/>
 			</div>
-			<ReasoningBlock text="Compare the available evidence before answering." status="done" />
+			<ReasoningBlock text="先比较已获得的证据，再给出回答。" status="done" />
 			<ToolCallCard part={tool} />
 			<ArtifactCard
 				filename="report.pdf"
@@ -56,31 +56,29 @@ export function ContentExamples({ messages, tool, attachment, onDownload, onCopy
 			/>
 			<FileCard name="notes.txt" onDownload={() => onDownload("notes")} />
 			<Markdown>
-				{
-					"## Result\n\nA **sanitized** Markdown response with a table:\n\n| Item | Status |\n| --- | --- |\n| Report | Ready |"
-				}
+				{"## 结果\n\n下面是经过**净化**的 Markdown 表格。\n\n| 项目 | 状态 |\n| --- | --- |\n| 报告 | 已就绪 |"}
 			</Markdown>
-			<CodeHighlighter lang="typescript" header="Example code" showLineNumbers>
+			<CodeHighlighter lang="typescript" header="示例代码" showLineNumbers>
 				{'const status: string = "ready";'}
 			</CodeHighlighter>
-			<Mermaid header="Request flow" defaultRenderType="image">
-				{"flowchart LR\n  User --> Backend\n  Backend --> Agent"}
+			<Mermaid header="请求流程" defaultRenderType="image">
+				{"flowchart LR\n  User[用户] --> Backend[后端]\n  Backend --> Agent[智能体]"}
 			</Mermaid>
 			<Actions
-				aria-label="Response actions"
-				items={[{ key: "download", label: "Download report", onItemClick: () => onDownload("output-report") }]}
+				aria-label="回复操作"
+				items={[{ key: "download", label: "下载报告", onItemClick: () => onDownload("output-report") }]}
 			>
-				<Actions.Copy text="The report is ready." onCopy={onCopy} label="Copy answer" />
+				<Actions.Copy text="报告已完成。" onCopy={onCopy} label="复制回答" />
 				<Actions.Feedback value={feedback} onChange={setFeedback} />
 			</Actions>
-			{/* Equivalent named exports are supported for selective imports. */}
-			<ActionsCopy text="A second excerpt." onCopy={onCopy} label="Copy excerpt" />
+			{/* 按需导入时也可使用等效的独立导出。 */}
+			<ActionsCopy text="另一段摘录。" onCopy={onCopy} label="复制摘录" />
 			<ActionsFeedback value={feedback} onChange={setFeedback} />
-			<SenderHeader title="Prepared files" open closable={false}>
+			<SenderHeader title="已准备的文件" open closable={false}>
 				<Attachments.FileCard item={attachment} />
 				<AttachmentFileCard item={attachment} />
 			</SenderHeader>
-			<p role="status">Local feedback: {feedback}. Persistence belongs to the caller.</p>
+			<p role="status">当前反馈为 {feedback}。持久化由调用方负责。</p>
 		</div>
 	);
 }

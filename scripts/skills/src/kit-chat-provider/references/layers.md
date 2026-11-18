@@ -1,38 +1,31 @@
-# Stream, Request, Provider, Chat
+# Stream、Request、Provider 与 Chat
 
-Choose the lowest layer needed by the task. These APIs are independent of visual
-components and do not require Kit Server.
+按任务所需选择最底层的入口。这些公开 API 可独立于 UI 组件和 Kit Server 使用。
 
-| Layer | Public API | Responsibility |
+| 层 | 公开 API | 职责 |
 | --- | --- | --- |
-| Stream | `createSseStream` from `@openagentpack/kit-sdk/stream` | Decode bytes and yield raw SSE fields; cancel and release the reader |
-| Request | `createRequest` from `@openagentpack/kit-sdk/request` | Resolve URL and identity headers, execute HTTP, return Response/JSON/raw frames |
-| Provider | `ChatProvider`, `createSessionEventChatProvider`, `createKitChatProvider`, `createBailianChatProvider`, `transformSessionEvent` | Map backend operations, history and readiness; define event-to-message conversion |
-| Chat | `createChatController` from core; `useChat` from react | Own ledger and messages, invoke the Provider strategy, manage optimistic state, reconnects and actions |
+| Stream | `@openagentpack/kit-sdk/stream` 的 `createSseStream` | 解码字节、输出原始 SSE 字段、取消并释放 reader |
+| Request | `@openagentpack/kit-sdk/request` 的 `createRequest` | 解析 URL 和身份头，执行 HTTP 请求并返回 Response、JSON 或原始帧 |
+| Provider | `ChatProvider`、`createSessionEventChatProvider`、`createKitChatProvider`、`createBailianChatProvider`、`transformSessionEvent` | 映射后端操作、历史和就绪信号，定义事件到消息的转换 |
+| Chat | 核心层的 `createChatController` 和 React 的 `useChat` | 持有事件账本和消息，调用 Provider 策略，管理乐观状态、重连及操作 |
 
-The core root also exports Stream and Request. The focused entries do not import
-React or the SDK normalizer. The Bailian entry alone needs the SDK browser converter.
-Default message conversion is pure and needs no SDK runtime. Read
-[message transformation](message-transform.md) for strategy input, ownership, and snapshot rules.
+核心聚合入口也导出 Stream 和 Request。两者的独立入口无需 React 或 SDK 归一器。
+百炼专用入口使用 SDK 的浏览器转换工具。默认消息转换为纯函数，无需 SDK 运行时。
+策略的输入、所有权和快照规则见[消息转换](message-transform.md)。
 
-Read [sse-stream.ts](../examples/sse-stream.ts) for an already-owned response body.
-The iterator leaves `data` as a string. Defaults are `utf8Fatal=false`,
-`flushOnEnd=true`, and no `maxFrameChars` limit. `onComment` reports heartbeat
-comments. Cancellation, parse failure and early `break` release the reader.
-`SseStreamError` identifies decoding or framing failures; reader errors retain
-their transport meaning. A natural EOF is not an Agent completion event.
+已有响应体时参考 [sse-stream.ts](../examples/sse-stream.ts)。迭代器将 `data` 保留为字符串。
+默认 `utf8Fatal=false`、`flushOnEnd=true`，`maxFrameChars` 默认无上限。
+`onComment` 报告心跳注释。取消、解析失败或提前 `break` 都会释放 reader。
+`SseStreamError` 表示解码或分帧失败，读取错误保留传输层语义。自然 EOF 仅表示流结束。
 
-Read [request.ts](../examples/request.ts) for standalone HTTP and SSE. Request has
-no implicit timeout, retry, Content-Type or Kit protocol header. `response` passes
-body ownership to its caller; `json<T>` parses without schema validation, returning
-undefined on HTTP 204; `stream` delegates to Stream and owns reader cleanup.
-Per-request headers override dynamic headers. `mapHttpError` may produce a safe
-application error, but must not expose credentials or arbitrary response bodies.
+独立的 HTTP 与 SSE 用法见 [request.ts](../examples/request.ts)。Request 由调用方配置超时、重试、
+Content-Type 和 Kit 协议头，默认均不添加。`response` 将响应体交给调用方。`json<T>` 只解析 JSON，
+HTTP 204 返回 `undefined`，业务 Schema 须另行校验。`stream` 委托 Stream 并清理 reader。
+单次请求的请求头覆盖动态请求头。`mapHttpError` 可以构造安全的应用错误，避免泄漏凭据或任意响应体。
 
-Web connects Kit Server through `createSessionEventChatProvider`, with explicit
-paths, headers and response mapping. Existing KitClient applications use
-`createTransport` internally: it adds the Kit header, decodes controls/errors and
-retains effective-frame timeouts.
-Raw Bailian uses Request plus the six operation configurations. Provider owns
-stream/history cancellation and ready; Controller alone schedules reconnects.
-No layer automatically repeats message or approval writes.
+Web 通过 `createSessionEventChatProvider` 接入 Kit Server，显式配置路径、请求头和响应映射。
+已有 KitClient 的应用在内部使用 `createTransport`，由其补齐 Kit 协议头、解析控制帧和错误，
+并维护有效帧超时。
+
+百炼原始流使用 Request 和六个操作配置。Provider 管理订阅和历史请求的取消以及 ready 信号，
+重连只由控制器调度。消息与工具审批写入均通过一次显式请求完成。

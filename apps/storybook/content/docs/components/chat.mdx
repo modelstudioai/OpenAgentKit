@@ -54,12 +54,12 @@ import { Chat, type SenderSkill, ToolApprovalCard } from "@openagentpack/kit-cha
 import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
 import { useState } from "react";
 
-// Render below a configured KitProvider, inside a bounded Layout content area.
-// The same component works with useChat({ sessionId, provider }) for a custom backend.
+// 在已配置的 KitProvider 内渲染，并为 Layout 内容区设置有界高度。
+// 接入自建后端时，同一组件也可使用 useChat({ sessionId, provider })。
 export function SessionChat({ sessionId, skills }: { sessionId: string | null; skills?: SenderSkill[] }) {
 	const chat = useChat(sessionId);
 	const [error, setError] = useState<string | null>(null);
-	const report = (cause: unknown) => setError(cause instanceof Error ? cause.message : "The request failed.");
+	const report = (cause: unknown) => setError(cause instanceof Error ? cause.message : "请求失败。");
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col" data-kit-appearance="workspace">
@@ -78,7 +78,7 @@ export function SessionChat({ sessionId, skills }: { sessionId: string | null; s
 						await chat.send(text, { skills: selectedSkills });
 					} catch (cause) {
 						report(cause);
-						throw cause; // Preserve Chat's draft when sending fails.
+						throw cause; // 让 Chat 在发送失败时保留草稿。
 					}
 				}}
 				onStop={() => chat.stop().catch(report)}

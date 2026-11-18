@@ -6,7 +6,7 @@ interface ResourceView<T> {
 	editing: boolean;
 }
 
-/** Backend calls are supplied by the host; the SDK only owns observable call state. */
+/** 宿主提供后端调用，SDK 管理可订阅的调用状态。 */
 export function bindResource<T, Input>(
 	read: (signal: AbortSignal) => Promise<T>,
 	write: (input: Input) => Promise<void>,
@@ -22,7 +22,7 @@ export function bindResource<T, Input>(
 	void query.refresh();
 	return {
 		refresh: query.refresh,
-		// Call after explicit user action; errors reject and are never automatically retried.
+		// 仅在用户显式操作后调用，错误会拒绝，写入禁止自动重试。
 		save: mutation.run,
 		setEditing: editing.set,
 		dispose() {

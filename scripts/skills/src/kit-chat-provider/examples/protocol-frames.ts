@@ -2,7 +2,7 @@ import type { SseFrame } from "@openagentpack/kit-sdk/protocol";
 import { streamProtocolFrames } from "@openagentpack/kit-sdk/providers/kit";
 import type { RequestClient } from "@openagentpack/kit-sdk/request";
 
-/** The request already owns the backend base URL and any required identity/version headers. */
+/** Request 已配置后端 base URL 及所需的身份与协议版本头。 */
 export async function observeProtocolFrames(
 	request: RequestClient,
 	path: string,
@@ -15,6 +15,6 @@ export async function observeProtocolFrames(
 		init: { method: "GET" },
 		idleTimeoutMs: 45_000,
 	});
-	// done ended this subscription. It does not establish Agent execution completion.
-	// Unexpected EOF, protocol error frames, and idle timeouts reject instead.
+	// done 表示本次订阅结束，Agent 执行结果由业务事件确定。
+	// 意外 EOF、协议错误帧和空闲超时会使调用失败。
 }

@@ -1,6 +1,6 @@
 ---
 title: use-kit-chat
-description: 使用英文 Skill 接入 useChat，管理发送、停止、会话切换和工具审批
+description: 使用中文 Skill 接入 useChat，管理发送、停止、会话切换和工具审批
 ---
 
 `use-kit-chat` 指导 coding agent 把 `@openagentpack/kit-sdk/chat/hooks` 的聊天状态接入页面，
@@ -9,8 +9,8 @@ description: 使用英文 Skill 接入 useChat，管理发送、停止、会话�
 React 生命周期；页面直接消费返回的 `ChatMessage`。
 
 [下载 Skill](/skills/use-kit-chat.tgz) ·
-[阅读英文入口](/skills/use-kit-chat/SKILL.md) ·
-[英文 API 参考](/skills/use-kit-chat/references/api.md)
+[阅读 Skill](/skills/use-kit-chat/SKILL.md) ·
+[API 参考](/skills/use-kit-chat/references/api.md)
 
 ## 两种入口
 
@@ -49,7 +49,7 @@ import type { UseChatResult } from "@openagentpack/kit-sdk/chat/hooks";
 
 export function ApprovalList({ chat }: { chat: UseChatResult }) {
 	return (
-		<section aria-label="Tool approvals">
+		<section aria-label="工具审批">
 			{chat.approvals.map((approval) => (
 				<ToolApprovalCard
 					key={JSON.stringify([approval.batch_id, approval.call_id])}
@@ -78,8 +78,8 @@ import { KitProvider } from "@openagentpack/kit-sdk/providers/kit/react";
 import { useRef, useState } from "react";
 import { ApprovalList } from "./approval-list.tsx";
 
-// Initialize once. apiBaseUrl comes from runtime configuration, not location.origin.
-// getAppToken supplies application identity, never a Bailian API key.
+// 只初始化一次，从运行时配置读取 apiBaseUrl。
+// getAppToken 只提供应用身份，百炼 API Key 保留在后端。
 export function createDefaultClient(apiBaseUrl: string, getAppToken: () => Promise<string>) {
 	return createKitClient({
 		baseUrl: apiBaseUrl,
@@ -100,7 +100,7 @@ function ChatPanel({ sessionId }: { sessionId: string | null }) {
 	const [draft, setDraft] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const sending = useRef(false);
-	const report = (cause: unknown) => setError(cause instanceof KitError ? cause.message : "The request failed.");
+	const report = (cause: unknown) => setError(cause instanceof KitError ? cause.message : "请求失败。");
 
 	async function send(text: string) {
 		if (!text.trim() || !chat.canSend || sending.current) return;
@@ -138,7 +138,7 @@ function ChatPanel({ sessionId }: { sessionId: string | null }) {
 						submitDisabled={!chat.canSend}
 						onSubmit={(text) => void send(text)}
 						onCancel={() => void chat.stop().catch(report)}
-						placeholder={sessionId ? "Send a message" : "Select a session to begin"}
+						placeholder={sessionId ? "发送消息" : "选择会话后开始对话"}
 					/>
 				}
 			/>
@@ -170,7 +170,7 @@ import {
 } from "@openagentpack/kit-sdk/chat";
 import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
 
-// This owner is independent of React and must be disposed by its host.
+// 控制器可独立于 React 使用，由宿主负责销毁。
 export function observeSession(
 	provider: ChatProvider,
 	sessionId: string,
@@ -189,8 +189,8 @@ export function observeSession(
 	return { controller, ready, dispose };
 }
 
-// Lower-level alternative: this host must feed SDK SessionEvent snapshots through
-// applyEvent and manage lifecycle itself. Ordinary chat integrations use the owner above.
+// 直接使用 Store 时，宿主须通过 applyEvent 提供 SDK SessionEvent 快照，并管理生命周期。
+// 常规对话接入用上面的控制器。
 export function createLocalStore(sessionId: string, provider: ChatProvider) {
 	const options: SessionStoreOptions = { transformMessage: provider.transformMessage?.bind(provider) };
 	return createSessionStore(sessionId, options);

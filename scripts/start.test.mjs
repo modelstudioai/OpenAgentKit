@@ -50,9 +50,9 @@ test("首次选择 Mock 后生成管理员令牌与成员登录配置，无需�
 	assert.equal(config.closed, true);
 });
 
-for (const [address, value, field] of [
-	["1", "workspace-test", "BAILIAN_WORKSPACE_ID"],
-	["2", "https://example.com/workspaces/test", "BAILIAN_BASE_URL"],
+for (const [address, value, field, unusedField] of [
+	["1", "workspace-test", "BAILIAN_WORKSPACE_ID", "BAILIAN_BASE_URL"],
+	["2", "https://example.com/workspaces/test", "BAILIAN_BASE_URL", "BAILIAN_WORKSPACE_ID"],
 ]) {
 	test(`真实百炼通过 ${field} 配置，API Key 的特殊字符原样保留`, async (t) => {
 		const apiKey = "test-key#with 'quotes' and spaces";
@@ -64,6 +64,7 @@ for (const [address, value, field] of [
 		assert.equal(env.KIT_DATA_DIR, ".data");
 		assert.equal(env.BAILIAN_API_KEY, apiKey);
 		assert.equal(env[field], value);
+		assert.equal(env[unusedField], "");
 		assert.match(env.ADMIN_TOKEN, /^[a-f0-9]{64}$/);
 		assert.equal(config.questions[1].secret, true);
 		assert.ok(config.questions.every(({ question }) => !question.includes(apiKey)));

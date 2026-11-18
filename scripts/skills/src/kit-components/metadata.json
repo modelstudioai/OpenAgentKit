@@ -1,7 +1,7 @@
 {
   "name": "kit-components",
-  "description": "Build or update React chat interfaces with OpenAgentPack Kit components, including message rendering, input attachments, prompts, feedback, session navigation, and tool approval UI. Use for component selection and composition; backend protocol adaptation belongs to kit-chat-provider.",
-  "displayName": "Kit Components",
-  "shortDescription": "Compose Kit chat components and attachment flows",
-  "defaultPrompt": "Use $kit-components to build a chat interface with caller-managed attachments and message feedback."
+  "description": "用 OpenAgentPack Kit 的 React 组件搭建对话界面，包括带会话导航、聊天区和 Agent 资源的完整页面。适用于组件选型、布局、消息渲染、附件输入和工具审批界面。",
+  "displayName": "Kit 对话组件",
+  "shortDescription": "用 Kit 组件搭建会话导航、聊天区与资源侧栏，组合附件和审批界面",
+  "defaultPrompt": "用 $kit-components 搭建一个会话工作台，包含会话导航、聊天区和 Agent 资源侧栏。"
 }

@@ -1,34 +1,27 @@
-# Message transformation
+# 消息转换
 
-SDK normalization converts raw Bailian SSE into `SessionEvent` snapshots. A Provider's
-`transformMessage` converts those snapshots into Kit `ChatMessage` presentation data.
-It does not normalize raw SSE again. Both built-in Provider factories explicitly use
-the public `transformSessionEvent` default, which has no SDK runtime dependency.
+SDK 将百炼原始 SSE 归一为 `SessionEvent` 快照。Provider 的 `transformMessage` 将这些已归一的
+快照转换为 Kit 的展示数据 `ChatMessage`。两个内置 Provider 工厂都显式使用公开的
+`transformSessionEvent` 作为默认策略，该策略无需 SDK 运行时。
 
-`MessageTransformer` accepts `{ messages, event, identity }` and returns
-`{ messages, artifacts? }`. `messages` is the temporary array for the current thread
-in the current reconstruction; the transformer may modify it or return a replacement
-array. `identity` is assigned by Chat and stays stable across snapshot replacements.
-Preserve it when delegating, along with message IDs, part IDs, and reconciliation fields.
+`MessageTransformer` 接收 `{ messages, event, identity }`，返回 `{ messages, artifacts? }`。
+`messages` 是本次重建中当前线程的临时数组，策略可原地修改或返回新数组。
+`identity` 由 Chat 分配，在快照替换后保持稳定。委托给其他策略时，须保留它以及消息 ID、
+分片 ID 和对账字段。
 
-Chat owns the event ledger and rebuilds from its latest snapshots. It invokes the
-strategy for each event and owns the returned arrays. Do not retain messages in a
-Provider closure, mutate events, or keep a cumulative cache across reconstructions.
-A Provider can serve multiple Sessions. Same-ID snapshots can replace or clear content,
-and reset can remove an event entirely. Transformations must support those operations.
+Chat 持有事件账本，使用最新快照重建消息，对每个事件调用策略并持有返回的数组。
+Provider 只定义转换规则，勿在闭包中留存消息、修改事件或跨重建过程保留累计缓存。
+一个 Provider 可供多个会话使用。同 ID 快照可能替换或清空内容，reset 也可能完全移除事件，
+转换需支持这些情况。
 
-[message-transform.ts](../examples/message-transform.ts) wraps the default strategy
-with an idempotent display-label replacement. It returns replacement arrays while
-preserving IDs, status, tool data, and artifacts. Construct the wrapper once for each
-backend binding. The wrapper forwards each network method on the original instance,
-preserving prototype methods and their `this` binding. This sample deliberately uses the default strategy; wrapping another
-custom strategy requires deciding how the two display policies compose.
+[message-transform.ts](../examples/message-transform.ts) 包装默认策略，幂等地替换展示标签。
+示例返回新数组，同时保留 ID、状态、工具数据和产物。每个后端绑定只构造一次包装。
+所有网络方法仍在原实例上调用，保留原型方法及其 `this` 绑定。
+若要包装另一套自定义策略，先明确两套展示规则如何组合。
 
-Execution phase, pending approvals, optimistic messages, reconciliation, and reconnects
-remain in Chat. Hiding a status part or changing text cannot complete a Turn or authorize
-a tool. UI components still receive the same `ChatMessage` shape.
+Chat 负责执行阶段、待审批项、乐观消息、对账和重连。隐藏状态分片或修改文本只影响展示。
+UI 组件继续使用相同形状的 `ChatMessage`。
 
-The property is optional for compatibility: an existing five-method Provider or KitClient
-uses `transformSessionEvent` when omitted. Direct Store consumers can inject the same
-strategy with `createSessionStore(sessionId, { transformMessage })`; hook consumers
-configure it on their Provider rather than rebuilding the Store in the page.
+该属性可选，兼容已有的五方法 Provider 或 KitClient。省略时使用 `transformSessionEvent`。
+直接使用 Store 的调用方可通过 `createSessionStore(sessionId, { transformMessage })` 注入同一策略。
+使用 Hook 时，在 Provider 上配置策略，由 Chat 持有 Store。

@@ -1,4 +1,4 @@
-# scripts/skills — 英文开发 Skill 源与生成器
+# scripts/skills — 中文开发 Skill 源与生成器
 
 适用于本目录及其生成链路。先读[根规则](../../AGENTS.md)、
 [目录规则](../../docs/repository-layout.md)与 [ADR-0027](../../docs/adr/0027-skills-source-and-generated-output.md)。
@@ -15,7 +15,7 @@
 
 ## 不变量
 
-1. Skill 的入口、参考、metadata 与示例使用英文；维护文档和站内介绍使用中文。
+1. Skill 的入口、参考、元数据、示例注释与界面文案使用中文，保留 Skill ID、文件名、API 标识符和协议值。
 2. 最终目录由根命令生成，不手改 `SKILL.md`、OpenAI metadata、API/示例参考、
    示例副本或 MDX 的 `skill-example` 标记区。
 3. 每个 Skill 可独立复制；内部相对链接不能越出目录，文件键使用可移植的 `/`。

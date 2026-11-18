@@ -3,7 +3,7 @@ import type { UseChatResult } from "@openagentpack/kit-sdk/chat/hooks";
 
 export function ApprovalList({ chat }: { chat: UseChatResult }) {
 	return (
-		<section aria-label="Tool approvals">
+		<section aria-label="工具审批">
 			{chat.approvals.map((approval) => (
 				<ToolApprovalCard
 					key={JSON.stringify([approval.batch_id, approval.call_id])}

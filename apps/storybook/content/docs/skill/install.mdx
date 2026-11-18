@@ -1,6 +1,6 @@
 ---
 title: 安装与更新
-description: 从仓库或离线包获取英文 Skill，并在更新时保留本地修改
+description: 从仓库或离线包获取中文 Skill，并在更新时保留本地修改
 ---
 
 Skill 通过完整目录交付。每个目录中的 `SKILL.md` 是入口，`references/` 提供按需阅读的
@@ -72,21 +72,21 @@ Skill 随当前仓库 API 更新。旧版本 Kit 或已修改的 copy-in 组件�
 
 ## 试用提示词
 
-在工具识别到相应 Skill 后，可以用英文明确任务：
+工具识别到 Skill 后，可以用中文描述任务。
 
 ```text
-Use kit-components to build a conversation panel with Sender and Attachments.
-Keep upload requests in a caller-provided callback and preserve editable drafts.
+用 $kit-components 搭建带 Sender 和 Attachments 的对话面板。
+上传请求通过调用方提供的回调执行，草稿保持可编辑。
 ```
 
 ```text
-Use use-kit-chat to connect this page to an existing ChatProvider.
-Include send, stop, session switching, and tool approval and denial.
+用 $use-kit-chat 把这个页面接入已有 ChatProvider。
+实现发送、停止、切换会话，以及允许和拒绝工具调用。
 ```
 
 ```text
-Use kit-chat-provider to connect our Bailian backend, which returns raw SSE.
-Inspect the upstream readiness and complete history contracts before writing the adapter.
+用 $kit-chat-provider 接入返回原始 SSE 的百炼业务后端。
+编写适配器前先核对上游就绪和完整历史回放的接口合同。
 ```
 
 浏览器中的应用登录令牌与百炼 Provider 凭据不同。自建后端接入始终把百炼 API Key 留在

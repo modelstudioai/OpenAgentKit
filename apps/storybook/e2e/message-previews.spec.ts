@@ -1,11 +1,10 @@
 import { expect, test } from "./fixtures.ts";
+import { previewFrame, sitePath } from "./paths.ts";
 
 // 文档读者能查看可复制的完整示例，并在切换设备时保留当前演示选择。
 test("Message 文档：源码可展开，设备切换保留布局选择", async ({ page }) => {
-	await page.goto("/docs/components/general/message/");
-	const preview = page
-		.locator(".kit-preview")
-		.filter({ has: page.locator('iframe[src="/previews/message-workspace/"]') });
+	await page.goto(sitePath("/docs/components/general/message/"));
+	const preview = page.locator(".kit-preview").filter({ has: page.locator(previewFrame("message-workspace")) });
 	const frame = preview.frameLocator("iframe");
 	const layout = frame.getByRole("combobox", { name: "消息布局", exact: true });
 	await layout.selectOption("default");
@@ -21,7 +20,7 @@ test("Message 文档：源码可展开，设备切换保留布局选择", async 
 
 // 状态由公开 props 控制：流式追加可见，完成才显示复制，失败按消息角色呈现。
 test("Message 状态演示：追加、完成、失败和中断", async ({ page }) => {
-	await page.goto("/previews/message-status/");
+	await page.goto(sitePath("/previews/message-status/"));
 	const status = page.getByRole("combobox", { name: "消息状态", exact: true });
 	await expect(page.getByText("生成中…", { exact: true })).toBeVisible();
 	await expect(page.getByRole("button", { name: "复制", exact: true })).toHaveCount(0);
@@ -43,7 +42,7 @@ test("Message 状态演示：追加、完成、失败和中断", async ({ page }
 
 // 用户可通过键盘阅读执行详情，文件与复制把真实回调参数交给本地演示宿主。
 test("Message 内容演示：展开执行详情，区分文件预览、下载和原文复制", async ({ page }) => {
-	await page.goto("/previews/message-parts/");
+	await page.goto(sitePath("/previews/message-parts/"));
 	const execution = page.locator('details[aria-label="执行过程"]');
 	await expect(execution).toHaveJSProperty("open", false);
 	await execution.locator(":scope > summary").focus();
@@ -57,14 +56,14 @@ test("Message 内容演示：展开执行详情，区分文件预览、下载和
 	await expect(tool.getByText("输入参数", { exact: true })).toBeVisible();
 	await expect(tool.getByText("执行结果", { exact: true })).toBeVisible();
 
-	await page.goto("/previews/message-files/");
+	await page.goto(sitePath("/previews/message-files/"));
 	await expect(page.getByText("data.csv", { exact: true })).toBeVisible();
 	await expect(page.getByRole("button", { name: /^(打开|下载) data\.csv$/ })).toHaveCount(0);
 	await page.getByRole("button", { name: "打开 weekly-report.md", exact: true }).click();
 	await expect(page.getByRole("status").filter({ hasText: "打开文件：file-report（text/markdown）" })).toBeVisible();
 	await page.getByRole("button", { name: "下载 weekly-report.md", exact: true }).click();
 	await expect(page.getByRole("status").filter({ hasText: "下载文件：file-report" })).toBeVisible();
-	await page.getByRole("button", { name: "复制", exact: true }).click();
+	await page.getByRole("group", { name: "消息操作" }).last().getByRole("button", { name: "复制", exact: true }).click();
 	await expect(page.getByRole("status").filter({ hasText: "复制原文：" })).toHaveText(
 		"复制原文：周报已生成。\n\n**要点**：本周会话量增长 12%。",
 	);
@@ -72,7 +71,7 @@ test("Message 内容演示：展开执行详情，区分文件预览、下载和
 
 // 名单只控制已知 token 的还原，未知技能内容不能静默丢失。
 test("Message 技能演示：已知技能还原，未知技能保留原文", async ({ page }) => {
-	await page.goto("/previews/message-skills/");
+	await page.goto(sitePath("/previews/message-skills/"));
 	await expect(page.getByText("summarize", { exact: true })).toBeVisible();
 	await expect(page.getByText(/\[使用 Skill:unknown\]/)).toBeVisible();
 	await page.getByRole("checkbox", { name: "提供 summarize 技能名单", exact: true }).uncheck();

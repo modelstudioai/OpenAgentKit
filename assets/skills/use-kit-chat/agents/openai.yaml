@@ -1,4 +1,4 @@
 interface:
-  display_name: "Use Kit Chat"
-  short_description: "Connect React chat state, sessions, and tool approvals"
-  default_prompt: "Use $use-kit-chat to connect a chat page to my existing Provider and handle sending, stopping, and tool approval."
+  display_name: "接入 Kit 对话"
+  short_description: "把 React 对话页面接入 Kit，管理会话、消息、附件和工具审批"
+  default_prompt: "用 $use-kit-chat 将三栏会话页接入我已有的 Provider，串起会话导航、聊天区和 Agent 资源。"

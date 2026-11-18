@@ -13,7 +13,7 @@ export interface DiscoveryUsageProps {
 	days: { day: string; turns: number }[];
 }
 
-// The caller obtains data from hooks and owns filtering, navigation, and quota policy.
+// 调用方通过 Hook 获取数据，并负责筛选、导航和额度策略。
 export function DiscoveryUsage(props: DiscoveryUsageProps) {
 	return (
 		<section>
@@ -23,7 +23,7 @@ export function DiscoveryUsage(props: DiscoveryUsageProps) {
 					<PlazaCard key={entry.slug} entry={entry} onOpen={props.onOpen} />
 				))}
 			</div>
-			<h2>Monthly usage</h2>
+			<h2>月度用量</h2>
 			<MeterBar value={props.used} max={props.limit} unlimited={props.unlimited} />
 			<ActivityHeatmap days={props.days} />
 		</section>

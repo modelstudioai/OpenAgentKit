@@ -1,57 +1,76 @@
-# Setup and source ownership
+# 安装与源码归属
 
-## Package usage
+## 从包导入
 
-The examples import public APIs from `@openagentpack/kit-chat-ui`, with types from `@openagentpack/kit-sdk/messages` and `@openagentpack/kit-sdk/protocol`. They assume these packages and compatible React/React DOM dependencies are available in the consuming workspace. The Kit packages in this repository are private workspace packages; do not promise that a particular version has been published to npm.
+示例从 `@openagentpack/kit-chat-ui` 导入公开 API，并从 `@openagentpack/kit-sdk/messages`
+及 `@openagentpack/kit-sdk/protocol` 导入类型。使用示例的 workspace 需要能访问这些包，
+并提供兼容的 React 和 React DOM。当前仓库的 Kit 包为私有 workspace 包，以实际发布情况为准。
 
-Use the existing Tailwind v4 stylesheet entry to import the theme:
+在已有 Tailwind v4 样式入口导入主题。
 
 ```css
 @import "tailwindcss";
 @import "@openagentpack/kit-chat-ui/theme.css";
 ```
 
-Add an explicit Tailwind `@source` for the actual component source location. Tailwind's automatic detection skips `node_modules` and can miss workspace symlinks. For this repository's `apps/web/src/styles.css`, the existing path is:
+为组件实际源码位置添加 Tailwind `@source`。自动扫描跳过 `node_modules`，也可能漏掉
+workspace 符号链接。仓库的 `apps/web/src/styles.css` 使用以下路径。
 
 ```css
 @source "../../../packages/chat-ui/src/**/*.{ts,tsx}";
 ```
 
-That path is relative to the stylesheet, not a universal installation path. A copy-in project should scan its local component directory. Confirm that responsive and theme utilities appear in generated CSS, rather than assuming the presence of class names in the DOM proves styling works.
+该路径相对于样式表。copy-in 项目应改为扫描本地组件目录。
+在生成的 CSS 中检查响应式工具类和主题工具类。
 
-Use `data-kit-theme="dark"` on a theme scope for dark mode; light mode is the default. Set `data-kit-appearance="workspace"` explicitly for the employee palette, and use `variant="workspace"` on supported components for its layout. Documentation previews opt into both; component defaults are unchanged. Keep portal content inside the same theme scope. Use the existing tokens rather than adding arbitrary colors, shadows, radii, or spacing constants.
+主题默认浅色，在主题作用域上设置 `data-kit-theme="dark"` 切换为深色。
+员工端配色显式设置 `data-kit-appearance="workspace"`，支持的组件用 `variant="workspace"`
+启用相应布局。文档预览显式选择这两项，组件仍以公开默认值为准。
+让 Portal 内容留在同一个主题作用域。颜色、阴影、圆角和间距沿用已有 token。
 
-## Copy-in usage
+## 复制组件源码
 
-From the Kit repository, run `pnpm kit:add <entry> --dir <project>` to copy component source and its registry dependencies into an existing project. You can also run `scripts/kit/add-component.mjs` by its absolute path from the target project. The registry contains file groups, so it is not a complete list of public component names.
+从 Kit 仓库运行 `pnpm kit:add <entry> --dir <project>`，将组件源码及登记的依赖复制到现有项目。
+也可以在目标项目通过绝对路径运行 `scripts/kit/add-component.mjs`。
+Registry 按源码文件分组，完整的公开组件名单见 [API 参考](api.md)。
 
-| Registry entry | Components made available by that entry |
+| Registry 条目 | 可用组件 |
 | --- | --- |
-| `layout` | `Layout`; compose it with a sidebar, header, dialogs, and content |
+| `layout` | `Layout`，可组合会话侧栏、页头、聊天内容、弹窗和 Agent 资源面板 |
 | `agent-header` | `AgentHeader` |
 | `session-list` | `SessionList` |
-| `message` | `Message`, `MessageList`, `ReasoningBlock`, `ToolCallCard`, `ArtifactCard` |
-| `chat` | `Chat`, plus message and Sender dependencies |
-| `chrome` | `SessionSidebar`, `StatusIndicator`, `EmptyState`, `ErrorState`, `ThreadPanel`, `ConfirmDialog`, and its dependencies |
+| `session-sidebar` | `SessionSidebar`，以及 `SessionList`、`EmptyState` 和 `ErrorState` |
+| `message` | `Message`、`MessageList`、`ReasoningBlock`、`ToolCallCard`、`ArtifactCard` |
+| `message-anchor-rail` | `MessageAnchorRail` |
+| `message-skeleton` | `MessageListSkeleton` |
+| `chat` | `Chat`，以及消息和 Sender 依赖 |
+| `sub-agent-panel` | `SubAgentPanel`，以及子 Agent 历史依赖 |
+| `artifact-card` | `ArtifactCard`，以及用于产物预览和下载的 `FileCard` |
+| `chrome` | `AgentHeader`、`StatusIndicator`、`EmptyState`、`ErrorState`、`ThreadPanel` 和 `ConfirmDialog` |
 | `prompts` | `Prompts` |
-| `sender` | `Sender`, `Sender.Header`, `SenderHeader` |
-| `attachments` | `Attachments`, `Attachments.FileCard`, `AttachmentFileCard`, and `FileCard` |
+| `sender` | `Sender`、`Sender.Header`、`SenderHeader` |
+| `attachments` | `Attachments`、`Attachments.FileCard`、`AttachmentFileCard` 和 `FileCard` |
 | `suggestion` | `Suggestion` |
-| `actions` | `Actions`, `Actions.Copy`, `Actions.Feedback`, `ActionsCopy`, `ActionsFeedback` |
+| `actions` | `Actions`、`Actions.Copy`、`Actions.Feedback`、`ActionsCopy`、`ActionsFeedback` |
 | `file-card` | `FileCard` |
-| `markdown` | `Markdown`, plus code and diagram dependencies |
-| `code-highlighter` | `CodeHighlighter`, plus Actions |
-| `mermaid` | `Mermaid`, plus Actions and CodeHighlighter |
-| `tool-approval` | `ToolApprovalCard` |
+| `markdown` | `Markdown`，以及代码块和图表依赖 |
+| `code-highlighter` | `CodeHighlighter` 和 Actions |
+| `mermaid` | `Mermaid`、Actions 和 CodeHighlighter |
+| `tool-approval` | `ToolApprovalCard` 和 `ToolApprovalGroup` |
 
-Copy-in does not install npm dependencies. The Markdown chain uses `react-markdown`, `remark-gfm`, `rehype-sanitize`, `lowlight`, and `mermaid`; tool approval and confirmation use `@radix-ui/react-alert-dialog`; Layout uses `@radix-ui/react-dialog` and `@openagentpack/kit-sdk/hooks`. Respect versions supported by the consumer and the component registry/package manifest. Preserve local modifications when updating copied components; review the source diff before replacing them.
+使用 copy-in 时在目标项目另行安装 npm 依赖。Markdown 使用 `react-markdown`、`remark-gfm`、
+`rehype-sanitize`、`lowlight` 和 `mermaid`。工具审批与确认使用 `@radix-ui/react-alert-dialog`。
+Layout 使用 `@radix-ui/react-dialog` 和 `@openagentpack/kit-sdk/hooks`。
+版本以目标项目与组件 registry、包清单共同支持的范围为准。更新已复制的组件前先查看源码差异，
+合并需要保留的本地修改。
 
-## Runtime boundaries
+## 运行时边界
 
-- `kit-chat-ui` renders and handles local interaction. Use injected hooks/application callbacks for requests, uploads, download, copy, and feedback persistence.
-- `kit-sdk/chat/hooks` supplies chat state. `KitProvider` from `kit-sdk/providers/kit/react` is the default context; an explicit custom `ChatProvider` can be used without it.
-- `kit-sdk` projects SDK events into messages, threads, and approvals. Do not reimplement this projection inside components.
-- The browser must not import the SDK main entry at runtime or receive provider credentials.
-- In a Kit-hosted application, obtain `apiBaseUrl` from the injected runtime configuration. Do not hard-code a same-origin assumption.
+- `kit-chat-ui` 负责渲染和本地交互。请求、上传、下载、复制与反馈持久化使用注入的 Hook 或应用回调。
+- `kit-sdk/chat/hooks` 提供会话状态。`kit-sdk/providers/kit/react` 的 `KitProvider` 提供默认 Context，
+  也可以直接传入自定义 `ChatProvider`。
+- `kit-sdk` 将 SDK 事件投影为消息、线程和审批数据，组件直接消费投影结果。
+- 浏览器运行时仅使用 SDK 的浏览器安全入口，Provider 凭据保留在后端。
+- Kit 宿主应用从注入的运行时配置获取 `apiBaseUrl`，支持与页面不同源的后端。
 
-The examples have no implicit backend side effects. Inject real callbacks at the application boundary and surface their failures. Component examples are not Cloud validation.
+示例通过应用注入的真实回调操作后端，由应用展示失败。真实 Cloud 接入需单独验收。

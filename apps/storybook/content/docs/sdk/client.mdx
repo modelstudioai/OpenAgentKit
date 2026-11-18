@@ -18,7 +18,7 @@ Request 负责 HTTP 与错误映射；Client 复用现有 DTO 和方法签名。
 import { type ClientOperations, createKitClient } from "@openagentpack/kit-sdk/providers/kit";
 import type { RequestClient } from "@openagentpack/kit-sdk/request";
 
-// Configure only the features your backend supports. Missing operations never call Kit routes.
+// 只配置后端支持的功能。未配置的操作不会调用 Kit 路由。
 export function createDataClient(request: RequestClient) {
 	const result = async <T>(response: Response): Promise<T> => (await response.json()).result;
 	const json = (value: unknown) => ({
@@ -151,7 +151,7 @@ Controller 提供的 `RequestClient` 绑定本次登录的固定应用身份；�
 宿主提供按完整 apiBaseUrl（包括路径前缀）隔离的 `MemberSessionStorage`；只保存
 `{access_token, expires_at}`，不保存密码。默认 Web 使用 sessionStorage。配置缺少 auth 时
 按 member 模式处理，不能静默开放匿名访问。以下示例的 Controller 应在启动时创建一次，
-storage 由宿主实现；示例代码与英文 Skill 同源生成。
+storage 由宿主实现。示例代码与 Skill 同源生成。
 
 {/* skill-example: use-kit-chat/examples/member-auth.tsx */}
 
@@ -165,21 +165,21 @@ import { useMemberAuth } from "@openagentpack/kit-sdk/auth/hooks";
 import { KitProvider } from "@openagentpack/kit-sdk/providers/kit/react";
 import type { FormEvent, ReactNode } from "react";
 
-// Call once after public config resolves the final API URL. The host's storage
-// must be scoped to that full URL, including its path prefix. Store no password.
+// 公开配置解析出最终 API URL 后调用一次。宿主存储按带路径前缀的完整 URL 隔离，
+// 只保存会话令牌及有效期。
 export function createLogin(options: MemberAuthOptions) {
 	return createMemberAuthController(options);
 }
 
 export function MemberRoot({ controller, children }: { controller: MemberAuthController; children: ReactNode }) {
 	const auth = useMemberAuth(controller);
-	if (auth.status === "checking") return <p>Restoring sign-in…</p>;
+	if (auth.status === "checking") return <p>正在恢复登录…</p>;
 	if (auth.status === "error") {
 		return (
 			<section>
 				<p role="alert">{auth.error}</p>
 				<button type="button" onClick={() => void auth.retry()}>
-					Retry
+					重试
 				</button>
 			</section>
 		);
@@ -195,7 +195,7 @@ export function MemberRoot({ controller, children }: { controller: MemberAuthCon
 					password: String(data.get("password") ?? ""),
 				});
 			} catch {
-				// The controller exposes a safe error in its snapshot.
+				// 控制器在快照中提供可安全展示的错误。
 			} finally {
 				const password = form.elements.namedItem("password");
 				if (password instanceof HTMLInputElement) password.value = "";
@@ -204,15 +204,15 @@ export function MemberRoot({ controller, children }: { controller: MemberAuthCon
 		return (
 			<form onSubmit={submit}>
 				<label>
-					Username <input name="username" autoComplete="username" required disabled={auth.pending} />
+					用户名 <input name="username" autoComplete="username" required disabled={auth.pending} />
 				</label>
 				<label>
-					Password{" "}
+					密码{" "}
 					<input name="password" type="password" autoComplete="current-password" required disabled={auth.pending} />
 				</label>
 				{auth.error && <p role="alert">{auth.error}</p>}
 				<button type="submit" disabled={auth.pending}>
-					Sign in
+					登录
 				</button>
 			</form>
 		);
@@ -223,7 +223,7 @@ export function MemberRoot({ controller, children }: { controller: MemberAuthCon
 				{auth.member?.display_name}
 				{auth.member && (
 					<button type="button" onClick={() => void auth.logout()}>
-						Sign out
+						退出登录
 					</button>
 				)}
 			</header>
@@ -262,24 +262,16 @@ export function KitRoot({ client, children }: { client: KitClient; children: Rea
 
 ### 上传与挂载附件
 
-上传成功只获得文件引用。当前 Provider 支持**创建会话时挂载**，已有会话的消息请求携带
-非空 `attachments` 会被拒绝，应引导用户创建新会话。
+上传成功只获得文件引用，等 `fileStatus` 返回 `available: true` 后再提交。默认 Kit Server
+的体验会话支持两种用法：
 
-```ts
-import type { KitClient } from "@openagentpack/kit-sdk/providers/kit";
+- **新建会话**：将文件引用作为 `files` 传给 `client.createSession({ agentSlug, files })`，
+  服务端会在返回会话前挂载文件。
+- **已有会话**：将文件引用作为 `attachments` 传给 `chat.send(text, { attachments })`，
+  服务端先挂载再发送；发送失败时尝试卸载本次新增的挂载。
 
-export async function createSessionWithFile(client: KitClient, agentSlug: string, file: File) {
-  const uploaded = await client.uploadFile({
-    name: file.name,
-    bytes: new Uint8Array(await file.arrayBuffer()),
-    mimeType: file.type || undefined,
-  });
-  return client.createSession({
-    agentSlug,
-    files: [{ file_id: uploaded.file_id }],
-  });
-}
-```
+可以用 `useAttachments` 统一上传和扫描，用 `useComposer` 处理首次发送与已有会话的发送。
+见[组件交互与后端调用](/docs/sdk/experience#组件绑定示例)。
 
 文件选择、粘贴、移除和上传状态由调用方组合
 [Sender 与 Attachments](/docs/components/express/sender) 管理。

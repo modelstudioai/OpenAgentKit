@@ -13,11 +13,11 @@ export function createRawBailianProvider(config: BackendConfig) {
 				init: { headers: { Accept: "text/event-stream" } },
 			}),
 			mapResponse(response) {
-				// Backend contract: subscribe upstream FIRST, then flush this header.
-				// Cross-origin backends must expose it through Access-Control-Expose-Headers.
+				// 后端先建立上游订阅，再发送此响应头。
+				// 跨域时通过 Access-Control-Expose-Headers 暴露此头。
 				if (response.headers.get("x-upstream-ready") !== "true")
-					throw new KitError("conflict", "The backend did not confirm upstream subscription readiness.");
-				// Do not consume body or await a separate readiness promise here.
+					throw new KitError("conflict", "后端未确认上游订阅就绪。");
+				// 立即返回响应体与就绪 Promise，由工厂读取并等待。
 				return { response, ready: Promise.resolve() };
 			},
 		},
@@ -29,13 +29,12 @@ export function createRawBailianProvider(config: BackendConfig) {
 			},
 			async mapResponse(response) {
 				const page = record(await readJson(response));
-				if (!Array.isArray(page.data))
-					throw new KitError("provider_error", "The backend returned an invalid history page.");
+				if (!Array.isArray(page.data)) throw new KitError("provider_error", "后端返回的历史分页无效。");
 				const next = page.next_page_token;
 				if (next !== undefined && next !== null && typeof next !== "string")
-					throw new KitError("provider_error", "The backend returned an invalid history cursor.");
+					throw new KitError("provider_error", "后端返回的历史游标无效。");
 				return {
-					// Keep complete raw objects, including identity and execution state.
+					// 保留完整原始对象，包括事件标识及执行状态。
 					events: page.data.map(record),
 					nextPageToken: next,
 				};

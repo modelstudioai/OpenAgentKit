@@ -4,6 +4,11 @@
 它提供可自托管的体验页、管理端和服务端，也提供可按需复用的对话组件、会话运行时、React hooks
 与开发 Skill，帮助团队把云端 Agent 接到实际产品中。
 
+[![Deploy docs](https://github.com/modelstudioai/OpenAgentPack-Kit/actions/workflows/docs.yml/badge.svg)](https://github.com/modelstudioai/OpenAgentPack-Kit/actions/workflows/docs.yml)
+[在线文档](https://modelstudioai.github.io/OpenAgentPack-Kit/) ·
+[快速开始](https://modelstudioai.github.io/OpenAgentPack-Kit/docs/quickstart/) ·
+[组件预览](https://modelstudioai.github.io/OpenAgentPack-Kit/docs/components/)
+
 团队可以直接搭建自己的 Agent 应用，也可以在已有业务系统中逐步引入所需能力，适用于团队助手门户、
 业务工作台中的智能助手，以及需要展示工具执行、人工审批和文件交付的对话场景。
 
@@ -180,6 +185,7 @@ OpenAgentPack-Kit/
 
 ## 文档
 
+- [在线文档站](https://modelstudioai.github.io/OpenAgentPack-Kit/)：用户文档、组件预览、SDK 接入与 API 参考。
 - [使用文档](./apps/storybook/README.md)：快速开始、本地 Demo、核心概念、SDK、组件、API 与开发 Skill。
 - [工程文档](./docs/README.md)：架构、目录、接口、协议、测试与 ADR。
 - 核心参考：[架构](./docs/architecture.md)、[接口](./docs/interfaces.md)、[协议](./docs/protocol.md)、
@@ -232,7 +238,8 @@ Workspace ID 或 Base URL。管理员令牌只写入 `.env`，登录管理端时
 默认使用成员登录，Mock 数据位于 `.scratch/local-demo/data`，真实百炼数据位于 `.data`。
 
 已有 `.env` 时直接复用，不重新选择模式、不替换令牌或补写字段；后续仍运行 `pnpm start`。
-根 `.env` 的非空值覆盖 shell 同名变量，启动日志只打印被覆盖的变量名。
+根 `.env` 的非空值覆盖 shell 同名变量。填入 Workspace ID 或 Base URL 后，另一地址字段的显式空值
+也会覆盖 shell 继承值。启动日志只打印被覆盖的变量名。
 
 开发时可用 `pnpm dev` 启动上述三个应用及文档站 `:3000`，或用 `pnpm start server web` /
 `pnpm dev server web` 只启动指定目标。`pnpm setup` 可选，仅用于启用仓库 Git hooks。

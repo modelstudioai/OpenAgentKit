@@ -6,7 +6,7 @@ import {
 } from "@openagentpack/kit-sdk/chat";
 import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
 
-// This owner is independent of React and must be disposed by its host.
+// 控制器可独立于 React 使用，由宿主负责销毁。
 export function observeSession(
 	provider: ChatProvider,
 	sessionId: string,
@@ -25,8 +25,8 @@ export function observeSession(
 	return { controller, ready, dispose };
 }
 
-// Lower-level alternative: this host must feed SDK SessionEvent snapshots through
-// applyEvent and manage lifecycle itself. Ordinary chat integrations use the owner above.
+// 直接使用 Store 时，宿主须通过 applyEvent 提供 SDK SessionEvent 快照，并管理生命周期。
+// 常规对话接入用上面的控制器。
 export function createLocalStore(sessionId: string, provider: ChatProvider) {
 	const options: SessionStoreOptions = { transformMessage: provider.transformMessage?.bind(provider) };
 	return createSessionStore(sessionId, options);

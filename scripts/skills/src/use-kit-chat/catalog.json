@@ -3,43 +3,43 @@
 		"name": "useAgentResources",
 		"export": "useAgentResources",
 		"module": "agents/hooks",
-		"description": "Read optional tool, MCP and skill metadata for a catalog Agent through the context KitClient.",
+		"description": "通过显式或 Context 中的 KitClient 读取当前 Agent 的工具、MCP、技能和记忆库摘要。",
 		"doc": "apps/storybook/content/docs/sdk/discovery-usage.mdx",
-		"example": "examples/experience-data.tsx",
+		"example": "examples/experience.tsx",
 		"notes": [
-			"Passing null skips the lookup. This application query is separate from the explicit ChatProvider."
+			"传入 null 跳过查询。这个应用查询独立于显式 ChatProvider。"
 		]
 	},
 	{
 		"name": "useUsageLimits",
 		"export": "useUsageLimits",
 		"module": "usage/hooks",
-		"description": "Observe local-member usage limits through the context KitClient with loading, error, data and explicit reload.",
+		"description": "通过 Context 中的 KitClient 观察本地成员用量限制，包含加载、错误、数据及显式重载。",
 		"doc": "apps/storybook/content/docs/sdk/discovery-usage.mdx",
 		"example": "examples/experience-data.tsx",
 		"notes": [
-			"Only a successful null response means the current identity is not a local member; an error must not unlock consumption."
+			"只有成功返回 null 才表示当前身份不是本地成员，请求错误时不能放开用量限制。"
 		]
 	},
 	{
 		"name": "createChatController",
 		"export": "createChatController",
 		"module": "chat",
-		"description": "Own one framework-independent Session subscription, message state and execution actions.",
+		"description": "独立于框架，管理一个会话的订阅、消息状态和执行操作。",
 		"doc": "apps/storybook/content/docs/sdk/use-chat.mdx",
 		"example": "examples/controller.ts",
 		"notes": [
-			"connect waits for authoritative readiness, not for the persistent stream to end.",
-			"Only the Controller schedules reconnects; writes are not automatically repeated.",
-			"The host must unsubscribe and dispose when ownership ends.",
-			"Uses the Provider message strategy or transformSessionEvent when omitted; state remains in Chat."
+			"connect 在收到权威就绪信号后返回，持久订阅继续运行。",
+			"只有控制器调度重连，写请求禁止自动重发。",
+			"宿主在结束管理时取消订阅并销毁控制器。",
+			"使用 Provider 提供的消息策略，省略时使用 transformSessionEvent。状态归 Chat 持有。"
 		]
 	},
 	{
 		"name": "ChatController",
 		"export": "ChatController",
 		"module": "chat",
-		"description": "Snapshot subscription, send/stop/approval actions and explicit disposal without React.",
+		"description": "独立于 React 的快照订阅、发送、停止和审批操作，以及显式销毁。",
 		"doc": "apps/storybook/content/docs/sdk/use-chat.mdx",
 		"example": "examples/controller.ts"
 	},
@@ -49,10 +49,10 @@
 		"module": "chat",
 		"doc": "apps/storybook/content/docs/sdk/use-chat.mdx",
 		"example": "examples/controller.ts",
-		"description": "Own event snapshots and Chat state, invoking an optional injected message strategy during reconstruction.",
+		"description": "持有事件快照及 Chat 状态，重建时调用可选的注入式消息策略。",
 		"notes": [
-			"Independent Store consumers own event delivery; useChat consumers configure the strategy on their Provider instead.",
-			"Omitting transformMessage uses transformSessionEvent."
+			"直接使用 Store 的调用方管理事件交付。useChat 的调用方在 Provider 配置策略。",
+			"省略 transformMessage 时使用 transformSessionEvent。"
 		]
 	},
 	{
@@ -61,45 +61,45 @@
 		"module": "chat",
 		"doc": "apps/storybook/content/docs/sdk/use-chat.mdx",
 		"example": "examples/controller.ts",
-		"description": "Optional message transformation strategy for an independently managed Session Store."
+		"description": "独立管理会话 Store 时可选的消息转换策略。"
 	},
 	{
 		"name": "useChat",
 		"export": "useChat",
 		"module": "chat/hooks",
-		"description": "Subscribe to one Session through KitProvider or an explicit stable ChatProvider.",
+		"description": "通过 KitProvider 或显式传入的稳定 ChatProvider 订阅一个会话。",
 		"doc": "apps/storybook/content/docs/sdk/use-chat.mdx",
 		"example": "examples/default-chat.tsx",
 		"notes": [
-			"Pass null before selecting or creating a Session; this does not open a subscription.",
-			"The explicit-provider overload works without KitProvider and takes precedence over context.",
-			"Share one hook result with the message, composer, and approval UI."
+			"选择或创建会话前传 null，此时跳过订阅。",
+			"显式 Provider 重载可独立于 KitProvider 使用，且优先于 Context。",
+			"消息、输入和审批界面共用同一个 Hook 的结果。"
 		]
 	},
 	{
 		"name": "UseChatOptions",
 		"export": "UseChatOptions",
 		"module": "chat/hooks",
-		"description": "Options for a Session backed by an application-owned ChatProvider.",
+		"description": "使用应用提供的 ChatProvider 时的会话配置。",
 		"doc": "apps/storybook/content/docs/sdk/use-chat.mdx",
 		"example": "examples/custom-chat.tsx",
 		"notes": [
-			"Both sessionId and provider are required; sessionId can be null.",
-			"A changed Provider identity or Session ID replaces the Controller."
+			"sessionId 和 provider 均为必填，sessionId 可为 null。",
+			"Provider 实例或会话 ID 变化时替换控制器。"
 		]
 	},
 	{
 		"name": "UseChatResult",
 		"export": "UseChatResult",
 		"module": "chat/hooks",
-		"description": "Message projections, connection and execution state, pending approvals, and asynchronous actions.",
+		"description": "消息投影、连接与执行状态、待审批项及异步操作。",
 		"doc": "apps/storybook/content/docs/sdk/use-chat.mdx",
 		"example": "examples/default-chat.tsx",
 		"notes": [
-			"connected reflects connection only; canSend also includes execution and Session state.",
-			"Messages and parts may be replaced by authoritative snapshots; keep their stable IDs.",
-			"turnRunning includes waiting for approval and interruption confirmation.",
-			"No public message mutation, regenerate, or request queue API is provided."
+			"connected 仅反映连接。canSend 还考虑执行和会话状态。",
+			"权威快照可能替换消息及分片，须保留稳定 ID。",
+			"turnRunning 包含等待审批及等待中断确认的阶段。",
+			"公开操作以当前类型为准，禁止自行创建消息修改、重新生成或请求队列接口。"
 		]
 	},
 	{
@@ -107,13 +107,13 @@
 		"export": "UseChatResult",
 		"member": "send",
 		"module": "chat/hooks",
-		"description": "Wait for subscription readiness and submit one message; optionally target a newly created Session.",
+		"description": "等待订阅就绪并提交一次消息，可显式指定刚创建的会话。",
 		"doc": "apps/storybook/content/docs/sdk/use-chat.mdx",
 		"example": "examples/custom-chat.tsx",
 		"notes": [
-			"Promise resolution means acceptance, not completion of the Agent response.",
-			"Retain the draft on failure; connection recovery does not resend the message.",
-			"Pass options.sessionId immediately after creation to avoid the previous render's selected ID."
+			"Promise 成功表示已受理，Agent 回应的完成由业务事件确定。",
+			"失败时保留草稿，连接恢复时禁止自动重发。",
+			"创建后立即传 options.sessionId，避免引用上一次渲染选中的 ID。"
 		]
 	},
 	{
@@ -121,12 +121,12 @@
 		"export": "UseChatResult",
 		"member": "stop",
 		"module": "chat/hooks",
-		"description": "Request remote interruption and wait for the request result.",
+		"description": "请求中断远端执行并等待请求结果。",
 		"doc": "apps/storybook/content/docs/sdk/use-chat.mdx",
 		"example": "examples/default-chat.tsx",
 		"notes": [
-			"A successful request does not itself confirm execution ended.",
-			"Switching Sessions and unmounting only cancel the browser subscription."
+			"请求成功表示已受理，是否停止由 Provider 事件确认。",
+			"切换会话和卸载只取消浏览器订阅。"
 		]
 	},
 	{
@@ -134,11 +134,11 @@
 		"export": "UseChatResult",
 		"member": "refreshApprovals",
 		"module": "chat/hooks",
-		"description": "Query the current pending tool set, especially after an uncertain or stale decision.",
+		"description": "查询当前待审批工具集合，适用于结果不确定或决定已过期的情况。",
 		"doc": "apps/storybook/content/docs/sdk/tool-approvals.mdx",
 		"example": "examples/approval-list.tsx",
 		"notes": [
-			"Query before another explicit user confirmation; never automatically repeat a decision POST."
+			"先查询，再由用户显式确认，禁止自动重复提交审批 POST。"
 		]
 	},
 	{
@@ -146,116 +146,116 @@
 		"export": "UseChatResult",
 		"member": "submitApproval",
 		"module": "chat/hooks",
-		"description": "Refresh and validate one current tool request, then submit the user's allow or deny decision.",
+		"description": "刷新并校验一项当前工具请求，再提交用户的允许或拒绝决定。",
 		"doc": "apps/storybook/content/docs/sdk/tool-approvals.mdx",
 		"example": "examples/approval-list.tsx",
 		"notes": [
-			"Changed arguments or invalidated state require renewed review and confirmation.",
-			"The backend independently checks ownership, current batch/call, and prior responses."
+			"参数或有效性变化时，须重新审阅与确认。",
+			"后端独立校验归属、当前批次和调用，以及是否已有回复。"
 		]
 	},
 	{
 		"name": "KitProvider",
 		"export": "KitProvider",
 		"module": "providers/kit/react",
-		"description": "React context supplying a stable KitClient to default data hooks.",
+		"description": "为默认数据 Hook 提供稳定 KitClient 的 React Context。",
 		"doc": "apps/storybook/content/docs/sdk/client.mdx",
 		"example": "examples/default-chat.tsx",
 		"notes": [
-			"KitProvider is distinct from ChatProvider and the server-side ProviderGateway.",
-			"An explicit ChatProvider does not redirect useSessions or useKitClient.",
-			"Host capabilities belong to the consuming application, not the SDK."
+			"KitProvider 负责 React Context，ChatProvider 负责会话适配，ProviderGateway 则负责服务端网关。",
+			"useSessions 和 useKitClient 继续从数据 Client 获取数据。",
+			"宿主能力由接入应用实现。"
 		]
 	},
 	{
 		"name": "createKitClient",
 		"export": "createKitClient",
 		"module": "providers/kit",
-		"description": "Create the default Kit Server client with a runtime API base URL and application identity headers.",
+		"description": "使用运行时 API base URL 和应用身份头创建默认 Kit Server 客户端。",
 		"doc": "apps/storybook/content/docs/sdk/client.mdx",
 		"example": "examples/default-chat.tsx",
 		"notes": [
-			"Do not assume the API shares the page origin.",
-			"Create Sessions and handle files outside useChat."
+			"支持页面和 API 不同源。",
+			"会话创建和文件操作通过独立的应用调用完成。"
 		]
 	},
 	{
 		"name": "ChatProvider",
 		"export": "ChatProvider",
 		"module": "providers",
-		"description": "Five required backend methods and an optional message transformation strategy supplied to useChat.",
+		"description": "传给 useChat 的五个必需后端方法及可选的消息转换策略。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/custom-chat.tsx",
 		"notes": [
-			"Keep its object identity stable across renders.",
-			"Provider defines conversion; Chat invokes it against the latest event ledger and owns the messages."
+			"跨渲染保持 Provider 实例稳定。",
+			"Provider 定义转换。Chat 基于最新事件账本调用策略并持有消息。"
 		]
 	},
 	{
 		"name": "ChatToolApproval",
 		"export": "ChatToolApproval",
 		"module": "chat",
-		"description": "Tool request projection including pending, submitting, submitted, uncertain, or stale UI state.",
+		"description": "工具请求的界面投影，包含 pending、submitting、submitted、uncertain 或 stale 状态。",
 		"doc": "apps/storybook/content/docs/sdk/tool-approvals.mdx",
 		"example": "examples/approval-list.tsx",
 		"notes": [
-			"Only a pending actionable request may be confirmed.",
-			"Use the current batch_id and call_id as identity, not the tool name."
+			"只有 pending 且可操作的请求可确认。",
+			"以当前 batch_id 和 call_id 为标识。"
 		]
 	},
 	{
 		"name": "ToolApprovalDecision",
 		"export": "ToolApprovalDecision",
 		"module": "protocol",
-		"description": "One explicit allow or deny decision identified by current batch and call.",
+		"description": "用当前批次与调用标识的一次显式允许或拒绝决定。",
 		"doc": "apps/storybook/content/docs/sdk/tool-approvals.mdx",
 		"example": "examples/approval-list.tsx",
 		"notes": [
-			"The optional deny_message has a 200-character Kit limit.",
-			"Denying one tool call is separate from stopping the whole Session."
+			"可选的 deny_message 在 Kit 中最多 200 字符。",
+			"拒绝只作用于该工具调用。停止整个会话通过独立的中断操作完成。"
 		]
 	},
 	{
 		"name": "usePlaza",
 		"export": "usePlaza",
 		"module": "agents/hooks",
-		"description": "Read Kit Server discovery entries, categories, and featured/popular slug lists.",
+		"description": "读取 Kit Server 的广场条目、分类及推荐和热门 slug 列表。",
 		"doc": "apps/storybook/content/docs/sdk/discovery-usage.mdx",
 		"example": "examples/discovery-usage.tsx",
 		"notes": [
-			"Requires KitProvider; an explicit ChatProvider does not redirect this hook.",
-			"category/q changes trigger loading; reload requests a new snapshot."
+			"需要 KitProvider，显式 ChatProvider 只接管对话操作。",
+			"category 或 q 变化时加载，reload 请求新快照。"
 		]
 	},
 	{
 		"name": "useQuota",
 		"export": "useQuota",
 		"module": "usage/hooks",
-		"description": "Read monthly Credits, packs, daily usage and the current pending increase request.",
+		"description": "读取月度 Credits、加量包、每日用量及当前待处理的额度申请。",
 		"doc": "apps/storybook/content/docs/sdk/discovery-usage.mdx",
 		"example": "examples/discovery-usage.tsx",
 		"notes": [
-			"Requires KitProvider; quota enforcement remains server-side.",
-			"The limit excludes packs; unlimited remaining is -1."
+			"需要 KitProvider，服务端负责执行额度限制。",
+			"limit 不含加量包，remaining 为 -1 表示不限量。"
 		]
 	},
 	{
 		"name": "useQuotaRequests",
 		"export": "useQuotaRequests",
 		"module": "usage/hooks",
-		"description": "Read the current identity's quota increase request history.",
+		"description": "读取当前身份的额度增加申请历史。",
 		"doc": "apps/storybook/content/docs/sdk/discovery-usage.mdx",
 		"example": "examples/discovery-usage.tsx",
 		"notes": [
-			"Requires KitProvider.",
-			"Query failure currently clears requests to an empty array; no error field is exposed."
+			"需要 KitProvider。",
+			"查询失败时 requests 会清空为 []，当前接口不提供 error 字段。"
 		]
 	},
 	{
 		"name": "createMemberAuthController",
 		"export": "createMemberAuthController",
 		"module": "auth",
-		"description": "Own local member sign-in, restore, revocation, expiry and one fixed-identity Client per generation.",
+		"description": "管理本地成员登录、恢复、撤销及过期，为每个 generation 使用一个固定身份的 Client。",
 		"doc": "apps/storybook/content/docs/sdk/client.mdx",
 		"example": "examples/member-auth.tsx"
 	},
@@ -263,7 +263,7 @@
 		"name": "MemberAuthController",
 		"export": "MemberAuthController",
 		"module": "auth",
-		"description": "Framework-independent member authentication lifecycle and observable snapshot.",
+		"description": "独立于框架的成员认证生命周期与可订阅快照。",
 		"doc": "apps/storybook/content/docs/sdk/client.mdx",
 		"example": "examples/member-auth.tsx"
 	},
@@ -271,7 +271,7 @@
 		"name": "MemberAuthOptions",
 		"export": "MemberAuthOptions",
 		"module": "auth",
-		"description": "Final API URL, explicit authentication mode, host storage and optional fetch implementation.",
+		"description": "最终 API URL、显式鉴权模式、宿主存储和可选的 fetch 实现。",
 		"doc": "apps/storybook/content/docs/sdk/client.mdx",
 		"example": "examples/member-auth.tsx"
 	},
@@ -279,7 +279,7 @@
 		"name": "MemberAuthSnapshot",
 		"export": "MemberAuthSnapshot",
 		"module": "auth",
-		"description": "Authentication status, public member profile, isolated Client, generation, pending state and error.",
+		"description": "认证状态、公开成员资料、隔离的 Client、generation、待处理状态及错误。",
 		"doc": "apps/storybook/content/docs/sdk/client.mdx",
 		"example": "examples/member-auth.tsx"
 	},
@@ -287,7 +287,7 @@
 		"name": "MemberSessionStorage",
 		"export": "MemberSessionStorage",
 		"module": "auth",
-		"description": "Host storage adapter scoped to a full API URL; never store passwords.",
+		"description": "按完整 API URL 隔离的宿主存储适配器，只保存会话令牌及有效期。",
 		"doc": "apps/storybook/content/docs/sdk/client.mdx",
 		"example": "examples/member-auth.tsx"
 	},
@@ -295,7 +295,7 @@
 		"name": "StoredMemberSession",
 		"export": "StoredMemberSession",
 		"module": "auth",
-		"description": "Opaque member access token and its fixed expiry time.",
+		"description": "不透明的成员访问令牌及其固定过期时间。",
 		"doc": "apps/storybook/content/docs/sdk/client.mdx",
 		"example": "examples/member-auth.tsx"
 	},
@@ -303,7 +303,7 @@
 		"name": "useMemberAuth",
 		"export": "useMemberAuth",
 		"module": "auth/hooks",
-		"description": "Subscribe to a stable member auth controller and bind start/dispose to the React lifecycle.",
+		"description": "订阅稳定的成员认证控制器，并将启动及销毁绑定到 React 生命周期。",
 		"doc": "apps/storybook/content/docs/sdk/client.mdx",
 		"example": "examples/member-auth.tsx"
 	},
@@ -311,7 +311,7 @@
 		"name": "ChatMultiAgent",
 		"export": "ChatMultiAgent",
 		"module": "chat",
-		"description": "Native Chat thread view, independent loading and pagination actions.",
+		"description": "Chat 原生线程视图，提供独立的加载及分页操作。",
 		"doc": "apps/storybook/content/docs/sdk/use-chat.mdx",
 		"example": "examples/custom-chat.tsx"
 	},
@@ -319,7 +319,7 @@
 		"name": "ChatAgentThread",
 		"export": "ChatAgentThread",
 		"module": "chat",
-		"description": "One child Agent instance, projected messages, history state and display name.",
+		"description": "一个子 Agent 实例、投影后的消息、历史状态及显示名。",
 		"doc": "apps/storybook/content/docs/sdk/use-chat.mdx",
 		"example": "examples/custom-chat.tsx"
 	},
@@ -327,7 +327,7 @@
 		"name": "ChatSnapshot",
 		"export": "ChatSnapshot",
 		"module": "chat",
-		"description": "Session state plus the native Multi-Agent view.",
+		"description": "会话状态和原生多 Agent 视图。",
 		"doc": "apps/storybook/content/docs/sdk/use-chat.mdx",
 		"example": "examples/custom-chat.tsx"
 	},
@@ -335,7 +335,7 @@
 		"name": "useSessionDirectory",
 		"export": "useSessionDirectory",
 		"module": "sessions/hooks",
-		"description": "Load grouped and recent sessions, retain pages and prepare explicit session confirmations.",
+		"description": "加载分组和最近会话，保留分页状态并准备显式会话确认。",
 		"doc": "apps/storybook/content/docs/sdk/experience.mdx",
 		"example": "examples/experience.tsx"
 	},
@@ -343,7 +343,7 @@
 		"name": "useSessionSearch",
 		"export": "useSessionSearch",
 		"module": "sessions/hooks",
-		"description": "Debounce and cancel server searches using the directory pagination contract.",
+		"description": "按会话目录的分页合同查询，支持防抖和取消。",
 		"doc": "apps/storybook/content/docs/sdk/experience.mdx",
 		"example": "examples/experience.tsx"
 	},
@@ -351,7 +351,7 @@
 		"name": "useSessionDetails",
 		"export": "useSessionDetails",
 		"module": "sessions/hooks",
-		"description": "Load historical file metadata and inject it into the existing Chat state.",
+		"description": "加载历史文件元数据并注入已有的 Chat 状态。",
 		"doc": "apps/storybook/content/docs/sdk/experience.mdx",
 		"example": "examples/experience.tsx"
 	},
@@ -359,7 +359,7 @@
 		"name": "useAttachments",
 		"export": "useAttachments",
 		"module": "files/hooks",
-		"description": "Upload, scan, cancel and consume attachment staging without file-picker UI.",
+		"description": "负责暂存附件的上传、扫描、取消及消费，选文件界面由宿主提供。",
 		"doc": "apps/storybook/content/docs/sdk/experience.mdx",
 		"example": "examples/experience.tsx"
 	},
@@ -367,7 +367,7 @@
 		"name": "useComposer",
 		"export": "useComposer",
 		"module": "chat/hooks",
-		"description": "Create a session and invoke existing Chat.send; failures reject and retain submitted files.",
+		"description": "通过 Chat.send 发送暂存附件，按需创建会话。受理后清理对应附件，失败时保留。",
 		"doc": "apps/storybook/content/docs/sdk/experience.mdx",
 		"example": "examples/experience.tsx"
 	},
@@ -375,7 +375,7 @@
 		"name": "useArtifactActions",
 		"export": "useArtifactActions",
 		"module": "files/hooks",
-		"description": "Read authenticated artifact bytes and coordinate safe preview or save through an injected host.",
+		"description": "读取经鉴权的产物字节，通过注入的宿主安全预览或保存。",
 		"doc": "apps/storybook/content/docs/sdk/experience.mdx",
 		"example": "examples/experience.tsx"
 	},
@@ -383,7 +383,7 @@
 		"name": "useQuotaRecovery",
 		"export": "useQuotaRecovery",
 		"module": "usage/hooks",
-		"description": "Only recover sending after a fresh server result confirms every enabled limit.",
+		"description": "只有新的服务端结果确认全部已启用的限额仍可用后，才恢复发送。",
 		"doc": "apps/storybook/content/docs/sdk/experience.mdx",
 		"example": "examples/experience.tsx"
 	},
@@ -391,7 +391,7 @@
 		"name": "useCreateQuotaRequest",
 		"export": "useCreateQuotaRequest",
 		"module": "usage/hooks",
-		"description": "Submit one explicit credit request without automatic retries.",
+		"description": "提交一次显式额度申请，禁止自动重试。",
 		"doc": "apps/storybook/content/docs/sdk/experience.mdx",
 		"example": "examples/experience.tsx"
 	},
@@ -399,7 +399,7 @@
 		"name": "createSessionDirectory",
 		"export": "createSessionDirectory",
 		"module": "sessions",
-		"description": "Framework-independent directory state, pagination and session operations.",
+		"description": "独立于框架的会话目录状态、分页及会话操作。",
 		"doc": "apps/storybook/content/docs/sdk/experience.mdx",
 		"example": "examples/experience-controller.ts"
 	},
@@ -407,7 +407,7 @@
 		"name": "createSessionSearch",
 		"export": "createSessionSearch",
 		"module": "sessions",
-		"description": "Framework-independent debounced search with cancellation.",
+		"description": "独立于框架的防抖搜索，支持取消。",
 		"doc": "apps/storybook/content/docs/sdk/experience.mdx",
 		"example": "examples/experience-controller.ts"
 	},
@@ -415,7 +415,7 @@
 		"name": "createSessionDetails",
 		"export": "createSessionDetails",
 		"module": "sessions",
-		"description": "Load session metadata with request generation isolation.",
+		"description": "加载会话元数据，按请求代次隔离结果。",
 		"doc": "apps/storybook/content/docs/sdk/experience.mdx",
 		"example": "examples/experience-controller.ts"
 	},
@@ -423,7 +423,7 @@
 		"name": "createSessionActions",
 		"export": "createSessionActions",
 		"module": "sessions",
-		"description": "Prepare, cancel and confirm session mutations without reusing failed confirmation tokens.",
+		"description": "准备、取消和确认会话写操作，失败后须重新获取确认令牌。",
 		"doc": "apps/storybook/content/docs/sdk/experience.mdx",
 		"example": "examples/experience-controller.ts"
 	},
@@ -431,7 +431,7 @@
 		"name": "createAttachments",
 		"export": "createAttachments",
 		"module": "files",
-		"description": "Framework-independent upload and scan lifecycle.",
+		"description": "独立于框架的上传和扫描生命周期。",
 		"doc": "apps/storybook/content/docs/sdk/experience.mdx",
 		"example": "examples/experience-controller.ts"
 	},
@@ -439,7 +439,7 @@
 		"name": "createComposer",
 		"export": "createComposer",
 		"module": "chat",
-		"description": "Framework-independent session creation and send coordination; no draft state.",
+		"description": "按需创建会话，并通过已有 Chat 绑定发送。草稿状态由宿主持有。",
 		"doc": "apps/storybook/content/docs/sdk/experience.mdx",
 		"example": "examples/experience-controller.ts"
 	},
@@ -447,7 +447,7 @@
 		"name": "deriveTitle",
 		"export": "deriveTitle",
 		"module": "chat",
-		"description": "Derive a session title from the first message.",
+		"description": "根据首条消息生成会话标题。",
 		"doc": "apps/storybook/content/docs/sdk/experience.mdx",
 		"example": "examples/experience-controller.ts"
 	},
@@ -455,7 +455,7 @@
 		"name": "createArtifactActions",
 		"export": "createArtifactActions",
 		"module": "files",
-		"description": "Framework-independent artifact workflow with injected host effects.",
+		"description": "独立于框架的产物处理流程，通过注入调用宿主操作。",
 		"doc": "apps/storybook/content/docs/sdk/experience.mdx",
 		"example": "examples/experience-controller.ts"
 	},
@@ -463,7 +463,7 @@
 		"name": "resolveArtifactType",
 		"export": "resolveArtifactType",
 		"module": "files",
-		"description": "Resolve artifact MIME type from metadata, filename and response.",
+		"description": "从元数据、文件名和响应中解析产物 MIME 类型。",
 		"doc": "apps/storybook/content/docs/sdk/experience.mdx",
 		"example": "examples/experience-controller.ts"
 	},
@@ -471,7 +471,7 @@
 		"name": "previewableArtifactType",
 		"export": "previewableArtifactType",
 		"module": "files",
-		"description": "Allow inert artifact previews and reject active content.",
+		"description": "允许预览惰性内容，拒绝主动内容。",
 		"doc": "apps/storybook/content/docs/sdk/experience.mdx",
 		"example": "examples/experience-controller.ts"
 	},
@@ -479,7 +479,7 @@
 		"name": "createQuotaRecovery",
 		"export": "createQuotaRecovery",
 		"module": "usage",
-		"description": "Observe fresh usage limits before allowing recovery.",
+		"description": "重新读取用量限制后再决定是否允许恢复。",
 		"doc": "apps/storybook/content/docs/sdk/experience.mdx",
 		"example": "examples/experience-controller.ts"
 	},
@@ -487,7 +487,7 @@
 		"name": "readQuotaExceeded",
 		"export": "readQuotaExceeded",
 		"module": "usage",
-		"description": "Read validated quota details without guessing from an error message.",
+		"description": "读取已校验的额度详情，以结构化字段为准。",
 		"doc": "apps/storybook/content/docs/sdk/experience.mdx",
 		"example": "examples/experience-controller.ts"
 	},
@@ -495,7 +495,7 @@
 		"name": "usageLimitsAllowSending",
 		"export": "usageLimitsAllowSending",
 		"module": "usage",
-		"description": "Require all enabled monthly and daily metrics to be confirmed available.",
+		"description": "要求所有已启用的月度及日度指标均确认为可用。",
 		"doc": "apps/storybook/content/docs/sdk/experience.mdx",
 		"example": "examples/experience-controller.ts"
 	},
@@ -503,42 +503,42 @@
 		"name": "createQuery",
 		"export": "createQuery",
 		"module": "state",
-		"description": "Observe an explicitly refreshed query with cancellation, request-generation isolation and the last successful snapshot.",
+		"description": "观察显式刷新的查询，支持取消及请求代次隔离，并保留上次成功快照。",
 		"doc": "apps/storybook/content/docs/sdk/state.mdx",
 		"example": "examples/call-state.ts",
 		"notes": [
-			"Refreshing aborts the previous read; failures retain data and resolve to undefined.",
-			"Dispose cancels reading and ignores late results. The host owns subscription cleanup."
+			"刷新时取消前一次读取。失败时保留数据并返回 undefined。",
+			"销毁时取消读取并忽略迟到的结果。宿主负责取消订阅。"
 		]
 	},
 	{
 		"name": "createMutation",
 		"export": "createMutation",
 		"module": "state",
-		"description": "Run one explicit write at a time and expose pending and error state.",
+		"description": "一次执行一个显式写操作，并提供待处理状态和错误。",
 		"doc": "apps/storybook/content/docs/sdk/state.mdx",
 		"example": "examples/call-state.ts",
 		"notes": [
-			"Never automatically retries or cancels a write; action errors still reject the returned Promise.",
-			"Dispose only suppresses snapshot updates; a new view should create its own controller."
+			"写请求不会自动重试或取消，操作失败仍拒绝返回的 Promise。",
+			"销毁只停止更新快照。新视图应创建自己的控制器。"
 		]
 	},
 	{
 		"name": "createObservable",
 		"export": "createObservable",
 		"module": "state",
-		"description": "Publish host-owned snapshots to subscribers without React, networking or administration business rules.",
+		"description": "向订阅者发布宿主持有的快照，适用于独立于 React、网络和管理业务的状态。",
 		"doc": "apps/storybook/content/docs/sdk/state.mdx",
 		"example": "examples/call-state.ts",
 		"notes": [
-			"set replaces the snapshot; unsubscribe when the host releases its view."
+			"set 替换快照。宿主释放视图时取消订阅。"
 		]
 	},
 	{
 		"name": "QuerySnapshot",
 		"export": "QuerySnapshot",
 		"module": "state",
-		"description": "Query data, loading status and readable error for the current target.",
+		"description": "当前查询目标的数据、加载状态和可读错误。",
 		"doc": "apps/storybook/content/docs/sdk/state.mdx",
 		"example": "examples/call-state.ts"
 	}

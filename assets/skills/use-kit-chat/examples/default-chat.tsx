@@ -6,8 +6,8 @@ import { KitProvider } from "@openagentpack/kit-sdk/providers/kit/react";
 import { useRef, useState } from "react";
 import { ApprovalList } from "./approval-list.tsx";
 
-// Initialize once. apiBaseUrl comes from runtime configuration, not location.origin.
-// getAppToken supplies application identity, never a Bailian API key.
+// 只初始化一次，从运行时配置读取 apiBaseUrl。
+// getAppToken 只提供应用身份，百炼 API Key 保留在后端。
 export function createDefaultClient(apiBaseUrl: string, getAppToken: () => Promise<string>) {
 	return createKitClient({
 		baseUrl: apiBaseUrl,
@@ -28,7 +28,7 @@ function ChatPanel({ sessionId }: { sessionId: string | null }) {
 	const [draft, setDraft] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const sending = useRef(false);
-	const report = (cause: unknown) => setError(cause instanceof KitError ? cause.message : "The request failed.");
+	const report = (cause: unknown) => setError(cause instanceof KitError ? cause.message : "请求失败。");
 
 	async function send(text: string) {
 		if (!text.trim() || !chat.canSend || sending.current) return;
@@ -66,7 +66,7 @@ function ChatPanel({ sessionId }: { sessionId: string | null }) {
 						submitDisabled={!chat.canSend}
 						onSubmit={(text) => void send(text)}
 						onCancel={() => void chat.stop().catch(report)}
-						placeholder={sessionId ? "Send a message" : "Select a session to begin"}
+						placeholder={sessionId ? "发送消息" : "选择会话后开始对话"}
 					/>
 				}
 			/>

@@ -1,4 +1,4 @@
 interface:
-  display_name: "Kit Chat Provider"
-  short_description: "Adapt a self-owned Bailian backend to Kit chat"
-  default_prompt: "Use $kit-chat-provider to connect my Bailian backend and its raw SSE subscription to Kit useChat."
+  display_name: "Kit 对话后端接入"
+  short_description: "将 Kit Server 或自建百炼后端接入 Kit 对话，处理历史、订阅和审批"
+  default_prompt: "用 $kit-chat-provider 将我的百炼后端及原始 SSE 订阅接入 Kit 的 useChat。"

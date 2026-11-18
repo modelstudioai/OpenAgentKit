@@ -18,7 +18,7 @@ interface UploadedAttachment extends AttachmentItem {
 
 export interface AttachmentSenderProps {
 	uploadFile: (file: File) => Promise<{ file_id: string }>;
-	// Application callback: upload does not itself mount files into a session.
+	// 在应用回调中处理会话挂载，上传只得到文件引用。
 	onSubmit: (text: string, fileIds: string[], skills?: string[]) => Promise<void>;
 	skills?: SenderSkill[];
 	onStop: () => void;
@@ -78,7 +78,7 @@ export function AttachmentSender({
 		setOpen(true);
 		setError(null);
 		for (const { file, item } of uploads) {
-			// Wrapping also handles a synchronous exception in a supplied uploader.
+			// 让应用上传函数抛出的同步异常也进入失败处理。
 			void Promise.resolve()
 				.then(() => uploadFile(file))
 				.then(
@@ -86,7 +86,7 @@ export function AttachmentSender({
 						updateFiles((previous) =>
 							previous.map((entry) =>
 								entry.uid === item.uid
-									? { ...entry, fileId: result.file_id, status: "done", description: "Ready" }
+									? { ...entry, fileId: result.file_id, status: "done", description: "已就绪" }
 									: entry,
 							),
 						),
@@ -94,7 +94,7 @@ export function AttachmentSender({
 						updateFiles((previous) =>
 							previous.map((entry) =>
 								entry.uid === item.uid
-									? { ...entry, status: "error", description: "Upload failed. Remove and select again." }
+									? { ...entry, status: "error", description: "上传失败，请移除后重新选择。" }
 									: entry,
 							),
 						),
@@ -127,7 +127,7 @@ export function AttachmentSender({
 			const submitted = new Set(selected.map((file) => file.uid));
 			updateFiles((previous) => previous.filter((file) => !submitted.has(file.uid)));
 		} catch {
-			if (mounted.current) setError("Send failed. Your draft and files are preserved.");
+			if (mounted.current) setError("发送失败，已保留草稿和文件。");
 		} finally {
 			sending.current = false;
 			if (mounted.current) setSubmitting(false);
@@ -170,14 +170,14 @@ export function AttachmentSender({
 						value={draft}
 						skills={skills}
 						onChange={setDraft}
-						placeholder="Write a message or paste files"
+						placeholder="输入消息或粘贴文件"
 						loading={turnRunning}
 						submitDisabled={!canSend || submitting || filesBlocked}
 						onSubmit={(text, selectedSkills) => void submit(text, selectedSkills)}
 						onCancel={onStop}
 						onPasteFile={selectFiles}
 						header={
-							<Sender.Header title="Attachments" open={open} onOpenChange={setOpen}>
+							<Sender.Header title="附件" open={open} onOpenChange={setOpen}>
 								<Attachments
 									ref={attachments}
 									items={files}
@@ -186,8 +186,8 @@ export function AttachmentSender({
 									onSelectFiles={selectFiles}
 									onRemove={(item) => updateFiles((previous) => previous.filter((file) => file.uid !== item.uid))}
 									placeholder={(type) => ({
-										title: type === "drop" ? "Drop files to add them" : "Choose files",
-										description: type === "inline" ? "Select, paste, or drag files here" : undefined,
+										title: type === "drop" ? "松开以添加文件" : "选择文件",
+										description: type === "inline" ? "选择、粘贴或拖放文件" : undefined,
 									})}
 								/>
 							</Sender.Header>
@@ -201,17 +201,17 @@ export function AttachmentSender({
 									else setOpen(true);
 								}}
 							>
-								Attach files
+								添加文件
 							</button>
 						}
 						suffix={(_origin, { components }) =>
 							turnRunning ? (
-								<components.LoadingButton>Stop</components.LoadingButton>
+								<components.LoadingButton>停止</components.LoadingButton>
 							) : (
-								<components.SendButton>{submitting ? "Sending" : "Send"}</components.SendButton>
+								<components.SendButton>{submitting ? "发送中" : "发送"}</components.SendButton>
 							)
 						}
-						footer={({ components }) => <components.ClearButton>Clear text</components.ClearButton>}
+						footer={({ components }) => <components.ClearButton>清空输入</components.ClearButton>}
 					/>
 				)}
 			</Suggestion>

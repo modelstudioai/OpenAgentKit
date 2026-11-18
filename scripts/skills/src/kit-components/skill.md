@@ -1,38 +1,54 @@
-# Kit Components
+# Kit 对话组件
 
-Use the existing `@openagentpack/kit-chat-ui` public components to build the requested interface. The examples use package imports; a copy-in consumer should replace them with its local component imports.
+用 `@openagentpack/kit-chat-ui` 的公开组件搭建所需界面。示例使用包导入。
+通过 copy-in 引入的项目应改为从本地组件路径导入。
 
-## Select the smallest composition
+## 选择页面组合
 
-- Complete conversation: `Chat` with `multiAgent={chat.multiAgent}` for main/child Agent views, or `MessageList` plus `Sender` when the input area needs custom behavior.
-- Page frame: `Layout`, `AgentHeader`, `SessionList` or `SessionSidebar`, and the state helpers.
-- Start a conversation: `Prompts`; choose whether selecting a prompt fills a draft or submits it.
-- Compose input: `Sender`, `Sender.Header`, `Attachments`, and `Suggestion`.
-- Render content: `Message`, `ReasoningBlock`, `ToolCallCard`, `ArtifactCard`, and `Markdown`.
-- Feedback and review: `Actions`, `FileCard`, `CodeHighlighter`, `Mermaid`, and `ToolApprovalCard`.
-- Discovery and usage: `CategoryTabs`, `PlazaCard`, `MeterBar`, and `ActivityHeatmap`.
+- **完整会话页或工作台**可从[工作台布局](examples/layout.tsx)开始。将 `SessionSidebar` 放进
+  `Layout.sidebar`，当前会话的 `Chat` 放进 `children`，Agent 信息和资源放进 `Layout.aside`。
+  用 `AgentHeader` 渲染页头和资源开关。需要绑定 Client 和 Provider 时，参考 `use-kit-chat`
+  Skill 的 `examples/experience.tsx`。
+- **嵌入式对话**可用 `Chat` 展示消息和输入框。传入 `multiAgent={chat.multiAgent}` 展示内联子 Agent
+  卡片。可用 `sender` 插槽自定义输入，也可以直接组合 `MessageList` 和 `Sender`。
+- **开启对话**使用 `Prompts`，由调用方决定点击提示语后填入草稿还是直接发送。
+- **输入与附件**使用 `Sender`、`Sender.Header`、`Attachments` 和 `Suggestion`。
+- **内容渲染**使用 `Message`、`ReasoningBlock`、`ToolCallCard`、`ArtifactCard` 和 `Markdown`。
+- **反馈和审阅**使用 `Actions`、`FileCard`、`CodeHighlighter`、`Mermaid` 和 `ToolApprovalCard`。
+- **发现和用量**使用 `CategoryTabs`、`PlazaCard`、`MeterBar` 和 `ActivityHeatmap`。
 
-Read [setup](references/setup.md) before integrating styles or copying component source. Read only the relevant section of [composition](references/composition.md) for behavior and ownership. The generated [API reference](references/api.md) covers every public runtime export, static subcomponent, and exported type. The generated [example reference](references/examples.md) contains the same code as the compilable examples below.
+接入样式或复制组件源码前，阅读[安装与配置](references/setup.md)。组件行为与职责见[组件组合](references/composition.md)
+的相关章节。[API 参考](references/api.md)覆盖公开运行时导出、静态子组件和导出类型。
+[示例参考](references/examples.md)与下列可编译源文件同源。
 
-## Working rules
+## 使用规则
 
-1. Feed components with `useChat` results and application callbacks. Core owns Stream, Request, Provider and Chat; React binds chat state to its lifetime. Components do not fetch, parse Bailian SSE, own credentials, or create sessions. `kit-chat-provider` is an optional separate Skill for backend integration; this folder contains everything needed for component composition.
-2. Preserve `ChatMessage` and core-provided message/part IDs. Provider defines event-to-message conversion; Chat owns the rebuilt messages. Components render these props, not raw `SessionEvent`. Caller-owned data of the same shape is also valid. A cumulative snapshot can replace or remove parts; never key dynamic parts by their array positions.
-3. Pass `submitDisabled={!chat.canSend}` while recovering a connection or waiting for tool approval. Keep the draft editable. `loading` represents generation; file uploads have separate state.
-4. `Sender` does not clear input or upload files. Select, paste, and drop files through one caller-owned upload function. An uploaded file is not automatically mounted in a session.
-5. Keep tool approval and destructive-operation confirmation explicit. `ToolApprovalCard` submits one reviewed decision and waits for authoritative state. The application owns plan retrieval and confirmation tokens for destructive operations.
-6. Use Tailwind utilities and existing `--kit-*` tokens. Verify that Tailwind scans the component source, including when it lives behind a workspace or package link.
+1. 把 `useChat` 结果和应用回调传给组件。核心层负责 Stream、Request、Provider 和 Chat，
+   React 将会话状态绑定到组件生命周期。组件只负责展示与交互，请求、百炼 SSE 解析、凭据和会话创建归上层。
+   如需接入后端，可另用 `kit-chat-provider`，本目录可独立用于组合组件。
+2. 保留 `ChatMessage` 以及核心层提供的消息和分片 ID。Provider 定义事件到消息的转换规则，
+   Chat 持有重建后的消息，组件接收这些 Props。调用方也可提供同形的数据。累计快照可能替换或删除分片，
+   动态分片须用稳定 ID 作为 key。
+3. 连接恢复或等待工具审批时传入 `submitDisabled={!chat.canSend}`，草稿保持可编辑。
+   `loading` 表示消息生成，文件上传用独立状态。
+4. 调用方管理输入清理和文件上传。文件选择、粘贴、拖放统一走一个应用上传函数。
+   文件上传成功后仍需显式挂载到会话。
+5. 工具审批与破坏性操作都需显式确认。`ToolApprovalCard` 提交一次经审阅的决定，并等待服务端权威状态。
+   破坏性操作由应用获取计划和确认令牌。
+6. 使用 Tailwind 工具类和已有 `--kit-*` token。即使组件位于 workspace 或链接包中，
+   也要确保 Tailwind 能扫描组件源码。
 
-## Examples
+## 示例
 
-- [Workspace Layout](examples/layout.tsx): desktop navigation, mobile drawer, compact header, and caller-owned dialogs.
-- [Hook-driven Chat](examples/chat-runtime.tsx): multi-Agent history, a preserved default composer, and main Agent approvals.
-- [Reasoning lifecycle](examples/reasoning.tsx): streaming expansion, terminal collapse, and manual disclosure.
-- [Attachment composer](examples/attachment-sender.tsx): file selection, paste, drag/drop, upload callbacks, failed uploads, removal, draft preservation, and custom Sender actions.
-- [General components](examples/general.tsx): Layout composition, headers, navigation, state helpers, confirmation preview, and the legacy ThreadPanel display.
-- [Content and feedback](examples/content.tsx): individual message parts, complete messages, Markdown, code, diagrams, files, copy, and controlled feedback.
-- [Prompts and suggestions](examples/prompts-suggestion.tsx): draft insertion and keyboard-safe slash commands.
-- [Tool approvals](examples/approvals.tsx): caller-owned decisions, refresh, and stop callbacks.
-- [Discovery and usage](examples/discovery-usage.tsx): controlled category selection, agent cards, quota meters, and activity summaries.
+- [工作台布局](examples/layout.tsx)包含会话导航、中央 Chat 插槽、Agent 信息和资源、响应式面板及调用方控制的弹窗。
+- [由 Hook 驱动的对话](examples/chat-runtime.tsx)展示多 Agent 历史、默认输入框和主 Agent 工具审批。
+- [推理区生命周期](examples/reasoning.tsx)展示默认折叠的预览，以及状态变化时保留用户手动展开或折叠的选择。
+- [附件输入](examples/attachment-sender.tsx)涵盖文件选择、粘贴与拖放、上传回调、失败和移除、保留草稿及自定义输入操作。
+- [通用组件](examples/general.tsx)包含布局组合、页头、导航、状态辅助组件、确认预览和旧版 `ThreadPanel` 展示。
+- [内容与反馈](examples/content.tsx)包含独立消息分片、整条消息、Markdown、代码、图表、文件、复制和受控反馈。
+- [提示语与建议](examples/prompts-suggestion.tsx)演示插入草稿和支持键盘操作的斜杠菜单。
+- [工具审批](examples/approvals.tsx)演示由调用方管理的审批决定、刷新和停止回调。
+- [发现和用量](examples/discovery-usage.tsx)包含受控分类、Agent 卡片、额度进度条和活动摘要。
 
-All authored examples and guidance are English. Some existing components have fixed Chinese labels and do not yet expose a locale API; do not invent one. Use existing label props where available, or localize copied source when the user requests it.
+部分组件内置固定中文标签。需要修改文案时，优先使用现有的标签 Props。用户明确要求调整时，
+可修改 copy-in 后的本地源码。

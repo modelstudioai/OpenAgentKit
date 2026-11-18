@@ -9,9 +9,9 @@ export interface ApprovalListProps {
 	stop: () => void;
 }
 
-// Pass useChat's approvals, submitApproval, refreshApprovals, and stop.
-// Allow and deny are one-click submissions. Multiple pending approvals page
-// horizontally, one card at a time. The backend confirms validity.
+// 传入 useChat 的 approvals、submitApproval、refreshApprovals 和 stop。
+// 单击允许或拒绝即可提交。多项待审批请求横向分页，每次展示一张卡片。
+// 审批有效性由后端校验。
 export function ApprovalList({ approvals, submitApproval, refreshApprovals, stop }: ApprovalListProps) {
 	if (approvals.length === 0) return null;
 	return (

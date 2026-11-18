@@ -16,7 +16,7 @@ import {
 } from "@openagentpack/kit-sdk/sessions";
 import { createQuotaRecovery, readQuotaExceeded, usageLimitsAllowSending } from "@openagentpack/kit-sdk/usage";
 
-// Non-React hosts own subscriptions and disposal. Each controller is a separate capability.
+// 非 React 宿主管理订阅和销毁。每个控制器负责一项独立能力。
 export function createExperienceControllers(client: KitClient, host: ArtifactHost) {
 	const directory = createSessionDirectory(client);
 	const search = createSessionSearch(client);
@@ -44,7 +44,7 @@ export function createExperienceControllers(client: KitClient, host: ArtifactHos
 }
 export function presentationHelpers(error: unknown, limits: MemberUsageLimitView) {
 	return {
-		title: deriveTitle("First message"),
+		title: deriveTitle("第一条消息"),
 		quotaError: readQuotaExceeded(error),
 		canRecover: usageLimitsAllowSending(limits),
 		type: resolveArtifactType(undefined, "report.pdf", "application/octet-stream"),

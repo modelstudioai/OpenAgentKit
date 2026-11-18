@@ -34,7 +34,7 @@ Kit 包含可自托管的 Node server、可独立接入的会话运行时与 Rea
 | 文件与技能 | 输入附件上传与挂载、产物预览/下载、当前 Agent 已绑定技能的 `/` 选择与内联 chip、技能意图随消息提交 |
 | 管理端 | 智能体模版配置、导入已有 Agent、运行资源配置、预览调试、版本管理、上架与下架；不再提供独立上架目录页面 |
 | 成员与用量 | 成员管理、每日/月度 Token 与月度执行时长限额、个人用量、管理端用量与智能体操作日志 |
-| 开发支持 | 可交互组件预览、OpenAPI 接口参考、三个英文 coding agent Skill、Skill 效果评测工具 |
+| 开发支持 | 可交互组件预览、OpenAPI 接口参考、三个中文 coding agent Skill、Skill 效果评测工具 |
 
 模版创建与编辑采用「选择配置 → 预览调试」流程。未修改的远端 Agent 可以直接复用；
 新增或修改的资源保存到隔离的发布批次，经过 Build、Plan 和显式确认后发布，再保存模版。
@@ -51,7 +51,7 @@ Kit 包含可自托管的 Node server、可独立接入的会话运行时与 Rea
 | UI 组件 | `@openagentpack/kit-chat-ui` | copy-in 布局、消息、输入、附件、文件卡、审批与辅助组件；共享 Tailwind v4 与主题 token |
 | 服务端 | `@openagentpack/kit-server` | Hono 应用工厂，提供数据面 `/api/kit/*`、控制面 `/api/admin/*` 及成员登录服务 |
 | 仓库脚本 | 根 `scripts/kit/` | `pnpm kit:add`、`pnpm catalog:list` |
-| 开发指南 | 根 `scripts/skills/` | 组件组合、会话交互与后端接入的英文 Skill 源、生成参考和可编译示例 |
+| 开发指南 | 根 `scripts/skills/` | 组件组合、会话交互与后端接入的中文 Skill 源、生成参考和可编译示例 |
 | 评测 | `@openagentpack/kit-eval` | Skill 触发/质量评测、远端运行与报告 |
 
 `apps/web` 是体验页，`apps/console` 是管理端，`apps/storybook` 是本站。
@@ -83,7 +83,7 @@ UI 栈按用途区分：管理端的表单、表格等使用 antd v6；体验页
   <Card title="快速开始" href="/docs/quickstart" description="安装依赖、生成管理员令牌并启动本地 Mock 服务" />
   <Card title="组件总览" href="/docs/components" description="真实 kit-chat-ui 组件，可切设备、看源码、复制 copy-in 命令" />
   <Card title="SDK 与 Kit 数据接入" href="/docs/sdk" description="按需复用运行时与 hooks，或接入自建百炼后端" />
-  <Card title="Coding Agent Skill" href="/docs/skill" description="组件组合、会话交互与后端适配的英文指南和离线示例" />
+  <Card title="Coding Agent Skill" href="/docs/skill" description="组件组合、会话交互与后端适配的中文指南和离线示例" />
   <Card title="接口总览" href="/docs/server-api" description="认证、权限、SSE 协议与接口参考入口" />
   <Card title="核心功能" href="/docs/concepts" description="智能体配置、成员对话、工具审批、文件与用量管理" />
 </Cards>

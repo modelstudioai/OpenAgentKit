@@ -8,7 +8,7 @@ export function createApplicationRequest(baseUrl: string, getAppToken: () => Pro
 	});
 }
 
-// Sample business routes, not fixed Bailian endpoints.
+// 以下为示例业务路由。
 export async function readStatus(request: RequestClient, signal: AbortSignal) {
 	return request.json<{ available: boolean }>("/status", { signal });
 }

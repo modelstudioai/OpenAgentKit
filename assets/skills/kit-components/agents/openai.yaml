@@ -1,4 +1,4 @@
 interface:
-  display_name: "Kit Components"
-  short_description: "Compose Kit chat components and attachment flows"
-  default_prompt: "Use $kit-components to build a chat interface with caller-managed attachments and message feedback."
+  display_name: "Kit 对话组件"
+  short_description: "用 Kit 组件搭建会话导航、聊天区与资源侧栏，组合附件和审批界面"
+  default_prompt: "用 $kit-components 搭建一个会话工作台，包含会话导航、聊天区和 Agent 资源侧栏。"

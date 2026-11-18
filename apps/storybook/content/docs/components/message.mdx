@@ -64,28 +64,28 @@ pnpm add react-markdown@^10.1.0 rehype-sanitize@^6.0.0 remark-gfm@^4.0.1 lowligh
 import { ReasoningBlock } from "@openagentpack/kit-chat-ui";
 import { useState } from "react";
 
-// Real chat messages supply each reasoning part's status through the Provider.
-// These controls demonstrate one stable component across lifecycle transitions.
+// 实际对话中，每个推理分片的状态来自 Provider。
+// 下列操作在同一个组件实例上演示各阶段切换。
 export function ReasoningLifecycle() {
 	const [status, setStatus] = useState<"streaming" | "done" | "failed" | "interrupted">("done");
 	return (
 		<div className="flex flex-col gap-3" data-kit-appearance="workspace">
 			<fieldset className="flex flex-wrap gap-3">
-				<legend className="sr-only">Reasoning lifecycle controls</legend>
+				<legend className="sr-only">推理阶段操作</legend>
 				<button type="button" onClick={() => setStatus("streaming")}>
-					Start reasoning
+					开始推理
 				</button>
 				<button type="button" onClick={() => setStatus("done")}>
-					Complete
+					完成
 				</button>
 				<button type="button" onClick={() => setStatus("interrupted")}>
-					Interrupt
+					中断
 				</button>
 				<button type="button" onClick={() => setStatus("failed")}>
-					Fail
+					失败
 				</button>
 			</fieldset>
-			<ReasoningBlock text="Compare the evidence before answering." status={status} />
+			<ReasoningBlock text="先比较证据，再给出回答。" status={status} />
 		</div>
 	);
 }

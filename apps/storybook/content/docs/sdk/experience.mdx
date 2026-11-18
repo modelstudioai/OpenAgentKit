@@ -15,7 +15,7 @@ Kit Server 是示例后端。外部纯前端项目替换请求与响应映射后
 | 会话目录 | `useSessionDirectory`、`useSessionSearch`：分组、最近、分页缓存、防抖取消、重命名、操作计划 | 折叠、滚动触发、行内编辑、路由与选中来源 |
 | 历史附件 | `useSessionDetails` 取消旧查询，并调用已有 `chat.setMessageFiles` | 气泡渲染 |
 | 上传 | `useAttachments`：校验、上传、扫描轮询、取消、失败和暂存 | 文件选择、拖放、粘贴、附件卡片 |
-| 首次发送 | `useComposer`：建会话、标题、附件、单飞，然后调用已有 `chat.send` | 草稿、键盘、技能选择；Promise 成功后才清草稿 |
+| 发送与挂载 | `useComposer`：已有会话直接提交，首次发送先建会话，再通过 `chat.send` 携带附件 | 草稿、键盘、技能选择；成功受理后才清草稿与已提交附件 |
 | 产物 | `useArtifactActions`：鉴权读取、类型解析、安全预览判断与保存降级 | 注入 `ArtifactHost`，执行开窗、object URL 和实际保存 |
 | 用量 | `useUsageLimits`、`useQuotaRecovery`、`useCreateQuotaRequest` | 展示和表单绑定；后端负责计量与权限 |
 
@@ -39,13 +39,24 @@ HTTP 错误映射配置在 `createRequest({ mapHttpError })`，不会新增另�
 
 ## 组件绑定示例
 
-下面代码与英文 Skill 从同一 TSX 源生成，不维护第二份实现。
-`client`、`provider` 和 `host` 均由应用初始化并保持稳定。
+左栏加载会话目录和搜索结果，中间渲染当前会话的消息和输入，右栏展示当前 Agent 的简介、资源、子 Agent 和会话产物。
+选择会话时同步切换 Agent 和会话 ID。`client`、`provider` 和 `host` 均由应用初始化并保持稳定。
+复制这份 [完整示例](/skills/use-kit-chat/examples/experience.tsx) 时，同时复制同目录的
+[Agent 资源面板](/skills/use-kit-chat/examples/agent-resources-panel.tsx) 和 [审批列表](/skills/use-kit-chat/examples/approval-list.tsx)。
 
 {/* skill-example: use-kit-chat/examples/experience.tsx */}
 
 ```tsx
-import { Attachments, Chat, ConfirmDialog, SessionSidebar } from "@openagentpack/kit-chat-ui";
+import {
+	AgentHeader,
+	type AttachmentItem,
+	Attachments,
+	Chat,
+	ConfirmDialog,
+	Layout,
+	SessionSidebar,
+	type SessionSidebarSection,
+} from "@openagentpack/kit-chat-ui";
 import { useAgentCatalog, useAgentResources } from "@openagentpack/kit-sdk/agents/hooks";
 import { useChat, useComposer } from "@openagentpack/kit-sdk/chat/hooks";
 import type { ArtifactHost } from "@openagentpack/kit-sdk/files";
@@ -55,107 +66,247 @@ import type { KitClient } from "@openagentpack/kit-sdk/providers/kit";
 import { useSessionDetails, useSessionDirectory, useSessionSearch } from "@openagentpack/kit-sdk/sessions/hooks";
 import { useQuotaRecovery, useUsageLimits } from "@openagentpack/kit-sdk/usage/hooks";
 import { useState } from "react";
+import { AgentResourcesPanel } from "./agent-resources-panel.tsx";
+import { ApprovalList } from "./approval-list.tsx";
 
-// No KitProvider is required. Keep client/provider/host stable outside this component.
+interface ConversationSelection {
+	agentSlug: string;
+	sessionId: string | null;
+	section: SessionSidebarSection;
+}
+
+function SessionDeletionDialog({ actions }: { actions: ReturnType<typeof useSessionDirectory>["actions"] }) {
+	const { pending, busy } = actions;
+	if (!pending) return null;
+	const { plan, error } = pending;
+	const body = error ?? (plan ? JSON.stringify(plan.diff, null, 2) : "正在准备删除计划…");
+	return (
+		<ConfirmDialog
+			title="确认删除会话"
+			body={body}
+			busy={busy}
+			confirmLabel={plan ? "删除会话" : "准备计划"}
+			cancelLabel="取消"
+			onCancel={actions.cancel}
+			onConfirm={() => void actions.confirm()}
+		/>
+	);
+}
+
+// 在组件外保持显式 Client、Provider 和宿主实例稳定。
 export function Experience({
 	client,
 	provider,
 	host,
-	agentSlug,
+	agentSlug: initialAgentSlug,
 }: {
 	client: KitClient;
 	provider: ChatProvider;
 	host: ArtifactHost;
 	agentSlug: string;
 }) {
-	const [sessionId, setSessionId] = useState<string | null>(null);
+	const [{ agentSlug, sessionId, section }, setSelection] = useState<ConversationSelection>({
+		agentSlug: initialAgentSlug,
+		sessionId: null,
+		section: "groups",
+	});
 	const [keyword, setKeyword] = useState("");
+	const [asideOpen, setAsideOpen] = useState(true);
+	const [draftKey, setDraftKey] = useState(0);
 	const chat = useChat({ sessionId, provider });
+	const attachments = useAttachments({ client });
+	function selectConversation(next: ConversationSelection) {
+		if (next.sessionId !== sessionId || next.agentSlug !== agentSlug) {
+			attachments.clear();
+			setDraftKey((key) => key + 1);
+		}
+		setSelection(next);
+	}
 	const directory = useSessionDirectory({
 		client,
 		onExecuted: (id) => {
-			if (id === sessionId) setSessionId(null);
+			if (id === sessionId) selectConversation({ agentSlug, sessionId: null, section: "groups" });
 		},
 	});
 	const search = useSessionSearch(keyword, { client });
 	const details = useSessionDetails({ client, sessionId, setMessageFiles: chat.setMessageFiles });
-	const attachments = useAttachments({ client });
+	const attachmentItems: AttachmentItem[] = [
+		...attachments.pending.map((file) => ({ ...file, status: "uploading" as const })),
+		...attachments.files.map((file) => ({
+			uid: file.file_id,
+			name: file.filename,
+			size: file.size,
+			status: file.timedOut ? ("error" as const) : ("done" as const),
+			description: file.timedOut ? "扫描超时，请移除文件后重试。" : file.available ? null : "正在扫描…",
+		})),
+		...attachments.failures.map(({ message, ...file }) => ({
+			...file,
+			status: "error" as const,
+			description: message,
+		})),
+	];
+	// 等所有文件可用后再发送。先移除上传失败的文件。
+	const attachmentsReady = !attachments.uploading && !attachments.processing && attachments.failures.length === 0;
 	const composer = useComposer({
 		client,
 		agentSlug,
 		sessionId,
 		files: attachments.files,
 		send: chat.send,
-		onSessionCreated: setSessionId,
+		onSessionCreated: (id) => {
+			// 保留当前草稿以发送首条消息，并刷新侧栏目录。
+			setSelection({ agentSlug, sessionId: id, section: "groups" });
+			directory.reload();
+		},
 		onAccepted: attachments.consume,
 	});
 	const artifacts = useArtifactActions({ client, host, sessionId: sessionId ?? undefined, artifacts: chat.artifacts });
 	const recovery = useQuotaRecovery({ client });
 	const { agents } = useAgentCatalog({ client });
+	const agent = agents.find((item) => item.slug === agentSlug) ?? null;
+	const agentName = (slug: string) => agents.find((item) => item.slug === slug)?.display_name ?? slug;
 	const resources = useAgentResources(agentSlug, { client });
+	const skills = resources?.skills.map(({ name, description }) => ({ name, description }));
 	const limits = useUsageLimits({ client });
-	const pending = directory.actions.pending;
+	const canCreateSession = client.supports("createSession");
+	const canSend = (sessionId ? chat.canSend : canCreateSession) && attachmentsReady && !composer.pending;
+	const canReadArtifacts = Boolean(sessionId) && client.supports("downloadFile");
+	const openArtifact = canReadArtifacts
+		? (id: string, type?: string) => void artifacts.open(id, type).catch(() => undefined)
+		: undefined;
+	const downloadArtifact = canReadArtifacts
+		? (id: string) => void artifacts.download(id).catch(() => undefined)
+		: undefined;
 	return (
-		<main>
-			<p>
-				{agents.length} agents, {resources?.skills?.length ?? 0} skills
-			</p>
-			<SessionSidebar
-				activeId={sessionId}
-				groups={directory.groups.map((group) => ({
-					...group,
-					id: group.slug,
-					name: group.slug,
-					onLoad: group.load,
-					onLoadMore: group.loadMore,
-					onRetry: group.retry,
-				}))}
-				recent={{ ...directory.recent, onLoadMore: directory.recent.loadMore }}
-				searchInput={keyword}
-				onSearchInput={setKeyword}
-				search={keyword ? { ...search, onLoadMore: search.loadMore, onRetry: search.retry } : undefined}
-				onSelect={(session) => setSessionId(session.session_id)}
-			/>
-			{details.error && <p role="alert">{details.error}</p>}
-			{client.supports("uploadFile") && client.supports("fileStatus") && (
-				<Attachments
-					items={attachments.files.map((file) => ({
-						uid: file.file_id,
-						name: file.filename,
-						status: file.available ? "done" : "uploading",
-					}))}
-					onSelectFiles={(files) => void attachments.upload(files)}
-					onRemove={(file) => attachments.remove(file.uid)}
-				/>
-			)}
-			<Chat
-				messages={chat.messages}
-				canSend={(!sessionId || chat.canSend) && !attachments.processing && !composer.pending}
-				onSend={composer.send}
-				onStop={chat.stop}
-				onArtifactOpen={(id, type) => void artifacts.open(id, type).catch(() => undefined)}
-				onArtifactDownload={(id) => void artifacts.download(id).catch(() => undefined)}
-			/>
-			{composer.error ? <p role="alert">Sending failed; the draft and attachments are retained.</p> : null}
-			{limits.error && <p role="alert">{limits.error}</p>}
-			<button type="button" disabled={recovery.loading} onClick={() => void recovery.recheck()}>
-				Recheck server limits
-			</button>
-			{sessionId && client.supports("sessionPlan") && client.supports("deleteSession") && (
-				<button type="button" onClick={() => void directory.actions.request(sessionId, "delete")}>
-					Prepare deletion
-				</button>
-			)}
-			{pending && (
-				<ConfirmDialog
-					title="Confirm session change"
-					busy={directory.actions.busy}
-					body={pending.error ?? JSON.stringify(pending.plan?.diff ?? [])}
-					onCancel={directory.actions.cancel}
-					onConfirm={() => void directory.actions.confirm()}
-				/>
-			)}
-		</main>
+		<div className="h-dvh" data-kit-appearance="workspace">
+			<Layout
+				sidebarLabel="会话"
+				header={(menuToggle) => (
+					<AgentHeader
+						compact
+						agent={agent}
+						leading={menuToggle}
+						actions={
+							<button type="button" aria-expanded={asideOpen} onClick={() => setAsideOpen((open) => !open)}>
+								资源
+							</button>
+						}
+					/>
+				)}
+				sidebar={({ closeSidebar, closeButton }) => (
+					<aside
+						aria-label="会话导航"
+						className="flex min-h-0 w-64 shrink-0 flex-col border-r border-[var(--kit-border-subtle)] bg-[var(--kit-bg-subtle)]"
+					>
+						<div className="flex shrink-0 items-center justify-between gap-2 p-3">
+							{canCreateSession && (
+								<button
+									type="button"
+									onClick={() => {
+										selectConversation({ agentSlug, sessionId: null, section: "groups" });
+										closeSidebar();
+									}}
+								>
+									新建会话
+								</button>
+							)}
+							{closeButton}
+						</div>
+						<SessionSidebar
+							activeId={sessionId}
+							activeSection={section}
+							activeGroupId={section === "groups" && sessionId ? agentSlug : null}
+							agentName={agentName}
+							loading={directory.loading}
+							error={directory.error}
+							onReload={directory.reloadGroups}
+							groups={directory.groups.map((group) => ({
+								...group,
+								id: group.slug,
+								name: agentName(group.slug),
+								onLoad: group.load,
+								onLoadMore: group.loadMore,
+								onRetry: group.retry,
+							}))}
+							recent={{ ...directory.recent, onLoadMore: directory.recent.loadMore, onRetry: directory.recent.retry }}
+							searchInput={keyword}
+							onSearchInput={setKeyword}
+							search={keyword.trim() ? { ...search, onLoadMore: search.loadMore, onRetry: search.retry } : undefined}
+							onSelect={(session, source) => {
+								selectConversation({ agentSlug: session.agent_slug, sessionId: session.session_id, section: source });
+								closeSidebar();
+							}}
+						/>
+						{sessionId && client.supports("sessionPlan") && client.supports("deleteSession") && (
+							<button
+								type="button"
+								className="shrink-0 p-3 text-left"
+								onClick={() => void directory.actions.request(sessionId, "delete")}
+							>
+								准备删除
+							</button>
+						)}
+					</aside>
+				)}
+				asideLabel="Agent 资源"
+				asideOpen={asideOpen}
+				onAsideOpenChange={setAsideOpen}
+				aside={({ closeButton }) => (
+					<div className="flex min-h-0 flex-1 flex-col">
+						{closeButton ? (
+							<div className="flex shrink-0 items-center justify-between gap-2 p-3">
+								<span>资源</span>
+								{closeButton}
+							</div>
+						) : null}
+						<div className="min-h-0 flex-1 overflow-y-auto p-4">
+							{artifacts.error ? <p role="alert">{artifacts.error}</p> : null}
+							<AgentResourcesPanel
+								agent={agent}
+								resources={resources}
+								multiAgent={chat.multiAgent}
+								artifacts={chat.artifacts}
+								onArtifactOpen={openArtifact}
+								onArtifactDownload={downloadArtifact}
+							/>
+						</div>
+					</div>
+				)}
+				dialogs={<SessionDeletionDialog actions={directory.actions} />}
+			>
+				<section aria-label="对话" className="flex min-h-0 flex-1 flex-col">
+					{details.error ? <p role="alert">{details.error}</p> : null}
+					{client.supports("uploadFile") && client.supports("fileStatus") && (
+						<Attachments
+							items={attachmentItems}
+							onSelectFiles={(files) => void attachments.upload(files)}
+							onRemove={(file) => attachments.remove(file.uid)}
+						/>
+					)}
+					<Chat
+						key={draftKey}
+						variant="workspace"
+						messages={chat.messages}
+						multiAgent={chat.multiAgent}
+						scrollKey={sessionId}
+						turnRunning={chat.turnRunning}
+						sending={composer.pending}
+						canSend={canSend}
+						skills={skills}
+						approvals={chat.approvals.length ? <ApprovalList chat={chat} /> : null}
+						onSend={composer.send}
+						onStop={chat.stop}
+						onArtifactOpen={openArtifact}
+						onArtifactDownload={downloadArtifact}
+					/>
+					{composer.error ? <p role="alert">发送失败，已保留草稿和附件。</p> : null}
+					{limits.error && <p role="alert">{limits.error}</p>}
+					<button type="button" disabled={recovery.loading} onClick={() => void recovery.recheck()}>
+						重新检查服务端限额
+					</button>
+				</section>
+			</Layout>
+		</div>
 	);
 }
 ```

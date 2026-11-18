@@ -9,8 +9,8 @@ export interface ApprovalCardProps {
 	stop: () => void;
 }
 
-// Single pending approval rendered directly. Allow and deny are one-click
-// submissions; no confirmation dialog. Prefer ToolApprovalGroup when multiple approvals exist.
+// 直接展示一项待审批请求，单击允许或拒绝即可提交。
+// 有多项审批时使用 ToolApprovalGroup。
 export function ApprovalCard({ approval, submitApproval, refreshApprovals, stop }: ApprovalCardProps) {
 	return (
 		<ToolApprovalCard approval={approval} onDecision={submitApproval} onRefresh={refreshApprovals} onStop={stop} />

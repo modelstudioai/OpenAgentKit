@@ -5,8 +5,8 @@ import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ApprovalList } from "./approval-list.tsx";
 
-// Both inputs are stable application-owned functions/objects.
-// createSession calls the application's backend and returns its real Session ID.
+// 应用提供稳定的 Provider 实例和 createSession 函数。
+// createSession 调用应用后端，返回真实的会话 ID。
 export function CustomChat({
 	provider,
 	createSession,
@@ -33,11 +33,10 @@ export function CustomChat({
 		};
 	}, [binding]);
 	const report = (cause: unknown) => {
-		if (active.current === binding)
-			setError(cause instanceof KitError ? cause.message : "The request failed. Your draft was kept.");
+		if (active.current === binding) setError(cause instanceof KitError ? cause.message : "请求失败，已保留草稿。");
 	};
 	const finish = (operation: object) => {
-		// An old request must not unlock a newer backend's pending request.
+		// 旧请求结束时不能清理新后端的待处理状态。
 		if (sending.current !== operation) return;
 		sending.current = null;
 		if (active.current === binding) setBusy(false);
@@ -53,7 +52,7 @@ export function CustomChat({
 			const target = sessionId ?? (await createSession());
 			if (active.current !== binding) return;
 			setSelection({ binding, id: target });
-			// React may not have committed the new selection yet.
+			// React 可能尚未提交新的会话选择，因此显式传入目标 ID。
 			await chat.send(text.trim(), { sessionId: target });
 			if (active.current === binding) setDraft((current) => (current === text ? "" : current));
 		} catch (cause) {
@@ -83,7 +82,7 @@ export function CustomChat({
 						submitDisabled={busy || (sessionId !== null && !chat.canSend)}
 						onSubmit={(text) => void send(text)}
 						onCancel={() => void chat.stop().catch(report)}
-						placeholder={sessionId ? "Send a message" : "Write the first message to create a session"}
+						placeholder={sessionId ? "发送消息" : "输入第一条消息以创建会话"}
 					/>
 				}
 			/>

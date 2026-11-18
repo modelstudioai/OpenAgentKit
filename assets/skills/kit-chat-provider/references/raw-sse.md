@@ -1,63 +1,46 @@
-# Raw Bailian SSE
+# 百炼原始 SSE 接入
 
-Read [raw-bailian-provider.ts](../examples/raw-bailian-provider.ts) and its
-[HTTP helper](../examples/backend-http.ts). The factory consumes a `RequestClient`
-and six operation configurations:
-`openStream`, `listEvents`, and the four non-stream ChatProvider methods.
-The first two jointly implement the public `stream` method. Each operation has
-`buildRequest(input, context)` and `mapResponse(response, context)`. Build returns
-`{ path, init? }`; map returns the operation result. The Provider executes HTTP,
-and maps with the original `input` plus the supplied cancellation context.
+参考 [raw-bailian-provider.ts](../examples/raw-bailian-provider.ts) 及其 [HTTP 辅助模块](../examples/backend-http.ts)。
+工厂接收 `RequestClient` 和六个操作配置，包含 `openStream`、`listEvents` 及四个非流式 ChatProvider 方法。
+前两个共同实现公开的 `stream` 方法。每个操作均有 `buildRequest(input, context)` 和
+`mapResponse(response, context)`。`buildRequest` 返回 `{ path, init? }`，`mapResponse` 返回操作结果。
+Provider 执行 HTTP 请求，并将原始 `input` 与取消上下文提供给响应映射。
 
-## Readiness is a backend guarantee
+## 后端确认订阅就绪
 
-`openStream.mapResponse` returns `{ response, ready }`, where `ready: Promise<void>` represents
-an actual upstream subscription. It cannot depend on the first business event:
-an idle Session must become ready before its first send.
+`openStream.mapResponse` 返回 `{ response, ready }`。`ready: Promise<void>` 表示上游实际已经订阅。
+空闲会话需要在首次发送前进入就绪状态，禁止等待第一条业务事件才确认就绪。
 
-The example declares this specific backend contract: establish the Bailian
-subscription first, then send response headers with `x-upstream-ready: true`.
-For cross-origin requests, expose that header through
-`Access-Control-Expose-Headers`. The adapter rejects a missing signal.
-Only under this backend guarantee can an already-resolved Promise represent
-readiness. An unconditional HTTP 200 check or a header added before upstream
-subscription would break the guarantee.
+示例后端会先建立百炼订阅，再在响应头中返回 `x-upstream-ready: true`。跨域请求通过
+`Access-Control-Expose-Headers` 暴露该响应头。缺少这一信号时，适配器拒绝连接。
+在该保证下，才可用已完成的 Promise 表示就绪。HTTP 200 或订阅建立前写出的响应头都无法证明就绪。
 
-Do not consume the SSE body or await `ready` inside `mapResponse`. Return the body
-and promise immediately so the factory can start buffering while readiness is
-pending. Mapping failure or cancellation closes the response, including a late
-response from an implementation that ignored cancellation.
+`mapResponse` 应立即返回响应体与 Promise，让工厂在等候 ready 时开始缓冲。
+响应映射阶段不读取 SSE 正文，也不等待 ready。映射失败或取消时关闭响应，
+包括因请求实现忽略取消而迟到的响应。
 
-An independently signaled handshake is also valid. It must identify this
-subscription, reject on failure, and be cancelable with the supplied signal.
-Do not treat a cached "Session exists" or health response as subscription readiness.
+也可使用独立信号完成握手。信号必须标识本次订阅，失败时拒绝，并支持通过传入的 signal 取消。
+缓存的会话存在性结果或健康检查不能用作订阅就绪信号。
 
-## History and recovery
+## 历史与恢复
 
-The factory immediately reads and buffers the stream, waits for upstream readiness,
-then reads every ascending history page. `listEvents.mapResponse` returns complete raw objects
-and an opaque `nextPageToken`, ending with null or no token. Preserve IDs, creation
-timestamps, lifecycle information, content, and main Session status.
+工厂会立即读取并缓冲事件流，等到上游就绪后，按升序读取所有历史页。
+`listEvents.mapResponse` 返回完整原始对象和不透明的 `nextPageToken`，
+游标为 `null` 或缺失时结束分页。保留 ID、创建时间、生命周期信息、内容和主会话状态。
 
-The factory feeds history and buffered frames into the SDK normalizer, emits a
-reset/reconstruction, and only then announces ready. History must include the
-information needed to resolve execution state and pending approvals. Never silently
-truncate it or manufacture idle when state is unknown.
+工厂将历史和缓冲帧交给 SDK 归一器，发出 reset 并重建后再报告 ready。
+历史必须包含判断执行状态与待审批项所需的信息，禁止静默截断或在状态未知时填为 idle。
 
-Same-ID snapshots can change. Conflicting history/live snapshots without update
-evidence may be rejected; `created_at` is not a snapshot version. Unmatched
-`object: "content"` frames cannot be discarded to make readiness succeed.
-Within one live connection, preserve arrival order, including same-ID state updates.
+同 ID 的快照可能变化。历史与实时快照冲突且没有更新依据时，工厂可以拒绝接入。
+`created_at` 只表示创建时间。遇到无法匹配的 `object: "content"` 帧时，不能通过丢弃来让连接就绪。
+同一次实时连接内保留到达顺序，包括同 ID 的状态更新。
 
-Each reconnect reads complete history. This path does not forward Kit `after`, SSE
-`id`, or a final business event ID as a Bailian per-update cursor. An in-progress
-historical snapshot has no reliable delta watermark: recovery may temporarily show
-partial content until an authoritative full snapshot arrives. Do not promise
-character-perfect continuity across an outage.
+每次重连重新读取完整历史。此路径没有百炼逐更新游标，不能转发 Kit `after`、SSE `id` 或最后一条业务事件 ID 来代替。
+进行中的历史快照缺少可靠的增量水位。恢复后可能暂时只显示部分内容，直到收到完整权威快照。
 
-## Limits and cleanup
+## 上限与清理
 
-| Option | Default |
+| 配置项 | 默认值 |
 | --- | --- |
 | `connectTimeoutMs` | 30000 |
 | `idleTimeoutMs` | 45000 |
@@ -65,26 +48,20 @@ character-perfect continuity across an outage.
 | `maxBufferedBytes` | 8388608 |
 | `maxHistoryEvents` | 10000 |
 
-Bounds fail explicitly rather than dropping events. Stream and history operations
-receive `context.signal`; `init` cannot override it. The total connection deadline
-covers request construction, dynamic authentication, HTTP, mapping, readiness and
-history. The factory cancels readers, timers, history, and buffered
-delivery together; the Controller schedules reconnects. Finishing a Turn does not
-close a persistent subscription. Natural EOF and silence are failures, not success
-or an invented OpenAI `[DONE]` frame.
+超过上限时明确失败。订阅和历史操作接收 `context.signal`，`init` 不得覆盖它。
+连接总时限涵盖请求构建、动态鉴权、HTTP、响应映射、订阅就绪和历史。
+工厂统一取消 reader、定时器、历史请求和缓冲事件交付，控制器负责安排重连。
+回合结束后持久订阅保持打开。自然 EOF 或流静默视为故障，禁止伪造 OpenAI `[DONE]` 帧。
 
-Kit performs framing and recovery; SDK performs Bailian accumulation and event
-conversion. Kit explicitly uses `{ redact: false, truncate: false }` for complete
-content, leaving the SDK's existing defaults intact. Never add another normalizer
-or post-process every snapshot by appending its text.
+Kit 管理分帧和恢复，SDK 管理百炼事件的累加与转换。
+Kit 显式传入 `{ redact: false, truncate: false }` 以保留完整内容，SDK 默认设置仍按原合同使用。
+复用现有归一器，展示时用完整快照替换内容。
 
-## SDK availability
+## SDK 公开入口
 
-The repository pins the published npm package `@openagentpack/sdk` to the exact
-version `0.10.0`, with package contents locked by `pnpm-lock.yaml` integrity.
-Its browser-safe `@openagentpack/sdk/session-events` entry exports
-`SessionEvent` and `createBailianSessionEventNormalizer`; its server entry provides
-`listSessionThreads` and `listSessionThreadEvents`. Recheck public exports and run
-the relevant contract and browser bundle tests when changing dependencies.
-Registry availability does not establish live backend/Cloud validation.
-Do not commit developer-machine paths or use SDK internals.
+本仓库使用已发布的 npm 包 `@openagentpack/sdk`，固定版本为 `0.10.0`，
+包内容由 `pnpm-lock.yaml` 中的完整性摘要锁定。可在浏览器使用的 `@openagentpack/sdk/session-events`
+导出 `SessionEvent` 和 `createBailianSessionEventNormalizer`。
+服务端入口提供 `listSessionThreads` 和 `listSessionThreadEvents`。
+修改依赖时重新核对公开导出，并运行相关合同测试与浏览器打包测试。
+真实后端与 Cloud 需独立验收。只使用 SDK 公开入口，仓库内禁止提交开发机路径。

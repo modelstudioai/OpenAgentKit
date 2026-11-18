@@ -4,6 +4,20 @@ import ts from "typescript";
 
 export const portablePath = (path) => path.replaceAll("\\", "/");
 
+const withoutFencedCode = (text) => text.replace(/^[ \t]*(`{3,}|~{3,})[^\r\n]*\r?\n[\s\S]*?^[ \t]*\1[ \t]*\r?$/gm, "");
+
+export function validateChineseText(text, source) {
+	if (typeof text !== "string" || !/\p{Script=Han}/u.test(text)) throw new Error(`${source} 需要包含中文说明。`);
+}
+
+export function validateChineseMarkdown(text, source) {
+	const prose = withoutFencedCode(text)
+		.replace(/<!--[\s\S]*?-->/g, "")
+		.replace(/`+[^\r\n`]*`+/g, "")
+		.replace(/\]\([^\r\n)]*\)/g, "]");
+	validateChineseText(prose, source);
+}
+
 export function filesUnder(directory) {
 	return readdirSync(directory)
 		.sort()
@@ -32,7 +46,7 @@ export function headingSlugs(headings) {
 }
 
 function validateAnchor(text, anchor, file, href) {
-	const prose = text.replace(/^```[^\n]*\n[\s\S]*?^```[ \t]*$/gm, "");
+	const prose = withoutFencedCode(text);
 	const headings = headingSlugs([...prose.matchAll(/^#+ (.+)$/gm)].map((heading) => heading[1]));
 	if (!headings.includes(anchor)) throw new Error(`Broken Skill anchor in ${file}: ${href}`);
 }
@@ -67,7 +81,6 @@ export function validateSkillMap(name, entries) {
 		throw new Error(`Invalid Skill frontmatter: ${name}`);
 	for (const file of files) {
 		const text = read(file);
-		if (/\p{Script=Han}/u.test(text)) throw new Error(`Skill content must be English: ${file}`);
 		if (/\b(TODO|TBD|FIXME)\b/.test(text)) throw new Error(`Unfinished scaffold: ${file}`);
 		if (file.endsWith(".md")) validateMarkdownLinks({ text, file, files, read });
 	}

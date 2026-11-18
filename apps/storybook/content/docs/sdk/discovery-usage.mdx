@@ -35,30 +35,30 @@ import type { KitClient } from "@openagentpack/kit-sdk/providers/kit";
 import { useSessionDetails } from "@openagentpack/kit-sdk/sessions/hooks";
 import { useUsageLimits } from "@openagentpack/kit-sdk/usage/hooks";
 
-// Data hooks accept an explicit Client; Context remains an optional compatibility path.
+// 数据 Hook 支持显式 Client，也可通过 Context 兼容接入。
 export function AgentResourceSummary({ slug }: { slug: string | null }) {
 	const resources = useAgentResources(slug);
 	return (
 		<div>
-			<p>{resources?.skills?.map((skill) => skill.name).join(", ") || "No skill metadata"}</p>
-			<p>{resources?.memory_stores?.map((store) => store.name).join(", ") || "No memory stores"}</p>
+			<p>{resources?.skills?.map((skill) => skill.name).join("、") || "暂无技能信息"}</p>
+			<p>{resources?.memory_stores?.map((store) => store.name).join("、") || "暂无记忆库"}</p>
 		</div>
 	);
 }
 
 export function MemberLimitSummary() {
 	const limits = useUsageLimits({ days: 30 });
-	if (limits.loading) return <p role="status">Loading usage limits…</p>;
+	if (limits.loading) return <p role="status">正在加载限额…</p>;
 	if (limits.error) return <p role="alert">{String(limits.error)}</p>;
-	if (!limits.data) return <p>Not a local Kit member</p>;
+	if (!limits.data) return <p>当前身份不是 Kit 本地成员</p>;
 	return (
 		<button type="button" onClick={() => void limits.reload()}>
-			Refresh usage limits
+			刷新用量限制
 		</button>
 	);
 }
 
-// File associations belong to application metadata, not SSE message text.
+// 文件关联记录来自应用元数据。
 export function ChatWithFileMetadata({
 	client,
 	sessionId,
@@ -70,12 +70,12 @@ export function ChatWithFileMetadata({
 }) {
 	const chat = useChat({ sessionId, provider });
 	const details = useSessionDetails({ client, sessionId, setMessageFiles: chat.setMessageFiles });
-	return details.error ? <p role="alert">{details.error}</p> : <p>{chat.messages.length} messages</p>;
+	return details.error ? <p role="alert">{details.error}</p> : <p>{chat.messages.length} 条消息</p>;
 }
 
 export async function readUploadStatus(client: KitClient, fileId: string) {
 	const status = await client.fileStatus(fileId);
-	// Keep the draft until ready; the server enforces readiness and ownership too.
+	// 文件就绪前保留草稿，服务端也会校验文件状态和归属。
 	return { ready: status.available, status: status.status };
 }
 ```
@@ -109,7 +109,7 @@ export async function readUploadStatus(client: KitClient, fileId: string) {
 
 ### 组合示例
 
-以下源文件与英文 Skill 共享，展示查询、显式提交和提交后的刷新。
+以下源文件与 Skill 共享，展示查询、显式提交和提交后的刷新。
 
 {/* skill-example: use-kit-chat/examples/discovery-usage.tsx */}
 
@@ -119,8 +119,8 @@ import { useKitClient } from "@openagentpack/kit-sdk/providers/kit/react";
 import { useQuota, useQuotaRequests } from "@openagentpack/kit-sdk/usage/hooks";
 import { useState } from "react";
 
-// Mount inside the same KitProvider as the default chat page.
-// These hooks use KitClient; an explicit ChatProvider does not redirect them.
+// 与默认会话页挂载在同一个 KitProvider 内。
+// 这些 Hook 使用 KitClient，显式 ChatProvider 只接管对话操作。
 export function DiscoveryAndUsage() {
 	const client = useKitClient();
 	const plaza = usePlaza({ category: "general" });
@@ -134,11 +134,11 @@ export function DiscoveryAndUsage() {
 		setPending(true);
 		setError(null);
 		try {
-			await client.createQuotaRequest({ requestedCredits: 100, reason: "Additional project work" });
+			await client.createQuotaRequest({ requestedCredits: 100, reason: "项目新增工作需要更多额度" });
 			usage.reload();
 			history.reload();
 		} catch (cause) {
-			setError(cause instanceof Error ? cause.message : "Request failed");
+			setError(cause instanceof Error ? cause.message : "请求失败");
 		} finally {
 			setPending(false);
 		}
@@ -146,22 +146,22 @@ export function DiscoveryAndUsage() {
 
 	return (
 		<section>
-			<h2>Available agents</h2>
+			<h2>可用 Agent</h2>
 			{plaza.error ? <p role="alert">{plaza.error}</p> : null}
 			<ul>
 				{plaza.view?.agents.map((agent) => (
 					<li key={agent.slug}>{agent.display_name}</li>
 				))}
 			</ul>
-			<h2>Monthly usage</h2>
+			<h2>月度用量</h2>
 			{usage.error ? <p role="alert">{usage.error}</p> : null}
-			<p>{usage.quota ? `${usage.quota.used} credits used` : "Loading usage"}</p>
+			<p>{usage.quota ? `已用 ${usage.quota.used} Credits` : "正在加载用量"}</p>
 			<button
 				type="button"
 				disabled={pending || usage.loading || !usage.quota || Boolean(usage.quota.pending_request)}
 				onClick={() => void requestCredits()}
 			>
-				Request 100 credits
+				申请 100 Credits
 			</button>
 			{error ? <p role="alert">{error}</p> : null}
 			<ul>

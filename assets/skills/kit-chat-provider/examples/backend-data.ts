@@ -1,7 +1,7 @@
 import { type ClientOperations, createKitClient } from "@openagentpack/kit-sdk/providers/kit";
 import type { RequestClient } from "@openagentpack/kit-sdk/request";
 
-// Configure only the features your backend supports. Missing operations never call Kit routes.
+// 只配置后端支持的功能。未配置的操作不会调用 Kit 路由。
 export function createDataClient(request: RequestClient) {
 	const result = async <T>(response: Response): Promise<T> => (await response.json()).result;
 	const json = (value: unknown) => ({

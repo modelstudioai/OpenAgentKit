@@ -16,7 +16,7 @@ test("the display wrapper keeps a class Provider's subscription and send receive
 				event_id: "answer",
 				type: "message",
 				role: "assistant",
-				content: [{ type: "text", text: "Hello from [[agent-name]]" }],
+				content: [{ type: "text", text: "[[agent-name]] 已收到你的请求。" }],
 			});
 			return { session_id: sessionId, accepted: true, event_ids: [] };
 		}
@@ -32,9 +32,9 @@ test("the display wrapper keeps a class Provider's subscription and send receive
 	}
 	const controller = createChatController(withDisplayLabel(new Backend()), "session");
 	try {
-		await controller.send("hello");
+		await controller.send("你好");
 		const reply = controller.getSnapshot().messages.find((message) => message.role === "assistant");
-		assert.equal(reply.parts[0].text, "Hello from Support assistant");
+		assert.equal(reply.parts[0].text, "客服助手 已收到你的请求。");
 		assert.equal(reply.parts[0].id, "answer:content:0");
 	} finally {
 		controller.dispose();

@@ -19,7 +19,7 @@ Kit 已提供请求、流处理、消息状态和会话列表等前端数据接�
 通用数据入口不依赖 React。旧根入口、`/adapters/react`、`/react`、`/request/stream`、`/bailian` 已移除，
 调用方直接改用对应功能路径。
 
-需要 coding agent 帮助接入时，使用英文 [use-kit-chat Skill](/docs/skill/use-kit-chat)
+需要 coding agent 帮助接入时，使用 [use-kit-chat Skill](/docs/skill/use-kit-chat)
 处理页面状态与交互，使用 [kit-chat-provider Skill](/docs/skill/kit-chat-provider)
 适配自建百炼后端；它们引用与本站一致的公开 API。
 
@@ -65,7 +65,7 @@ Provider 的 `transformMessage` 负责 `SessionEvent → ChatMessage` 展示规�
 | Turn | 一轮执行，从用户消息开始，到主会话正常完成、中断或失败；等待工具审批仍属于当前轮次 |
 | Thread | 同一 Session 中一次子 Agent 执行的资源，可有父线程；用于读取协作历史和展示执行记录 |
 | Artifact | 智能体交付的文件结果；默认由 Kit Server 代理下载，自建后端提供自己的下载接口 |
-| Attachment | 用户上传的输入文件；默认 Kit 链路随新建 Session 挂载，已有会话不能中途追加挂载 |
+| Attachment | 用户上传的输入文件；通过扫描后可在新建会话时挂载，也可在已有体验会话中随消息挂载 |
 
 事件的线程归属优先读取 `metadata.thread_id`，缺失时兼容 `metadata.session_thread_id`。
 `reset`、`ready`、`done`、`error`、`ping` 和 `operation` 属于 Kit 协议控制帧，与业务 Event 分开处理。
