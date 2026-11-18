@@ -16,6 +16,7 @@ import { type ReactNode, useEffect, useState } from "react";
 
 import styles from "./console-layout.module.less";
 import type { ConsoleTab } from "./console-route.ts";
+import { LanguageSwitcher } from "./language-switcher.tsx";
 
 const { Sider, Header, Content } = Layout;
 
@@ -134,6 +135,9 @@ export function ConsoleLayout({
 				) : null}
 				<Brand desktop={!isMobile} />
 				{isMobile ? <span className={styles.breadcrumbTitle}>{tabLabel}</span> : null}
+				<div className="ml-auto flex items-center">
+					<LanguageSwitcher />
+				</div>
 			</Header>
 			<Layout className={styles.body}>
 				{!isMobile ? (

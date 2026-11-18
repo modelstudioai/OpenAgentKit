@@ -1,6 +1,10 @@
 import { App as AntdApp, ConfigProvider } from "antd";
+import enUS from "antd/locale/en_US";
 import zhCN from "antd/locale/zh_CN";
-import { useState } from "react";
+import dayjs from "dayjs";
+import "dayjs/locale/zh-cn";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import styles from "./app.module.less";
 import { EvalPage } from "./eval-page.tsx";
 import { AdminLogin } from "./features/auth/admin-login.tsx";
@@ -30,9 +34,20 @@ function getSimplePage(tab: ConsoleTab) {
 }
 
 export function App() {
+	const { i18n } = useTranslation();
+	// antd / dayjs 内置文案跟随当前语言（业务自写中文的迁移在后续阶段）。
+	const antdLocale = i18n.resolvedLanguage === "en" ? enUS : zhCN;
+	useEffect(() => {
+		const applyDayjs = (lng: string) => dayjs.locale(lng === "en" ? "en" : "zh-cn");
+		applyDayjs(i18n.language);
+		i18n.on("languageChanged", applyDayjs);
+		return () => {
+			i18n.off("languageChanged", applyDayjs);
+		};
+	}, [i18n]);
 	// button/wave 对齐百炼 BailianConfigProvider：按钮无点击波纹、两字按钮不自动拆分
 	return (
-		<ConfigProvider theme={antdTheme} locale={zhCN} button={{ autoInsertSpace: false }} wave={{ disabled: true }}>
+		<ConfigProvider theme={antdTheme} locale={antdLocale} button={{ autoInsertSpace: false }} wave={{ disabled: true }}>
 			<AntdApp>
 				<TemplateExitConfirmationProvider>
 					<ConsoleRouter>

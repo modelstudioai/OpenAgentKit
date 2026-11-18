@@ -1,11 +1,15 @@
 import { Button, Card, Input } from "antd";
 import { adminBaseUrl, setAdminToken } from "../../lib/auth.ts";
+import { LanguageSwitcher } from "../navigation/language-switcher.tsx";
 import styles from "./auth.module.less";
 
 export function AdminLogin({ onLogin }: { onLogin: (token: string) => void }) {
 	return (
 		<div className={styles.loginRoot}>
 			<Card className={styles.loginCard}>
+				<div className="mb-4 flex justify-end">
+					<LanguageSwitcher />
+				</div>
 				<h1 className={styles.loginTitle}>管理端登录</h1>
 				<p className={styles.loginHint}>
 					输入以下服务的 <code>ADMIN_TOKEN</code>（.env 中配置）。令牌仅用于该服务。
