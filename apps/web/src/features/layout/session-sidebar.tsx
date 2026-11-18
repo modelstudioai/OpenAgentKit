@@ -17,6 +17,7 @@ import type {
 	SessionDirectorySection,
 } from "../../lib/use-session-directory.ts";
 import { MemberAccount, type MemberAccountProps } from "../auth/member-auth-gate.tsx";
+import { LanguageSwitcher } from "./language-switcher.tsx";
 
 const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]";
 const HOVER_ROW =
@@ -444,6 +445,7 @@ export function SessionSidebar({
 					</svg>
 					我的用量
 				</button>
+				<LanguageSwitcher />
 			</div>
 		</aside>
 	);
