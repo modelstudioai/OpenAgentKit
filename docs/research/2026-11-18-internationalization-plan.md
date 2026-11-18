@@ -124,3 +124,17 @@ apps/<web|console>/src/i18n/
 - 不新增后端 op、不预建用户偏好持久化；语言包不进 SQLite、不进仓库外服务。
 - chat-ui 不新增设计常量/keyframes；文案词典是数据不是视觉 token。
 - 动态文案插值使用 SDK 稳定 ID 的规则不受影响（键为静态语义名）。
+
+## 落地记录
+
+### 2026-11-18 阶段 0（分支 codex/i18n）
+
+- 依赖：`i18next@27` + `react-i18next@18` 仅装入 `apps/web`、`apps/console`；chat-ui / SDK 不动。
+- 每个 app 落地 `src/i18n/{index.ts,locales/{zh-CN,en}/common.ts}` 与 `locale.test.ts`；
+  语言解析为纯函数 `resolveLocale(env)`（存储 > `?lang=` > navigator > 默认 zh-CN），无 DOM 也可测。
+- 切换器形态与方案 §4.3 的偏差：两种语言直接用分段控件常驻展示（web 侧栏页脚、console 顶栏与登录页），
+  比下拉少一层弹层；引入第三语种时再评估下拉。
+- console `ConfigProvider locale` 与 `dayjs.locale` 随语言切换；两端 `<html lang>` 在 init/setLocale 更新。
+- 新增 `scripts/check-i18n.mjs`：zh-CN ⇄ en 命名空间与键双向对齐（失败），未引用键告警（不阻断）；
+  `pnpm check:i18n` 已挂入 `gate` 与 `verify:push`，根 AGENTS.md 命令块同步。
+- 未包含：chat-ui 词典、业务存量文案迁移、server error `params`、账号级语言偏好持久化（后续阶段）。
