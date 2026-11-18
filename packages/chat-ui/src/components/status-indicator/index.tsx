@@ -1,4 +1,6 @@
 import type { ConnectionState } from "@openagentpack/kit-sdk/chat";
+import { resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
+import statusIndicatorStrings, { type StatusIndicatorStrings } from "./strings.ts";
 
 type StatusKey =
 	| "idle"
@@ -11,16 +13,17 @@ type StatusKey =
 	| "reconnecting"
 	| "error";
 
-const STATUS_LABELS: Record<StatusKey, string> = {
-	idle: "空闲",
-	running: "生成中…",
-	requires_action: "等待审批",
-	stopping: "正在停止…",
-	failed: "执行失败",
-	interrupted: "已中断",
-	connecting: "连接中…",
-	reconnecting: "重连中…",
-	error: "连接异常",
+/** 状态枚举 → 词典键（requires_action 用 camelCase 键名）。 */
+const STRING_KEYS: Record<StatusKey, keyof StatusIndicatorStrings> = {
+	idle: "idle",
+	running: "running",
+	requires_action: "requiresAction",
+	stopping: "stopping",
+	failed: "failed",
+	interrupted: "interrupted",
+	connecting: "connecting",
+	reconnecting: "reconnecting",
+	error: "error",
 };
 
 /** 状态推导：phase 优先，其次连接态覆盖，错误兜底（重连中的错误仍显示重连）。 */
@@ -44,6 +47,7 @@ export function StatusIndicator({
 	connection,
 	error,
 	variant = "default",
+	strings: stringsOverride,
 }: {
 	connected: boolean;
 	turnRunning: boolean;
@@ -52,9 +56,12 @@ export function StatusIndicator({
 	error?: { code: string; message: string } | null;
 	/** badge 在保留状态文本的同时提供紧凑徽标，适用于空间受限的页头。 */
 	variant?: "default" | "badge";
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<StatusIndicatorStrings>;
 }) {
+	const strings = resolveStrings(statusIndicatorStrings, useKitLocale(), stringsOverride);
 	const status = resolveStatusKey(phase, turnRunning, connected, connection, error);
-	const label = status === "error" ? `连接异常：${error?.message ?? ""}` : STATUS_LABELS[status];
+	const label = status === "error" ? `${strings.errorPrefix}${error?.message ?? ""}` : strings[STRING_KEYS[status]];
 	const active = status === "running" || status === "connecting" || status === "reconnecting";
 	const tones: Record<StatusKey, string> = {
 		idle: "text-[var(--kit-fg-muted)]",

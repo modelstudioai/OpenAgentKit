@@ -11,6 +11,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
 import { Message, type MessageProps } from "../message/index.tsx";
 import {
 	deriveAnchorTurns,
@@ -21,6 +22,7 @@ import {
 } from "../message-anchor-rail/index.tsx";
 import { SubAgentCard } from "../process/sub-agent-card/index.tsx";
 import { ProcessingIndicator } from "../processing-indicator/index.tsx";
+import messageListStrings, { type MessageListStrings } from "./strings.ts";
 
 function followMessageContent(viewport: HTMLElement, isEmpty: boolean) {
 	viewport.scrollTop = isEmpty ? 0 : viewport.scrollHeight;
@@ -311,11 +313,13 @@ function MultiAgentTail({
 	multiAgent,
 	onArtifactDownload,
 	onArtifactOpen,
+	strings,
 }: {
 	messages: ChatMessage[];
 	multiAgent?: ChatMultiAgent;
 	onArtifactDownload?: (fileId: string) => void;
 	onArtifactOpen?: (fileId: string, contentType?: string) => void;
+	strings: MessageListStrings;
 }) {
 	if (!multiAgent) return null;
 	const shardThreadIds = collectShardThreadIds(messages);
@@ -324,7 +328,7 @@ function MultiAgentTail({
 	return (
 		<div>
 			<p className="border-t border-dashed border-[var(--kit-border)] pt-3 text-center text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
-				以下子 Agent 来自线程列表
+				{strings.threadIntro}
 			</p>
 			{threads.map((thread) => (
 				<SubAgentCard
@@ -340,11 +344,19 @@ function MultiAgentTail({
 }
 
 /** 离底浮现的回到底部按钮；隐藏时不可交互、不占焦点，透明度/位移用 token 过渡。 */
-function BackToBottomButton({ hidden, onClick }: { hidden: boolean; onClick: () => void }) {
+function BackToBottomButton({
+	hidden,
+	onClick,
+	strings,
+}: {
+	hidden: boolean;
+	onClick: () => void;
+	strings: MessageListStrings;
+}) {
 	return (
 		<button
 			type="button"
-			aria-label="回到底部"
+			aria-label={strings.backToBottom}
 			tabIndex={hidden ? -1 : 0}
 			onClick={onClick}
 			className={`absolute bottom-2 left-1/2 z-10 grid size-8 -translate-x-1/2 place-items-center rounded-full border border-[var(--kit-border)] bg-[var(--kit-surface)] text-[var(--kit-fg-muted)] shadow-[var(--kit-shadow)] transition-[opacity,translate,scale,visibility] duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] hover:bg-[var(--kit-bg-subtle)] hover:text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] active:scale-90 motion-reduce:transition-none ${
@@ -385,6 +397,7 @@ export function MessageList({
 	multiAgent,
 	virtualize = true,
 	skills,
+	strings: stringsOverride,
 }: {
 	messages: ChatMessage[];
 	/** workspace 将消息居中限制在阅读列内，并使用工作区消息样式。 */
@@ -416,7 +429,10 @@ export function MessageList({
 	virtualize?: boolean;
 	/** 当前 Agent 已绑定技能名；用户气泡正文按协议 token 原位穿插还原技能 chip（ADR-0016）。 */
 	skills?: string[];
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<MessageListStrings>;
 }) {
+	const strings = resolveStrings(messageListStrings, useKitLocale(), stringsOverride);
 	const isEmpty = messages.length === 0;
 	const viewportRef = useRef<HTMLElement>(null);
 	const contentRef = useRef<HTMLDivElement>(null);
@@ -486,7 +502,7 @@ export function MessageList({
 		<div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
 			<section
 				ref={viewportRef}
-				aria-label="消息列表"
+				aria-label={strings.listAriaLabel}
 				className={`min-h-0 min-w-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${variant === "workspace" ? `px-4 md:px-6${anchorRail ? " md:pr-12" : ""}` : "p-4 pb-2"}${className ? ` ${className}` : ""}`}
 				onScroll={(event) => {
 					if (!active) return;
@@ -523,6 +539,7 @@ export function MessageList({
 						multiAgent={multiAgent}
 						onArtifactDownload={onArtifactDownload}
 						onArtifactOpen={onArtifactOpen}
+						strings={strings}
 					/>
 					{/* 底部淡出层会压进内容约一行：审批卡与生成指示必须整体清晰，加净空离开渐变区。 */}
 					{approvals ? <div className={variant === "workspace" ? "mb-6" : "my-2"}>{approvals}</div> : null}
@@ -540,7 +557,7 @@ export function MessageList({
 				/>
 			) : null}
 			{anchorRail ? <MessageAnchorRail items={anchorTurns} activeIndex={activeAnchor} onSelect={jumpToAnchor} /> : null}
-			<BackToBottomButton hidden={isEmpty || atBottom} onClick={scrollToBottom} />
+			<BackToBottomButton hidden={isEmpty || atBottom} onClick={scrollToBottom} strings={strings} />
 		</div>
 	);
 }

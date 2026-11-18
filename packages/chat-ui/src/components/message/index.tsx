@@ -5,23 +5,25 @@ import type { ReactNode } from "react";
 import { Actions } from "../actions/index.tsx";
 import { ArtifactCard } from "../artifact-card/index.tsx";
 import { FileCard } from "../file-card/index.tsx";
+import { resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
 import { Markdown } from "../markdown/index.tsx";
 import { ExecutionGroup, isProcessPart, type ProcessPart } from "../process/execution-group/index.tsx";
 import { SubAgentCard } from "../process/sub-agent-card/index.tsx";
 import { ProcessingIndicator } from "../processing-indicator/index.tsx";
 import { SkillGlyph } from "../sender/index.tsx";
+import messageStrings, { type MessageStrings } from "./strings.ts";
 
 export { ArtifactCard } from "../artifact-card/index.tsx";
 export { ReasoningBlock } from "../process/reasoning-block/index.tsx";
 export { ToolCallCard } from "../process/tool-call-card/index.tsx";
 export { ProcessingIndicator } from "../processing-indicator/index.tsx";
 
-function displayValue(value: unknown): string {
+function displayValue(value: unknown, fallback: string): string {
 	if (typeof value === "string") return value;
 	try {
 		return JSON.stringify(value, null, 2) ?? String(value);
 	} catch {
-		return "内容无法序列化";
+		return fallback;
 	}
 }
 
@@ -37,6 +39,8 @@ export type MessageProps = {
 	multiAgent?: ChatMultiAgent;
 	/** 当前 Agent 已绑定技能名；提供时用户气泡正文按协议 token 原位穿插还原技能 chip。 */
 	skills?: string[];
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<MessageStrings>;
 };
 
 /** 用户气泡正文：按已知技能名解析协议 token，在原位穿插还原技能 chip（ADR-0016）；
@@ -101,17 +105,27 @@ function MessageShell({
 	);
 }
 
-function MessageStatus({ status, role }: { status: ChatMessage["status"]; role: ChatMessage["role"] }) {
+function MessageStatus({
+	status,
+	role,
+	strings,
+}: {
+	status: ChatMessage["status"];
+	role: ChatMessage["role"];
+	strings: MessageStrings;
+}) {
 	if (status === "pending")
-		return <span className="text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">发送中…</span>;
+		return <span className="text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">{strings.sending}</span>;
 	if (status === "failed")
 		return (
 			<span className="text-[length:var(--kit-text-caption)] text-[var(--kit-danger)]">
-				{role === "user" ? "发送失败" : "生成失败"}
+				{role === "user" ? strings.sendFailed : strings.generationFailed}
 			</span>
 		);
 	if (status === "interrupted")
-		return <span className="text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">已中断</span>;
+		return (
+			<span className="text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">{strings.interrupted}</span>
+		);
 	return null;
 }
 
@@ -146,6 +160,7 @@ function RenderPart({
 	onArtifactOpen,
 	multiAgent,
 	skills,
+	strings,
 }: {
 	part: MessagePart;
 	role: ChatMessage["role"];
@@ -153,6 +168,7 @@ function RenderPart({
 	onArtifactOpen?: (fileId: string, contentType?: string) => void;
 	multiAgent?: ChatMultiAgent;
 	skills?: string[];
+	strings: MessageStrings;
 }) {
 	if (part.type === "text")
 		return role === "user" ? <UserText text={part.text} skills={skills} /> : <Markdown>{part.text}</Markdown>;
@@ -179,8 +195,13 @@ function RenderPart({
 	if (part.type === "unknown")
 		return (
 			<details className="my-2 text-[length:var(--kit-text-label)] text-[var(--kit-fg-muted)]">
-				<summary className="cursor-pointer">未识别内容：{part.label}</summary>
-				<pre className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">{displayValue(part.value)}</pre>
+				<summary className="cursor-pointer">
+					{strings.unrecognizedPrefix}
+					{part.label}
+				</summary>
+				<pre className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">
+					{displayValue(part.value, strings.serializeFallback)}
+				</pre>
 			</details>
 		);
 	if (part.type === "status")
@@ -217,7 +238,15 @@ function copyableText(message: ChatMessage): string {
 		.join("");
 }
 
-function MessageContent({ message, onArtifactDownload, onArtifactOpen, onCopy, multiAgent, skills }: MessageProps) {
+function MessageContent({
+	message,
+	onArtifactDownload,
+	onArtifactOpen,
+	onCopy,
+	multiAgent,
+	skills,
+	strings,
+}: MessageProps & { strings: MessageStrings }) {
 	const text = copyableText(message);
 	// 只拼接相邻同类文本，既保留 Markdown 分片，也不跨工具/文件重排内容。
 	const parts: MessagePart[] = [];
@@ -251,13 +280,14 @@ function MessageContent({ message, onArtifactDownload, onArtifactOpen, onCopy, m
 							onArtifactOpen={onArtifactOpen}
 							multiAgent={multiAgent}
 							skills={skills}
+							strings={strings}
 						/>
 					</div>
 				),
 			)}
 			{message.role === "assistant" && streaming ? <ProcessingIndicator /> : null}
 			{message.role === "assistant" && message.status === "done" && text.trim() ? (
-				<Actions aria-label="消息操作" className="mt-2">
+				<Actions aria-label={strings.actionsAriaLabel} className="mt-2">
 					<Actions.Copy text={text} onCopy={onCopy} />
 					{message.createdAt ? <MessageTime createdAt={message.createdAt} /> : null}
 				</Actions>
@@ -274,15 +304,17 @@ export function Message({
 	onCopy,
 	multiAgent,
 	skills,
+	strings: stringsOverride,
 }: MessageProps) {
+	const strings = resolveStrings(messageStrings, useKitLocale(), stringsOverride);
 	// streaming 的指示由 MessageContent 末尾的「生成中…」行承担，顶部不再重复。
 	const showsStatus = message.status !== "done" && message.status !== "streaming";
-	const status = <MessageStatus status={message.status} role={message.role} />;
+	const status = <MessageStatus status={message.status} role={message.role} strings={strings} />;
 	// 用户消息的悬停操作行挂在气泡下方（绝对定位不占气泡高度）；复制原文与时间整体淡入。
 	const text = copyableText(message);
 	const userFooter =
 		message.role === "user" && message.status === "done" && text.trim() ? (
-			<Actions aria-label="消息操作" className={`absolute top-full right-0 z-10 pt-1 ${HOVER_REVEAL}`}>
+			<Actions aria-label={strings.actionsAriaLabel} className={`absolute top-full right-0 z-10 pt-1 ${HOVER_REVEAL}`}>
 				<Actions.Copy text={text} onCopy={onCopy} iconOnly />
 				{message.createdAt ? <MessageTime createdAt={message.createdAt} /> : null}
 			</Actions>
@@ -309,6 +341,7 @@ export function Message({
 						onCopy={onCopy}
 						multiAgent={multiAgent}
 						skills={skills}
+						strings={strings}
 					/>
 				</MessageShell>
 			</div>
@@ -324,6 +357,7 @@ export function Message({
 				onCopy={onCopy}
 				multiAgent={multiAgent}
 				skills={skills}
+				strings={strings}
 			/>
 		</MessageShell>
 	);

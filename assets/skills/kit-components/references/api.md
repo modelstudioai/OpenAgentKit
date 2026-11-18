@@ -73,7 +73,7 @@
 - 先执行单项回调，再执行组的 onClick。
 
 ```ts
-export function Actions({ items, onClick, children, variant, className, "aria-label": ariaLabel, }: ActionsProps): JSX.Element;
+export function Actions({ items, onClick, children, variant, className, "aria-label": ariaLabel, strings: stringsOverride, }: ActionsProps): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -84,8 +84,9 @@ export function Actions({ items, onClick, children, variant, className, "aria-la
 | `variant` | 否 | `ActionsVariant \| undefined` |
 | `className` | 否 | `string \| undefined` |
 | `aria-label` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<ActionsStrings> \| undefined` |
 
-<!-- source-sha256: 13059af86b72a484b0008fa5a4fb0ed481207d57a7acb285ad0799b419061e95; doc-sha256: 8c93e2e994d7d470f2d15b7f4240919bc51e3da3c4f7324d003b6b9314746e0b -->
+<!-- source-sha256: fa99396711a1978cb04b376f3d022b1cf75af84c71c9e3c7207ca29c4ee2247b; doc-sha256: 8c93e2e994d7d470f2d15b7f4240919bc51e3da3c4f7324d003b6b9314746e0b -->
 
 ## ActionsCopy
 
@@ -101,7 +102,7 @@ export function Actions({ items, onClick, children, variant, className, "aria-la
 - 文本为空或正在复制时禁用按钮。
 
 ```ts
-export function ActionsCopy({ text, onCopy, disabled, label, iconOnly, variant, className, }: ActionsCopyProps): JSX.Element;
+export function ActionsCopy({ text, onCopy, disabled, label, iconOnly, variant, className, strings: stringsOverride, }: ActionsCopyProps): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -113,8 +114,9 @@ export function ActionsCopy({ text, onCopy, disabled, label, iconOnly, variant, 
 | `iconOnly` | 否 | `boolean \| undefined` |
 | `variant` | 否 | `ActionsVariant \| undefined` |
 | `className` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<ActionsStrings> \| undefined` |
 
-<!-- source-sha256: 13059af86b72a484b0008fa5a4fb0ed481207d57a7acb285ad0799b419061e95; doc-sha256: 8c93e2e994d7d470f2d15b7f4240919bc51e3da3c4f7324d003b6b9314746e0b -->
+<!-- source-sha256: fa99396711a1978cb04b376f3d022b1cf75af84c71c9e3c7207ca29c4ee2247b; doc-sha256: 8c93e2e994d7d470f2d15b7f4240919bc51e3da3c4f7324d003b6b9314746e0b -->
 
 ## ActionsFeedback
 
@@ -130,7 +132,7 @@ export function ActionsCopy({ text, onCopy, disabled, label, iconOnly, variant, 
 - 反馈由调用方持久化。
 
 ```ts
-export function ActionsFeedback({ value, onChange, disabled, variant, className, }: ActionsFeedbackProps): JSX.Element;
+export function ActionsFeedback({ value, onChange, disabled, variant, className, strings: stringsOverride, }: ActionsFeedbackProps): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -140,8 +142,9 @@ export function ActionsFeedback({ value, onChange, disabled, variant, className,
 | `disabled` | 否 | `boolean \| undefined` |
 | `variant` | 否 | `ActionsVariant \| undefined` |
 | `className` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<ActionsStrings> \| undefined` |
 
-<!-- source-sha256: 13059af86b72a484b0008fa5a4fb0ed481207d57a7acb285ad0799b419061e95; doc-sha256: 8c93e2e994d7d470f2d15b7f4240919bc51e3da3c4f7324d003b6b9314746e0b -->
+<!-- source-sha256: fa99396711a1978cb04b376f3d022b1cf75af84c71c9e3c7207ca29c4ee2247b; doc-sha256: 8c93e2e994d7d470f2d15b7f4240919bc51e3da3c4f7324d003b6b9314746e0b -->
 
 ## Actions.Copy
 
@@ -157,7 +160,7 @@ export function ActionsFeedback({ value, onChange, disabled, variant, className,
 
 ```ts
 // Actions.Copy 的类型
-({ text, onCopy, disabled, label, iconOnly, variant, className, }: ActionsCopyProps) => JSX.Element
+({ text, onCopy, disabled, label, iconOnly, variant, className, strings: stringsOverride, }: ActionsCopyProps) => JSX.Element
 ```
 
 | 字段 | 必填 | 类型 |
@@ -169,8 +172,9 @@ export function ActionsFeedback({ value, onChange, disabled, variant, className,
 | `iconOnly` | 否 | `boolean \| undefined` |
 | `variant` | 否 | `ActionsVariant \| undefined` |
 | `className` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<ActionsStrings> \| undefined` |
 
-<!-- source-sha256: 13059af86b72a484b0008fa5a4fb0ed481207d57a7acb285ad0799b419061e95; doc-sha256: 8c93e2e994d7d470f2d15b7f4240919bc51e3da3c4f7324d003b6b9314746e0b -->
+<!-- source-sha256: fa99396711a1978cb04b376f3d022b1cf75af84c71c9e3c7207ca29c4ee2247b; doc-sha256: 8c93e2e994d7d470f2d15b7f4240919bc51e3da3c4f7324d003b6b9314746e0b -->
 
 ## Actions.Feedback
 
@@ -186,7 +190,7 @@ export function ActionsFeedback({ value, onChange, disabled, variant, className,
 
 ```ts
 // Actions.Feedback 的类型
-({ value, onChange, disabled, variant, className, }: ActionsFeedbackProps) => JSX.Element
+({ value, onChange, disabled, variant, className, strings: stringsOverride, }: ActionsFeedbackProps) => JSX.Element
 ```
 
 | 字段 | 必填 | 类型 |
@@ -196,8 +200,9 @@ export function ActionsFeedback({ value, onChange, disabled, variant, className,
 | `disabled` | 否 | `boolean \| undefined` |
 | `variant` | 否 | `ActionsVariant \| undefined` |
 | `className` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<ActionsStrings> \| undefined` |
 
-<!-- source-sha256: 13059af86b72a484b0008fa5a4fb0ed481207d57a7acb285ad0799b419061e95; doc-sha256: 8c93e2e994d7d470f2d15b7f4240919bc51e3da3c4f7324d003b6b9314746e0b -->
+<!-- source-sha256: fa99396711a1978cb04b376f3d022b1cf75af84c71c9e3c7207ca29c4ee2247b; doc-sha256: 8c93e2e994d7d470f2d15b7f4240919bc51e3da3c4f7324d003b6b9314746e0b -->
 
 ## AttachmentFileCard
 
@@ -638,7 +643,7 @@ export function SessionSidebar({ groups, recent, loading, error, onReload, activ
 - 新接入同时传入 phase、connection，并将 streamError 传给 error。
 
 ```ts
-export function StatusIndicator({ connected, turnRunning, phase, connection, error, variant, }: { connected: boolean; turnRunning: boolean; phase?: "idle" | "running" | "requires_action" | "stopping" | "failed" | "interrupted"; connection?: ConnectionState; error?: { code: string; message: string; } | null; variant?: "default" | "badge"; }): JSX.Element;
+export function StatusIndicator({ connected, turnRunning, phase, connection, error, variant, strings: stringsOverride, }: { connected: boolean; turnRunning: boolean; phase?: "idle" | "running" | "requires_action" | "stopping" | "failed" | "interrupted"; connection?: ConnectionState; error?: { code: string; message: string; } | null; variant?: "default" | "badge"; strings?: Partial<StatusIndicatorStrings>; }): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -649,8 +654,9 @@ export function StatusIndicator({ connected, turnRunning, phase, connection, err
 | `connection` | 否 | `ConnectionState \| undefined` |
 | `error` | 否 | `{ code: string; message: string; } \| null \| undefined` |
 | `variant` | 否 | `"default" \| "badge" \| undefined` |
+| `strings` | 否 | `Partial<StatusIndicatorStrings> \| undefined` |
 
-<!-- source-sha256: 69bb97d484bf7deeef88b0745f50360cfbbe33e36fa953beaaf2dfc9e49227f4; doc-sha256: 12ca4909d0e7c74f174e45e582ce408541fd45c81294b645364216ca42c3b8cc -->
+<!-- source-sha256: 3807a4aa0c4eced6f033de23f6e953a60e1cd535117bea504fb077b4215e58cf; doc-sha256: 12ca4909d0e7c74f174e45e582ce408541fd45c81294b645364216ca42c3b8cc -->
 
 ## SubAgentPanel
 
@@ -850,7 +856,7 @@ export function ArtifactCard({ filename, contentType, onOpen, onDownload, }: { f
 - 包含文本的已完成助手消息支持复制。
 
 ```ts
-export function Message({ message, variant, onArtifactDownload, onArtifactOpen, onCopy, multiAgent, skills, }: MessageProps): JSX.Element;
+export function Message({ message, variant, onArtifactDownload, onArtifactOpen, onCopy, multiAgent, skills, strings: stringsOverride, }: MessageProps): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -862,8 +868,9 @@ export function Message({ message, variant, onArtifactDownload, onArtifactOpen, 
 | `onCopy` | 否 | `((text: string) => void \| Promise<void>) \| undefined` |
 | `multiAgent` | 否 | `ChatMultiAgent \| undefined` |
 | `skills` | 否 | `string[] \| undefined` |
+| `strings` | 否 | `Partial<MessageStrings> \| undefined` |
 
-<!-- source-sha256: 17f2c7476116246f54466bf1096492d462d70cc8c32f23278056b61fd843f8b2; doc-sha256: ac0a82cfe55b35921a4717197982241600e8f13b4212e51eef4a141058d07aee -->
+<!-- source-sha256: 5fc0331feb1d75ca0d749c6f4f0c72a1730d2e79f397e4e7125c365f06994ac9; doc-sha256: ac0a82cfe55b35921a4717197982241600e8f13b4212e51eef4a141058d07aee -->
 
 ## MessageList
 
@@ -879,7 +886,7 @@ export function Message({ message, variant, onArtifactDownload, onArtifactOpen, 
 - 切换 scrollKey 或清空消息会重置跟随状态，autoScroll=false 时始终禁止自动滚动。
 
 ```ts
-export function MessageList({ messages, variant, onArtifactDownload, onArtifactOpen, onCopy, empty, autoScroll, className, scrollKey, active, historyCursor, pending, pendingLabel, approvals, anchorRail, multiAgent, virtualize, skills, }: { messages: ChatMessage[]; variant?: MessageProps["variant"]; onArtifactDownload?: (fileId: string) => void; onArtifactOpen?: (fileId: string, contentType?: string) => void; onCopy?: (text: string) => void | Promise<void>; empty?: ReactNode; autoScroll?: boolean; className?: string; scrollKey?: string | null; active?: boolean; historyCursor?: string | null; pending?: boolean; pendingLabel?: string; approvals?: ReactNode; anchorRail?: boolean; multiAgent?: ChatMultiAgent; virtualize?: boolean; skills?: string[]; }): JSX.Element;
+export function MessageList({ messages, variant, onArtifactDownload, onArtifactOpen, onCopy, empty, autoScroll, className, scrollKey, active, historyCursor, pending, pendingLabel, approvals, anchorRail, multiAgent, virtualize, skills, strings: stringsOverride, }: { messages: ChatMessage[]; variant?: MessageProps["variant"]; onArtifactDownload?: (fileId: string) => void; onArtifactOpen?: (fileId: string, contentType?: string) => void; onCopy?: (text: string) => void | Promise<void>; empty?: ReactNode; autoScroll?: boolean; className?: string; scrollKey?: string | null; active?: boolean; historyCursor?: string | null; pending?: boolean; pendingLabel?: string; approvals?: ReactNode; anchorRail?: boolean; multiAgent?: ChatMultiAgent; virtualize?: boolean; skills?: string[]; strings?: Partial<MessageListStrings>; }): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -902,8 +909,9 @@ export function MessageList({ messages, variant, onArtifactDownload, onArtifactO
 | `multiAgent` | 否 | `ChatMultiAgent \| undefined` |
 | `virtualize` | 否 | `boolean \| undefined` |
 | `skills` | 否 | `string[] \| undefined` |
+| `strings` | 否 | `Partial<MessageListStrings> \| undefined` |
 
-<!-- source-sha256: fcab7931ef88855a0031563e0dfae414367bef91806f81650683294fe097351b; doc-sha256: 8f73e7706168cde077440c1a133f7bae090ce7aef01a00c5d790c3e433a383ff -->
+<!-- source-sha256: fa43d6ff4aae2df98b98438e7837b4ea01fdf833415feda0b51ef8b83e049dcf; doc-sha256: 8f73e7706168cde077440c1a133f7bae090ce7aef01a00c5d790c3e433a383ff -->
 
 ## MessageAnchorRail
 
@@ -1509,6 +1517,7 @@ import type { ActionsCopyProps } from "@openagentpack/kit-chat-ui";
 | `iconOnly` | 否 | `boolean \| undefined` |
 | `variant` | 否 | `ActionsVariant \| undefined` |
 | `className` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<ActionsStrings> \| undefined` |
 
 
 ### ActionsFeedbackProps
@@ -1526,6 +1535,7 @@ import type { ActionsFeedbackProps } from "@openagentpack/kit-chat-ui";
 | `disabled` | 否 | `boolean \| undefined` |
 | `variant` | 否 | `ActionsVariant \| undefined` |
 | `className` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<ActionsStrings> \| undefined` |
 
 
 ### ActionsFeedbackValue
@@ -1573,6 +1583,28 @@ import type { ActionsProps } from "@openagentpack/kit-chat-ui";
 | `variant` | 否 | `ActionsVariant \| undefined` |
 | `className` | 否 | `string \| undefined` |
 | `aria-label` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<ActionsStrings> \| undefined` |
+
+
+### ActionsStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { ActionsStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `listAriaLabel` | 是 | `string` |
+| `copy` | 是 | `string` |
+| `copying` | 是 | `string` |
+| `copied` | 是 | `string` |
+| `copyFailed` | 是 | `string` |
+| `copyFailedRetry` | 是 | `string` |
+| `feedbackAriaLabel` | 是 | `string` |
+| `like` | 是 | `string` |
+| `dislike` | 是 | `string` |
 
 
 ### ActionsVariant
@@ -1977,6 +2009,21 @@ import type { MessageAnchorItem } from "@openagentpack/kit-chat-ui";
 | `summary` | 否 | `string \| undefined` |
 
 
+### MessageListStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { MessageListStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `threadIntro` | 是 | `string` |
+| `backToBottom` | 是 | `string` |
+| `listAriaLabel` | 是 | `string` |
+
+
 ### MessagePart
 
 来自 `@openagentpack/kit-sdk/messages`。
@@ -1999,6 +2046,25 @@ export type MessagePart = ({ type: "text"; text: string; } | { type: "reasoning"
 export type MessageStatus = "pending" | "streaming" | "failed" | "done" | "interrupted";
 ```
 
+
+
+### MessageStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { MessageStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `sending` | 是 | `string` |
+| `sendFailed` | 是 | `string` |
+| `generationFailed` | 是 | `string` |
+| `interrupted` | 是 | `string` |
+| `unrecognizedPrefix` | 是 | `string` |
+| `serializeFallback` | 是 | `string` |
+| `actionsAriaLabel` | 是 | `string` |
 
 
 ### PlazaCategory
@@ -2042,6 +2108,19 @@ export type PlazaEntry = { slug: string; display_name: string; suggested_prompts
 export type PlazaTabId = "data" | "general" | "writing" | "coding" | "other" | "featured";
 ```
 
+
+
+### ProcessingIndicatorStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { ProcessingIndicatorStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `processing` | 是 | `string` |
 
 
 ### PromptsItem
@@ -2417,6 +2496,28 @@ export type SessionSummary = { session_id: string; agent_slug: string; created_a
 | `title` | 否 | `string \| undefined` |
 | `status` | 否 | `string \| undefined` |
 | `last_event_at` | 否 | `string \| undefined` |
+
+
+### StatusIndicatorStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { StatusIndicatorStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `idle` | 是 | `string` |
+| `running` | 是 | `string` |
+| `requiresAction` | 是 | `string` |
+| `stopping` | 是 | `string` |
+| `failed` | 是 | `string` |
+| `interrupted` | 是 | `string` |
+| `connecting` | 是 | `string` |
+| `reconnecting` | 是 | `string` |
+| `error` | 是 | `string` |
+| `errorPrefix` | 是 | `string` |
 
 
 ### SuggestionItem

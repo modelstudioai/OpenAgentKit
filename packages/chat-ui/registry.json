@@ -16,7 +16,11 @@
     "suggestion": { "file": "src/components/suggestion/index.tsx", "deps": [] },
     "tooltip": { "file": "src/components/tooltip/index.tsx", "deps": [] },
     "menu": { "file": "src/components/menu/index.tsx", "deps": [], "npmDependencies": ["@radix-ui/react-dropdown-menu"] },
-    "message": { "file": "src/components/message/index.tsx", "deps": ["markdown", "actions", "file-card", "execution-group", "reasoning-block", "tool-call-card", "sub-agent-card", "sender", "artifact-card", "message-list", "processing-indicator"] },
+    "message": {
+      "file": "src/components/message/index.tsx",
+      "deps": ["kit-i18n", "markdown", "actions", "file-card", "execution-group", "reasoning-block", "tool-call-card", "sub-agent-card", "sender", "artifact-card", "message-list", "processing-indicator"],
+      "extraFiles": ["src/components/message/strings.ts"]
+    },
     "message-anchor-rail": { "file": "src/components/message-anchor-rail/index.tsx", "deps": ["tooltip"] },
     "message-skeleton": { "file": "src/components/message-skeleton/index.tsx", "deps": [] },
     "execution-group": { "file": "src/components/process/execution-group/index.tsx", "deps": ["reasoning-block", "tool-call-card"] },
@@ -27,7 +31,11 @@
     "reasoning-block": { "file": "src/components/process/reasoning-block/index.tsx", "deps": ["process-step"] },
     "tool-summary": { "file": "src/components/process/tool-summary/index.ts", "deps": [] },
     "markdown": { "file": "src/components/markdown/index.tsx", "deps": ["code-highlighter", "mermaid"] },
-    "actions": { "file": "src/components/actions/index.tsx", "deps": [] },
+    "actions": {
+      "file": "src/components/actions/index.tsx",
+      "deps": ["kit-i18n"],
+      "extraFiles": ["src/components/actions/strings.ts"]
+    },
     "file-card": { "file": "src/components/file-card/index.tsx", "deps": [] },
     "code-highlighter": { "file": "src/components/code-highlighter/index.tsx", "deps": ["actions"] },
     "mermaid": { "file": "src/components/mermaid/index.tsx", "deps": ["actions", "code-highlighter"] },
@@ -40,9 +48,21 @@
     "tool-approval": { "file": "src/components/tool-approval/index.ts", "deps": ["tool-approval-card", "tool-approval-group"] },
     "chrome": { "file": "src/components/chrome/index.ts", "deps": ["agent-header", "confirm-dialog", "status-indicator", "thread-panel", "states"], "npmDependencies": ["@radix-ui/react-alert-dialog"] },
     "artifact-card": { "file": "src/components/artifact-card/index.tsx", "deps": ["file-card"] },
-    "message-list": { "file": "src/components/message-list/index.tsx", "deps": ["message", "message-anchor-rail", "processing-indicator", "sub-agent-card"] },
-    "processing-indicator": { "file": "src/components/processing-indicator/index.tsx", "deps": ["process-step"] },
-    "status-indicator": { "file": "src/components/status-indicator/index.tsx", "deps": [] },
+    "message-list": {
+      "file": "src/components/message-list/index.tsx",
+      "deps": ["kit-i18n", "message", "message-anchor-rail", "processing-indicator", "sub-agent-card"],
+      "extraFiles": ["src/components/message-list/strings.ts"]
+    },
+    "processing-indicator": {
+      "file": "src/components/processing-indicator/index.tsx",
+      "deps": ["kit-i18n", "process-step"],
+      "extraFiles": ["src/components/processing-indicator/strings.ts"]
+    },
+    "status-indicator": {
+      "file": "src/components/status-indicator/index.tsx",
+      "deps": ["kit-i18n"],
+      "extraFiles": ["src/components/status-indicator/strings.ts"]
+    },
     "confirm-dialog": { "file": "src/components/confirm-dialog/index.tsx", "deps": [], "npmDependencies": ["@radix-ui/react-alert-dialog"] },
     "thread-panel": { "file": "src/components/thread-panel/index.tsx", "deps": ["message"] },
     "empty-state": { "file": "src/components/empty-state/index.tsx", "deps": [] },

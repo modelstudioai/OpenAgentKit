@@ -10,6 +10,7 @@ export {
 	type ActionsProps,
 	type ActionsVariant,
 } from "./components/actions/index.tsx";
+export { type ActionsStrings, actionsStrings } from "./components/actions/strings.ts";
 export { ArtifactCard } from "./components/artifact-card/index.tsx";
 export {
 	AttachmentFileCard,
@@ -55,13 +56,19 @@ export {
 } from "./components/menu/index.tsx";
 export { Mermaid, type MermaidProps } from "./components/mermaid/index.tsx";
 export { Message } from "./components/message/index.tsx";
+export { type MessageStrings, messageStrings } from "./components/message/strings.ts";
 export { type MessageAnchorItem, MessageAnchorRail } from "./components/message-anchor-rail/index.tsx";
 export { MessageList } from "./components/message-list/index.tsx";
+export { type MessageListStrings, messageListStrings } from "./components/message-list/strings.ts";
 export { MessageListSkeleton } from "./components/message-skeleton/index.tsx";
 export { ActivityHeatmap, CategoryTabs, MeterBar, PlazaCard, type PlazaTabId } from "./components/plaza/index.ts";
 export { ReasoningBlock } from "./components/process/reasoning-block/index.tsx";
 export { SubAgentPanel } from "./components/process/sub-agent-panel/index.tsx";
 export { ToolCallCard } from "./components/process/tool-call-card/index.tsx";
+export {
+	type ProcessingIndicatorStrings,
+	processingIndicatorStrings,
+} from "./components/processing-indicator/strings.ts";
 export {
 	Prompts,
 	type PromptsItem,
@@ -97,6 +104,7 @@ export {
 	type SessionSidebarSection,
 } from "./components/session-sidebar/index.tsx";
 export { EmptyState, ErrorState } from "./components/states/index.ts";
+export { type StatusIndicatorStrings, statusIndicatorStrings } from "./components/status-indicator/strings.ts";
 export {
 	Suggestion,
 	type SuggestionItem,
