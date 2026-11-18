@@ -165,3 +165,16 @@ apps/<web|console>/src/i18n/
 
 待迁清单以 `rg --pcre2 '"[^"]*\p{Han}' packages/chat-ui/src/components -g '!*strings.ts' -g '!*.test.*'` 为准；
 每个组件按 sender 形态迁移后由 `check:i18n` 自动纳管，无需改脚本。
+
+### 2026-11-18 阶段 2（部分）：员工端 web 业务文案
+
+- 命名空间：`common`（新增 appTitle/loading/bootstrapFailed）、`auth`、`layout`、`chat`、`plaza`；
+  typed resources 收敛为 `AppNamespaces`，`<html lang>` 与浏览器标签页标题随语言更新。
+- 已迁文件：main.tsx、member-auth-gate、member-login-form、experience-layout、session-sidebar、
+  app.tsx（含 SessionActionDialog/chatHeaderTitle/stagedAttachmentItems 纯函数注入 `t`）、
+  experience-sender、aside-panel、new-chat-view、plaza-view。
+- 跨命名空间键（如 `t("common:loading")`）需要 `useTranslation(["chat", "common"])` 元组形式才能通过类型检查。
+- 待办（下一批）：`features/usage/*`（usage-view、member-usage-limits、apply-credits-dialog、
+  quota-banner、year-heatmap 约 35 串）；`lib/kit.ts`、`lib/chat-backend.ts`、`member-session-storage.ts`
+  的 KitError 文本按方案 §6 保留为开发向信息，UI 展示层后续按 code 映射。
+- web e2e `?lang=en` 冒烟在 usage 批次完成后补。
