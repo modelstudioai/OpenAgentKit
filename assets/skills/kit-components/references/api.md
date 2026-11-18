@@ -769,7 +769,7 @@ export function CodeHighlighter({ children, lang, header, copyable, showLineNumb
 - 调用方提供 src 并执行下载。
 
 ```ts
-export function FileCard({ name, type, src, description, loading, disabled, onClick, onDownload, className, }: FileCardProps): JSX.Element;
+export function FileCard({ name, type, src, description, loading, disabled, onClick, onDownload, className, strings: stringsOverride, }: FileCardProps): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -783,8 +783,9 @@ export function FileCard({ name, type, src, description, loading, disabled, onCl
 | `onClick` | 否 | `(() => void) \| undefined` |
 | `onDownload` | 否 | `(() => void) \| undefined` |
 | `className` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<FileCardStrings> \| undefined` |
 
-<!-- source-sha256: e5cd5d16b1bb2aba14cdee10e5f6fcd39ec71d21e3afbb9350e6afbe39f06ff8; doc-sha256: b16407a624668cac93d0f7dff7f614fdb2c75c54c90020086a84ec6c3c77c9b9 -->
+<!-- source-sha256: 12c673e559af2e91831d0e189e302fea3e0e7c021e3a2a9bd632294200bb18e4; doc-sha256: b16407a624668cac93d0f7dff7f614fdb2c75c54c90020086a84ec6c3c77c9b9 -->
 
 ## Markdown
 
@@ -1182,7 +1183,7 @@ export function SenderHeader({ title, open, onOpenChange, closable, children, cl
 - 组件控制操作槽何时出现，悬停时显示、编辑时隐藏。容器、破坏性操作确认和请求由调用方负责。
 
 ```ts
-export function SessionList({ sessions, activeId, activeStatus, onSelect, menu, editingId, onEdited, onEditEnd, variant, ariaLabel, className, }: SessionListProps): JSX.Element;
+export function SessionList({ sessions, activeId, activeStatus, onSelect, menu, editingId, onEdited, onEditEnd, variant, ariaLabel, className, strings: stringsOverride, }: SessionListProps): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1197,9 +1198,10 @@ export function SessionList({ sessions, activeId, activeStatus, onSelect, menu, 
 | `activeStatus` | 否 | `"failed" \| "running" \| "attention" \| "completed" \| undefined` |
 | `variant` | 否 | `"default" \| "workspace" \| undefined` |
 | `ariaLabel` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<SessionListStrings> \| undefined` |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 75be69adea82999f2e6700ddb300aebe7c81cb6825432a883870767b41465313; doc-sha256: 65a9b9feea1e0cd1d04e2fe3e69f9fb267012d1e78860d3c0912d739be8e6936 -->
+<!-- source-sha256: b8222c1cf04062c0e0e2da0c1824c3b4855cc9e768a63a76d65c0955a7aafdad; doc-sha256: 65a9b9feea1e0cd1d04e2fe3e69f9fb267012d1e78860d3c0912d739be8e6936 -->
 
 ## Tooltip
 
@@ -1400,15 +1402,16 @@ export function ToolApprovalGroup({ approvals, onDecision, onRefresh, onStop, }:
 - onOpen 接收条目 slug，导航及会话选择由调用方负责。
 
 ```ts
-export function PlazaCard({ entry, onOpen }: { entry: PlazaEntry; onOpen: (slug: string) => void; }): JSX.Element;
+export function PlazaCard({ entry, onOpen, strings: stringsOverride, }: { entry: PlazaEntry; onOpen: (slug: string) => void; strings?: Partial<PlazaCardStrings>; }): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
 | --- | --- | --- |
 | `entry` | 是 | `{ slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "data" \| "general" \| "writing" \| "coding" \| "other"; featured: boolean; stats: { mine: boolean; turns_30d: number; last_used_at?: string \| undefined; }; description?: string \| undefined; icon?: string \| undefined; opening_remarks?: string \| undefined; theme?: { accent?: string \| undefined; iconBackground?: string \| undefined; } \| undefined; }` |
 | `onOpen` | 是 | `(slug: string) => void` |
+| `strings` | 否 | `Partial<PlazaCardStrings> \| undefined` |
 
-<!-- source-sha256: 359acee6d6bec871c1e3f88f70b56bd3bd87d43bd8af570fb4f714b0f84fa351; doc-sha256: 0cc8f6c08932b8f6667d1cb7470dd7f7c9b0e39ce08ee43d9e64458773142ffc -->
+<!-- source-sha256: a7d500cda960c9ac1b5dfbb63f775d02a7518c96c9b05ec07cab91c116f216be; doc-sha256: 0cc8f6c08932b8f6667d1cb7470dd7f7c9b0e39ce08ee43d9e64458773142ffc -->
 
 ## CategoryTabs
 
@@ -1984,6 +1987,23 @@ import type { FileCardProps } from "@openagentpack/kit-chat-ui";
 | `onClick` | 否 | `(() => void) \| undefined` |
 | `onDownload` | 否 | `(() => void) \| undefined` |
 | `className` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<FileCardStrings> \| undefined` |
+
+
+### FileCardStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { FileCardStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `types` | 是 | `{ spreadsheet: string; image: string; audio: string; video: string; text: string; archive: string; }` |
+| `loading` | 是 | `string` |
+| `open` | 是 | `string` |
+| `download` | 是 | `string` |
 
 
 ### KitLocale
@@ -2189,6 +2209,29 @@ import type { MeterBarStrings } from "@openagentpack/kit-chat-ui";
 | --- | --- | --- |
 | `unlimited` | 是 | `string` |
 | `used` | 是 | `string` |
+
+
+### PlazaCardStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { PlazaCardStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `capabilities` | 是 | `{ streaming: string; fileUpload: string; artifacts: string; threads: string; reasoning: string; }` |
+| `usedToday` | 是 | `string` |
+| `usedYesterday` | 是 | `string` |
+| `usedDaysAgo` | 是 | `string` |
+| `featured` | 是 | `string` |
+| `mine` | 是 | `string` |
+| `noDescription` | 是 | `string` |
+| `tryAsk` | 是 | `string` |
+| `turns30dPrefix` | 是 | `string` |
+| `turns30dSuffix` | 是 | `string` |
+| `start` | 是 | `string` |
 
 
 ### PlazaCategory
@@ -2489,7 +2532,25 @@ import type { SessionListProps } from "@openagentpack/kit-chat-ui";
 | `activeStatus` | 否 | `"failed" \| "running" \| "attention" \| "completed" \| undefined` |
 | `variant` | 否 | `"default" \| "workspace" \| undefined` |
 | `ariaLabel` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<SessionListStrings> \| undefined` |
 | `className` | 否 | `string \| undefined` |
+
+
+### SessionListStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { SessionListStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `status` | 是 | `{ running: string; attention: string; failed: string; completed: string; }` |
+| `archived` | 是 | `string` |
+| `renameAria` | 是 | `string` |
+| `aria` | 是 | `string` |
+| `empty` | 是 | `string` |
 
 
 ### SessionSidebarActiveStatus

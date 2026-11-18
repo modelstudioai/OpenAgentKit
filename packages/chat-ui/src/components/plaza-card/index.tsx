@@ -1,6 +1,8 @@
 import { PLAZA_CATEGORY_LABELS, type PlazaEntry } from "@openagentpack/kit-sdk/protocol";
 import type { ReactNode } from "react";
 import { isIconImageSource } from "../agent-header/index.tsx";
+import { format, resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
+import plazaCardStrings, { type PlazaCardStrings } from "./strings.ts";
 
 /** stroke 风格小图标（能力徽标、试试问与行动按钮共用）。 */
 function MiniIcon({ children, className }: { children: ReactNode; className: string }) {
@@ -20,13 +22,13 @@ function MiniIcon({ children, className }: { children: ReactNode; className: str
 	);
 }
 
-/** 能力徽标的展示顺序与文案；仅渲染 capabilities 中为 true 的项。 */
-const CAPABILITIES: { key: keyof PlazaEntry["capabilities"]; label: string }[] = [
-	{ key: "streaming", label: "流式输出" },
-	{ key: "fileUpload", label: "文件上传" },
-	{ key: "artifacts", label: "产物" },
-	{ key: "threads", label: "多会话" },
-	{ key: "reasoning", label: "深度思考" },
+/** 能力徽标的展示顺序；文案取 strings.capabilities，仅渲染 capabilities 中为 true 的项。 */
+const CAPABILITY_KEYS: (keyof PlazaEntry["capabilities"])[] = [
+	"streaming",
+	"fileUpload",
+	"artifacts",
+	"threads",
+	"reasoning",
 ];
 
 const CAPABILITY_ICONS: Record<keyof PlazaEntry["capabilities"], ReactNode> = {
@@ -48,16 +50,26 @@ const CAPABILITY_ICONS: Record<keyof PlazaEntry["capabilities"], ReactNode> = {
 };
 
 /** last_used_at → 「今天 / 昨天 / N 天前使用过」；按本地日历日差计算，`now` 仅供测试注入。 */
-export function relativeUsedLabel(iso: string, now = new Date()): string {
+export function relativeUsedLabel(iso: string, strings: PlazaCardStrings, now = new Date()): string {
 	const startOf = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 	const days = Math.round((startOf(now) - startOf(new Date(iso))) / 86_400_000);
-	if (days <= 0) return "今天使用过";
-	if (days === 1) return "昨天使用过";
-	return `${days} 天前使用过`;
+	if (days <= 0) return strings.usedToday;
+	if (days === 1) return strings.usedYesterday;
+	return format(strings.usedDaysAgo, { days });
 }
 
 /** 广场 Agent 卡片：图标与名称、分类/精选/我的、描述（开场白回退）、能力徽标、用量统计及主行动按钮。 */
-export function PlazaCard({ entry, onOpen }: { entry: PlazaEntry; onOpen: (slug: string) => void }) {
+export function PlazaCard({
+	entry,
+	onOpen,
+	strings: stringsOverride,
+}: {
+	entry: PlazaEntry;
+	onOpen: (slug: string) => void;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<PlazaCardStrings>;
+}) {
+	const strings = resolveStrings(plazaCardStrings, useKitLocale(), stringsOverride);
 	const description = entry.description ?? entry.opening_remarks;
 	const prompt = entry.suggested_prompts[0];
 	return (
@@ -80,7 +92,7 @@ export function PlazaCard({ entry, onOpen }: { entry: PlazaEntry; onOpen: (slug:
 					<div className="mt-1.5 flex flex-wrap items-center gap-1.5">
 						{entry.featured ? (
 							<span className="rounded-full bg-[var(--kit-warning)]/15 px-2 py-0.5 text-[length:var(--kit-text-meta)] font-medium text-[var(--kit-warning)]">
-								精选
+								{strings.featured}
 							</span>
 						) : null}
 						<span className="rounded-full bg-[var(--kit-bg-subtle)] px-2 py-0.5 text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)]">
@@ -88,7 +100,7 @@ export function PlazaCard({ entry, onOpen }: { entry: PlazaEntry; onOpen: (slug:
 						</span>
 						{entry.stats.mine ? (
 							<span className="rounded-full bg-[var(--kit-success)]/15 px-2 py-0.5 text-[length:var(--kit-text-meta)] text-[var(--kit-success)]">
-								我的
+								{strings.mine}
 							</span>
 						) : null}
 					</div>
@@ -98,7 +110,7 @@ export function PlazaCard({ entry, onOpen }: { entry: PlazaEntry; onOpen: (slug:
 				className={`line-clamp-2 min-h-[3.25em] text-[length:var(--kit-text-label)] leading-relaxed text-[var(--kit-fg-muted)] [overflow-wrap:anywhere] ${description ? "" : "opacity-65"}`}
 				title={description ?? undefined}
 			>
-				{description ?? "暂无描述"}
+				{description ?? strings.noDescription}
 			</p>
 			{prompt ? (
 				<div className="flex min-w-0 items-center gap-1.5 rounded-[var(--kit-radius-sm)] bg-[var(--kit-bg-subtle)] px-2.5 py-1.5 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
@@ -106,31 +118,32 @@ export function PlazaCard({ entry, onOpen }: { entry: PlazaEntry; onOpen: (slug:
 						<path d="M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z" />
 						<path d="M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z" />
 					</MiniIcon>
-					<span className="min-w-0 truncate">试试问：「{prompt}」</span>
+					<span className="min-w-0 truncate">{format(strings.tryAsk, { prompt })}</span>
 				</div>
 			) : null}
 			<div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
-				{CAPABILITIES.filter((cap) => entry.capabilities[cap.key]).map((cap) => (
+				{CAPABILITY_KEYS.filter((key) => entry.capabilities[key]).map((key) => (
 					<span
-						key={cap.key}
+						key={key}
 						className="flex min-w-0 items-center gap-1 text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)]"
 					>
-						<MiniIcon className="h-3.5 w-3.5 shrink-0 text-[var(--kit-accent)]">{CAPABILITY_ICONS[cap.key]}</MiniIcon>
-						{cap.label}
+						<MiniIcon className="h-3.5 w-3.5 shrink-0 text-[var(--kit-accent)]">{CAPABILITY_ICONS[key]}</MiniIcon>
+						{strings.capabilities[key]}
 					</span>
 				))}
 			</div>
 			<div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-[var(--kit-border-subtle)] pt-3">
 				<span className="flex min-w-0 flex-wrap items-center gap-1.5 text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)] [overflow-wrap:anywhere]">
 					<span>
-						近 30 天 <b className="text-[var(--kit-fg)]">{entry.stats.turns_30d}</b> 次
+						{strings.turns30dPrefix} <b className="text-[var(--kit-fg)]">{entry.stats.turns_30d}</b>{" "}
+						{strings.turns30dSuffix}
 					</span>
 					{entry.stats.last_used_at ? (
 						<>
 							<span aria-hidden className="opacity-50">
 								·
 							</span>
-							<span>{relativeUsedLabel(entry.stats.last_used_at)}</span>
+							<span>{relativeUsedLabel(entry.stats.last_used_at, strings)}</span>
 						</>
 					) : null}
 				</span>
@@ -139,7 +152,7 @@ export function PlazaCard({ entry, onOpen }: { entry: PlazaEntry; onOpen: (slug:
 					onClick={() => onOpen(entry.slug)}
 					className="flex min-h-9 shrink-0 items-center gap-1 rounded-[var(--kit-radius-sm)] bg-[var(--kit-accent)] px-3 py-2 text-[length:var(--kit-text-caption)] font-medium text-[var(--kit-accent-fg)] hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] motion-safe:transition motion-safe:active:scale-95"
 				>
-					开始体验
+					{strings.start}
 					<MiniIcon className="h-3.5 w-3.5">
 						<path d="M5 12h14" />
 						<path d="m12 5 7 7-7 7" />

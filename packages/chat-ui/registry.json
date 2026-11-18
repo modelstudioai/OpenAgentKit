@@ -44,11 +44,19 @@
       "deps": ["kit-i18n"],
       "extraFiles": ["src/components/actions/strings.ts"]
     },
-    "file-card": { "file": "src/components/file-card/index.tsx", "deps": [] },
+    "file-card": {
+      "file": "src/components/file-card/index.tsx",
+      "deps": ["kit-i18n"],
+      "extraFiles": ["src/components/file-card/strings.ts"]
+    },
     "code-highlighter": { "file": "src/components/code-highlighter/index.tsx", "deps": ["actions"] },
     "mermaid": { "file": "src/components/mermaid/index.tsx", "deps": ["actions", "code-highlighter"] },
     "agent-header": { "file": "src/components/agent-header/index.tsx", "deps": [] },
-    "session-list": { "file": "src/components/session-list/index.tsx", "deps": ["tooltip", "process-step"] },
+    "session-list": {
+      "file": "src/components/session-list/index.tsx",
+      "deps": ["kit-i18n", "tooltip", "process-step"],
+      "extraFiles": ["src/components/session-list/strings.ts"]
+    },
     "session-sidebar": { "file": "src/components/session-sidebar/index.tsx", "deps": ["session-list", "states"] },
     "states": { "file": "src/components/states/index.ts", "deps": ["empty-state", "error-state"] },
     "prompts": { "file": "src/components/prompts/index.tsx", "deps": [] },
@@ -99,7 +107,11 @@
       "deps": ["kit-i18n"],
       "extraFiles": ["src/components/category-tabs/strings.ts"]
     },
-    "plaza-card": { "file": "src/components/plaza-card/index.tsx", "deps": ["agent-header"] },
+    "plaza-card": {
+      "file": "src/components/plaza-card/index.tsx",
+      "deps": ["kit-i18n", "agent-header"],
+      "extraFiles": ["src/components/plaza-card/strings.ts"]
+    },
     "tool-approval-card": { "file": "src/components/tool-approval-card/index.tsx", "deps": [] },
     "tool-approval-group": { "file": "src/components/tool-approval-group/index.tsx", "deps": ["tool-approval-card"] }
   },

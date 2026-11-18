@@ -37,6 +37,7 @@ export { CodeHighlighter, type CodeHighlighterProps } from "./components/code-hi
 export { type ConfirmDialogStrings, confirmDialogStrings } from "./components/confirm-dialog/strings.ts";
 export { type ErrorStateStrings, errorStateStrings } from "./components/error-state/strings.ts";
 export { FileCard, type FileCardProps } from "./components/file-card/index.tsx";
+export { type FileCardStrings, fileCardStrings } from "./components/file-card/strings.ts";
 export {
 	format as formatKitStrings,
 	type KitLocale,
@@ -73,6 +74,7 @@ export {
 } from "./components/message-skeleton/strings.ts";
 export { type MeterBarStrings, meterBarStrings } from "./components/meter-bar/strings.ts";
 export { ActivityHeatmap, CategoryTabs, MeterBar, PlazaCard, type PlazaTabId } from "./components/plaza/index.ts";
+export { type PlazaCardStrings, plazaCardStrings } from "./components/plaza-card/strings.ts";
 export { ReasoningBlock } from "./components/process/reasoning-block/index.tsx";
 export { SubAgentPanel } from "./components/process/sub-agent-panel/index.tsx";
 export { ToolCallCard } from "./components/process/tool-call-card/index.tsx";
@@ -105,6 +107,7 @@ export {
 	SessionList,
 	type SessionListProps,
 } from "./components/session-list/index.tsx";
+export { type SessionListStrings, sessionListStrings } from "./components/session-list/strings.ts";
 export {
 	SessionSidebar,
 	type SessionSidebarActiveStatus,
