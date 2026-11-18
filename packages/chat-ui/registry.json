@@ -6,7 +6,12 @@
   "components": {
     "layout": { "file": "src/components/layout/index.tsx", "deps": [], "npmDependencies": ["@radix-ui/react-dialog", "@openagentpack/kit-sdk"] },
     "chat": { "file": "src/components/chat/index.tsx", "deps": ["sender", "suggestion", "message", "process-step"] },
-    "sender": { "file": "src/components/sender/index.tsx", "deps": [] },
+    "kit-i18n": { "file": "src/components/kit-i18n/index.ts", "deps": [] },
+    "sender": {
+      "file": "src/components/sender/index.tsx",
+      "deps": ["kit-i18n"],
+      "extraFiles": ["src/components/sender/strings.ts"]
+    },
     "attachments": { "file": "src/components/attachments/index.tsx", "deps": ["file-card"] },
     "suggestion": { "file": "src/components/suggestion/index.tsx", "deps": [] },
     "tooltip": { "file": "src/components/tooltip/index.tsx", "deps": [] },

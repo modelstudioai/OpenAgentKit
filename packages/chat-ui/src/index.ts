@@ -33,6 +33,14 @@ export {
 export { CodeHighlighter, type CodeHighlighterProps } from "./components/code-highlighter/index.tsx";
 export { FileCard, type FileCardProps } from "./components/file-card/index.tsx";
 export {
+	type KitLocale,
+	KitLocaleProvider,
+	type KitStringTable,
+	resolveStrings,
+	useKitLocale,
+	useKitStrings,
+} from "./components/kit-i18n/index.ts";
+export {
 	Layout,
 	type LayoutAsideControls,
 	type LayoutProps,
@@ -74,6 +82,7 @@ export {
 	type SenderSubmitType,
 	SkillGlyph,
 } from "./components/sender/index.tsx";
+export { type SenderStrings, senderStrings } from "./components/sender/strings.ts";
 export {
 	SessionList,
 	type SessionListProps,
