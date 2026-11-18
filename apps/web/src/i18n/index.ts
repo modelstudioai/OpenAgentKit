@@ -5,11 +5,13 @@ import enChat from "./locales/en/chat.ts";
 import enCommon from "./locales/en/common.ts";
 import enLayout from "./locales/en/layout.ts";
 import enPlaza from "./locales/en/plaza.ts";
+import enUsage from "./locales/en/usage.ts";
 import zhAuth from "./locales/zh-CN/auth.ts";
 import zhChat from "./locales/zh-CN/chat.ts";
 import zhCommon from "./locales/zh-CN/common.ts";
 import zhLayout from "./locales/zh-CN/layout.ts";
 import zhPlaza from "./locales/zh-CN/plaza.ts";
+import zhUsage from "./locales/zh-CN/usage.ts";
 
 export const SUPPORTED_LOCALES = ["zh-CN", "en"] as const;
 export type KitLocale = (typeof SUPPORTED_LOCALES)[number];
@@ -54,6 +56,7 @@ export interface AppNamespaces {
 	layout: typeof zhLayout;
 	chat: typeof zhChat;
 	plaza: typeof zhPlaza;
+	usage: typeof zhUsage;
 }
 
 /** 浏览器标签页标题跟随语言（index.html 静态中文标题在 init 后被覆盖）。 */
@@ -69,10 +72,10 @@ export async function initI18n() {
 		fallbackLng: "zh-CN",
 		supportedLngs: [...SUPPORTED_LOCALES],
 		defaultNS: "common",
-		ns: ["common", "auth", "layout", "chat", "plaza"],
+		ns: ["common", "auth", "layout", "chat", "plaza", "usage"],
 		resources: {
-			"zh-CN": { common: zhCommon, auth: zhAuth, layout: zhLayout, chat: zhChat, plaza: zhPlaza },
-			en: { common: enCommon, auth: enAuth, layout: enLayout, chat: enChat, plaza: enPlaza },
+			"zh-CN": { common: zhCommon, auth: zhAuth, layout: zhLayout, chat: zhChat, plaza: zhPlaza, usage: zhUsage },
+			en: { common: enCommon, auth: enAuth, layout: enLayout, chat: enChat, plaza: enPlaza, usage: enUsage },
 		},
 	});
 	document.documentElement.lang = i18n.resolvedLanguage ?? lng;

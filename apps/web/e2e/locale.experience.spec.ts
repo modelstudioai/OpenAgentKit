@@ -1,0 +1,26 @@
+import { expect, test } from "./fixtures.ts";
+
+/**
+ * i18n 冒烟（方案 §9.3）：?lang=en 直达渲染英文外壳，切换器写回 localStorage 并跨刷新保持。
+ * 只断言稳定控件（语言组、搜索框、导航按钮、<html lang>），不依赖种子 Agent。
+ */
+test("?lang=en 直达渲染英文界面", async ({ page }) => {
+	await page.goto("/?view=plaza&lang=en");
+	await expect(page.locator("html")).toHaveAttribute("lang", "en");
+	await expect(page.getByRole("group", { name: "Interface language" })).toBeVisible();
+	await expect(page.getByRole("searchbox", { name: "Search agents" })).toBeVisible();
+	await expect(page.getByRole("button", { name: "New chat", exact: true })).toBeVisible();
+	// chat-ui 词典桥接同步生效：消息输入框 placeholder 为内置英文（Sender 默认词典）。
+	await expect(page.getByRole("textbox")).toHaveAttribute("data-placeholder", /Send a message/);
+});
+
+test("语言切换写回本地存储并跨刷新保持", async ({ page }) => {
+	await page.goto("/?view=plaza&lang=en");
+	await expect(page.locator("html")).toHaveAttribute("lang", "en");
+	await page.getByRole("group", { name: "Interface language" }).getByRole("button", { name: "中文" }).click();
+	await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
+	// 用户显式选择优先于 URL：带 ?lang=en 重载仍保持中文。
+	await page.goto("/?view=plaza&lang=en");
+	await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
+	await expect(page.getByRole("searchbox", { name: "搜索 Agent" })).toBeVisible();
+});
