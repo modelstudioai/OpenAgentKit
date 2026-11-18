@@ -810,7 +810,7 @@ export type SendMessageRequest = { text: string; skills?: string[] | undefined; 
 | `attachments` | 否 | `{ file_id: string; filename?: string \| undefined; mount_path?: string \| undefined; size?: number \| undefined; }[] \| undefined` |
 | `client_message_id` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 8f77736d668c3eae6fd1440bbefa95a3b741e20c4888a5f8176e8531a8792b89; doc-sha256: 998722b2b327af14ec241310f86edb8bb411fad21e30f2f42b383399504ca031 -->
+<!-- source-sha256: 8f77736d668c3eae6fd1440bbefa95a3b741e20c4888a5f8176e8531a8792b89; doc-sha256: 9c55836c2eb7379f1ada145d6542cfe15df23ad9491fdbe0ae2678a9bd922ca7 -->
 
 ## SendMessageResponse
 
@@ -1138,7 +1138,7 @@ export type ClientOperations = { agent?: BackendOperation<[slug: string, signal?
 | `auth.me` | 否 | `any` |
 | `auth.logout` | 否 | `any` |
 
-<!-- source-sha256: b1d68783a14b07a56ca56019c8d30a84c70b7fc05f9e81068aabd2506493a5d8; doc-sha256: 998722b2b327af14ec241310f86edb8bb411fad21e30f2f42b383399504ca031 -->
+<!-- source-sha256: b1d68783a14b07a56ca56019c8d30a84c70b7fc05f9e81068aabd2506493a5d8; doc-sha256: 9c55836c2eb7379f1ada145d6542cfe15df23ad9491fdbe0ae2678a9bd922ca7 -->
 
 ## ClientOperation
 
@@ -1155,7 +1155,7 @@ export type ClientOperation = "agent" | "sendMessage" | "interrupt" | "toolAppro
 ```
 
 
-<!-- source-sha256: b1d68783a14b07a56ca56019c8d30a84c70b7fc05f9e81068aabd2506493a5d8; doc-sha256: 998722b2b327af14ec241310f86edb8bb411fad21e30f2f42b383399504ca031 -->
+<!-- source-sha256: b1d68783a14b07a56ca56019c8d30a84c70b7fc05f9e81068aabd2506493a5d8; doc-sha256: 9c55836c2eb7379f1ada145d6542cfe15df23ad9491fdbe0ae2678a9bd922ca7 -->
 
 ## ExplicitKitClientOptions
 
@@ -1177,7 +1177,7 @@ import type { ExplicitKitClientOptions } from "@openagentpack/kit-sdk/providers/
 | `operations` | 是 | `ClientOperations` |
 | `chatProvider` | 否 | `ChatProvider \| undefined` |
 
-<!-- source-sha256: b1d68783a14b07a56ca56019c8d30a84c70b7fc05f9e81068aabd2506493a5d8; doc-sha256: 998722b2b327af14ec241310f86edb8bb411fad21e30f2f42b383399504ca031 -->
+<!-- source-sha256: b1d68783a14b07a56ca56019c8d30a84c70b7fc05f9e81068aabd2506493a5d8; doc-sha256: 9c55836c2eb7379f1ada145d6542cfe15df23ad9491fdbe0ae2678a9bd922ca7 -->
 
 ## createMemberSessionStorage
 
@@ -1194,7 +1194,7 @@ export function createMemberSessionStorage(baseUrl: string, getStorage: () => { 
 ```
 
 
-<!-- source-sha256: a9276ea062f185c6bd12f652590c3c3f2399fc90ccb652beeec628d4de57ab0e; doc-sha256: 998722b2b327af14ec241310f86edb8bb411fad21e30f2f42b383399504ca031 -->
+<!-- source-sha256: a9276ea062f185c6bd12f652590c3c3f2399fc90ccb652beeec628d4de57ab0e; doc-sha256: 9c55836c2eb7379f1ada145d6542cfe15df23ad9491fdbe0ae2678a9bd922ca7 -->
 
 ## normalizeMemberApiBaseUrl
 
@@ -1211,7 +1211,7 @@ export function normalizeMemberApiBaseUrl(value: string, origin: string): string
 ```
 
 
-<!-- source-sha256: a9276ea062f185c6bd12f652590c3c3f2399fc90ccb652beeec628d4de57ab0e; doc-sha256: 998722b2b327af14ec241310f86edb8bb411fad21e30f2f42b383399504ca031 -->
+<!-- source-sha256: a9276ea062f185c6bd12f652590c3c3f2399fc90ccb652beeec628d4de57ab0e; doc-sha256: 9c55836c2eb7379f1ada145d6542cfe15df23ad9491fdbe0ae2678a9bd922ca7 -->
 
 ## streamProtocolFrames
 

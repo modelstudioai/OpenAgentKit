@@ -40,7 +40,7 @@ const GROUP_REQUESTS: ChatToolApproval[] = [
 	},
 ];
 
-/** 允许与拒绝一步直提：完整参数已可见，提交中按钮进入 busy，成功后卡片只显示状态。 */
+/** 单项审批允许或拒绝后，展示提交的决定。 */
 export function ToolApprovalDemo() {
 	const [approval, setApproval] = useState(REQUEST);
 	return (
@@ -49,11 +49,16 @@ export function ToolApprovalDemo() {
 			className="flex min-w-0 flex-1 flex-col bg-[var(--kit-bg)] text-[var(--kit-fg)]"
 		>
 			<div className={TOOLBAR_CLASS}>
-				<button type="button" className={CONTROL_CLASS} onClick={() => setApproval(REQUEST)}>
+				<button
+					type="button"
+					className={`${CONTROL_CLASS} disabled:cursor-not-allowed disabled:opacity-50`}
+					disabled={!approval.result}
+					onClick={() => setApproval(REQUEST)}
+				>
 					重置示例
 				</button>
 				<span role="status" className="text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
-					当前状态：{approval.status}
+					{approval.result && (approval.result === "allow" ? "已提交「允许」" : "已提交「拒绝」")}
 				</span>
 			</div>
 			<ToolApprovalCard

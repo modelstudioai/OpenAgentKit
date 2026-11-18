@@ -130,8 +130,9 @@ Kit Server 是标准事件示例后端。订阅采用本文相同的控制帧：
   不回退。历史加载不调用主 Store 的 `applyEvent`，不改变乐观消息或审批覆盖状态。
 - Session/Provider 切换与卸载取消查询，代次检查丢弃迟到结果；Session SSE reset 使补充
   历史失效并在 ready 后重新加载，防止已撤回事件复活。切换线程不重新建立 Session SSE。
-- `useChat().multiAgent` 是共享展示与动作合同；`Chat` 原生呈现页签与只读子 Agent 历史。
-  主输入、草稿、附件及审批保留，子页仍提供返回主 Agent 和停止整轮执行的入口。
+- `useChat().multiAgent` 提供共享的展示数据与动作。`Chat` 在主消息流的派发位置展示子 Agent 卡片，
+  展开后可查看只读历史。`SubAgentPanel` 使用同一快照在资源面板展示派发记录和执行详情。
+  展开子线程时保留主输入区、草稿、附件和审批，主输入区可停止整轮执行。
 
 Provider 还可提供 `transformMessage({ messages, event, identity })`，返回
 `{ messages, artifacts? }`。这是浏览器内的展示转换策略，不是新增后端操作或 SSE 字段。

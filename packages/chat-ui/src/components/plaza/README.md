@@ -27,4 +27,4 @@ pnpm kit:add plaza
 
 组件依赖：[activity-heatmap](../activity-heatmap/README.md)、[category-tabs](../category-tabs/README.md)、[meter-bar](../meter-bar/README.md)、[plaza-card](../plaza-card/README.md)。
 
-完整用法与参数见[文档站对应页面](../../../../../apps/storybook/content/docs/components/plaza.mdx)；全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。
+各组件文档入口见[组件总览中的广场与用量](../../../../../apps/storybook/content/docs/components/index.mdx#广场与用量)。全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。

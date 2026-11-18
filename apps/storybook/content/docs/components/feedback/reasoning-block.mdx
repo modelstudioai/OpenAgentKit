@@ -1,0 +1,75 @@
+---
+title: ReasoningBlock 思考块
+description: 折叠展示思考摘要、完整文本与生命周期状态
+---
+
+`ReasoningBlock` 展示单个思考分片，以首个非空行作为摘要，展开后可阅读完整文本。
+内容和状态更新时保留用户的手动开合选择。
+
+```tsx
+import { ReasoningBlock } from "@openagentpack/kit-chat-ui";
+```
+
+copy-in 接入（复制后 import 改为项目内路径）：
+
+```bash
+pnpm kit:add reasoning-block
+```
+
+主题与渲染依赖见 [组件总览](/docs/components#主题)。
+
+## 何时使用
+
+- 独立展示思考分片的摘要与全文，通过 `status` 标记流式更新、完成、失败或中断。
+- 在一条消息里展示连续的思考和工具步骤时，交给 [Message](/docs/components/general/message#富内容与执行过程) 组合执行过程。
+
+## 代码演示
+
+思考块初始收起，状态取自 `reasoning` 分片的 `status`。缺省时摘要显示「思考过程」。
+在 [工具调用演示](/docs/components/feedback/tool-call-card#工具卡三态) 中可以切换思考状态并追加文本。
+
+{/* skill-example: kit-components/examples/reasoning.tsx */}
+
+```tsx
+import { ReasoningBlock } from "@openagentpack/kit-chat-ui";
+import { useState } from "react";
+
+// 实际对话中，每个推理分片的状态来自 Provider。
+// 下列操作在同一个组件实例上演示各阶段切换。
+export function ReasoningLifecycle() {
+	const [status, setStatus] = useState<"streaming" | "done" | "failed" | "interrupted">("done");
+	return (
+		<div className="flex flex-col gap-3" data-kit-appearance="workspace">
+			<fieldset className="flex flex-wrap gap-3">
+				<legend className="sr-only">推理阶段操作</legend>
+				<button type="button" onClick={() => setStatus("streaming")}>
+					开始推理
+				</button>
+				<button type="button" onClick={() => setStatus("done")}>
+					完成
+				</button>
+				<button type="button" onClick={() => setStatus("interrupted")}>
+					中断
+				</button>
+				<button type="button" onClick={() => setStatus("failed")}>
+					失败
+				</button>
+			</fieldset>
+			<ReasoningBlock text="先比较证据，再给出回答。" status={status} />
+		</div>
+	);
+}
+```
+
+{/* /skill-example */}
+
+## API
+
+### ReasoningBlock
+
+| 属性 | 说明 | 类型 | 默认值 |
+| --- | --- | --- | --- |
+| `text` | 必填，思考原文，摘要取首个非空行 | `string` | — |
+| `status` | 思考分片的当前状态 | `"streaming" \| "done" \| "failed" \| "interrupted"` | — |
+| `className` | 追加到根 `details` 的工具类 | `string` | — |
+| `contentMaxHeight` | 替换展开内容的限高，`max-h-none` 可取消限高 | `string` | `"max-h-80"` |

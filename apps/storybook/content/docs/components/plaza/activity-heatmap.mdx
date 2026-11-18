@@ -1,0 +1,53 @@
+---
+title: ActivityHeatmap 活跃热力图
+description: 用日期格和色阶展示每日对话回合数
+---
+
+`ActivityHeatmap` 把每日回合数按每列七格排列。同一份数据中，回合数越多的日期颜色越深。
+
+```tsx
+import { ActivityHeatmap } from "@openagentpack/kit-chat-ui";
+```
+
+copy-in 接入（复制后 import 改为项目内路径）
+
+```bash
+pnpm kit:add activity-heatmap
+```
+
+主题与渲染依赖见 [组件总览](/docs/components#主题)。
+
+## 何时使用
+
+- 在个人用量页展示近期哪些日期有对话活动，以及相对活跃程度。
+- 同时展示额度消耗比例时，可搭配 `MeterBar`。 [MeterBar 用量条](/docs/components/plaza/meter-bar)
+
+## 代码演示
+
+将鼠标悬停在格子上查看日期和回合数。勾选「全部日期为 0 回合」可查看零用量色阶。
+
+<Showcase name="activity-heatmap" />
+
+## 接入
+
+`useQuota().quota.daily` 已按 UTC 日期从早到晚提供近 30 天的记录，可直接传给 `days`。
+使用其他数据源时，由调用方按展示顺序排列日期，并为缺失的日期补一条 `turns: 0` 的记录。 [广场与配额 Hooks](/docs/sdk/discovery-usage)
+
+## API
+
+### ActivityHeatmap
+
+| 属性 | 说明 | 类型 | 默认值 |
+| --- | --- | --- | --- |
+| `days` | 必填，`day` 为唯一的日期键，`turns` 为当日回合数 | `{ day: string; turns: number }[]` | — |
+
+组件按输入顺序渲染。色阶以本组数据的最大回合数为基准，正数分三档，0 回合显示底色。空数组显示「暂无活跃记录」的无障碍标签。
+
+## 主题变量（Design Token）
+
+| Token | 用途 | 默认主题 | 工作区主题 |
+| --- | --- | --- | --- |
+| `--kit-border` | 0 回合的格子底色 | `#e3e6ef` | `#e5e5e5` |
+| `--kit-heat` | 活跃格子，按档位使用 30%、60% 或 100% 的不透明度 | `#2563eb` | `#2563eb` |
+
+格子圆角使用 `--kit-radius-xs`。

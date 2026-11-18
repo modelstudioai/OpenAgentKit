@@ -274,7 +274,7 @@ export function KitRoot({ client, children }: { client: KitClient; children: Rea
 见[组件交互与后端调用](/docs/sdk/experience#组件绑定示例)。
 
 文件选择、粘贴、移除和上传状态由调用方组合
-[Sender 与 Attachments](/docs/components/express/sender) 管理。
+[Sender 与 Attachments](/docs/components/chat/sender) 管理。
 使用 `await client.downloadFile(fileId, { sessionId })` 下载 Artifact，再由宿主保存 Response
 中的字节；本人上传文件可以省略 sessionId。服务端检查文件归属，只允许挂载本人上传。
 旧数据库升级时，会从历史会话挂载索引补齐唯一原身份的文件归属；存在跨身份歧义或没有

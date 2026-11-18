@@ -1,10 +1,10 @@
 ---
-title: Chat 与 Sender 组合
-description: 消息列表、流式中间态与输入框的在线预览
+title: Chat 对话区
+description: 组合消息列表、欢迎态、流式状态和默认输入框
 ---
 
-`Chat` 组合 [MessageList](/docs/components/general/message-list) 与
-[Sender](/docs/components/express/sender)，只认 props，不 fetch、不依赖 server。
+`Chat` 将 [MessageList](/docs/components/general/message-list) 和默认的
+[Sender](/docs/components/chat/sender) 组装成对话区。调用方传入消息和生成状态，通过回调接入发送与停止操作。
 
 ```tsx
 import { Chat } from "@openagentpack/kit-chat-ui";
@@ -23,7 +23,7 @@ pnpm kit:add chat
 
 - 需要「消息列表 + 输入框」标准组合：流式中间态、审批嵌入、欢迎态与滚动跟随一次到位。
 - 只要列表或只要输入框时，分别用 [MessageList](/docs/components/general/message-list) 与
-  [Sender](/docs/components/express/sender)。
+  [Sender](/docs/components/chat/sender)。
 
 ## 代码演示
 
@@ -37,7 +37,8 @@ pnpm kit:add chat
 
 ### 多 Agent 对话
 
-子 Agent 卡片、只读历史、分页与重试可操作；先输入草稿再开合卡片，观察草稿不变。
+子 Agent 卡片出现在主消息流的派发位置。展开卡片可查看只读历史、加载更早消息和重试。
+先输入草稿再开合卡片，可以观察主输入框里的草稿。
 
 <Showcase name="multi-agent" />
 
@@ -115,13 +116,14 @@ export function SessionChat({ sessionId, skills }: { sessionId: string | null; s
 传入 `multiAgent={chat.multiAgent}`，契约见
 [`ChatMultiAgent`](/docs/components/general/sub-agent-panel#chatmultiagent)。执行中的子 Agent
 自动展开、完成后收起，也可手动开合；历史经 `loadThreadEvents(id, { more })` 翻页、
-`{ retry: true }` 重试，无历史查询能力时明确提示。子 Agent 无独立输入与审批入口，主输入区的
-停止按钮停止整个主会话。资源面板可另接 [SubAgentPanel](/docs/components/general/sub-agent-panel)。
+`{ retry: true }` 重试，无历史查询能力时明确提示。主输入区的停止按钮停止整个主会话。
+右侧资源面板的 `SubAgentPanel` 从同一个 `multiAgent` 快照读取派发记录。
+[资源面板执行记录演示](/docs/components/general/sub-agent-panel#执行记录弹窗与历史加载)
 
 ## 自定义输入区
 
 附件、快捷指令或自定义提交策略通过 `sender` 插槽接入，完整组合见
-[Sender 附件示例](/docs/components/express/sender) 与 [Suggestion](/docs/components/express/suggestion)。
+[Sender 附件示例](/docs/components/chat/sender#组合附件与上传) 与 [Suggestion](/docs/components/express/suggestion)。
 自定义 Sender 传 `variant="workspace"`，并连接 `value`、`onChange`、`onSubmit`、
 `loading={chat.turnRunning}`、`submitDisabled={!chat.canSend}` 与 `onCancel={chat.stop}`；
 此时 Chat 不再接管输入区，但仍需传 `turnRunning` 供等待首帧指示。
@@ -136,7 +138,7 @@ export function SessionChat({ sessionId, skills }: { sessionId: string | null; s
 | `sending` | `boolean` | `false` | 发送请求在途（含新建会话）：乐观气泡出现前列表尾显示「发送中…」指示，回合开始后归「生成中…」 |
 | `canSend` | `boolean` | `true` | 是否允许提交；设 false 仍可编辑草稿 |
 | `composerDisabled` | `boolean` | `false` | 禁用默认输入区，例如配额耗尽；已有生成仍可停止。自定义 sender 需自行传入 disabled |
-| `approvals` | `ReactNode` | — | 主 Agent 当前待办审批卡，内嵌到消息流末尾；输入区上方只留精简等待提示 |
+| `approvals` | `ReactNode` | — | 当前会话的待办审批卡，内嵌到主消息流末尾。输入区上方显示等待提示 |
 | `onSend` | `(text: string, skills?: string[]) => void \| Promise<void>` | — | 默认 Sender 提交文本和派生技能名；成功后清理未被改写的草稿 |
 | `onStop` | `() => void \| Promise<void>` | — | 默认 Sender 的停止回调 |
 | `onArtifactDownload` | `(fileId: string) => void` | — | 文件下载回调 |
@@ -167,5 +169,5 @@ export function SessionChat({ sessionId, skills }: { sessionId: string | null; s
 「等待审批」提示走 `--kit-text-label` 文字档位；输入区底部留白用
 `--kit-space-3` / `--kit-space-6` 与移动端安全区取较大值。消息与输入区本体（气泡、分片、
 工具卡、附件、技能 chip）的 token 分别见 [MessageList](/docs/components/general/message-list)、
-[Message](/docs/components/message) 与 [Sender](/docs/components/express/sender)；更多主题配置见
+[Message](/docs/components/general/message) 与 [Sender](/docs/components/chat/sender)；更多主题配置见
 [组件总览](/docs/components#主题)。

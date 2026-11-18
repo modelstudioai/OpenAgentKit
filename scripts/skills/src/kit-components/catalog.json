@@ -98,7 +98,7 @@
 		"name": "Layout",
 		"export": "Layout",
 		"description": "组合会话导航、页头、限高聊天区和响应式 Agent 资源面板。",
-		"doc": "apps/storybook/content/docs/components/layout.mdx",
+		"doc": "apps/storybook/content/docs/components/layout/index.mdx",
 		"example": "examples/layout.tsx",
 		"notes": [
 			"sidebar 接受内容或获得 closeSidebar、closeButton 的渲染回调。侧栏尺寸、边框和移动端显示由调用方配置。",
@@ -113,7 +113,7 @@
 		"name": "Chat",
 		"export": "Chat",
 		"description": "组合消息列表、内联子 Agent 卡片、默认 Sender 和主 Agent 审批。",
-		"doc": "apps/storybook/content/docs/components/chat.mdx",
+		"doc": "apps/storybook/content/docs/components/chat/index.mdx",
 		"example": "examples/chat-runtime.tsx",
 		"notes": [
 			"默认 variant=default、turnRunning=false、canSend=true。员工端布局需显式使用 workspace。",
@@ -157,7 +157,7 @@
 		"name": "ConfirmDialog",
 		"export": "ConfirmDialog",
 		"description": "展示显式确认和取消选项。",
-		"doc": "apps/storybook/content/docs/components/chrome.mdx",
+		"doc": "packages/chat-ui/src/components/confirm-dialog/README.md",
 		"example": "examples/general.tsx",
 		"notes": [
 			"danger 默认 true，由调用方按条件挂载。",
@@ -169,14 +169,14 @@
 		"name": "EmptyState",
 		"export": "EmptyState",
 		"description": "显示带标题和可选提示的空态。",
-		"doc": "apps/storybook/content/docs/components/chrome.mdx",
+		"doc": "packages/chat-ui/src/components/empty-state/README.md",
 		"example": "examples/general.tsx"
 	},
 	{
 		"name": "ErrorState",
 		"export": "ErrorState",
 		"description": "展示可访问的错误消息及可选重试操作。",
-		"doc": "apps/storybook/content/docs/components/chrome.mdx",
+		"doc": "packages/chat-ui/src/components/error-state/README.md",
 		"example": "examples/general.tsx",
 		"notes": [
 			"提供 onRetry 时才显示重试按钮，由调用方定义重试行为。"
@@ -201,7 +201,7 @@
 		"name": "StatusIndicator",
 		"export": "StatusIndicator",
 		"description": "分别显示传输连接与执行阶段。",
-		"doc": "apps/storybook/content/docs/components/chrome.mdx",
+		"doc": "packages/chat-ui/src/components/status-indicator/README.md",
 		"example": "examples/general.tsx",
 		"notes": [
 			"兼容用的必填 Props 为 connected 和 turnRunning。",
@@ -223,7 +223,7 @@
 		"name": "ThreadPanel",
 		"export": "ThreadPanel",
 		"description": "展示投影后的子线程消息，共用复制和下载回调。",
-		"doc": "apps/storybook/content/docs/components/chrome.mdx",
+		"doc": "packages/chat-ui/src/components/thread-panel/README.md",
 		"example": "examples/general.tsx",
 		"notes": [
 			"threads 为空时不渲染。",
@@ -259,7 +259,7 @@
 		"name": "Markdown",
 		"export": "Markdown",
 		"description": "渲染经净化的 GFM 文本、代码块和完整 Mermaid 围栏。",
-		"doc": "apps/storybook/content/docs/components/message.mdx",
+		"doc": "apps/storybook/content/docs/components/feedback/markdown.mdx",
 		"example": "examples/content.tsx",
 		"notes": [
 			"children 须为字符串。",
@@ -283,7 +283,7 @@
 		"name": "ArtifactCard",
 		"export": "ArtifactCard",
 		"description": "将输出产物元数据适配到 FileCard，并注入预览与下载操作。",
-		"doc": "apps/storybook/content/docs/components/message.mdx",
+		"doc": "apps/storybook/content/docs/components/feedback/artifact-card.mdx",
 		"example": "examples/content.tsx",
 		"notes": [
 			"用于输出产物，输入文件使用附件组件。",
@@ -340,7 +340,7 @@
 		"name": "ReasoningBlock",
 		"export": "ReasoningBlock",
 		"description": "显示可折叠的推理文本和生命周期状态。",
-		"doc": "apps/storybook/content/docs/components/message.mdx",
+		"doc": "apps/storybook/content/docs/components/feedback/reasoning-block.mdx",
 		"example": "examples/reasoning.tsx",
 		"notes": [
 			"初始折叠，流式期间也如此。内容或状态更新时保留用户的手动展开选择。",
@@ -352,7 +352,7 @@
 		"name": "ToolCallCard",
 		"export": "ToolCallCard",
 		"description": "展示已投影的工具调用、结构化参数、输出和状态。",
-		"doc": "apps/storybook/content/docs/components/message.mdx",
+		"doc": "apps/storybook/content/docs/components/feedback/tool-call-card.mdx",
 		"example": "examples/content.tsx",
 		"notes": [
 			"part 必须是 MessagePart 的 tool 分支。",
@@ -375,7 +375,7 @@
 		"name": "Sender",
 		"export": "Sender",
 		"description": "编辑、提交或停止消息，并接入调用方管理的附件与建议。",
-		"doc": "apps/storybook/content/docs/components/express/sender.mdx",
+		"doc": "apps/storybook/content/docs/components/chat/sender.mdx",
 		"example": "examples/attachment-sender.tsx",
 		"notes": [
 			"默认 defaultValue=\"\"、submitType=\"enter\"、loading=false、submitDisabled=false、disabled=false、readOnly=false。",
@@ -390,7 +390,7 @@
 		"name": "SenderHeader",
 		"export": "SenderHeader",
 		"description": "可选 Sender 顶部面板的独立导出。",
-		"doc": "apps/storybook/content/docs/components/express/sender.mdx",
+		"doc": "apps/storybook/content/docs/components/chat/sender.mdx",
 		"example": "examples/content.tsx",
 		"notes": [
 			"与 Sender.Header 是同一组件，默认 open=false、closable=true。"
@@ -401,7 +401,7 @@
 		"export": "Sender",
 		"member": "Header",
 		"description": "在文本输入框上方显示受控的可展开面板。",
-		"doc": "apps/storybook/content/docs/components/express/sender.mdx",
+		"doc": "apps/storybook/content/docs/components/chat/sender.mdx",
 		"example": "examples/attachment-sender.tsx",
 		"notes": [
 			"默认 open=false、closable=true。",
@@ -515,7 +515,7 @@
 		"name": "PlazaCard",
 		"export": "PlazaCard",
 		"description": "展示一个广场条目，在打开 Agent 时通知调用方。",
-		"doc": "apps/storybook/content/docs/components/plaza.mdx",
+		"doc": "apps/storybook/content/docs/components/plaza/plaza-card.mdx",
 		"example": "examples/discovery-usage.tsx",
 		"notes": [
 			"onOpen 接收条目 slug，导航及会话选择由调用方负责。"
@@ -524,8 +524,8 @@
 	{
 		"name": "CategoryTabs",
 		"export": "CategoryTabs",
-		"description": "受控选择广场分类或推荐标签页。",
-		"doc": "apps/storybook/content/docs/components/plaza.mdx",
+		"description": "受控选择广场分类或精选标签页。",
+		"doc": "apps/storybook/content/docs/components/plaza/category-tabs.mdx",
 		"example": "examples/discovery-usage.tsx",
 		"notes": [
 			"在传入分类的开头插入 featured。",
@@ -536,7 +536,7 @@
 		"name": "MeterBar",
 		"export": "MeterBar",
 		"description": "将额度用量展示为有界进度或不限量轨道。",
-		"doc": "apps/storybook/content/docs/components/plaza.mdx",
+		"doc": "apps/storybook/content/docs/components/plaza/meter-bar.mdx",
 		"example": "examples/discovery-usage.tsx",
 		"notes": [
 			"默认 unlimited=false、className=\"\"。",
@@ -547,7 +547,7 @@
 		"name": "ActivityHeatmap",
 		"export": "ActivityHeatmap",
 		"description": "展示调用方提供的每日活动及相对强度。",
-		"doc": "apps/storybook/content/docs/components/plaza.mdx",
+		"doc": "apps/storybook/content/docs/components/plaza/activity-heatmap.mdx",
 		"example": "examples/discovery-usage.tsx",
 		"notes": [
 			"保留输入顺序，日期字符串须唯一。",

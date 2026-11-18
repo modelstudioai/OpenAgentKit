@@ -25,9 +25,7 @@ pnpm kit:add session-list
   与搜索组成的完整目录区用 [SessionSidebar](/docs/components/general/session-sidebar)。
 - 会话行需要重命名、归档、删除等操作时，用 `menu` 传入自己的行尾菜单：`menu(session)` 返回的元素在
   会话作用域里构造，菜单项 `onClick` 直接取该行 `session` 数据，重命名项改 `editingId` 进入行内编辑。
-  归档与删除是破坏性操作，
-  菜单或确认弹窗（AlertDialog）里先展示影响再发起请求，见
-  [页面组合与辅助交互](/docs/components/chrome)。
+  归档与删除先请求计划，在确认弹窗展示影响，用户确认后再执行。 [会话操作确认](/docs/components/chrome#会话操作确认)
 
 ## 代码演示
 

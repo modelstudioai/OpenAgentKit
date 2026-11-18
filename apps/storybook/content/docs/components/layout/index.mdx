@@ -3,26 +3,46 @@ title: Layout 整页布局
 description: 可复用的桌面侧栏、移动抽屉、页头、资源面板与内容区
 ---
 
-`Layout` 负责整页结构与响应式交互：桌面常驻侧栏，小于 768px 时改为模态抽屉，右侧可挂资源面板。
-组件不请求数据、不处理认证或路由，也不创建 Session。
+`Layout` 提供桌面侧栏、页头、主内容区与可选的右侧资源面板。小于 768px 时，侧栏切换为模态抽屉，
+资源面板切换为全屏覆盖层。路由、身份和会话状态由调用方管理。
 
 ```tsx
 import { Layout } from "@openagentpack/kit-chat-ui";
 ```
 
-copy-in 接入（组合示例还需 `session-sidebar` / `agent-header`；不自动安装 npm 依赖，需自装
-`@openagentpack/kit-sdk/hooks`、`@radix-ui/react-dialog`，导入共享 `theme.css`，外层给明确高度如 `h-dvh`，
-员工端外观经 `data-kit-appearance="workspace"` 启用）：
+copy-in 接入（复制后 import 改为项目内路径）：
 
 ```bash
 pnpm kit:add layout
-pnpm kit:add session-sidebar
-pnpm kit:add agent-header
+pnpm add @radix-ui/react-dialog
 ```
 
-交给 coding agent 接入时使用 [kit-components Skill](/docs/skill/kit-components)。下方示例把会话目录、对话内容和 Agent 信息放入三个区域，
-并用同一个开关控制桌面右栏和移动端资源面板。主题与渲染依赖见 [组件总览](/docs/components#主题)。
-完整数据接入见 [三栏对话页示例](/docs/sdk/experience#组件绑定示例)，路由、身份和会话状态由调用方持有。
+`Layout` 通过 `@openagentpack/kit-sdk/hooks` 判断移动端断点。交给 coding agent 接入时使用
+[kit-components Skill](/docs/skill/kit-components)。主题与渲染依赖见 [组件总览](/docs/components#主题)。
+
+## 何时使用
+
+- 广场、用量和聊天页共用一套页头与侧栏。
+- 移动端导航需要抽屉焦点管理、Escape 关闭和软键盘视口适配。
+- Agent 资源需要在桌面停靠右侧，在手机上全屏打开。
+
+## 代码演示
+
+预览使用本地数据。演示面板内可查看源码与接入命令。
+
+### 整页骨架
+
+选择「手机」后可从页头打开导航抽屉，体验会话切换、归档或删除确认与用量页入口。
+侧栏开合时正文保留草稿。通过 `dialogs` 传入的确认弹窗在抽屉打开时也能获得焦点。
+
+<Showcase name="layout" />
+
+## 接入
+
+将布局放进高度明确的容器（如 `h-dvh`），通过 `data-kit-appearance="workspace"` 启用工作区外观。
+三栏示例需要 [SessionSidebar](/docs/components/general/session-sidebar)、[AgentHeader](/docs/components/general/agent-header)
+和 [Chat](/docs/components/chat)，分别填入侧栏、页头和主内容区。`asideOpen` 控制桌面右栏和移动端资源面板的开合。
+会话加载、发送和资源查询见 [三栏对话页示例](/docs/sdk/experience#组件绑定示例)。
 
 {/* skill-example: kit-components/examples/layout.tsx */}
 
@@ -160,22 +180,6 @@ export function WorkspaceLayout(props: WorkspaceLayoutProps) {
 
 {/* /skill-example */}
 
-## 何时使用
-
-- 员工端整页骨架：广场、用量、聊天页共用同一外壳与断点行为。
-- 需要移动抽屉的模态焦点、Escape 关闭与可视视口适配，不想自写。
-- 右侧资源面板：桌面停靠右列、移动全屏覆盖层，同一插槽两种形态。
-
-## 代码演示
-
-### 整页骨架
-
-桌面常驻侧栏；手机预览经页头入口打开抽屉，可试会话导航、归档 / 删除确认与用量页。
-
-<Showcase name="layout" />
-
-侧栏开合不重建正文，输入草稿保持；确认弹窗经 `dialogs` 插槽渲染，抽屉打开时也在其焦点范围内。
-
 ## API
 
 ### Layout
@@ -217,5 +221,5 @@ render props 控件：`sidebar` 拿到 `closeSidebar()`（选择会话 / 新建 
 
 断点 768px 冻结在 `useIsMobile`；面板开合与入场消费 `--kit-duration-base` / `--kit-ease-out` /
 `--kit-animate-panel-in`；`fitViewport` 运行时注入 `--kit-viewport-height`（缺省 `100dvh`），
-[Sender](/docs/components/express/sender) 等组件消费同一变量。宿主可在自己的层级覆盖
+[Sender](/docs/components/chat/sender) 等组件消费同一变量。宿主可在自己的层级覆盖
 `--kit-aside-width`。更多主题配置见 [组件总览](/docs/components#主题)。

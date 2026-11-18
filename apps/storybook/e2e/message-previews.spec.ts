@@ -64,7 +64,11 @@ test("Message 内容演示：展开执行详情，区分文件预览、下载和
 	await expect(page.getByRole("status").filter({ hasText: "打开文件：file-report（text/markdown）" })).toBeVisible();
 	await page.getByRole("button", { name: "下载 weekly-report.md", exact: true }).click();
 	await expect(page.getByRole("status").filter({ hasText: "下载文件：file-report" })).toBeVisible();
-	await page.getByRole("button", { name: "复制", exact: true }).click();
+	await page
+		.getByRole("group", { name: "消息操作", exact: true })
+		.getByRole("button", { name: "复制", exact: true })
+		.filter({ hasText: "复制" })
+		.click();
 	await expect(page.getByRole("status").filter({ hasText: "复制原文：" })).toHaveText(
 		"复制原文：周报已生成。\n\n**要点**：本周会话量增长 12%。",
 	);

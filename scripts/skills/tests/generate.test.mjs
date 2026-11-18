@@ -209,12 +209,12 @@ test("stale generated output fails read-only checking and can be regenerated det
 test("one generation synchronizes SDK and component examples with their source files", () => {
 	const directory = mkdtempSync(resolve(tmpdir(), "kit-skills-sdk-docs-"));
 	try {
-		for (const path of ["scripts/skills/src", "apps/storybook/content"]) {
+		for (const path of ["scripts/skills/src", "apps/storybook/content", "packages/chat-ui/src/components"]) {
 			cpSync(resolve(repositoryRoot, path), resolve(directory, path), { recursive: true });
 		}
 		const examples = [
 			["kit-chat-provider", "request.ts", "sdk/request.mdx"],
-			["kit-components", "layout.tsx", "components/layout.mdx"],
+			["kit-components", "layout.tsx", "components/layout/index.mdx"],
 		];
 		for (const [skill, example] of examples) {
 			const source = resolve(skillSourceRoot(directory, skill), "examples", example);

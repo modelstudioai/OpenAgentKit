@@ -81,7 +81,7 @@ export function useAgentResources(slug: string | null, options?: { client?: KitC
 ```
 
 
-<!-- source-sha256: 264b8d29d1436b1cbc21d18f844ccb26a7d9b0e4f1f52460cf47dde6fdbc419b; doc-sha256: 7b645f87b04382e975ee9e589b5bc79e801f5a2c68cf0938bcc28459d16fb7dc -->
+<!-- source-sha256: 264b8d29d1436b1cbc21d18f844ccb26a7d9b0e4f1f52460cf47dde6fdbc419b; doc-sha256: 1894e1815160c02998bff32a44fd69e8ffbe8701d080f248ccc1cbd32e697502 -->
 
 ## useUsageLimits
 
@@ -99,7 +99,7 @@ export function useUsageLimits(options?: { client?: KitClient; enabled?: boolean
 ```
 
 
-<!-- source-sha256: 03cede5e643d6616b0ce387706848ef0c0316524008ca74f674e16fce04cb355; doc-sha256: 7b645f87b04382e975ee9e589b5bc79e801f5a2c68cf0938bcc28459d16fb7dc -->
+<!-- source-sha256: 03cede5e643d6616b0ce387706848ef0c0316524008ca74f674e16fce04cb355; doc-sha256: 1894e1815160c02998bff32a44fd69e8ffbe8701d080f248ccc1cbd32e697502 -->
 
 ## createChatController
 
@@ -371,7 +371,7 @@ export function KitProvider({ client, children }: { client: KitClient; children:
 ```
 
 
-<!-- source-sha256: 56e8db9834976d7c7c2e4655e141009769b55abcaa5ec7d06ce0ab8ebdcf9674; doc-sha256: 998722b2b327af14ec241310f86edb8bb411fad21e30f2f42b383399504ca031 -->
+<!-- source-sha256: 56e8db9834976d7c7c2e4655e141009769b55abcaa5ec7d06ce0ab8ebdcf9674; doc-sha256: 9c55836c2eb7379f1ada145d6542cfe15df23ad9491fdbe0ae2678a9bd922ca7 -->
 
 ## createKitClient
 
@@ -390,7 +390,7 @@ export function createKitClient(options: KitClientOptions): KitClient;
 ```
 
 
-<!-- source-sha256: b1d68783a14b07a56ca56019c8d30a84c70b7fc05f9e81068aabd2506493a5d8; doc-sha256: 998722b2b327af14ec241310f86edb8bb411fad21e30f2f42b383399504ca031 -->
+<!-- source-sha256: b1d68783a14b07a56ca56019c8d30a84c70b7fc05f9e81068aabd2506493a5d8; doc-sha256: 9c55836c2eb7379f1ada145d6542cfe15df23ad9491fdbe0ae2678a9bd922ca7 -->
 
 ## ChatProvider
 
@@ -495,7 +495,7 @@ export function usePlaza(options?: { client?: KitClient; category?: PlazaCategor
 ```
 
 
-<!-- source-sha256: b1926f867ac3ba5b07425e39a4d3ffc26d6ca0e678081f8161b88078b20f3bc6; doc-sha256: 7b645f87b04382e975ee9e589b5bc79e801f5a2c68cf0938bcc28459d16fb7dc -->
+<!-- source-sha256: b1926f867ac3ba5b07425e39a4d3ffc26d6ca0e678081f8161b88078b20f3bc6; doc-sha256: 1894e1815160c02998bff32a44fd69e8ffbe8701d080f248ccc1cbd32e697502 -->
 
 ## useQuota
 
@@ -514,7 +514,7 @@ export function useQuota(options?: { client?: KitClient; days?: number; }): { qu
 ```
 
 
-<!-- source-sha256: 69cc3fd8e03c994aab981f569007286ad5acd20c2436da5d22a51a3071277c1d; doc-sha256: 7b645f87b04382e975ee9e589b5bc79e801f5a2c68cf0938bcc28459d16fb7dc -->
+<!-- source-sha256: 69cc3fd8e03c994aab981f569007286ad5acd20c2436da5d22a51a3071277c1d; doc-sha256: 1894e1815160c02998bff32a44fd69e8ffbe8701d080f248ccc1cbd32e697502 -->
 
 ## useQuotaRequests
 
@@ -533,7 +533,7 @@ export function useQuotaRequests(options?: { client?: KitClient; }): { requests:
 ```
 
 
-<!-- source-sha256: 06ab02741f46208caf9166aaebcfe23b8338648deaa4d3e1b667985fd481b008; doc-sha256: 7b645f87b04382e975ee9e589b5bc79e801f5a2c68cf0938bcc28459d16fb7dc -->
+<!-- source-sha256: 06ab02741f46208caf9166aaebcfe23b8338648deaa4d3e1b667985fd481b008; doc-sha256: 1894e1815160c02998bff32a44fd69e8ffbe8701d080f248ccc1cbd32e697502 -->
 
 ## createMemberAuthController
 
@@ -550,7 +550,7 @@ export function createMemberAuthController(options: MemberAuthOptions): { getSna
 ```
 
 
-<!-- source-sha256: 445a244f58041b227620bc9d126f928672b9f7d523f3b529b9fe349ab312e9a3; doc-sha256: 998722b2b327af14ec241310f86edb8bb411fad21e30f2f42b383399504ca031 -->
+<!-- source-sha256: 445a244f58041b227620bc9d126f928672b9f7d523f3b529b9fe349ab312e9a3; doc-sha256: 9c55836c2eb7379f1ada145d6542cfe15df23ad9491fdbe0ae2678a9bd922ca7 -->
 
 ## MemberAuthController
 
@@ -576,7 +576,7 @@ export type MemberAuthController = { getSnapshot: () => MemberAuthSnapshot; subs
 | `retry` | 是 | `() => Promise<void>` |
 | `dispose` | 是 | `() => void` |
 
-<!-- source-sha256: 445a244f58041b227620bc9d126f928672b9f7d523f3b529b9fe349ab312e9a3; doc-sha256: 998722b2b327af14ec241310f86edb8bb411fad21e30f2f42b383399504ca031 -->
+<!-- source-sha256: 445a244f58041b227620bc9d126f928672b9f7d523f3b529b9fe349ab312e9a3; doc-sha256: 9c55836c2eb7379f1ada145d6542cfe15df23ad9491fdbe0ae2678a9bd922ca7 -->
 
 ## MemberAuthOptions
 
@@ -601,7 +601,7 @@ import type { MemberAuthOptions } from "@openagentpack/kit-sdk/auth";
 | `createChatProvider` | 否 | `((request: RequestClient) => ChatProvider) \| undefined` |
 | `createClient` | 否 | `((request: RequestClient) => KitClient) \| undefined` |
 
-<!-- source-sha256: 445a244f58041b227620bc9d126f928672b9f7d523f3b529b9fe349ab312e9a3; doc-sha256: 998722b2b327af14ec241310f86edb8bb411fad21e30f2f42b383399504ca031 -->
+<!-- source-sha256: 445a244f58041b227620bc9d126f928672b9f7d523f3b529b9fe349ab312e9a3; doc-sha256: 9c55836c2eb7379f1ada145d6542cfe15df23ad9491fdbe0ae2678a9bd922ca7 -->
 
 ## MemberAuthSnapshot
 
@@ -627,7 +627,7 @@ import type { MemberAuthSnapshot } from "@openagentpack/kit-sdk/auth";
 | `error` | 是 | `string \| null` |
 | `pending` | 是 | `boolean` |
 
-<!-- source-sha256: 445a244f58041b227620bc9d126f928672b9f7d523f3b529b9fe349ab312e9a3; doc-sha256: 998722b2b327af14ec241310f86edb8bb411fad21e30f2f42b383399504ca031 -->
+<!-- source-sha256: 445a244f58041b227620bc9d126f928672b9f7d523f3b529b9fe349ab312e9a3; doc-sha256: 9c55836c2eb7379f1ada145d6542cfe15df23ad9491fdbe0ae2678a9bd922ca7 -->
 
 ## MemberSessionStorage
 
@@ -648,7 +648,7 @@ import type { MemberSessionStorage } from "@openagentpack/kit-sdk/auth";
 | `load` | 是 | `() => StoredMemberSession \| null` |
 | `save` | 是 | `(session: StoredMemberSession \| null) => void` |
 
-<!-- source-sha256: 445a244f58041b227620bc9d126f928672b9f7d523f3b529b9fe349ab312e9a3; doc-sha256: 998722b2b327af14ec241310f86edb8bb411fad21e30f2f42b383399504ca031 -->
+<!-- source-sha256: 445a244f58041b227620bc9d126f928672b9f7d523f3b529b9fe349ab312e9a3; doc-sha256: 9c55836c2eb7379f1ada145d6542cfe15df23ad9491fdbe0ae2678a9bd922ca7 -->
 
 ## StoredMemberSession
 
@@ -669,7 +669,7 @@ import type { StoredMemberSession } from "@openagentpack/kit-sdk/auth";
 | `access_token` | 是 | `string` |
 | `expires_at` | 是 | `string` |
 
-<!-- source-sha256: 445a244f58041b227620bc9d126f928672b9f7d523f3b529b9fe349ab312e9a3; doc-sha256: 998722b2b327af14ec241310f86edb8bb411fad21e30f2f42b383399504ca031 -->
+<!-- source-sha256: 445a244f58041b227620bc9d126f928672b9f7d523f3b529b9fe349ab312e9a3; doc-sha256: 9c55836c2eb7379f1ada145d6542cfe15df23ad9491fdbe0ae2678a9bd922ca7 -->
 
 ## useMemberAuth
 
@@ -686,7 +686,7 @@ export function useMemberAuth(controller: MemberAuthController): { login: (input
 ```
 
 
-<!-- source-sha256: a856ff2e48f0bdc737bda1936dafc516a08534e08982fa46ca71bd8adbedec6e; doc-sha256: 998722b2b327af14ec241310f86edb8bb411fad21e30f2f42b383399504ca031 -->
+<!-- source-sha256: a856ff2e48f0bdc737bda1936dafc516a08534e08982fa46ca71bd8adbedec6e; doc-sha256: 9c55836c2eb7379f1ada145d6542cfe15df23ad9491fdbe0ae2678a9bd922ca7 -->
 
 ## ChatMultiAgent
 

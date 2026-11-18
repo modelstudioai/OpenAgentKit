@@ -77,7 +77,7 @@ test("思考状态预览：追加内容保留手动开合，四种状态可真�
 // 子 Agent 以流内嵌卡呈现；展开即拉取消息，失败可在卡内重试，主输入草稿始终保留。
 test("Multi-Agent 预览：卡片展开加载与失败重试保留消息，主输入草稿保留", async ({ page }) => {
 	await page.goto("/previews/multi-agent/");
-	const input = page.getByRole("textbox", { name: "消息输入", exact: true });
+	const input = page.getByLabel("消息输入", { exact: true });
 	await input.fill("切换协作 Agent 后继续发送的草稿");
 	const research = page.locator('details[aria-label="子 Agent 资料研究员"]');
 	await expect(research).toContainText("整理资料并交叉验证来源");

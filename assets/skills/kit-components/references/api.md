@@ -82,7 +82,7 @@ export function Actions({ items, onClick, children, variant, className, "aria-la
 | `className` | 否 | `string \| undefined` |
 | `aria-label` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 13059af86b72a484b0008fa5a4fb0ed481207d57a7acb285ad0799b419061e95; doc-sha256: 8c93e2e994d7d470f2d15b7f4240919bc51e3da3c4f7324d003b6b9314746e0b -->
+<!-- source-sha256: 13059af86b72a484b0008fa5a4fb0ed481207d57a7acb285ad0799b419061e95; doc-sha256: 09fa3779efe27530a71efd6822ee60a4979ae5f94cb6d9e94fb10968b278b058 -->
 
 ## ActionsCopy
 
@@ -111,7 +111,7 @@ export function ActionsCopy({ text, onCopy, disabled, label, iconOnly, variant, 
 | `variant` | 否 | `ActionsVariant \| undefined` |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 13059af86b72a484b0008fa5a4fb0ed481207d57a7acb285ad0799b419061e95; doc-sha256: 8c93e2e994d7d470f2d15b7f4240919bc51e3da3c4f7324d003b6b9314746e0b -->
+<!-- source-sha256: 13059af86b72a484b0008fa5a4fb0ed481207d57a7acb285ad0799b419061e95; doc-sha256: 09fa3779efe27530a71efd6822ee60a4979ae5f94cb6d9e94fb10968b278b058 -->
 
 ## ActionsFeedback
 
@@ -138,7 +138,7 @@ export function ActionsFeedback({ value, onChange, disabled, variant, className,
 | `variant` | 否 | `ActionsVariant \| undefined` |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 13059af86b72a484b0008fa5a4fb0ed481207d57a7acb285ad0799b419061e95; doc-sha256: 8c93e2e994d7d470f2d15b7f4240919bc51e3da3c4f7324d003b6b9314746e0b -->
+<!-- source-sha256: 13059af86b72a484b0008fa5a4fb0ed481207d57a7acb285ad0799b419061e95; doc-sha256: 09fa3779efe27530a71efd6822ee60a4979ae5f94cb6d9e94fb10968b278b058 -->
 
 ## Actions.Copy
 
@@ -167,7 +167,7 @@ export function ActionsFeedback({ value, onChange, disabled, variant, className,
 | `variant` | 否 | `ActionsVariant \| undefined` |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 13059af86b72a484b0008fa5a4fb0ed481207d57a7acb285ad0799b419061e95; doc-sha256: 8c93e2e994d7d470f2d15b7f4240919bc51e3da3c4f7324d003b6b9314746e0b -->
+<!-- source-sha256: 13059af86b72a484b0008fa5a4fb0ed481207d57a7acb285ad0799b419061e95; doc-sha256: 09fa3779efe27530a71efd6822ee60a4979ae5f94cb6d9e94fb10968b278b058 -->
 
 ## Actions.Feedback
 
@@ -194,7 +194,7 @@ export function ActionsFeedback({ value, onChange, disabled, variant, className,
 | `variant` | 否 | `ActionsVariant \| undefined` |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 13059af86b72a484b0008fa5a4fb0ed481207d57a7acb285ad0799b419061e95; doc-sha256: 8c93e2e994d7d470f2d15b7f4240919bc51e3da3c4f7324d003b6b9314746e0b -->
+<!-- source-sha256: 13059af86b72a484b0008fa5a4fb0ed481207d57a7acb285ad0799b419061e95; doc-sha256: 09fa3779efe27530a71efd6822ee60a4979ae5f94cb6d9e94fb10968b278b058 -->
 
 ## AttachmentFileCard
 
@@ -289,7 +289,7 @@ export function Attachments(props: AttachmentsProps & RefAttributes<AttachmentsR
 
 从 `@openagentpack/kit-chat-ui` 导入 `Layout`。
 公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/layout/index.tsx`。
-说明来自 `apps/storybook/content/docs/components/layout.mdx`。
+说明来自 `apps/storybook/content/docs/components/layout/index.mdx`。
 [可编译示例](../examples/layout.tsx)
 
 - sidebar 接受内容或获得 closeSidebar、closeButton 的渲染回调。侧栏尺寸、边框和移动端显示由调用方配置。
@@ -317,7 +317,7 @@ export function Layout({ sidebar, header, mobileTitle, sidebarLabel, dialogs, as
 | `fitViewport` | 否 | `boolean \| undefined` |
 | `children` | 是 | `ReactNode` |
 
-<!-- source-sha256: 5e12192da77fe249e1370519f62a4033090e7884ebe02abc3a40ddd2870d2c96; doc-sha256: 290b1c5d205a626756eb0bbab3bc63e7bfe9399c5f6039d33061ad85a9b733c3 -->
+<!-- source-sha256: 5e12192da77fe249e1370519f62a4033090e7884ebe02abc3a40ddd2870d2c96; doc-sha256: 300087182598f1bae9a738e81c166a7867aaaf42b3229bfe8caab1e5eb0e09e4 -->
 
 ## Chat
 
@@ -325,7 +325,7 @@ export function Layout({ sidebar, header, mobileTitle, sidebarLabel, dialogs, as
 
 从 `@openagentpack/kit-chat-ui` 导入 `Chat`。
 公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/chat/index.tsx`。
-说明来自 `apps/storybook/content/docs/components/chat.mdx`。
+说明来自 `apps/storybook/content/docs/components/chat/index.mdx`。
 [可编译示例](../examples/chat-runtime.tsx)
 
 - 默认 variant=default、turnRunning=false、canSend=true。员工端布局需显式使用 workspace。
@@ -364,7 +364,7 @@ export function Chat({ messages, variant, turnRunning, sending, canSend, compose
 | `anchorRail` | 否 | `boolean \| undefined` |
 | `virtualize` | 否 | `boolean \| undefined` |
 
-<!-- source-sha256: 7b708c0d6a00e90d4662246e32389fb5fdc4df4ae6ce77d1ff89394ffe14cdda; doc-sha256: 50cab69e97848f95a6d8eb01f3a21719e94659831eb149a7ecc4edee32b88a6a -->
+<!-- source-sha256: 7b708c0d6a00e90d4662246e32389fb5fdc4df4ae6ce77d1ff89394ffe14cdda; doc-sha256: 94e575bdf2ff1ff3b72c2631987786b5957fc66587b42def68c146da1b8de47e -->
 
 ## AgentHeader
 
@@ -422,7 +422,7 @@ export function isIconImageSource(icon: string | undefined): boolean;
 
 从 `@openagentpack/kit-chat-ui` 导入 `ConfirmDialog`。
 公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/confirm-dialog/index.tsx`。
-说明来自 `apps/storybook/content/docs/components/chrome.mdx`。
+说明来自 `packages/chat-ui/src/components/confirm-dialog/README.md`。
 [可编译示例](../examples/general.tsx)
 
 - danger 默认 true，由调用方按条件挂载。
@@ -444,7 +444,7 @@ export function ConfirmDialog({ title, body, confirmLabel, cancelLabel, danger, 
 | `onConfirm` | 是 | `() => void` |
 | `onCancel` | 是 | `() => void` |
 
-<!-- source-sha256: b0bb833d643b9621b62086bfbbe4d777aa38e18820fdf44492f012a36bd1064f; doc-sha256: 12ca4909d0e7c74f174e45e582ce408541fd45c81294b645364216ca42c3b8cc -->
+<!-- source-sha256: b0bb833d643b9621b62086bfbbe4d777aa38e18820fdf44492f012a36bd1064f; doc-sha256: 6ffeceeff3e5fe1159ba5bad8261c2ee7530183ee5eb57c69ba1bcc699ecb8c6 -->
 
 ## EmptyState
 
@@ -452,7 +452,7 @@ export function ConfirmDialog({ title, body, confirmLabel, cancelLabel, danger, 
 
 从 `@openagentpack/kit-chat-ui` 导入 `EmptyState`。
 公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/empty-state/index.tsx`。
-说明来自 `apps/storybook/content/docs/components/chrome.mdx`。
+说明来自 `packages/chat-ui/src/components/empty-state/README.md`。
 [可编译示例](../examples/general.tsx)
 
 
@@ -466,7 +466,7 @@ export function EmptyState({ title, hint, loading, }: { title: string; hint?: st
 | `hint` | 否 | `string \| undefined` |
 | `loading` | 否 | `boolean \| undefined` |
 
-<!-- source-sha256: b260dbfdc76ab05f72d1f0c841bee4e1e6a6f026504850bbeab26f4a3e06b164; doc-sha256: 12ca4909d0e7c74f174e45e582ce408541fd45c81294b645364216ca42c3b8cc -->
+<!-- source-sha256: b260dbfdc76ab05f72d1f0c841bee4e1e6a6f026504850bbeab26f4a3e06b164; doc-sha256: 2d74a6c0aceab604332c752fc4daabdccbdf3f0dfcebebc8c73a8b78304f0177 -->
 
 ## ErrorState
 
@@ -474,7 +474,7 @@ export function EmptyState({ title, hint, loading, }: { title: string; hint?: st
 
 从 `@openagentpack/kit-chat-ui` 导入 `ErrorState`。
 公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/error-state/index.tsx`。
-说明来自 `apps/storybook/content/docs/components/chrome.mdx`。
+说明来自 `packages/chat-ui/src/components/error-state/README.md`。
 [可编译示例](../examples/general.tsx)
 
 - 提供 onRetry 时才显示重试按钮，由调用方定义重试行为。
@@ -488,7 +488,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
 | `message` | 是 | `string` |
 | `onRetry` | 否 | `(() => void) \| undefined` |
 
-<!-- source-sha256: 4203d974bc97749c08cebbae3602ff40f13f2fafa688112e2f736122c0135557; doc-sha256: 12ca4909d0e7c74f174e45e582ce408541fd45c81294b645364216ca42c3b8cc -->
+<!-- source-sha256: 4203d974bc97749c08cebbae3602ff40f13f2fafa688112e2f736122c0135557; doc-sha256: 852a01968d53a684c391d7dd2ce84104881a12d7b659ddded0e5b99968ed482d -->
 
 ## SessionSidebar
 
@@ -543,7 +543,7 @@ export function SessionSidebar({ groups, recent, loading, error, onReload, activ
 
 从 `@openagentpack/kit-chat-ui` 导入 `StatusIndicator`。
 公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/status-indicator/index.tsx`。
-说明来自 `apps/storybook/content/docs/components/chrome.mdx`。
+说明来自 `packages/chat-ui/src/components/status-indicator/README.md`。
 [可编译示例](../examples/general.tsx)
 
 - 兼容用的必填 Props 为 connected 和 turnRunning。
@@ -562,7 +562,7 @@ export function StatusIndicator({ connected, turnRunning, phase, connection, err
 | `error` | 否 | `{ code: string; message: string; } \| null \| undefined` |
 | `variant` | 否 | `"default" \| "badge" \| undefined` |
 
-<!-- source-sha256: 69bb97d484bf7deeef88b0745f50360cfbbe33e36fa953beaaf2dfc9e49227f4; doc-sha256: 12ca4909d0e7c74f174e45e582ce408541fd45c81294b645364216ca42c3b8cc -->
+<!-- source-sha256: 69bb97d484bf7deeef88b0745f50360cfbbe33e36fa953beaaf2dfc9e49227f4; doc-sha256: 195a29f2d135f23820d73275616ed66c309d35ef0b559aa2bf62bf41c324dc30 -->
 
 ## SubAgentPanel
 
@@ -585,7 +585,7 @@ export function SubAgentPanel({ multiAgent, className }: { multiAgent?: ChatMult
 | `multiAgent` | 否 | `ChatMultiAgent \| undefined` |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 05e476855f4737870a65b2096627b794b15f77e3d48b9c0c3f6c9e22ba9de3f6; doc-sha256: 5b2ac21e1241dee856fcaef406c0c5904e3fde3e694fd6b0bba3815d24ac00e1 -->
+<!-- source-sha256: 05e476855f4737870a65b2096627b794b15f77e3d48b9c0c3f6c9e22ba9de3f6; doc-sha256: 59020772a1eddae92308de1f4f25b1b010c97001be71ae7386618b46343c66a4 -->
 
 ## ThreadPanel
 
@@ -593,7 +593,7 @@ export function SubAgentPanel({ multiAgent, className }: { multiAgent?: ChatMult
 
 从 `@openagentpack/kit-chat-ui` 导入 `ThreadPanel`。
 公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/thread-panel/index.tsx`。
-说明来自 `apps/storybook/content/docs/components/chrome.mdx`。
+说明来自 `packages/chat-ui/src/components/thread-panel/README.md`。
 [可编译示例](../examples/general.tsx)
 
 - threads 为空时不渲染。
@@ -610,7 +610,7 @@ export function ThreadPanel({ threads, onArtifactDownload, onCopy, }: { threads:
 | `onArtifactDownload` | 否 | `((fileId: string) => void) \| undefined` |
 | `onCopy` | 否 | `((text: string) => void \| Promise<void>) \| undefined` |
 
-<!-- source-sha256: 3e866916166834bd399dfeda9153b3c1c03d1c8c8abcd30f5c882592b7d48674; doc-sha256: 12ca4909d0e7c74f174e45e582ce408541fd45c81294b645364216ca42c3b8cc -->
+<!-- source-sha256: 3e866916166834bd399dfeda9153b3c1c03d1c8c8abcd30f5c882592b7d48674; doc-sha256: 2e849505e17287a6a23f965ba61c341c71232039b845aad7da0f01280519b9c3 -->
 
 ## CodeHighlighter
 
@@ -638,7 +638,7 @@ export function CodeHighlighter({ children, lang, header, copyable, showLineNumb
 | `showLineNumbers` | 否 | `boolean \| undefined` |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 85cef0f0d23fda3ceeb0b0a9f355247669948d9c1591089ec5e0220a5114bee5; doc-sha256: d4ee9c4c04d6436109d28eae75e0500336e2da8c1a776a73a28d5bbbf4f9199f -->
+<!-- source-sha256: 85cef0f0d23fda3ceeb0b0a9f355247669948d9c1591089ec5e0220a5114bee5; doc-sha256: 5e893c1449ab5b8639063e05c653b1d764952c40713b6214e59972fdcc20c47a -->
 
 ## FileCard
 
@@ -677,7 +677,7 @@ export function FileCard({ name, type, src, description, loading, disabled, onCl
 
 从 `@openagentpack/kit-chat-ui` 导入 `Markdown`。
 公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/markdown/index.tsx`。
-说明来自 `apps/storybook/content/docs/components/message.mdx`。
+说明来自 `apps/storybook/content/docs/components/feedback/markdown.mdx`。
 [可编译示例](../examples/content.tsx)
 
 - children 须为字符串。
@@ -692,7 +692,7 @@ export function Markdown({ children }: { children: string; }): JSX.Element;
 | --- | --- | --- |
 | `children` | 是 | `string` |
 
-<!-- source-sha256: 16b48dcaa3c45e0be957d420b7ea1c28d286aab917725c3c724993c86c39dd63; doc-sha256: 360fbe042ded35b656365fc82951419dce8eb5208186907df0e0eef9975520e5 -->
+<!-- source-sha256: 16b48dcaa3c45e0be957d420b7ea1c28d286aab917725c3c724993c86c39dd63; doc-sha256: 5ed5840a8e037d63a4ef6c87c4f4d56f15fbf7587912517cf0d7b8a10a7617db -->
 
 ## Mermaid
 
@@ -721,7 +721,7 @@ export function Mermaid({ children, header, className, defaultRenderType, copyab
 | `streaming` | 否 | `boolean \| undefined` |
 | `onRenderTypeChange` | 否 | `((value: "image" \| "code") => void) \| undefined` |
 
-<!-- source-sha256: 16a6682c5d9b61a0317ca2a870aa7449ebde5d62def45f4aefb97a7e8b336d13; doc-sha256: 14289bef79b85671c3eaf2127d50496ccb2d3e6ab2b22fb12b5e5f778d681a72 -->
+<!-- source-sha256: 16a6682c5d9b61a0317ca2a870aa7449ebde5d62def45f4aefb97a7e8b336d13; doc-sha256: 8afd210d59db931e0e97d9f5cca6a4df1bdce57851c63bc9b99e4471be22bde3 -->
 
 ## ArtifactCard
 
@@ -729,7 +729,7 @@ export function Mermaid({ children, header, className, defaultRenderType, copyab
 
 从 `@openagentpack/kit-chat-ui` 导入 `ArtifactCard`。
 公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/artifact-card/index.tsx`。
-说明来自 `apps/storybook/content/docs/components/message.mdx`。
+说明来自 `apps/storybook/content/docs/components/feedback/artifact-card.mdx`。
 [可编译示例](../examples/content.tsx)
 
 - 用于输出产物，输入文件使用附件组件。
@@ -746,7 +746,7 @@ export function ArtifactCard({ filename, contentType, onOpen, onDownload, }: { f
 | `onOpen` | 否 | `(() => void) \| undefined` |
 | `onDownload` | 否 | `(() => void) \| undefined` |
 
-<!-- source-sha256: 8474f358ebfaf2ebaddb3480429f59e1adc9c4b1c651bf6de7d2c109a8ead5a5; doc-sha256: 360fbe042ded35b656365fc82951419dce8eb5208186907df0e0eef9975520e5 -->
+<!-- source-sha256: 8474f358ebfaf2ebaddb3480429f59e1adc9c4b1c651bf6de7d2c109a8ead5a5; doc-sha256: 61b0db374d8e5680f9270a1ef2776b2787351db904429d5b933fc737c607670b -->
 
 ## Message
 
@@ -775,7 +775,7 @@ export function Message({ message, variant, onArtifactDownload, onArtifactOpen, 
 | `multiAgent` | 否 | `ChatMultiAgent \| undefined` |
 | `skills` | 否 | `string[] \| undefined` |
 
-<!-- source-sha256: 17f2c7476116246f54466bf1096492d462d70cc8c32f23278056b61fd843f8b2; doc-sha256: ac0a82cfe55b35921a4717197982241600e8f13b4212e51eef4a141058d07aee -->
+<!-- source-sha256: 17f2c7476116246f54466bf1096492d462d70cc8c32f23278056b61fd843f8b2; doc-sha256: c50958b63bd45ac7440342c9a11e1b5a9b097be4dea77c588f0f8698ba8b6d0c -->
 
 ## MessageList
 
@@ -870,7 +870,7 @@ export function MessageListSkeleton({ className }: { className?: string; }): JSX
 
 从 `@openagentpack/kit-chat-ui` 导入 `ReasoningBlock`。
 公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/process/reasoning-block/index.tsx`。
-说明来自 `apps/storybook/content/docs/components/message.mdx`。
+说明来自 `apps/storybook/content/docs/components/feedback/reasoning-block.mdx`。
 [可编译示例](../examples/reasoning.tsx)
 
 - 初始折叠，流式期间也如此。内容或状态更新时保留用户的手动展开选择。
@@ -888,7 +888,7 @@ export function ReasoningBlock({ text, status, className, contentMaxHeight, }: {
 | `className` | 否 | `string \| undefined` |
 | `contentMaxHeight` | 否 | `string \| undefined` |
 
-<!-- source-sha256: d25e4309d81302cef761e2d838de8c582bb06c678af16c9596b2000ea091b2dd; doc-sha256: 360fbe042ded35b656365fc82951419dce8eb5208186907df0e0eef9975520e5 -->
+<!-- source-sha256: d25e4309d81302cef761e2d838de8c582bb06c678af16c9596b2000ea091b2dd; doc-sha256: a714309f1cecee87a5df402f8880edd0100d4b6add06d8fd44f3b615f362915c -->
 
 ## ToolCallCard
 
@@ -896,7 +896,7 @@ export function ReasoningBlock({ text, status, className, contentMaxHeight, }: {
 
 从 `@openagentpack/kit-chat-ui` 导入 `ToolCallCard`。
 公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/process/tool-call-card/index.tsx`。
-说明来自 `apps/storybook/content/docs/components/message.mdx`。
+说明来自 `apps/storybook/content/docs/components/feedback/tool-call-card.mdx`。
 [可编译示例](../examples/content.tsx)
 
 - part 必须是 MessagePart 的 tool 分支。
@@ -912,7 +912,7 @@ export function ToolCallCard({ part, className, contentMaxHeight, }: { part: Too
 | `className` | 否 | `string \| undefined` |
 | `contentMaxHeight` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 62b9a52979de39eee1bf3706a31ccac302212edf4aa058b5ae549309994ca372; doc-sha256: 360fbe042ded35b656365fc82951419dce8eb5208186907df0e0eef9975520e5 -->
+<!-- source-sha256: 62b9a52979de39eee1bf3706a31ccac302212edf4aa058b5ae549309994ca372; doc-sha256: f32b30a2cf0add6cd26f3ea0ad125937beac9126063c0991b1cd89404a3b06fa -->
 
 ## Prompts
 
@@ -950,7 +950,7 @@ export function Prompts({ items, title, onItemClick, vertical, wrap, fadeIn, fad
 
 从 `@openagentpack/kit-chat-ui` 导入 `Sender`。
 公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/sender/index.tsx`。
-说明来自 `apps/storybook/content/docs/components/express/sender.mdx`。
+说明来自 `apps/storybook/content/docs/components/chat/sender.mdx`。
 [可编译示例](../examples/attachment-sender.tsx)
 
 - 默认 defaultValue=""、submitType="enter"、loading=false、submitDisabled=false、disabled=false、readOnly=false。
@@ -991,7 +991,7 @@ export function Sender(props: SenderProps & RefAttributes<SenderRef>): ReactNode
 | `className` | 否 | `string \| undefined` |
 | `classNames` | 否 | `Partial<Record<SenderSemantic, string>> \| undefined` |
 
-<!-- source-sha256: 59d2e7a426ce784b651daef89670e0f6d6591738ad3dd186d1b3f426e0d4f979; doc-sha256: 2895344f2a91513a43d04e0f1764061e5deefea3435f06df64562a8a8297f35f -->
+<!-- source-sha256: 59d2e7a426ce784b651daef89670e0f6d6591738ad3dd186d1b3f426e0d4f979; doc-sha256: c7d9aee07bbd6807d7c0ab1fe9058c06cbe8860e7a5b6569d521e91eb39bff20 -->
 
 ## SenderHeader
 
@@ -999,7 +999,7 @@ export function Sender(props: SenderProps & RefAttributes<SenderRef>): ReactNode
 
 从 `@openagentpack/kit-chat-ui` 导入 `SenderHeader`。
 公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/sender/index.tsx`。
-说明来自 `apps/storybook/content/docs/components/express/sender.mdx`。
+说明来自 `apps/storybook/content/docs/components/chat/sender.mdx`。
 [可编译示例](../examples/content.tsx)
 
 - 与 Sender.Header 是同一组件，默认 open=false、closable=true。
@@ -1017,7 +1017,7 @@ export function SenderHeader({ title, open, onOpenChange, closable, children, cl
 | `children` | 否 | `ReactNode` |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 59d2e7a426ce784b651daef89670e0f6d6591738ad3dd186d1b3f426e0d4f979; doc-sha256: 2895344f2a91513a43d04e0f1764061e5deefea3435f06df64562a8a8297f35f -->
+<!-- source-sha256: 59d2e7a426ce784b651daef89670e0f6d6591738ad3dd186d1b3f426e0d4f979; doc-sha256: c7d9aee07bbd6807d7c0ab1fe9058c06cbe8860e7a5b6569d521e91eb39bff20 -->
 
 ## Sender.Header
 
@@ -1025,7 +1025,7 @@ export function SenderHeader({ title, open, onOpenChange, closable, children, cl
 
 从 `@openagentpack/kit-chat-ui` 导入 `Sender`。
 公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/sender/index.tsx`。
-说明来自 `apps/storybook/content/docs/components/express/sender.mdx`。
+说明来自 `apps/storybook/content/docs/components/chat/sender.mdx`。
 [可编译示例](../examples/attachment-sender.tsx)
 
 - 默认 open=false、closable=true。
@@ -1045,7 +1045,7 @@ export function SenderHeader({ title, open, onOpenChange, closable, children, cl
 | `children` | 否 | `ReactNode` |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 59d2e7a426ce784b651daef89670e0f6d6591738ad3dd186d1b3f426e0d4f979; doc-sha256: 2895344f2a91513a43d04e0f1764061e5deefea3435f06df64562a8a8297f35f -->
+<!-- source-sha256: 59d2e7a426ce784b651daef89670e0f6d6591738ad3dd186d1b3f426e0d4f979; doc-sha256: c7d9aee07bbd6807d7c0ab1fe9058c06cbe8860e7a5b6569d521e91eb39bff20 -->
 
 ## SessionList
 
@@ -1079,7 +1079,7 @@ export function SessionList({ sessions, activeId, activeStatus, onSelect, menu, 
 | `ariaLabel` | 否 | `string \| undefined` |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 75be69adea82999f2e6700ddb300aebe7c81cb6825432a883870767b41465313; doc-sha256: 65a9b9feea1e0cd1d04e2fe3e69f9fb267012d1e78860d3c0912d739be8e6936 -->
+<!-- source-sha256: 75be69adea82999f2e6700ddb300aebe7c81cb6825432a883870767b41465313; doc-sha256: 45c790235a078581dbc2ad04c8bdec6b70bb959240f373d7d98e1a42b946daf9 -->
 
 ## Tooltip
 
@@ -1240,7 +1240,7 @@ export function ToolApprovalCard({ approval, onDecision, onRefresh, onStop }: To
 | `onRefresh` | 是 | `() => Promise<void>` |
 | `onStop` | 否 | `(() => void) \| undefined` |
 
-<!-- source-sha256: 654d144ecc4a6fa129edb5f860c4d70e281c55570fad3a207ccc3432824f010c; doc-sha256: 570a32709e28feb4df50231c9f763a09fbc5e19d02b2599f12f1c7b496052cd9 -->
+<!-- source-sha256: 654d144ecc4a6fa129edb5f860c4d70e281c55570fad3a207ccc3432824f010c; doc-sha256: 12a12808afa40adb18b50a49ebc352d51a9c057d3091221f55b4ac8096386d79 -->
 
 ## ToolApprovalGroup
 
@@ -1266,7 +1266,7 @@ export function ToolApprovalGroup({ approvals, onDecision, onRefresh, onStop, }:
 | `onRefresh` | 是 | `() => Promise<void>` |
 | `onStop` | 否 | `(() => void) \| undefined` |
 
-<!-- source-sha256: 04ace034f40abdf07fb5b6da5c32176e85d2a6efb0a6aa1b8a79b76be50fa466; doc-sha256: 570a32709e28feb4df50231c9f763a09fbc5e19d02b2599f12f1c7b496052cd9 -->
+<!-- source-sha256: 04ace034f40abdf07fb5b6da5c32176e85d2a6efb0a6aa1b8a79b76be50fa466; doc-sha256: 12a12808afa40adb18b50a49ebc352d51a9c057d3091221f55b4ac8096386d79 -->
 
 ## PlazaCard
 
@@ -1274,7 +1274,7 @@ export function ToolApprovalGroup({ approvals, onDecision, onRefresh, onStop, }:
 
 从 `@openagentpack/kit-chat-ui` 导入 `PlazaCard`。
 公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/plaza-card/index.tsx`。
-说明来自 `apps/storybook/content/docs/components/plaza.mdx`。
+说明来自 `apps/storybook/content/docs/components/plaza/plaza-card.mdx`。
 [可编译示例](../examples/discovery-usage.tsx)
 
 - onOpen 接收条目 slug，导航及会话选择由调用方负责。
@@ -1288,15 +1288,15 @@ export function PlazaCard({ entry, onOpen }: { entry: PlazaEntry; onOpen: (slug:
 | `entry` | 是 | `{ slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "data" \| "general" \| "writing" \| "coding" \| "other"; featured: boolean; stats: { mine: boolean; turns_30d: number; last_used_at?: string \| undefined; }; description?: string \| undefined; icon?: string \| undefined; opening_remarks?: string \| undefined; theme?: { accent?: string \| undefined; iconBackground?: string \| undefined; } \| undefined; }` |
 | `onOpen` | 是 | `(slug: string) => void` |
 
-<!-- source-sha256: 359acee6d6bec871c1e3f88f70b56bd3bd87d43bd8af570fb4f714b0f84fa351; doc-sha256: 0cc8f6c08932b8f6667d1cb7470dd7f7c9b0e39ce08ee43d9e64458773142ffc -->
+<!-- source-sha256: 359acee6d6bec871c1e3f88f70b56bd3bd87d43bd8af570fb4f714b0f84fa351; doc-sha256: e362c82688df00c01d7c2147aa1cea80d2bbe9e686afaa78e4cf1ef2fdf46afd -->
 
 ## CategoryTabs
 
-受控选择广场分类或推荐标签页。
+受控选择广场分类或精选标签页。
 
 从 `@openagentpack/kit-chat-ui` 导入 `CategoryTabs`。
 公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/category-tabs/index.tsx`。
-说明来自 `apps/storybook/content/docs/components/plaza.mdx`。
+说明来自 `apps/storybook/content/docs/components/plaza/category-tabs.mdx`。
 [可编译示例](../examples/discovery-usage.tsx)
 
 - 在传入分类的开头插入 featured。
@@ -1312,7 +1312,7 @@ export function CategoryTabs({ categories, active, onChange, }: { categories: { 
 | `active` | 是 | `PlazaTabId` |
 | `onChange` | 是 | `(next: PlazaTabId) => void` |
 
-<!-- source-sha256: 1d522f92e13f1888564f0bd1f5b2e5f8522c5530892e9840331d75a5812930c0; doc-sha256: 0cc8f6c08932b8f6667d1cb7470dd7f7c9b0e39ce08ee43d9e64458773142ffc -->
+<!-- source-sha256: 1d522f92e13f1888564f0bd1f5b2e5f8522c5530892e9840331d75a5812930c0; doc-sha256: 22ab6c971c22b1d107fb10610332a39917e81c1562d4de044c7a6f46ad1f8a74 -->
 
 ## MeterBar
 
@@ -1320,7 +1320,7 @@ export function CategoryTabs({ categories, active, onChange, }: { categories: { 
 
 从 `@openagentpack/kit-chat-ui` 导入 `MeterBar`。
 公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/meter-bar/index.tsx`。
-说明来自 `apps/storybook/content/docs/components/plaza.mdx`。
+说明来自 `apps/storybook/content/docs/components/plaza/meter-bar.mdx`。
 [可编译示例](../examples/discovery-usage.tsx)
 
 - 默认 unlimited=false、className=""。
@@ -1337,7 +1337,7 @@ export function MeterBar({ value, max, unlimited, className, }: { value: number;
 | `unlimited` | 否 | `boolean \| undefined` |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 64d8b8f5c3509d16176334020d779d4a3464717802f2a779b31be9abd33241e6; doc-sha256: 0cc8f6c08932b8f6667d1cb7470dd7f7c9b0e39ce08ee43d9e64458773142ffc -->
+<!-- source-sha256: 64d8b8f5c3509d16176334020d779d4a3464717802f2a779b31be9abd33241e6; doc-sha256: 3dbf6d8bd368edc8f1b141f73342a21a5c7acd1648d2265cac01e857e991d767 -->
 
 ## ActivityHeatmap
 
@@ -1345,7 +1345,7 @@ export function MeterBar({ value, max, unlimited, className, }: { value: number;
 
 从 `@openagentpack/kit-chat-ui` 导入 `ActivityHeatmap`。
 公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/activity-heatmap/index.tsx`。
-说明来自 `apps/storybook/content/docs/components/plaza.mdx`。
+说明来自 `apps/storybook/content/docs/components/plaza/activity-heatmap.mdx`。
 [可编译示例](../examples/discovery-usage.tsx)
 
 - 保留输入顺序，日期字符串须唯一。
@@ -1359,7 +1359,7 @@ export function ActivityHeatmap({ days }: { days: { day: string; turns: number; 
 | --- | --- | --- |
 | `days` | 是 | `{ day: string; turns: number; }[]` |
 
-<!-- source-sha256: 52deebaeebf5befb55d6693aa98d5a22024129186683ca4238a3e1265aec4657; doc-sha256: 0cc8f6c08932b8f6667d1cb7470dd7f7c9b0e39ce08ee43d9e64458773142ffc -->
+<!-- source-sha256: 52deebaeebf5befb55d6693aa98d5a22024129186683ca4238a3e1265aec4657; doc-sha256: e880992b0747553605b97120af39c7ee30f5eb6ea3e57faa6399b7cb06186220 -->
 
 ## SkillGlyph
 
