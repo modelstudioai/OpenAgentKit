@@ -547,10 +547,21 @@ export function createSdkGateway(credentials: BailianCredentials): ProviderGatew
 			}
 		},
 		async getUsageSummary(request, options) {
-			return sdkGetUsageSummary(managedCtx(), request, options);
+			try {
+				return await sdkGetUsageSummary(managedCtx(), request, options);
+			} catch (error) {
+				// 会话/智能体已从 Provider 删除时明细不可得；规范成 not_found 而不是内部错误。
+				if (ApiError.isNotFound(error)) throw new KitError("not_found", "用量数据不存在，对应会话或智能体可能已删除");
+				throw error;
+			}
 		},
 		async getUsageTrend(request, options) {
-			return sdkGetUsageTrend(managedCtx(), request, options);
+			try {
+				return await sdkGetUsageTrend(managedCtx(), request, options);
+			} catch (error) {
+				if (ApiError.isNotFound(error)) throw new KitError("not_found", "用量数据不存在，对应会话或智能体可能已删除");
+				throw error;
+			}
 		},
 		...createSdkAgentVersionGateway(ctx),
 		...createSdkPresetPackGateway(ctx, credentials.apiKey),

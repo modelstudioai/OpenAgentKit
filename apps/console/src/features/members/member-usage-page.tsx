@@ -194,14 +194,17 @@ function SessionTelemetryView({
 }
 
 /** 单会话的 Provider 侧模型/工具用量（session 维度：按会话自身窗口统计，无时间筛选）。
- *  切换会话/页码期间保留上一次已就绪的内容直到新数据到位（或确认出错），明细区不塌缩，避免整页闪动。 */
-function SessionUsageTelemetry({ sessionId }: { sessionId: string }) {
+ *  切换会话/页码期间保留上一次已就绪的内容直到新数据到位（或确认出错），明细区不塌缩，避免整页闪动。
+ *  已删除会话在 Provider 侧明细不可得：不发请求，直接展示专属空态。 */
+function SessionUsageTelemetry({ sessionId, deleted }: { sessionId: string; deleted?: boolean }) {
 	const client = useMemo(getAdminClient, []);
 	/** 页码随会话自动归位：会话变了视同第 1 页。组件跨会话保持挂载（重挂会丢掉上次内容导致闪动）。 */
 	const [page, setPage] = useState({ sessionId, pageNo: 1 });
 	const pageNo = page.sessionId === sessionId ? page.pageNo : 1;
-	const query = useAdminQuery(`member-session-usage:${sessionId}`, (signal) =>
-		client.usage.summary({ session_id: sessionId }, signal),
+	const query = useAdminQuery(
+		`member-session-usage:${sessionId}`,
+		(signal) => client.usage.summary({ session_id: sessionId }, signal),
+		{ enabled: !deleted },
 	);
 	/** 最近一次就绪的内容；加载期间继续展示它，避免明细区塌缩。 */
 	const [shown, setShown] = useState<UsageSummary | null>(null);
@@ -209,6 +212,16 @@ function SessionUsageTelemetry({ sessionId }: { sessionId: string }) {
 		if (query.data) setShown(query.data);
 	}, [query.data]);
 	const loading = query.loading || (!query.data && !query.error);
+	// 已删除会话查询停用（query 恒 pending）且 shown 仍是上一个会话的数据：提前返回专属空态，不显示旧表格。
+	if (deleted) {
+		return (
+			<div className={styles.telemetryRoot}>
+				<p role="status" className={styles.telemetryEmpty}>
+					已删除会话不再提供模型/工具明细，用量数字来自删除前的采集快照。
+				</p>
+			</div>
+		);
+	}
 	const error = query.error;
 	const hasNext = telemetryHasNext(query.data ?? shown ?? undefined, pageNo);
 	return (
@@ -379,7 +392,7 @@ function SessionUsageDetail({
 							{captureTime(selected.captured_at)}
 						</p>
 						<SessionStatCards session={selected} />
-						<SessionUsageTelemetry sessionId={selected.session_id} />
+						<SessionUsageTelemetry sessionId={selected.session_id} deleted={Boolean(selected.deleted_at)} />
 					</div>
 				) : null}
 			</div>

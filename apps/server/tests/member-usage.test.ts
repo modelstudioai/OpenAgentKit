@@ -687,6 +687,18 @@ describe("成员累计会话用量", () => {
 		expect(sessionScoped.status).toBe(200);
 		expect(captured).toEqual({ dimension: "session", session_id: "sesn_abc" });
 
+		// 已删除会话（本地软删标记）不再打 Provider：返回零值空汇总，Provider 调用不变化。
+		db.prepare("UPDATE kit_session_usage SET deleted_at = ?, status = 'deleted' WHERE session_id = ?").run(
+			new Date().toISOString(),
+			"s-template",
+		);
+		const deleted = await app.request("/api/admin/usage/summary?session_id=s-template", { headers: auditor });
+		expect(deleted.status).toBe(200);
+		expect(captured).toEqual({ dimension: "session", session_id: "sesn_abc" });
+		const deletedSummary = ((await deleted.json()) as { data: UsageSummary }).data;
+		expect(deletedSummary.usage.models).toHaveLength(0);
+		expect(deletedSummary.usage.tools).toHaveLength(0);
+
 		const reversed = await app.request(`/api/admin/usage/summary?start_time=${now}&end_time=${now - 3_600_000}`, {
 			headers: admin,
 		});

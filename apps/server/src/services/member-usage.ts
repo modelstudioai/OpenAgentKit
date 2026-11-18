@@ -131,6 +131,9 @@ export function createMemberUsageService({
 		hasFinalSnapshot(sessionId: string) {
 			return Boolean(store.get(sessionId)?.finalized_at);
 		},
+		isDeletedSession(sessionId: string) {
+			return Boolean(store.get(sessionId)?.deleted_at);
+		},
 		captureFinal(sessionId: string, detail: GatewaySessionInfo) {
 			const local = sessionIndex.get(sessionId);
 			if (!local || !store.isMemberSession(sessionId)) throw new KitError("not_found", "成员会话不存在");
