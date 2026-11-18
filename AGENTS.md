@@ -115,6 +115,7 @@ pnpm test
 pnpm build
 pnpm check:architecture
 pnpm check:docs
+pnpm check:i18n
 pnpm check:no-inner-deps
 pnpm gen:openapi
 pnpm gen:skills
