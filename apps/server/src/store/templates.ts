@@ -138,6 +138,19 @@ export function createTemplateStore(db: DatabaseSync) {
 		db.prepare(`INSERT INTO kit_template_versions (template_id,version,config_json,created_at)
 			VALUES (?,?,?,?)`).run(templateId, version, JSON.stringify(input), createdAt);
 	}
+	/** 同一远端 Agent 同时只能被一个未删除模版关联；保持自身绑定的编辑豁免，存量共享逐步收敛。 */
+	function assertAgentAvailable(remoteAgentId: string, excludeTemplateId?: string): void {
+		if (!remoteAgentId) return;
+		const row = db
+			.prepare(
+				`SELECT name FROM kit_templates WHERE remote_agent_id = ? AND deleted_at IS NULL
+				${excludeTemplateId ? "AND template_id <> ?" : ""} ORDER BY template_id LIMIT 1`,
+			)
+			.get(...(excludeTemplateId ? [remoteAgentId, excludeTemplateId] : [remoteAgentId])) as
+			| { name: string }
+			| undefined;
+		if (row) throw new KitError("conflict", `该智能体已被模版「${row.name}」关联，请选择其他智能体`);
+	}
 	function get(templateId: string): TemplateView {
 		const row = db.prepare(`${TEMPLATE_SELECT} WHERE t.template_id=?`).get(templateId) as TemplateRow | undefined;
 		if (!row) throw new KitError("not_found", "模版不存在");
@@ -243,6 +256,7 @@ export function createTemplateStore(db: DatabaseSync) {
 		},
 		create(input: TemplateRecord): TemplateView {
 			return transaction(() => {
+				assertAgentAvailable(input.remote_agent_id);
 				const id = `template_${randomUUID()}`;
 				const now = new Date().toISOString();
 				const result = db
@@ -265,6 +279,7 @@ export function createTemplateStore(db: DatabaseSync) {
 			return transaction(() => {
 				const current = get(templateId);
 				if (current.version !== baseVersion) throw new KitError("conflict", "模版已有新版本，请刷新后重新编辑");
+				if (input.remote_agent_id !== current.remote_agent_id) assertAgentAvailable(input.remote_agent_id, templateId);
 				const version = current.version + 1;
 				const now = new Date().toISOString();
 				const updated = db

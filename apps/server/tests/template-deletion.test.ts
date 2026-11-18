@@ -50,9 +50,9 @@ function setup() {
 			...(body !== undefined ? { body: JSON.stringify(body) } : {}),
 		});
 	}
-	async function save(name = "待删除模版") {
+	async function save(name = "待删除模版", patch: Record<string, unknown> = {}) {
 		return services.templates.create(
-			{ name, ...selected, files: [], memory_stores: [], vault_ids: [], suggested_prompts: [] },
+			{ name, ...selected, files: [], memory_stores: [], vault_ids: [], suggested_prompts: [], ...patch },
 			"fixture",
 		);
 	}
@@ -171,7 +171,10 @@ describe("模版删除", () => {
 	it("拒绝缺令牌、伪造、错主体或目标及重放，合法确认仅删目标模版", async () => {
 		const { services, save, plan, remove } = setup();
 		const template = await save();
-		const other = await save("另一个模版");
+		const other = await save("另一个模版", {
+			remote_agent_id: "agent_mock_designer",
+			remote_environment_id: "env_mock_default",
+		});
 		expect((await remove(template)).status).toBe(428);
 		expect((await remove(template, {})).status).toBe(428);
 		expect((await remove(template, { plan_id: "forged", confirm_token: "forged" })).status).toBe(428);

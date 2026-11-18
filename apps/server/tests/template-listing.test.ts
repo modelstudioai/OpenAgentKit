@@ -178,7 +178,11 @@ describe("模版上架", () => {
 	it("拒绝缺失、伪造、跨主体或跨模版的令牌、计划外改名及确认重放", async () => {
 		const { services, save, listing, plan } = setup();
 		const template = await save();
-		const other = await save({ name: "另一模版" });
+		const other = await save({
+			name: "另一模版",
+			remote_agent_id: "agent_mock_designer",
+			remote_environment_id: "env_mock_default",
+		});
 		expect((await listing(template, { display_name: "项目助手" })).status).toBe(428);
 		expect((await listing(template, { display_name: "项目助手", plan_id: "bad", confirm_token: "bad" })).status).toBe(
 			428,

@@ -53,6 +53,10 @@ const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const initialRemoteAgents = [
 	{ agent_id: "agent_mock_assistant", name: "assistant", version: 1 },
 	{ agent_id: "agent_mock_designer", name: "designer", version: 3 },
+	{ agent_id: "agent_mock_writer", name: "writer", version: 1 },
+	{ agent_id: "agent_mock_analyst", name: "analyst", version: 2 },
+	{ agent_id: "agent_mock_reviewer", name: "reviewer", version: 1 },
+	{ agent_id: "agent_mock_coder", name: "coder", version: 2 },
 ];
 
 /** 回放 [start, end) 区间事件，返回新的游标。 */

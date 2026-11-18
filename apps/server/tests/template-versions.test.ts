@@ -296,7 +296,11 @@ describe("模版版本", () => {
 		const { app, save, edited } = setup();
 		const first = await save();
 		await edited(first, { name: "第二版" });
-		const other = await save({ name: "另一个模版" });
+		const other = await save({
+			name: "另一个模版",
+			remote_agent_id: "agent_mock_designer",
+			remote_environment_id: "env_mock_default",
+		});
 		const path = `/api/admin/templates/${first.template_id}/versions`;
 		const otherPath = `/api/admin/templates/${other.template_id}/versions`;
 		const page = (await (await app.request(`${path}?limit=1`, { headers })).json()) as TemplateVersionsPage;
@@ -575,7 +579,11 @@ describe("模版版本", () => {
 		const entry = await publish(first);
 		const initial = services.templates.get(first.template_id);
 		const versions = history(first.template_id);
-		const other = await save({ name: "其他模版" });
+		const other = await save({
+			name: "其他模版",
+			remote_agent_id: "agent_mock_designer",
+			remote_environment_id: "env_mock_default",
+		});
 		const occupied = services.catalog.create({
 			slug: "occupied-name",
 			display_name: "目录占用名称",
