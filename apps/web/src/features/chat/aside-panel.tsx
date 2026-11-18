@@ -22,11 +22,16 @@ function artifactBadge(name: string | undefined, type: string | undefined): stri
 }
 
 /** 资源面板「Agent 信息」分区：标题行点击折叠，内容为名称与描述（.kit-collapse 高度过渡）。 */
+import { useTranslation } from "react-i18next";
+
 function AsideAgentSection({ name, description }: { name: string; description: string | undefined }) {
+	const { t } = useTranslation("chat");
 	return (
 		<details open className="kit-collapse group/agent min-w-0">
 			<summary className="-mx-2 flex min-w-0 cursor-pointer list-none select-none items-center gap-2 rounded-[var(--kit-radius-sm)] px-2 py-1 transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] [&::-webkit-details-marker]:hidden">
-				<span className="text-[length:var(--kit-text-label)] font-medium text-[var(--kit-fg-muted)]">Agent 信息</span>
+				<span className="text-[length:var(--kit-text-label)] font-medium text-[var(--kit-fg-muted)]">
+					{t("aside.agentInfo")}
+				</span>
 				<svg
 					aria-hidden="true"
 					viewBox="0 0 24 24"
@@ -63,10 +68,13 @@ function AsideArtifactsSection({
 	onArtifactOpen: (fileId: string, contentType?: string) => void;
 	onArtifactDownload: (fileId: string) => void;
 }) {
+	const { t } = useTranslation("chat");
 	return (
 		<details open className="kit-collapse group/artifacts mt-6 min-w-0">
 			<summary className="-mx-2 flex min-w-0 cursor-pointer list-none select-none items-center gap-2 rounded-[var(--kit-radius-sm)] px-2 py-1 transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] [&::-webkit-details-marker]:hidden">
-				<span className="text-[length:var(--kit-text-label)] font-medium text-[var(--kit-fg-muted)]">产物</span>
+				<span className="text-[length:var(--kit-text-label)] font-medium text-[var(--kit-fg-muted)]">
+					{t("aside.artifacts")}
+				</span>
 				{artifacts.length > 0 ? (
 					<span className="text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)] tabular-nums">
 						· {artifacts.length}
@@ -97,7 +105,7 @@ function AsideArtifactsSection({
 								<button
 									type="button"
 									title={name}
-									aria-label={`打开 ${name}`}
+									aria-label={t("aside.openFile", { name })}
 									onClick={() => onArtifactOpen(artifact.file_id, artifact.content_type)}
 									className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-[var(--kit-radius-sm)] px-1.5 py-1.5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
 								>
@@ -113,8 +121,8 @@ function AsideArtifactsSection({
 								</button>
 								<button
 									type="button"
-									aria-label={`下载 ${name}`}
-									title="下载"
+									aria-label={t("aside.downloadFile", { name })}
+									title={t("aside.download")}
 									onClick={() => onArtifactDownload(artifact.file_id)}
 									className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-[var(--kit-radius-sm)] text-[var(--kit-fg-muted)] transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none hover:bg-[var(--kit-nav-active)] hover:text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
 								>
@@ -137,7 +145,7 @@ function AsideArtifactsSection({
 				</ul>
 			) : (
 				<div className="mt-2 rounded-[var(--kit-radius-sm)] border border-dashed border-[var(--kit-border)] px-3 py-3 text-[length:var(--kit-text-caption)] leading-relaxed text-[var(--kit-fg-muted)]">
-					发送消息后，生成的文件与图表会出现在这里
+					{t("aside.artifactsEmpty")}
 				</div>
 			)}
 		</details>
@@ -210,25 +218,27 @@ const ToolIcon = ({ className }: { className: string }) => (
 const RESOURCE_ICONS = { skill: SkillIcon, mcp: McpIcon, tool: ToolIcon } as const;
 type AgentResourceRow = AgentResourceItem & { kind: keyof typeof RESOURCE_ICONS };
 
-/** 工具权限标记文案：与运行时审批语义对齐（ask 走审批卡，allow 直接执行）。 */
-const PERMISSION_LABELS = { allow: "总是允许", ask: "每次询问" } as const;
+/** 工具权限标记 → chat 词典键；文案与运行时审批语义对齐（ask 走审批卡，allow 直接执行）。 */
+const PERMISSION_KEYS = { allow: "aside.permissions.allow", ask: "aside.permissions.ask" } as const;
 
 /** 三个配置分区共用一份资源投影；Skills 与 MCP 同属外部能力清单故合并展示（skills 在前），
  * 工具单列；收在这里避免 ChatView 复杂度继续膨胀。 */
 function AsideAgentResourceSections({ resources }: { resources: RemoteAgentResources | null }) {
+	const { t } = useTranslation("chat");
 	const skillRows: AgentResourceRow[] = (resources?.skills ?? []).map((item) => ({ ...item, kind: "skill" }));
 	const mcpRows: AgentResourceRow[] = (resources?.mcp_servers ?? []).map((item) => ({ ...item, kind: "mcp" }));
 	const toolRows: AgentResourceRow[] = (resources?.tools ?? []).map((item) => ({ ...item, kind: "tool" }));
 	return (
 		<>
-			<AsideResourceSection title="技能与 MCP" items={[...skillRows, ...mcpRows]} />
-			<AsideResourceSection title="工具" items={toolRows} />
+			<AsideResourceSection title={t("aside.resources.skillsMcp")} items={[...skillRows, ...mcpRows]} />
+			<AsideResourceSection title={t("aside.resources.tools")} items={toolRows} />
 		</>
 	);
 }
 
 /** 资源面板「技能与 MCP / 工具」分区：类型图标 + 名称（+ 权限标记）的紧凑列表；空分区不渲染。 */
 function AsideResourceSection({ title, items }: { title: string; items: AgentResourceRow[] }) {
+	const { t } = useTranslation("chat");
 	if (items.length === 0) return null;
 	return (
 		<details open className="kit-collapse group/res mt-6 min-w-0">
@@ -262,7 +272,7 @@ function AsideResourceSection({ title, items }: { title: string; items: AgentRes
 								</div>
 								{item.permission ? (
 									<span className="ml-auto shrink-0 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
-										{PERMISSION_LABELS[item.permission]}
+										{t(PERMISSION_KEYS[item.permission])}
 									</span>
 								) : null}
 							</div>
@@ -277,11 +287,14 @@ function AsideResourceSection({ title, items }: { title: string; items: AgentRes
 /** 资源面板「记忆库」分区：目录配置的成员侧最小投影（库名称 + 单行描述，溢出 tooltip 展开），
  * 不透出库 ID、权限或条目；未配置或解析降级时整体隐藏。 */
 function AsideMemoryStoresSection({ stores }: { stores: AgentMemoryStore[] | null }) {
+	const { t } = useTranslation("chat");
 	if (!stores?.length) return null;
 	return (
 		<details open className="kit-collapse group/memory mt-6 min-w-0">
 			<summary className="-mx-2 flex min-w-0 cursor-pointer list-none select-none items-center gap-2 rounded-[var(--kit-radius-sm)] px-2 py-1 transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] [&::-webkit-details-marker]:hidden">
-				<span className="text-[length:var(--kit-text-label)] font-medium text-[var(--kit-fg-muted)]">记忆库</span>
+				<span className="text-[length:var(--kit-text-label)] font-medium text-[var(--kit-fg-muted)]">
+					{t("aside.resources.memory")}
+				</span>
 				<span className="text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)] tabular-nums">
 					· {stores.length}
 				</span>

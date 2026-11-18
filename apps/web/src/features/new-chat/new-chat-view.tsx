@@ -1,6 +1,7 @@
 import { isIconImageSource } from "@openagentpack/kit-chat-ui";
 import type { AgentSummary } from "@openagentpack/kit-sdk/protocol";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import type { NavigateFn } from "../../lib/use-route.ts";
 import type { SessionDirectory } from "../../lib/use-session-directory.ts";
 
@@ -27,6 +28,7 @@ export function NewChatRecent({
 	directory: SessionDirectory;
 	agents: AgentSummary[];
 }) {
+	const { t } = useTranslation("chat");
 	const recent = useMemo(() => {
 		const rows: AgentSummary[] = [];
 		for (const group of directory.groups) {
@@ -40,8 +42,8 @@ export function NewChatRecent({
 
 	if (recent.length === 0) return null;
 	return (
-		<section className="mt-8 min-w-0" aria-label="最近使用">
-			<h2 className="mb-4 text-[length:var(--kit-text-heading)] font-semibold">最近使用</h2>
+		<section className="mt-8 min-w-0" aria-label={t("recent")}>
+			<h2 className="mb-4 text-[length:var(--kit-text-heading)] font-semibold">{t("recent")}</h2>
 			<div className="flex min-w-0 flex-wrap gap-3">
 				{recent.map((agent) => (
 					<button

@@ -43,6 +43,8 @@ const FileIcon = () => (
 	</svg>
 );
 
+import { useTranslation } from "react-i18next";
+
 function AttachmentPanel({
 	items,
 	disabled,
@@ -56,6 +58,7 @@ function AttachmentPanel({
 	onDrop: (files: File[]) => void;
 	onRemove: (fileId: string) => void;
 }) {
+	const { t } = useTranslation("chat");
 	return (
 		<div className="flex flex-col gap-2">
 			{items.length > 0 ? (
@@ -68,7 +71,7 @@ function AttachmentPanel({
 						onRemove={(item) => onRemove(item.uid)}
 						overflow="scrollX"
 					/>
-					<p className="text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)]">发送时会一并提交附件</p>
+					<p className="text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)]">{t("sender.attachmentNote")}</p>
 				</>
 			) : null}
 		</div>
@@ -103,6 +106,7 @@ export function ExperienceSender({
 	onStop: () => void;
 }) {
 	const isMobile = useIsMobile();
+	const { t } = useTranslation("chat");
 	const [value, setValue] = useState("");
 	const [selection, setSelection] = useState<SenderSelection>({ start: 0, end: 0 });
 	const [submitting, setSubmitting] = useState(false);
@@ -143,7 +147,7 @@ export function ExperienceSender({
 					autoSize={{ minRows: 2, maxRows: 6 }}
 					value={value}
 					skills={skills}
-					placeholder={isMobile ? "输入消息…" : undefined}
+					placeholder={isMobile ? t("sender.placeholderMobile") : undefined}
 					onChange={setValue}
 					onSelectionChange={setSelection}
 					onKeyDown={onKeyDown}
@@ -165,7 +169,7 @@ export function ExperienceSender({
 					suffix={(origin) =>
 						submitting ? (
 							<span className="relative grid size-10 place-items-center rounded-full bg-[var(--kit-accent)] text-[var(--kit-accent-fg)] opacity-80">
-								<span className="sr-only">发送中</span>
+								<span className="sr-only">{t("sender.sendingSr")}</span>
 								<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="size-5 motion-safe:animate-spin">
 									<circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" className="opacity-25" />
 									<path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -180,7 +184,7 @@ export function ExperienceSender({
 							<MenuTrigger asChild>
 								<button
 									type="button"
-									aria-label="添加附件"
+									aria-label={t("sender.addAttachment")}
 									disabled={disabled || items.some((item) => item.status === "uploading")}
 									className="inline-flex min-h-10 items-center gap-2 rounded-[var(--kit-radius-sm)] px-3 py-2 text-[length:var(--kit-text-label)] text-[var(--kit-fg-muted)] transition-colors enabled:hover:bg-[var(--kit-bg-subtle)] enabled:hover:text-[var(--kit-fg)] disabled:cursor-not-allowed disabled:opacity-50"
 								>
@@ -198,27 +202,27 @@ export function ExperienceSender({
 											d="m8 12 6-6a3 3 0 0 1 4 4l-8 8a5 5 0 0 1-7-7l8-8m-5 11 8-8"
 										/>
 									</svg>
-									附件
+									{t("sender.attachments")}
 								</button>
 							</MenuTrigger>
 							<MenuContent>
 								<MenuItem onSelect={() => onPickFile("image/*")}>
 									<ImageIcon />
-									上传图片
+									{t("sender.uploadImage")}
 								</MenuItem>
 								<MenuItem onSelect={() => onPickFile("video/*")}>
 									<VideoIcon />
-									上传视频
+									{t("sender.uploadVideo")}
 								</MenuItem>
 								<MenuItem onSelect={() => onPickFile()}>
 									<FileIcon />
-									上传文件
+									{t("sender.uploadFile")}
 								</MenuItem>
 							</MenuContent>
 						</Menu>
 					}
 					header={
-						<Sender.Header open={items.length > 0} title="附件" closable={false}>
+						<Sender.Header open={items.length > 0} title={t("sender.attachments")} closable={false}>
 							<AttachmentPanel
 								items={items}
 								disabled={disabled}

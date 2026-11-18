@@ -1,0 +1,17 @@
+export default {
+	allAgents: "All agents",
+	searchResults: "Search results",
+	featured: "Featured",
+	featuredHint: "No featured entries yet — browse all published agents first.",
+	popularTitle: "Popular with teammates",
+	popularHint: "Most used in the last 30 days",
+	mineTitle: "My agents",
+	mineHint: "Ones you have used",
+	emptySearch: "No matching agents",
+	emptyPlaza: "No agents here yet",
+	emptyHint: "Try another keyword, or publish one from the console.",
+	heading: "Agent Plaza",
+	sub: "Pick an agent your teammates published, then hit Start to chat",
+	searchPlaceholder: "Search by name, description, or slug",
+	searchAria: "Search agents",
+};

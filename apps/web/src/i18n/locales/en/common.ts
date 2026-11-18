@@ -7,4 +7,5 @@ export default {
 	},
 	appTitle: "OpenAgentPack Kit Workspace",
 	bootstrapFailed: "Unable to load the service configuration",
+	loading: "Loading…",
 };

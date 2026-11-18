@@ -1,0 +1,18 @@
+/** plaza 命名空间：Agent 广场。 */
+export default {
+	allAgents: "全部 Agent",
+	searchResults: "搜索结果",
+	featured: "精选",
+	featuredHint: "还没有精选条目，先看看全部已上架的 Agent",
+	popularTitle: "同学们都在用",
+	popularHint: "近 30 天使用最多",
+	mineTitle: "我的 Agent",
+	mineHint: "你用过的",
+	emptySearch: "没有匹配的 Agent",
+	emptyPlaza: "这里还没有 Agent",
+	emptyHint: "换个关键词，或到管理端上架一个。",
+	heading: "Agent 广场",
+	sub: "挑一个同事上架的 Agent，点「开始体验」直接开聊",
+	searchPlaceholder: "搜索名称、描述或 slug",
+	searchAria: "搜索 Agent",
+};
