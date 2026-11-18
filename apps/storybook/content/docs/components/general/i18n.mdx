@@ -14,4 +14,5 @@ import { KitLocaleProvider, Sender } from "@openagentpack/kit-chat-ui";
 - `strings` prop 让单个组件覆盖个别键（如 `<Sender strings={{ send: "提交" }} />`）；
   传入自研词典即可接入第三种语言，无需 fork 组件源码。
 - 组件内部取词用 `useKitStrings(dict)`；宿主侧纯合并用 `resolveStrings(dict, locale, overrides)`。
+- 词条含 `{{name}}` 占位时用 `formatKitStrings(template, values)` 做轻量插值。
 - 词典只覆盖界面标签，不翻译会话内容、文件名或 Provider 返回的数据。

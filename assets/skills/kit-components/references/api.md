@@ -22,6 +22,7 @@
 - [useKitLocale](#usekitlocale)
 - [resolveStrings](#resolvestrings)
 - [useKitStrings](#usekitstrings)
+- [formatKitStrings](#formatkitstrings)
 - [ConfirmDialog](#confirmdialog)
 - [EmptyState](#emptystate)
 - [ErrorState](#errorstate)
@@ -445,7 +446,7 @@ export function KitLocaleProvider({ locale, children }: { locale: KitLocale; chi
 | `locale` | 是 | `KitLocale` |
 | `children` | 是 | `ReactNode` |
 
-<!-- source-sha256: f4b1d77019f58355825fc610cd79910194f4a1090f32c76b477c93564cbb1449; doc-sha256: f3409e773facd745a5fab894c889e7a5a1be88c55163c0f63567811f39622b2f -->
+<!-- source-sha256: b84369dd979aed302b24d42e530276c21b8832bfd3e7a98f66cf73f8298f68e5; doc-sha256: 2f9259f59a7faca169f5b8dc7f6cc7d0a609dc802a7d0a8778b1df8de4004c60 -->
 
 ## useKitLocale
 
@@ -463,7 +464,7 @@ export function useKitLocale(): KitLocale;
 ```
 
 
-<!-- source-sha256: f4b1d77019f58355825fc610cd79910194f4a1090f32c76b477c93564cbb1449; doc-sha256: f3409e773facd745a5fab894c889e7a5a1be88c55163c0f63567811f39622b2f -->
+<!-- source-sha256: b84369dd979aed302b24d42e530276c21b8832bfd3e7a98f66cf73f8298f68e5; doc-sha256: 2f9259f59a7faca169f5b8dc7f6cc7d0a609dc802a7d0a8778b1df8de4004c60 -->
 
 ## resolveStrings
 
@@ -485,7 +486,7 @@ export function resolveStrings<T extends object>(table: KitStringTable<T>, local
 | `zh-CN` | 是 | `T` |
 | `en` | 是 | `T` |
 
-<!-- source-sha256: f4b1d77019f58355825fc610cd79910194f4a1090f32c76b477c93564cbb1449; doc-sha256: f3409e773facd745a5fab894c889e7a5a1be88c55163c0f63567811f39622b2f -->
+<!-- source-sha256: b84369dd979aed302b24d42e530276c21b8832bfd3e7a98f66cf73f8298f68e5; doc-sha256: 2f9259f59a7faca169f5b8dc7f6cc7d0a609dc802a7d0a8778b1df8de4004c60 -->
 
 ## useKitStrings
 
@@ -507,7 +508,25 @@ export function useKitStrings<T extends object>(table: KitStringTable<T>): T;
 | `zh-CN` | 是 | `T` |
 | `en` | 是 | `T` |
 
-<!-- source-sha256: f4b1d77019f58355825fc610cd79910194f4a1090f32c76b477c93564cbb1449; doc-sha256: f3409e773facd745a5fab894c889e7a5a1be88c55163c0f63567811f39622b2f -->
+<!-- source-sha256: b84369dd979aed302b24d42e530276c21b8832bfd3e7a98f66cf73f8298f68e5; doc-sha256: 2f9259f59a7faca169f5b8dc7f6cc7d0a609dc802a7d0a8778b1df8de4004c60 -->
+
+## formatKitStrings
+
+把词典字符串里的 {{name}} 占位替换为实际值。
+
+从 `@openagentpack/kit-chat-ui` 导入 `formatKitStrings`。
+公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/kit-i18n/index.ts`。
+说明来自 `apps/storybook/content/docs/components/general/i18n.mdx`。
+[可编译示例](../examples/custom-strings.tsx)
+
+- 词典叶子保持纯字符串，简单插值在渲染时完成；复杂复数形态留给调用方词条。
+
+```ts
+export function formatKitStrings(template: string, values: Record<string, string | number>): string;
+```
+
+
+<!-- source-sha256: b84369dd979aed302b24d42e530276c21b8832bfd3e7a98f66cf73f8298f68e5; doc-sha256: 2f9259f59a7faca169f5b8dc7f6cc7d0a609dc802a7d0a8778b1df8de4004c60 -->
 
 ## ConfirmDialog
 
@@ -523,7 +542,7 @@ export function useKitStrings<T extends object>(table: KitStringTable<T>): T;
 - 调用方负责计划、本次确认令牌、请求状态及成功后的关闭。
 
 ```ts
-export function ConfirmDialog({ title, body, confirmLabel, cancelLabel, danger, busy, onConfirm, onCancel, }: { title: string; body: string; confirmLabel?: string; cancelLabel?: string; danger?: boolean; busy?: boolean; onConfirm: () => void; onCancel: () => void; }): JSX.Element;
+export function ConfirmDialog({ title, body, confirmLabel, cancelLabel, danger, busy, onConfirm, onCancel, strings: stringsOverride, }: { title: string; body: string; confirmLabel?: string; cancelLabel?: string; danger?: boolean; busy?: boolean; onConfirm: () => void; onCancel: () => void; strings?: Partial<ConfirmDialogStrings>; }): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -536,8 +555,9 @@ export function ConfirmDialog({ title, body, confirmLabel, cancelLabel, danger, 
 | `busy` | 否 | `boolean \| undefined` |
 | `onConfirm` | 是 | `() => void` |
 | `onCancel` | 是 | `() => void` |
+| `strings` | 否 | `Partial<ConfirmDialogStrings> \| undefined` |
 
-<!-- source-sha256: b0bb833d643b9621b62086bfbbe4d777aa38e18820fdf44492f012a36bd1064f; doc-sha256: 12ca4909d0e7c74f174e45e582ce408541fd45c81294b645364216ca42c3b8cc -->
+<!-- source-sha256: 1ab704bfc629d823cd1054b444a3580c9d55af12746cfa02a068a07dc8e806aa; doc-sha256: 12ca4909d0e7c74f174e45e582ce408541fd45c81294b645364216ca42c3b8cc -->
 
 ## EmptyState
 
@@ -573,15 +593,16 @@ export function EmptyState({ title, hint, loading, }: { title: string; hint?: st
 - 提供 onRetry 时才显示重试按钮，由调用方定义重试行为。
 
 ```ts
-export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void; }): JSX.Element;
+export function ErrorState({ message, onRetry, strings: stringsOverride, }: { message: string; onRetry?: () => void; strings?: Partial<ErrorStateStrings>; }): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
 | --- | --- | --- |
 | `message` | 是 | `string` |
 | `onRetry` | 否 | `(() => void) \| undefined` |
+| `strings` | 否 | `Partial<ErrorStateStrings> \| undefined` |
 
-<!-- source-sha256: 4203d974bc97749c08cebbae3602ff40f13f2fafa688112e2f736122c0135557; doc-sha256: 12ca4909d0e7c74f174e45e582ce408541fd45c81294b645364216ca42c3b8cc -->
+<!-- source-sha256: c2dab16b318d475b4cb970cd84c6979b871d035f0c983be4e69f2806e67eb497; doc-sha256: 12ca4909d0e7c74f174e45e582ce408541fd45c81294b645364216ca42c3b8cc -->
 
 ## SessionSidebar
 
@@ -786,7 +807,7 @@ export function Markdown({ children }: { children: string; }): JSX.Element;
 | --- | --- | --- |
 | `children` | 是 | `string` |
 
-<!-- source-sha256: 16b48dcaa3c45e0be957d420b7ea1c28d286aab917725c3c724993c86c39dd63; doc-sha256: 360fbe042ded35b656365fc82951419dce8eb5208186907df0e0eef9975520e5 -->
+<!-- source-sha256: 8700936187d98c6d58910eec701fa0cf912fd4d36583c5d88c0223635f54fd00; doc-sha256: 360fbe042ded35b656365fc82951419dce8eb5208186907df0e0eef9975520e5 -->
 
 ## Mermaid
 
@@ -951,14 +972,15 @@ export function MessageAnchorRail({ items, activeIndex, onSelect, className, }: 
 - 颜色及扫光时序来自 theme.css 的 --kit-skeleton-* token 和 --kit-animate-skeleton。减少动效偏好下显示静态块。
 
 ```ts
-export function MessageListSkeleton({ className }: { className?: string; }): JSX.Element;
+export function MessageListSkeleton({ className, strings: stringsOverride, }: { className?: string; strings?: Partial<MessageListSkeletonStrings>; }): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
 | --- | --- | --- |
 | `className` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<MessageListSkeletonStrings> \| undefined` |
 
-<!-- source-sha256: 927b8433350e01de44729ae2cb75d3efb0e2e3b6f8b0f26336f9c7f0f683eae1; doc-sha256: 8f73e7706168cde077440c1a133f7bae090ce7aef01a00c5d790c3e433a383ff -->
+<!-- source-sha256: c9516cf0c0ac8fdad353ca4ff58823fc236bc254d1e2d746144e0c53d62a974e; doc-sha256: 8f73e7706168cde077440c1a133f7bae090ce7aef01a00c5d790c3e433a383ff -->
 
 ## ReasoningBlock
 
@@ -1401,7 +1423,7 @@ export function PlazaCard({ entry, onOpen }: { entry: PlazaEntry; onOpen: (slug:
 - 分类数据可包含数量，当前界面只展示分类。
 
 ```ts
-export function CategoryTabs({ categories, active, onChange, }: { categories: { id: PlazaCategory; name: string; count: number; }[]; active: PlazaTabId; onChange: (next: PlazaTabId) => void; }): JSX.Element;
+export function CategoryTabs({ categories, active, onChange, strings: stringsOverride, }: { categories: { id: PlazaCategory; name: string; count: number; }[]; active: PlazaTabId; onChange: (next: PlazaTabId) => void; strings?: Partial<CategoryTabsStrings>; }): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1409,8 +1431,9 @@ export function CategoryTabs({ categories, active, onChange, }: { categories: { 
 | `categories` | 是 | `{ id: PlazaCategory; name: string; count: number; }[]` |
 | `active` | 是 | `PlazaTabId` |
 | `onChange` | 是 | `(next: PlazaTabId) => void` |
+| `strings` | 否 | `Partial<CategoryTabsStrings> \| undefined` |
 
-<!-- source-sha256: 1d522f92e13f1888564f0bd1f5b2e5f8522c5530892e9840331d75a5812930c0; doc-sha256: 0cc8f6c08932b8f6667d1cb7470dd7f7c9b0e39ce08ee43d9e64458773142ffc -->
+<!-- source-sha256: 776fbc65544543682bb0dfffc85ac3751d406f05f2c532aab3b1a2d07b722560; doc-sha256: 0cc8f6c08932b8f6667d1cb7470dd7f7c9b0e39ce08ee43d9e64458773142ffc -->
 
 ## MeterBar
 
@@ -1425,7 +1448,7 @@ export function CategoryTabs({ categories, active, onChange, }: { categories: { 
 - 填充限制在 0–100%，max 为非正数时不填充。
 
 ```ts
-export function MeterBar({ value, max, unlimited, className, }: { value: number; max: number; unlimited?: boolean; className?: string; }): JSX.Element;
+export function MeterBar({ value, max, unlimited, className, strings: stringsOverride, }: { value: number; max: number; unlimited?: boolean; className?: string; strings?: Partial<MeterBarStrings>; }): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1434,8 +1457,9 @@ export function MeterBar({ value, max, unlimited, className, }: { value: number;
 | `max` | 是 | `number` |
 | `unlimited` | 否 | `boolean \| undefined` |
 | `className` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<MeterBarStrings> \| undefined` |
 
-<!-- source-sha256: 64d8b8f5c3509d16176334020d779d4a3464717802f2a779b31be9abd33241e6; doc-sha256: 0cc8f6c08932b8f6667d1cb7470dd7f7c9b0e39ce08ee43d9e64458773142ffc -->
+<!-- source-sha256: 778569f6551270386dbddbbc99b01714ee652d27cd68ea1a1b80b93e48e2702f; doc-sha256: 0cc8f6c08932b8f6667d1cb7470dd7f7c9b0e39ce08ee43d9e64458773142ffc -->
 
 ## ActivityHeatmap
 
@@ -1450,14 +1474,15 @@ export function MeterBar({ value, max, unlimited, className, }: { value: number;
 - 查询、排序和补齐缺失日期由调用方负责。
 
 ```ts
-export function ActivityHeatmap({ days }: { days: { day: string; turns: number; }[]; }): JSX.Element;
+export function ActivityHeatmap({ days, strings: stringsOverride, }: { days: { day: string; turns: number; }[]; strings?: Partial<ActivityHeatmapStrings>; }): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
 | --- | --- | --- |
 | `days` | 是 | `{ day: string; turns: number; }[]` |
+| `strings` | 否 | `Partial<ActivityHeatmapStrings> \| undefined` |
 
-<!-- source-sha256: 52deebaeebf5befb55d6693aa98d5a22024129186683ca4238a3e1265aec4657; doc-sha256: 0cc8f6c08932b8f6667d1cb7470dd7f7c9b0e39ce08ee43d9e64458773142ffc -->
+<!-- source-sha256: aa81f47f0614d72dce971caa259f768e962f7efc4817d4030a4dbf2e659fb769; doc-sha256: 0cc8f6c08932b8f6667d1cb7470dd7f7c9b0e39ce08ee43d9e64458773142ffc -->
 
 ## SkillGlyph
 
@@ -1617,6 +1642,23 @@ export type ActionsVariant = "borderless" | "outlined" | "filled";
 
 
 
+### ActivityHeatmapStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { ActivityHeatmapStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `empty` | 是 | `string` |
+| `day` | 是 | `string` |
+| `join` | 是 | `string` |
+| `less` | 是 | `string` |
+| `more` | 是 | `string` |
+
+
 ### AgentHeaderProps
 
 来自 `@openagentpack/kit-chat-ui`。
@@ -1768,6 +1810,20 @@ export type AttachmentsSemantic = "placeholder" | "root" | "list" | "item" | "dr
 
 
 
+### CategoryTabsStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { CategoryTabsStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `featured` | 是 | `string` |
+| `aria` | 是 | `string` |
+
+
 ### ChatAgentThread
 
 来自 `@openagentpack/kit-sdk/chat`。
@@ -1871,6 +1927,20 @@ import type { CodeHighlighterProps } from "@openagentpack/kit-chat-ui";
 | `className` | 否 | `string \| undefined` |
 
 
+### ConfirmDialogStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { ConfirmDialogStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `confirm` | 是 | `string` |
+| `cancel` | 是 | `string` |
+
+
 ### ConnectionState
 
 来自 `@openagentpack/kit-sdk/chat`。
@@ -1879,6 +1949,20 @@ import type { CodeHighlighterProps } from "@openagentpack/kit-chat-ui";
 export type ConnectionState = "disconnected" | "connecting" | "connected" | "reconnecting";
 ```
 
+
+
+### ErrorStateStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { ErrorStateStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `heading` | 是 | `string` |
+| `retry` | 是 | `string` |
 
 
 ### FileCardProps
@@ -1976,6 +2060,19 @@ import type { LayoutSidebarControls } from "@openagentpack/kit-chat-ui";
 | `closeButton` | 是 | `ReactNode` |
 
 
+### MarkdownStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { MarkdownStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `table` | 是 | `string` |
+
+
 ### MermaidProps
 
 来自 `@openagentpack/kit-chat-ui`。
@@ -2007,6 +2104,19 @@ import type { MessageAnchorItem } from "@openagentpack/kit-chat-ui";
 | --- | --- | --- |
 | `label` | 是 | `string` |
 | `summary` | 否 | `string \| undefined` |
+
+
+### MessageListSkeletonStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { MessageListSkeletonStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `loading` | 是 | `string` |
 
 
 ### MessageListStrings
@@ -2065,6 +2175,20 @@ import type { MessageStrings } from "@openagentpack/kit-chat-ui";
 | `unrecognizedPrefix` | 是 | `string` |
 | `serializeFallback` | 是 | `string` |
 | `actionsAriaLabel` | 是 | `string` |
+
+
+### MeterBarStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { MeterBarStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `unlimited` | 是 | `string` |
+| `used` | 是 | `string` |
 
 
 ### PlazaCategory

@@ -96,8 +96,8 @@ function readSourceText(srcDir) {
 		for (const entry of readdirSync(dir)) {
 			const full = join(dir, entry);
 			if (statSync(full).isDirectory()) {
-			// 词表目录（locales）自身不算引用；i18n 引导代码里的 t() 调用计入引用。
-			if (entry !== "locales") walk(full);
+				// 词表目录（locales）自身不算引用；i18n 引导代码里的 t() 调用计入引用。
+				if (entry !== "locales") walk(full);
 			} else if (/\.(ts|tsx)$/.test(entry)) {
 				chunks.push(readFileSync(full, "utf8"));
 			}

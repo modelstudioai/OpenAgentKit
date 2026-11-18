@@ -22,7 +22,11 @@
       "extraFiles": ["src/components/message/strings.ts"]
     },
     "message-anchor-rail": { "file": "src/components/message-anchor-rail/index.tsx", "deps": ["tooltip"] },
-    "message-skeleton": { "file": "src/components/message-skeleton/index.tsx", "deps": [] },
+    "message-skeleton": {
+      "file": "src/components/message-skeleton/index.tsx",
+      "deps": ["kit-i18n"],
+      "extraFiles": ["src/components/message-skeleton/strings.ts"]
+    },
     "execution-group": { "file": "src/components/process/execution-group/index.tsx", "deps": ["reasoning-block", "tool-call-card"] },
     "sub-agent-card": { "file": "src/components/process/sub-agent-card/index.tsx", "deps": ["reasoning-block", "tool-call-card", "file-card"] },
     "sub-agent-panel": { "file": "src/components/process/sub-agent-panel/index.tsx", "deps": ["sub-agent-card"], "npmDependencies": ["@radix-ui/react-dialog"] },
@@ -30,7 +34,11 @@
     "tool-call-card": { "file": "src/components/process/tool-call-card/index.tsx", "deps": ["process-step", "tool-summary", "markdown", "code-highlighter"] },
     "reasoning-block": { "file": "src/components/process/reasoning-block/index.tsx", "deps": ["process-step"] },
     "tool-summary": { "file": "src/components/process/tool-summary/index.ts", "deps": [] },
-    "markdown": { "file": "src/components/markdown/index.tsx", "deps": ["code-highlighter", "mermaid"] },
+    "markdown": {
+      "file": "src/components/markdown/index.tsx",
+      "deps": ["kit-i18n", "code-highlighter", "mermaid"],
+      "extraFiles": ["src/components/markdown/strings.ts"]
+    },
     "actions": {
       "file": "src/components/actions/index.tsx",
       "deps": ["kit-i18n"],
@@ -63,13 +71,34 @@
       "deps": ["kit-i18n"],
       "extraFiles": ["src/components/status-indicator/strings.ts"]
     },
-    "confirm-dialog": { "file": "src/components/confirm-dialog/index.tsx", "deps": [], "npmDependencies": ["@radix-ui/react-alert-dialog"] },
+    "confirm-dialog": {
+      "file": "src/components/confirm-dialog/index.tsx",
+      "deps": ["kit-i18n"],
+      "extraFiles": ["src/components/confirm-dialog/strings.ts"],
+      "npmDependencies": ["@radix-ui/react-alert-dialog"]
+    },
     "thread-panel": { "file": "src/components/thread-panel/index.tsx", "deps": ["message"] },
     "empty-state": { "file": "src/components/empty-state/index.tsx", "deps": [] },
-    "error-state": { "file": "src/components/error-state/index.tsx", "deps": [] },
-    "meter-bar": { "file": "src/components/meter-bar/index.tsx", "deps": [] },
-    "activity-heatmap": { "file": "src/components/activity-heatmap/index.tsx", "deps": [] },
-    "category-tabs": { "file": "src/components/category-tabs/index.tsx", "deps": [] },
+    "error-state": {
+      "file": "src/components/error-state/index.tsx",
+      "deps": ["kit-i18n"],
+      "extraFiles": ["src/components/error-state/strings.ts"]
+    },
+    "meter-bar": {
+      "file": "src/components/meter-bar/index.tsx",
+      "deps": ["kit-i18n"],
+      "extraFiles": ["src/components/meter-bar/strings.ts"]
+    },
+    "activity-heatmap": {
+      "file": "src/components/activity-heatmap/index.tsx",
+      "deps": ["kit-i18n"],
+      "extraFiles": ["src/components/activity-heatmap/strings.ts"]
+    },
+    "category-tabs": {
+      "file": "src/components/category-tabs/index.tsx",
+      "deps": ["kit-i18n"],
+      "extraFiles": ["src/components/category-tabs/strings.ts"]
+    },
     "plaza-card": { "file": "src/components/plaza-card/index.tsx", "deps": ["agent-header"] },
     "tool-approval-card": { "file": "src/components/tool-approval-card/index.tsx", "deps": [] },
     "tool-approval-group": { "file": "src/components/tool-approval-group/index.tsx", "deps": ["tool-approval-card"] }

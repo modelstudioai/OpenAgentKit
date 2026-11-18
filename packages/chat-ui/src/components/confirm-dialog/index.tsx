@@ -1,16 +1,19 @@
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import { useRef, useState } from "react";
+import { resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
+import confirmDialogStrings, { type ConfirmDialogStrings } from "./strings.ts";
 
 /** 破坏性/不可逆操作的确认弹窗（AlertDialog 语义，AGENTS.md UI 规范 3）。 */
 export function ConfirmDialog({
 	title,
 	body,
-	confirmLabel = "确认",
-	cancelLabel = "取消",
+	confirmLabel,
+	cancelLabel,
 	danger = true,
 	busy = false,
 	onConfirm,
 	onCancel,
+	strings: stringsOverride,
 }: {
 	title: string;
 	body: string;
@@ -20,7 +23,10 @@ export function ConfirmDialog({
 	busy?: boolean;
 	onConfirm: () => void;
 	onCancel: () => void;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<ConfirmDialogStrings>;
 }) {
+	const strings = resolveStrings(confirmDialogStrings, useKitLocale(), stringsOverride);
 	const [container, setContainer] = useState<HTMLDivElement | null>(null);
 	const opener = useRef<HTMLElement | null>(null);
 	return (
@@ -63,7 +69,7 @@ export function ConfirmDialog({
 											disabled={busy}
 											className="rounded-[var(--kit-radius-sm)] border border-[var(--kit-border)] px-3 py-1.5 text-[length:var(--kit-text-label)]"
 										>
-											{cancelLabel}
+											{cancelLabel ?? strings.cancel}
 										</button>
 									</AlertDialog.Cancel>
 									<button
@@ -77,7 +83,7 @@ export function ConfirmDialog({
 												: "bg-[var(--kit-accent)] text-[var(--kit-accent-fg)]"
 										}`}
 									>
-										{confirmLabel}
+										{confirmLabel ?? strings.confirm}
 									</button>
 								</div>
 							</AlertDialog.Content>

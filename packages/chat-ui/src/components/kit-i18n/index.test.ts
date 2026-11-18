@@ -23,3 +23,11 @@ describe("resolveStrings", () => {
 		expect(resolveStrings(table, "zh-CN")).toBe(table["zh-CN"]);
 	});
 });
+
+describe("format", () => {
+	it("替换模板中的 {{name}} 占位，缺失值替换为空串", async () => {
+		const { format } = await import("./index.ts");
+		expect(format("已用 {{value}} / {{max}}", { value: 3, max: 10 })).toBe("已用 3 / 10");
+		expect(format("缺失 {{miss}}", {})).toBe("缺失 ");
+	});
+});

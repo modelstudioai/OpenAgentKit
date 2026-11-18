@@ -11,6 +11,7 @@ export {
 	type ActionsVariant,
 } from "./components/actions/index.tsx";
 export { type ActionsStrings, actionsStrings } from "./components/actions/strings.ts";
+export { type ActivityHeatmapStrings, activityHeatmapStrings } from "./components/activity-heatmap/strings.ts";
 export { ArtifactCard } from "./components/artifact-card/index.tsx";
 export {
 	AttachmentFileCard,
@@ -22,6 +23,7 @@ export {
 	type AttachmentsRef,
 	type AttachmentsSemantic,
 } from "./components/attachments/index.tsx";
+export { type CategoryTabsStrings, categoryTabsStrings } from "./components/category-tabs/strings.ts";
 export { Chat } from "./components/chat/index.tsx";
 export {
 	AgentHeader,
@@ -32,8 +34,11 @@ export {
 	ThreadPanel,
 } from "./components/chrome/index.ts";
 export { CodeHighlighter, type CodeHighlighterProps } from "./components/code-highlighter/index.tsx";
+export { type ConfirmDialogStrings, confirmDialogStrings } from "./components/confirm-dialog/strings.ts";
+export { type ErrorStateStrings, errorStateStrings } from "./components/error-state/strings.ts";
 export { FileCard, type FileCardProps } from "./components/file-card/index.tsx";
 export {
+	format as formatKitStrings,
 	type KitLocale,
 	KitLocaleProvider,
 	type KitStringTable,
@@ -48,6 +53,7 @@ export {
 	type LayoutSidebarControls,
 } from "./components/layout/index.tsx";
 export { Markdown } from "./components/markdown/index.tsx";
+export { type MarkdownStrings, markdownStrings } from "./components/markdown/strings.ts";
 export {
 	Menu,
 	MenuContent,
@@ -61,6 +67,11 @@ export { type MessageAnchorItem, MessageAnchorRail } from "./components/message-
 export { MessageList } from "./components/message-list/index.tsx";
 export { type MessageListStrings, messageListStrings } from "./components/message-list/strings.ts";
 export { MessageListSkeleton } from "./components/message-skeleton/index.tsx";
+export {
+	type MessageListSkeletonStrings,
+	messageListSkeletonStrings,
+} from "./components/message-skeleton/strings.ts";
+export { type MeterBarStrings, meterBarStrings } from "./components/meter-bar/strings.ts";
 export { ActivityHeatmap, CategoryTabs, MeterBar, PlazaCard, type PlazaTabId } from "./components/plaza/index.ts";
 export { ReasoningBlock } from "./components/process/reasoning-block/index.tsx";
 export { SubAgentPanel } from "./components/process/sub-agent-panel/index.tsx";

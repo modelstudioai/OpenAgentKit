@@ -192,6 +192,15 @@
 		"notes": ["词典须以 zh-CN 为唯一事实来源，en 键对齐由 pnpm check:i18n 守护。"]
 	},
 	{
+		"name": "formatKitStrings",
+		"export": "formatKitStrings",
+		"kind": "helper",
+		"description": "把词典字符串里的 {{name}} 占位替换为实际值。",
+		"doc": "apps/storybook/content/docs/components/general/i18n.mdx",
+		"example": "examples/custom-strings.tsx",
+		"notes": ["词典叶子保持纯字符串，简单插值在渲染时完成；复杂复数形态留给调用方词条。"]
+	},
+	{
 		"name": "ConfirmDialog",
 		"export": "ConfirmDialog",
 		"description": "展示显式确认和取消选项。",

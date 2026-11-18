@@ -34,3 +34,8 @@ export function resolveStrings<T extends object>(
 export function useKitStrings<T extends object>(table: KitStringTable<T>): T {
 	return resolveStrings(table, useKitLocale());
 }
+
+/** 轻量插值：把词典字符串里的 {{name}} 换成值；词典叶子保持字符串，check:i18n 兼容。 */
+export function format(template: string, values: Record<string, string | number>): string {
+	return template.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => String(values[key] ?? ""));
+}
