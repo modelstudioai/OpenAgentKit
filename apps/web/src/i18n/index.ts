@@ -1,7 +1,11 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
+import enAuth from "./locales/en/auth.ts";
 import enCommon from "./locales/en/common.ts";
+import enLayout from "./locales/en/layout.ts";
+import zhAuth from "./locales/zh-CN/auth.ts";
 import zhCommon from "./locales/zh-CN/common.ts";
+import zhLayout from "./locales/zh-CN/layout.ts";
 
 export const SUPPORTED_LOCALES = ["zh-CN", "en"] as const;
 export type KitLocale = (typeof SUPPORTED_LOCALES)[number];
@@ -39,9 +43,16 @@ export function resolveLocale(env: LocaleEnv): KitLocale {
 	return "zh-CN";
 }
 
-export interface I18nResources {
-	"zh-CN": { common: typeof zhCommon };
-	en: { common: typeof enCommon };
+/** 各命名空间以 zh-CN 词表为类型来源（t 的编译期键校验）；en 键对齐由 check:i18n 守护。 */
+export interface AppNamespaces {
+	common: typeof zhCommon;
+	auth: typeof zhAuth;
+	layout: typeof zhLayout;
+}
+
+/** 浏览器标签页标题跟随语言（index.html 静态中文标题在 init 后被覆盖）。 */
+function applyDocumentTitle() {
+	document.title = i18n.t("appTitle");
 }
 
 /** 入口在挂载前调用：资源内联，初始化即时完成，不引入 HTTP 语言包加载。 */
@@ -52,10 +63,15 @@ export async function initI18n() {
 		fallbackLng: "zh-CN",
 		supportedLngs: [...SUPPORTED_LOCALES],
 		defaultNS: "common",
-		ns: ["common"],
-		resources: { "zh-CN": { common: zhCommon }, en: { common: enCommon } },
+		ns: ["common", "auth", "layout"],
+		resources: {
+			"zh-CN": { common: zhCommon, auth: zhAuth, layout: zhLayout },
+			en: { common: enCommon, auth: enAuth, layout: enLayout },
+		},
 	});
 	document.documentElement.lang = i18n.resolvedLanguage ?? lng;
+	applyDocumentTitle();
+	i18n.on("languageChanged", applyDocumentTitle);
 	return i18n;
 }
 
@@ -69,6 +85,6 @@ export function setLocale(locale: KitLocale) {
 declare module "i18next" {
 	interface CustomTypeOptions {
 		defaultNS: "common";
-		resources: I18nResources;
+		resources: AppNamespaces;
 	}
 }

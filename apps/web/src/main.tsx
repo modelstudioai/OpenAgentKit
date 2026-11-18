@@ -1,4 +1,5 @@
 import { ErrorState } from "@openagentpack/kit-chat-ui";
+import i18n from "i18next";
 import { createRoot } from "react-dom/client";
 import { App } from "./app.tsx";
 import { ChatUILocaleBridge } from "./i18n/chat-ui-bridge.tsx";
@@ -20,7 +21,7 @@ try {
 	root.render(
 		<main className="p-6">
 			<ErrorState
-				message={error instanceof Error ? error.message : "无法读取服务配置"}
+				message={error instanceof Error ? error.message : i18n.t("bootstrapFailed")}
 				onRetry={() => window.location.reload()}
 			/>
 		</main>,

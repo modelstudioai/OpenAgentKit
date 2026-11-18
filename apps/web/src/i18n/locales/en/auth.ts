@@ -1,0 +1,15 @@
+export default {
+	restoring: "Restoring sign-in state…",
+	missingProvider: "The demo backend has no chat provider configured",
+	accountAria: "Account: {{name}}",
+	accountInfo: "Account",
+	defaultUser: "Default user",
+	logout: "Sign out",
+	heading: "Member sign-in",
+	intro: "Sign in with the username and password created by your administrator.",
+	legend: "Member account",
+	username: "Username",
+	password: "Password",
+	processing: "Working…",
+	submit: "Sign in",
+};

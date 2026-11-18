@@ -5,4 +5,6 @@ export default {
 		zh: "中文",
 		en: "English",
 	},
+	appTitle: "OpenAgentPack Kit Workspace",
+	bootstrapFailed: "Unable to load the service configuration",
 };

@@ -1,6 +1,7 @@
 import { Layout, type LayoutAsideControls } from "@openagentpack/kit-chat-ui";
 import type { AgentSummary } from "@openagentpack/kit-sdk/protocol";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import type { Branding } from "../../lib/branding.ts";
 import type { NavigateFn, ViewId } from "../../lib/use-route.ts";
 import type { SessionDirectory } from "../../lib/use-session-directory.ts";
@@ -48,7 +49,10 @@ export function ExperienceLayout({
 	children: ReactNode;
 }) {
 	// 未提供 header 时 Layout 只在移动端给标题栏（含抽屉开关），桌面正文不再有公共页头。
-	const viewTitle = { usage: "我的用量", plaza: "Agent 广场", new: "新建聊天", chat: "Agent 对话" }[view];
+	const { t } = useTranslation("layout");
+	const viewTitle = { usage: t("views.usage"), plaza: t("views.plaza"), new: t("views.new"), chat: t("views.chat") }[
+		view
+	];
 	return (
 		<Layout
 			data-testid="experience-shell"
