@@ -11,6 +11,7 @@ import { pathToFileURL } from "node:url";
 
 export const DEFAULT_APPS = ["apps/web", "apps/console"];
 export const DEFAULT_LOCALES = ["zh-CN", "en"];
+export const CHAT_UI_COMPONENTS = "packages/chat-ui/src/components";
 
 /** 把嵌套词表展平成点分键列表；非字符串叶子记为非法键使对齐检查失败。 */
 export function flattenKeys(value, prefix = "", out = []) {
@@ -39,14 +40,14 @@ async function loadNamespaceMap(localeDir) {
 }
 
 /** 比对单个命名空间的展平键集合，双向差异写入 problems。 */
-function diffNamespaceKeys(ns, zhTree, enTree, problems) {
+function diffKeys(prefix, zhTree, enTree, problems) {
 	const zhKeys = new Set(flattenKeys(zhTree));
 	const enKeys = new Set(flattenKeys(enTree));
 	for (const key of zhKeys) {
-		if (!enKeys.has(key)) problems.push(`${ns}.${key}: en 缺失`);
+		if (!enKeys.has(key)) problems.push(`${prefix}${key}: en 缺失`);
 	}
 	for (const key of enKeys) {
-		if (!zhKeys.has(key)) problems.push(`${ns}.${key}: en 多出（zh-CN 是唯一事实来源）`);
+		if (!zhKeys.has(key)) problems.push(`${prefix}${key}: en 多出（zh-CN 是唯一事实来源）`);
 	}
 }
 
@@ -58,7 +59,33 @@ export async function compareLocaleDirs(zhDir, enDir) {
 	for (const ns of new Set([...Object.keys(zh), ...Object.keys(en)])) {
 		if (!zh[ns]) problems.push(`${ns}: zh-CN 缺少命名空间文件`);
 		if (!en[ns]) problems.push(`${ns}: en 缺少命名空间文件`);
-		if (zh[ns] && en[ns]) diffNamespaceKeys(ns, zh[ns], en[ns], problems);
+		if (zh[ns] && en[ns]) diffKeys(`${ns}.`, zh[ns], en[ns], problems);
+	}
+	return problems;
+}
+
+/** 递归收集组件目录里的词典文件（strings.ts）。 */
+function findStringsFiles(dir, out = []) {
+	if (!existsSync(dir)) return out;
+	for (const entry of readdirSync(dir, { withFileTypes: true })) {
+		const full = join(dir, entry.name);
+		if (entry.isDirectory()) findStringsFiles(full, out);
+		else if (entry.name === "strings.ts") out.push(full);
+	}
+	return out;
+}
+
+/** chat-ui 词典守护：每个 strings.ts 必须默认导出 { "zh-CN", en } 且键双向对齐。 */
+export async function checkChatUiStrings(componentsDir) {
+	const problems = [];
+	for (const file of findStringsFiles(componentsDir)) {
+		const label = `${relative(process.cwd(), componentsDir)} → ${relative(componentsDir, file)}`;
+		const table = (await import(pathToFileURL(resolve(file)).href)).default;
+		if (!table || typeof table !== "object" || !table["zh-CN"] || !table.en) {
+			problems.push(`${label}: 词典必须 default 导出 { "zh-CN": {...}, en: {...} }`);
+			continue;
+		}
+		diffKeys(`${label}: `, table["zh-CN"], table.en, problems);
 	}
 	return problems;
 }
@@ -111,6 +138,12 @@ async function main() {
 		const { problems, warnings } = await checkApp(app);
 		for (const warning of warnings) console.warn(`⚠ ${warning}`);
 		for (const problem of problems) {
+			console.error(`✕ ${problem}`);
+			failed = true;
+		}
+	}
+	if (!args.length) {
+		for (const problem of await checkChatUiStrings(CHAT_UI_COMPONENTS)) {
 			console.error(`✕ ${problem}`);
 			failed = true;
 		}

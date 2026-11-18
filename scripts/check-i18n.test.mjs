@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { checkApp, compareLocaleDirs, flattenKeys } from "./check-i18n.mjs";
+import { checkApp, checkChatUiStrings, compareLocaleDirs, flattenKeys } from "./check-i18n.mjs";
 
 function makeAppLocaleDirs(zhFiles, enFiles) {
 	const root = mkdtempSync(join(tmpdir(), "check-i18n-"));
@@ -50,4 +50,24 @@ test("checkApp 对无词表目录的 app 静默通过", async () => {
 	const { problems, warnings } = await checkApp(root);
 	assert.deepEqual(problems, []);
 	assert.deepEqual(warnings, []);
+});
+
+test("chat-ui 词典缺 en 键时报错", async () => {
+	const root = mkdtempSync(join(tmpdir(), "check-i18n-strings-"));
+	const dir = join(root, "sender");
+	mkdirSync(dir, { recursive: true });
+	writeFileSync(join(dir, "strings.ts"), 'export default { "zh-CN": { a: "甲", b: "乙" }, en: { a: "A" } };\n');
+	const problems = await checkChatUiStrings(root);
+	assert.equal(problems.length, 1);
+	assert.match(problems[0], /b: en 缺失/);
+});
+
+test("chat-ui 词典缺 en 块时报错", async () => {
+	const root = mkdtempSync(join(tmpdir(), "check-i18n-strings2-"));
+	const dir = join(root, "sender");
+	mkdirSync(dir, { recursive: true });
+	writeFileSync(join(dir, "strings.ts"), 'export default { "zh-CN": { a: "甲" } };\n');
+	const problems = await checkChatUiStrings(root);
+	assert.equal(problems.length, 1);
+	assert.match(problems[0], /词典必须 default 导出/);
 });
