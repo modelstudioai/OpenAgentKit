@@ -648,6 +648,87 @@ INSERT OR IGNORE INTO kit_branding (id, product_name, updated_at) VALUES (1, 'Op
   updated_at TEXT NOT NULL
 );`,
 	},
+	{
+		// 智能体/模版删除改为软删标记（NULL=未删），与上下架 status 字段分开；历史会话与用量保留。
+		id: "033_catalog_template_soft_delete",
+		sql: `ALTER TABLE catalog_agents ADD COLUMN deleted_at TEXT;
+ALTER TABLE kit_templates ADD COLUMN deleted_at TEXT;`,
+	},
+	{
+		// 软删后身份可复用：slug/模版名的内联 UNIQUE 换成排除已删行的部分唯一索引，重建两表及其子表。
+		id: "034_soft_delete_identity_reuse",
+		sql: `
+CREATE TABLE catalog_agents_new (
+  id TEXT PRIMARY KEY,
+  slug TEXT NOT NULL,
+  display_name TEXT NOT NULL,
+  description TEXT,
+  icon TEXT,
+  opening_remarks TEXT,
+  suggested_prompts TEXT NOT NULL DEFAULT '[]',
+  capabilities TEXT NOT NULL DEFAULT '{}',
+  theme TEXT,
+  remote_agent_id TEXT NOT NULL,
+  remote_agent_version INTEGER,
+  visibility TEXT NOT NULL DEFAULT 'public',
+  ordering INTEGER NOT NULL DEFAULT 100,
+  status TEXT NOT NULL DEFAULT 'unlisted',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'general',
+  featured INTEGER NOT NULL DEFAULT 0,
+  remote_environment_id TEXT,
+  files_json TEXT NOT NULL DEFAULT '[]',
+  memory_stores_json TEXT NOT NULL DEFAULT '[]',
+  vault_ids_json TEXT NOT NULL DEFAULT '[]',
+  agent_version INTEGER CHECK (agent_version > 0),
+  listed_at TEXT,
+  deleted_at TEXT
+);
+INSERT INTO catalog_agents_new (id, slug, display_name, description, icon, opening_remarks, suggested_prompts,
+  capabilities, theme, remote_agent_id, remote_agent_version, visibility, ordering, status, created_at, updated_at,
+  category, featured, remote_environment_id, files_json, memory_stores_json, vault_ids_json, agent_version,
+  listed_at, deleted_at)
+SELECT id, slug, display_name, description, icon, opening_remarks, suggested_prompts,
+  capabilities, theme, remote_agent_id, remote_agent_version, visibility, ordering, status, created_at, updated_at,
+  category, featured, remote_environment_id, files_json, memory_stores_json, vault_ids_json, agent_version,
+  listed_at, deleted_at FROM catalog_agents;
+CREATE TABLE kit_templates_new (
+  template_id TEXT PRIMARY KEY, name TEXT NOT NULL,
+  remote_agent_id TEXT NOT NULL, remote_agent_name TEXT NOT NULL,
+  config_json TEXT NOT NULL, created_at TEXT NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0),
+  updated_at TEXT NOT NULL DEFAULT '', deleted_at TEXT
+);
+INSERT INTO kit_templates_new (template_id, name, remote_agent_id, remote_agent_name, config_json, created_at,
+  version, updated_at, deleted_at)
+SELECT template_id, name, remote_agent_id, remote_agent_name, config_json, created_at,
+  version, updated_at, deleted_at FROM kit_templates;
+CREATE TABLE kit_template_versions_new (
+  template_id TEXT NOT NULL REFERENCES kit_templates_new(template_id) ON DELETE CASCADE,
+  version INTEGER NOT NULL CHECK (version > 0), config_json TEXT NOT NULL, created_at TEXT NOT NULL,
+  PRIMARY KEY (template_id, version)
+);
+INSERT INTO kit_template_versions_new (template_id, version, config_json, created_at)
+SELECT template_id, version, config_json, created_at FROM kit_template_versions;
+CREATE TABLE kit_template_listings_new (
+  template_id TEXT PRIMARY KEY REFERENCES kit_templates_new(template_id) ON DELETE CASCADE,
+  catalog_id TEXT NOT NULL UNIQUE REFERENCES catalog_agents_new(id) ON DELETE CASCADE
+);
+INSERT INTO kit_template_listings_new (template_id, catalog_id)
+SELECT template_id, catalog_id FROM kit_template_listings;
+DROP TABLE kit_template_listings;
+DROP TABLE kit_template_versions;
+DROP TABLE kit_templates;
+DROP TABLE catalog_agents;
+ALTER TABLE catalog_agents_new RENAME TO catalog_agents;
+ALTER TABLE kit_templates_new RENAME TO kit_templates;
+ALTER TABLE kit_template_versions_new RENAME TO kit_template_versions;
+ALTER TABLE kit_template_listings_new RENAME TO kit_template_listings;
+CREATE UNIQUE INDEX idx_catalog_agents_slug_active ON catalog_agents(slug) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX idx_kit_templates_name_active ON kit_templates(name) WHERE deleted_at IS NULL;
+CREATE INDEX idx_templates_created ON kit_templates(created_at, template_id);`,
+	},
 ];
 
 /**

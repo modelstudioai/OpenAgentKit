@@ -150,8 +150,16 @@ export function createTemplateStore(db: DatabaseSync) {
 		if (!row) throw new KitError("not_found", "模版不存在");
 		return row.version;
 	}
+	/** 管理面（详情/编辑/版本/上架/删除）对已删模版按不存在处理；用量区读取不受限。 */
+	function isDeleted(templateId: string): boolean {
+		const row = db.prepare("SELECT deleted_at FROM kit_templates WHERE template_id=?").get(templateId) as
+			| { deleted_at: string | null }
+			| undefined;
+		return Boolean(row?.deleted_at);
+	}
 	return {
 		get,
+		isDeleted,
 		versions(templateId: string, query: TemplateVersionsQuery): TemplateVersionsPage {
 			const version = currentVersion(templateId);
 			const before = versionCursor(query.page_token, templateId);
@@ -194,15 +202,34 @@ export function createTemplateStore(db: DatabaseSync) {
 				created_at: row.created_at,
 			});
 		},
-		/** 删除前在同一事务重新检查计划；显式清理子表，不依赖部署的外键开关。 */
-		remove(templateId: string, beforeDelete: (template: TemplateView) => void): void {
+		/** 软删：同一事务里先校验计划快照并标记关联条目，再标记模版；版本与上架关联行保留。 */
+		markDeleted(templateId: string, beforeDelete: (template: TemplateView) => void): void {
 			transaction(() => {
 				beforeDelete(get(templateId));
-				db.prepare("DELETE FROM kit_template_versions WHERE template_id=?").run(templateId);
-				db.prepare("DELETE FROM kit_template_listings WHERE template_id=?").run(templateId);
-				const removed = db.prepare("DELETE FROM kit_templates WHERE template_id=?").run(templateId);
-				if (!removed.changes) throw new KitError("conflict", "模版已变更，请重试并再次确认删除");
+				const now = new Date().toISOString();
+				const marked = db
+					.prepare(
+						"UPDATE kit_templates SET deleted_at = ?, updated_at = ? WHERE template_id = ? AND deleted_at IS NULL",
+					)
+					.run(now, now, templateId);
+				if (!marked.changes) throw new KitError("conflict", "模版已变更，请重试并再次确认删除");
 			});
+		},
+		/** 条目被单独软删时解除模版关联（对齐原硬删的 ON DELETE CASCADE）；模版回到未上架展示。 */
+		detachListingByCatalog(catalogId: string): void {
+			db.prepare("DELETE FROM kit_template_listings WHERE catalog_id = ?").run(catalogId);
+		},
+		/** 全部模版（含已删）绑定的远端智能体 ID，去重；供「全部」视角用量按模版口径扇出聚合。 */
+		boundAgentIds(): string[] {
+			return [
+				...new Set(
+					(
+						db.prepare("SELECT DISTINCT remote_agent_id FROM kit_templates WHERE remote_agent_id <> ''").all() as {
+							remote_agent_id: string;
+						}[]
+					).map((row) => row.remote_agent_id),
+				),
+			];
 		},
 		/** 确认后的目录写入与来源关联一起提交；回调中必须同步重读并校验计划快照。 */
 		saveListing(templateId: string, commit: () => CatalogAgentView): CatalogAgentView {
@@ -221,7 +248,7 @@ export function createTemplateStore(db: DatabaseSync) {
 				const result = db
 					.prepare(`INSERT INTO kit_templates
 					(template_id,name,remote_agent_id,remote_agent_name,config_json,created_at,updated_at,version)
-					VALUES (?,?,?,?,?,?,?,1) ON CONFLICT(name) DO NOTHING`)
+					VALUES (?,?,?,?,?,?,?,1) ON CONFLICT DO NOTHING`)
 					.run(id, input.name, input.remote_agent_id, input.remote_agent_name, JSON.stringify(input), now, now);
 				if (!result.changes) throw new KitError("conflict", "模版名称已存在，请使用其他名称");
 				appendVersion(id, 1, input, now);
@@ -244,7 +271,7 @@ export function createTemplateStore(db: DatabaseSync) {
 					.prepare(`UPDATE kit_templates
 					SET name=?,remote_agent_id=?,remote_agent_name=?,config_json=?,updated_at=?,version=?
 					WHERE template_id=? AND version=? AND NOT EXISTS (
-						SELECT 1 FROM kit_templates WHERE name=? AND template_id<>?
+						SELECT 1 FROM kit_templates WHERE name=? AND template_id<>? AND deleted_at IS NULL
 					)`)
 					.run(
 						input.name,
@@ -270,7 +297,8 @@ export function createTemplateStore(db: DatabaseSync) {
 			const pattern = `%${search.replace(/[\\%_]/g, "\\$&")}%`;
 			const rows = db
 				.prepare(`${TEMPLATE_SELECT}
-				WHERE (t.name LIKE ? ESCAPE '\\' OR t.remote_agent_id LIKE ? ESCAPE '\\' OR t.remote_agent_name LIKE ? ESCAPE '\\')
+				WHERE t.deleted_at IS NULL
+				AND (t.name LIKE ? ESCAPE '\\' OR t.remote_agent_id LIKE ? ESCAPE '\\' OR t.remote_agent_name LIKE ? ESCAPE '\\')
 				${query.status ? "AND COALESCE(c.status, 'unlisted') = ?" : ""}
 				${query.category ? "AND COALESCE(json_extract(t.config_json, '$.category'), 'general') = ?" : ""}
 				${cursor ? "AND (t.created_at < ? OR (t.created_at=? AND t.template_id<?))" : ""}

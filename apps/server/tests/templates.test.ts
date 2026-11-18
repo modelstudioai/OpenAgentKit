@@ -163,7 +163,9 @@ describe("已保存模版目录", () => {
 		const removedEntry = await listTemplate(app, removed);
 		await listTemplate(app, outside);
 		services.catalog.setStatus(unlistedEntry.slug, "unlisted");
-		services.catalog.remove(removedEntry.id);
+		// 单独软删条目须解除模版关联（与删除路由一致），关联模版回落为未上架。
+		services.catalog.markDeleted(removedEntry.id);
+		services.templates.detachListingByCatalog(removedEntry.id);
 		vi.spyOn(services.gateway, "listRemoteAgents").mockRejectedValue(new Error("Provider offline"));
 		const search = `search=${encodeURIComponent("筛选_")}`;
 		for (const [status, expected] of [

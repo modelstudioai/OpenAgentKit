@@ -1,7 +1,7 @@
 import { ErrorState } from "@openagentpack/kit-chat-ui";
 import type { UsageGranularity, UsageTrend, UsageTrendPoint } from "@openagentpack/kit-sdk/protocol";
 import { Segmented } from "antd";
-import { useMemo, useState } from "react";
+import { type MouseEvent, useMemo, useRef, useState } from "react";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import styles from "./usage.module.less";
@@ -167,7 +167,7 @@ function TrendMetricToggle({ value, onChange }: { value: TrendMetric; onChange: 
 }
 
 /** 柱状图：div 柱 + 三档虚线刻度 + 底部时间；同桶可并排多系列柱，当前桶（小时/日/月）实色强调，柱高变化走冻结动效 token。
- * 小时粒度每 4 桶出一个 x 刻度（占位保留柱位对齐），日/月逐桶出刻度。 */
+ * 悬停显示跟随鼠标的列级 tooltip（日期 + 各系列数值）并高亮当前列；小时粒度每 4 桶出一个 x 刻度（占位保留柱位对齐），日/月逐桶出刻度。 */
 function TrendChart({
 	series,
 	granularity,
@@ -178,6 +178,8 @@ function TrendChart({
 	currentKey: string;
 }) {
 	const [primary] = series;
+	const areaRef = useRef<HTMLDivElement>(null);
+	const [hover, setHover] = useState<{ index: number; x: number; y: number; flip: boolean } | null>(null);
 	if (!primary) return null;
 	const max = Math.max(...series.flatMap((s) => s.points.map((point) => point.value)), 0) || 1;
 	const fmtFor = (meta: TrendChartMeta) => (value: number) =>
@@ -193,6 +195,15 @@ function TrendChart({
 			value: s.points.find((candidate) => candidate.key === point.key)?.value ?? 0,
 		})),
 	}));
+	/** barSlot 以 flex 1 严格均分绘图区宽度，x 坐标按等分即可定位悬停列；半宽翻转让 tooltip 不溢出绘图区。 */
+	const onTrack = (event: MouseEvent<HTMLDivElement>) => {
+		const rect = areaRef.current?.getBoundingClientRect();
+		if (!rect || rect.width === 0) return;
+		const x = event.clientX - rect.left;
+		const index = Math.min(buckets.length - 1, Math.max(0, Math.floor((x / rect.width) * buckets.length)));
+		setHover({ index, x, y: event.clientY - rect.top, flip: x > rect.width / 2 });
+	};
+	const hoveredBucket = hover === null ? undefined : buckets[hover.index];
 	return (
 		<>
 			<div className={styles.chart}>
@@ -205,7 +216,14 @@ function TrendChart({
 					))}
 				</div>
 				<div className={styles.chartPlot}>
-					<div className={styles.chartArea}>
+					<div
+						ref={areaRef}
+						role="img"
+						aria-label="用量趋势柱状图"
+						className={styles.chartArea}
+						onMouseMove={onTrack}
+						onMouseLeave={() => setHover(null)}
+					>
 						{[0, 1, 2, 3].map((step) => (
 							<div
 								key={step}
@@ -214,13 +232,10 @@ function TrendChart({
 							/>
 						))}
 						<div className={styles.barsRow}>
-							{buckets.map((bucket) => (
+							{buckets.map((bucket, index) => (
 								<div
 									key={bucket.key}
-									className={styles.barSlot}
-									title={`${bucket.label} · ${bucket.bars
-										.map((bar) => `${bar.meta.label} ${fmtFor(bar.meta)(bar.value)}${bar.meta.unit}`)
-										.join(" · ")}`}
+									className={hover?.index === index ? `${styles.barSlot} ${styles.slotHover}` : styles.barSlot}
 								>
 									{bucket.bars.map((bar) => (
 										<div
@@ -232,6 +247,28 @@ function TrendChart({
 								</div>
 							))}
 						</div>
+						{hover && hoveredBucket ? (
+							<div
+								className={styles.chartTip}
+								data-flip={hover.flip ? "left" : "right"}
+								style={{ left: hover.x, top: hover.y }}
+							>
+								<p className={styles.chartTipTitle}>{hoveredBucket.label}</p>
+								{hoveredBucket.bars.map((bar) => (
+									<p key={bar.meta.label} className={styles.chartTipRow}>
+										<i
+											aria-hidden="true"
+											className={`${styles.chartTipDot} ${bar.variant === "accent" ? styles.legendAccent : styles.legendSecondary}`}
+										/>
+										<span className={styles.chartTipLabel}>{bar.meta.label}</span>
+										<span className={styles.chartTipValue}>
+											{fmtFor(bar.meta)(bar.value)}
+											{bar.meta.unit}
+										</span>
+									</p>
+								))}
+							</div>
+						) : null}
 					</div>
 					<div className={styles.chartXAxis}>
 						{primary.points.map((point) => (
@@ -298,7 +335,7 @@ function TrendChartArea({ metric, trend, currentKey }: { metric: TrendMetric; tr
 
 /** 模版用量趋势卡：数据来自 Provider 用量趋势（usage.trend，服务端聚合全部分页，UTC+8 对齐分桶）。
  * 统计时间来自面板顶部选择器（range 毫秒）；粒度按区间跨度隐含（≤24h 小时桶、≤120 天天桶、更长月桶）。
- * agentId 缺省为 workspace 维度（「全部」视角）；选中模版时由面板传入其绑定智能体。 */
+ * agentId 缺省为「全部」视角：服务端逐模版绑定智能体（含已删模版）以 agent 维度查询并求和，非模版智能体不计入。 */
 export function TemplateUsageTrendCard({
 	agentId,
 	range,
@@ -309,7 +346,7 @@ export function TemplateUsageTrendCard({
 	const client = useMemo(getAdminClient, []);
 	const [metric, setMetric] = useState<TrendMetric>("tokens");
 	const granularity = granularityOf(range.end - range.start);
-	const query = useAdminQuery(`usage:trend:${agentId ?? "workspace"}:${range.start}:${range.end}`, (signal) =>
+	const query = useAdminQuery(`usage:trend:${agentId ?? "templates"}:${range.start}:${range.end}`, (signal) =>
 		client.usage.trend(
 			{ ...(agentId ? { agentId } : {}), startTime: range.start, endTime: range.end, granularity },
 			signal,

@@ -7,7 +7,7 @@ import type {
 	UsageToolRow,
 } from "@openagentpack/kit-sdk/protocol";
 import type { TableColumnsType } from "antd";
-import { Button, DatePicker, Empty, Result, Select, Table } from "antd";
+import { Button, DatePicker, Empty, Popover, Result, Select, Table, Tag } from "antd";
 import dayjs from "dayjs";
 import { useEffect, useMemo, useState } from "react";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
@@ -49,7 +49,7 @@ function TemplateUsageCards({
 	onLimits?: (row: TemplateUsageRow) => void;
 	/** 「全部」视角传入模版总数；此时身份行不展示智能体与上架状态。 */
 	aggregateCount?: number;
-	/** Provider 侧轮数/步骤汇总（统计时间内，workspace 或按选中模版智能体过滤）；缺省表示尚未加载。 */
+	/** Provider 侧轮数/步骤汇总（统计时间内，按选中模版智能体过滤或全部模版口径求和）；缺省表示尚未加载。 */
 	providerTotal?: UsageSummary["usage"]["total"];
 }) {
 	const hintOf = (key: keyof TemplateUsageRow["metrics"]) =>
@@ -58,7 +58,10 @@ function TemplateUsageCards({
 		<div className={styles.cardStack}>
 			<div className={styles.identityRow}>
 				<div className={styles.identityMeta}>
-					<h3 className={styles.sectionTitle}>{row.name}</h3>
+					<h3 className={styles.sectionTitle}>
+						{row.name}
+						{row.deleted ? <Tag>已删除</Tag> : null}
+					</h3>
 					<p className={styles.identitySub}>
 						{aggregateCount === undefined ? (
 							<>
@@ -232,6 +235,7 @@ export function TemplateUsageDetail({
 				<div>
 					<h2 id="template-usage-detail-heading" className={styles.detailTitle}>
 						{template.name}的会话用量
+						{template.deleted ? <Tag>已删除</Tag> : null}
 					</h2>
 					<p className={styles.detailSub}>全部成员从该模版上架条目发起的会话，包含已删除会话保存的用量。</p>
 				</div>
@@ -356,13 +360,25 @@ export function TemplateUsagePanel({
 	return (
 		<div className={styles.panelStack}>
 			<div className={styles.rangeRow}>
-				<span className={styles.rangeLabel}>统计时间</span>
-				<StatRangePicker value={statRange} onChange={setStatRange} />
+				<Popover
+					content={
+						<span className={styles.preLine}>
+							按模版统计从其上架条目发起的体验会话模型用量，包含已删除会话保存的用量；各项 Token 独立展示，缺失值不按 0
+							计算，「全部」为各模版求和。
+						</span>
+					}
+					title="口径说明"
+					trigger="click"
+				>
+					<button type="button" className={styles.popLink}>
+						口径说明
+					</button>
+				</Popover>
+				<div className={styles.pickerInline}>
+					<span className={styles.inlineLabel}>统计时间</span>
+					<StatRangePicker value={statRange} onChange={setStatRange} />
+				</div>
 			</div>
-			<p className={styles.metaText} style={{ marginTop: "10px" }}>
-				按模版统计从其上架条目发起的体验会话模型用量，包含已删除会话保存的用量；各项 Token 独立展示，缺失值不按 0
-				计算，「全部」为各模版求和。
-			</p>
 			{loading ? (
 				<p role="status" className={styles.loadingNote}>
 					正在加载模版用量…
@@ -447,13 +463,13 @@ function telemetryQuery(filters: { start: string; end: string }, agentId: string
 	};
 }
 
-/** 明细区作用域说明：选中模版时按其绑定智能体过滤；「全部」视角不过滤，展示工作空间全量调用。 */
+/** 明细区作用域说明：选中模版时按其绑定智能体过滤；「全部」视角为各模版绑定智能体求和（模版口径）。 */
 function TelemetryScopeNote({ templateName }: { templateName?: string }) {
 	return (
 		<p className={styles.metaText}>
 			{templateName
 				? `已按选中模版「${templateName}」绑定的智能体（agent_id）过滤 Provider 侧调用。`
-				: "未按模版过滤：展示工作空间内全部智能体的 Provider 侧调用。"}
+				: "统计全部模版绑定智能体（含已删除模版）的 Provider 侧调用，未绑定模版的智能体不计入。"}
 		</p>
 	);
 }

@@ -248,11 +248,12 @@ describe("模版上架", () => {
 		const path = `/api/admin/templates/${template.template_id}/listing/plan`;
 		expect((await post(path, { display_name: "项目助手" })).status).toBe(409);
 		expect(services.catalog.get(foreign.id)).toEqual(foreign);
-		services.catalog.remove(foreign.id);
+		services.catalog.markDeleted(foreign.id);
 		expect((await listing(template, confirmed(await plan(template)))).status).toBe(200);
 		const catalogId = services.templates.get(template.template_id).listing?.catalog_id;
 		if (!catalogId) throw new Error("Missing catalog link");
-		services.catalog.remove(catalogId);
+		services.catalog.markDeleted(catalogId);
+		services.templates.detachListingByCatalog(catalogId);
 		expect(services.templates.get(template.template_id).listing).toBeUndefined();
 		expect(db.prepare("SELECT count(*) AS count FROM kit_template_listings").get()?.count).toBe(0);
 		const occupied = services.catalog.create({
@@ -262,7 +263,7 @@ describe("模版上架", () => {
 		});
 		expect((await post(path, { display_name: "项目助手" })).status).toBe(409);
 		expect(services.catalog.get(occupied.id)).toEqual(occupied);
-		services.catalog.remove(occupied.id);
+		services.catalog.markDeleted(occupied.id);
 		expect((await listing(template, confirmed(await plan(template)))).status).toBe(200);
 		expect(services.templates.get(template.template_id).listing?.catalog_id).not.toBe(catalogId);
 	});

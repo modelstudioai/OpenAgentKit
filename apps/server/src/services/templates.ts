@@ -65,6 +65,9 @@ export function createTemplateService({
 	return {
 		...createTemplateListingService({ store, gateway, audit, catalog, gate }),
 		...createTemplateDeletionService({ store, audit, catalog, gate }),
+		detachListingByCatalog: store.detachListingByCatalog,
+		isDeleted: store.isDeleted,
+		boundAgentIds: store.boundAgentIds,
 		get: store.get,
 		versions: (templateId: string, query: TemplateVersionsQuery) =>
 			store.versions(templateId, validated(TemplateVersionsQuerySchema, query)),

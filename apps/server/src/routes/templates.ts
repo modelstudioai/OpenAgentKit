@@ -84,7 +84,7 @@ export function registerTemplateRoutes(app: OpenAPIHono<AppEnv>) {
 			},
 			responses: {
 				200: {
-					description: "已删除模版全部版本及关联条目，既有会话和远端资源保留",
+					description: "模版已标记删除（软删，确认令牌已消费）；配置、版本与用量保留",
 					content: { "application/json": { schema: z.object({ data: z.object({ deleted: z.literal(true) }) }) } },
 				},
 				...errors,
@@ -118,6 +118,7 @@ export function registerTemplateRoutes(app: OpenAPIHono<AppEnv>) {
 		}),
 		async (c) => {
 			const services = c.get("services");
+			if (services.templates.isDeleted(c.req.valid("param").templateId)) throw new KitError("not_found", "模版不存在");
 			return c.json(
 				{
 					data: await services.templates.update(
@@ -234,7 +235,12 @@ export function registerTemplateRoutes(app: OpenAPIHono<AppEnv>) {
 			request: { params: z.object({ templateId: z.string().min(1) }) },
 			responses: { 200: response, ...errors },
 		}),
-		(c) => c.json({ data: c.get("services").templates.get(c.req.valid("param").templateId) }, 200),
+		(c) => {
+			const services = c.get("services");
+			// 管理面不再展示已删模版；用量区的会话明细走 usage 路由，不受此限制。
+			if (services.templates.isDeleted(c.req.valid("param").templateId)) throw new KitError("not_found", "模版不存在");
+			return c.json({ data: services.templates.get(c.req.valid("param").templateId) }, 200);
+		},
 		rejectInvalid,
 	);
 }

@@ -9,6 +9,8 @@ interface ResourceOption {
 	name: string;
 	disabled?: boolean;
 	detail?: string;
+	/** 名称后追加的状态节点（如「已删除」Tag）；下拉项与选中态同样渲染。 */
+	tag?: ReactNode;
 }
 
 interface RemoteResourceQuery {
@@ -32,6 +34,8 @@ type RemoteResourcePickerProps = {
 	emptyText?: string;
 	/** 展开时是否重拉远端候选（数据与页面主内容同源时关闭，避免展开触发整页刷新）。 */
 	refreshOnOpen?: boolean;
+	/** 隐藏 Form.Item 标签（Select 保留 aria-label）：内嵌工具栏行时由外部提供行内标签。 */
+	hideLabel?: boolean;
 } & (
 	| {
 			multiple?: false;
@@ -86,7 +90,10 @@ function optionDetail(source: ResourceOption | undefined, showId: boolean): Reac
 	if (!source) return null;
 	return (
 		<div className={styles.optionDetail}>
-			<div className={styles.optionName}>{source.name}</div>
+			<div className={styles.optionName}>
+				{source.name}
+				{source.tag}
+			</div>
 			{showId && source.id ? <div className={styles.optionId}>{source.id}</div> : null}
 			{source.detail ? <div className={styles.optionDetailText}>{source.detail}</div> : null}
 		</div>
@@ -114,6 +121,7 @@ export function RemoteResourcePicker(props: RemoteResourcePickerProps) {
 		triggerRef,
 		showId = true,
 		refreshOnOpen = true,
+		hideLabel = false,
 	} = props;
 	const selectRef = useRef<ComponentRef<typeof Select>>(null);
 	useImperativeHandle(triggerRef, () => ({ focus: () => selectRef.current?.focus() }), []);
@@ -129,7 +137,14 @@ export function RemoteResourcePicker(props: RemoteResourcePickerProps) {
 	const optionById = new Map(all.map((option) => [option.id, option]));
 	const options: DefaultOptionType[] = all.map((option) => ({
 		value: option.id,
-		label: option.name,
+		label: option.tag ? (
+			<span>
+				{option.name}
+				{option.tag}
+			</span>
+		) : (
+			option.name
+		),
 		disabled: props.multiple ? !selectedIds.has(option.id) && (option.disabled || atLimit) : option.disabled,
 	}));
 	const changeOpen = (next: boolean) => {
@@ -144,14 +159,16 @@ export function RemoteResourcePicker(props: RemoteResourcePickerProps) {
 		<Form component={false} layout="vertical" requiredMark={false}>
 			<Form.Item
 				label={
-					<>
-						{label}
-						{required ? (
-							<span aria-hidden="true" className={styles.requiredStar}>
-								*
-							</span>
-						) : null}
-					</>
+					hideLabel ? undefined : (
+						<>
+							{label}
+							{required ? (
+								<span aria-hidden="true" className={styles.requiredStar}>
+									*
+								</span>
+							) : null}
+						</>
+					)
 				}
 				validateStatus={error ? "error" : undefined}
 				help={error}

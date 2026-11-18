@@ -40,11 +40,12 @@ export const MemberUsageSummarySchema = z.object({
 		active_seconds: UsageMetricSummarySchema,
 		duration_seconds: UsageMetricSummarySchema,
 	}),
-	/** 始终包含成员全部 Agent，供筛选器使用，包含保留的已删除会话；display_name 为 null 表示 catalog 条目已删除。 */
+	/** 始终包含成员全部 Agent，供筛选器使用，包含保留的已删除会话；条目已标记删除时 deleted=true，display_name 仍可解析。 */
 	agents: z.array(
 		z.object({
 			slug: z.string(),
 			display_name: z.string().nullable(),
+			deleted: z.boolean().optional(),
 		}),
 	),
 	refreshed_at: z.string().optional(),
@@ -61,6 +62,8 @@ export const TemplateUsageRowSchema = z.object({
 	/** 模版绑定的 Provider 智能体 ID；管理端用它按 agent_id 过滤模型/工具用量明细。 */
 	remote_agent_id: z.string(),
 	listing_status: z.enum(["listed", "unlisted"]),
+	/** 模版已标记删除（软删）：管理列表不再展示，用量区保留并提示。 */
+	deleted: z.boolean().optional(),
 	session_count: z.number().int().nonnegative(),
 	deleted_session_count: z.number().int().nonnegative(),
 	metrics: MemberUsageSummarySchema.shape.metrics,

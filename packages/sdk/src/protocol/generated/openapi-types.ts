@@ -4196,6 +4196,7 @@ export interface paths {
                                         agents: {
                                             slug: string;
                                             display_name: string | null;
+                                            deleted?: boolean;
                                         }[];
                                         refreshed_at?: string;
                                         /** @enum {string} */
@@ -4335,6 +4336,7 @@ export interface paths {
                                         agents: {
                                             slug: string;
                                             display_name: string | null;
+                                            deleted?: boolean;
                                         }[];
                                         refreshed_at?: string;
                                         /** @enum {string} */
@@ -5876,7 +5878,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description 条目已删除（确认令牌已消费） */
+                /** @description 条目已标记删除（软删，确认令牌已消费） */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -6532,6 +6534,7 @@ export interface paths {
                                 remote_agent_id: string;
                                 /** @enum {string} */
                                 listing_status: "listed" | "unlisted";
+                                deleted?: boolean;
                                 session_count: number;
                                 deleted_session_count: number;
                                 metrics: {
@@ -6982,7 +6985,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Provider 侧用量汇总（app-control usage.summary）：维度由参数决定（session_id → session，agent_id → agent，否则 workspace），一次返回 total 与模型/工具明细；时间按 UTC+8 RFC 3339 传入，默认最近 7 天；无分页，明细合计上限 10 万条 */
+                /** @description Provider 侧用量汇总（app-control usage.summary）：维度由参数决定——传 session_id 为 dimension:session（按会话自身窗口，不传 time_range/granularity），传 agent_id 为 dimension:agent，都不传为模版口径（服务端逐模版绑定智能体——含已删模版、去重——以 agent 维度查询并合并为各模版求和，非模版智能体不计入）；?start_time=&end_time=（毫秒，缺省最近 7 天）在服务端转成 UTC+8 偏移的 RFC 3339 字符串；返回 {data:{query_range,data_updated_at,usage:{total,models,tools}}}，指标统一为 {value,unit}（未知为 null、已知零值为 0，跨智能体合并时任一来源未知即未知，cache_hit_ratio 按合并后的 cache_read/input 重算）；模型/工具明细同一次响应返回，无分页、无服务端名称筛选，单次明细合计上限 10 万条；无模版绑定时返回零值汇总；管理员与 auditor 可读 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -7243,7 +7246,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description 用量分桶趋势：agent_id → agent 维度，否则 workspace（Provider 侧，UTC+8 对齐，无数据的时间桶省略）；粒度由 granularity 参数决定（hour/day/month，缺省 day）；服务端聚合全部分页返回，has_more 恒为 false */
+                /** @description 用量分桶趋势：传 agent_id 为 agent 维度；都不传为模版口径（服务端逐模版绑定智能体——含已删模版、去重——以 agent 维度查询并按时间桶合并为各模版求和，非模版智能体不计入，无模版绑定时返回空点）（Provider 侧，UTC+8 对齐，无数据的时间桶省略）；粒度由 granularity 参数决定（hour/day/month，缺省 day）；服务端聚合全部分页返回，has_more 恒为 false */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -10381,6 +10384,7 @@ export interface paths {
                                     agents: {
                                         slug: string;
                                         display_name: string | null;
+                                        deleted?: boolean;
                                     }[];
                                     refreshed_at?: string;
                                     /** @enum {string} */
@@ -10560,6 +10564,7 @@ export interface paths {
                                         agents: {
                                             slug: string;
                                             display_name: string | null;
+                                            deleted?: boolean;
                                         }[];
                                         refreshed_at?: string;
                                         /** @enum {string} */
@@ -10723,6 +10728,7 @@ export interface paths {
                                     agents: {
                                         slug: string;
                                         display_name: string | null;
+                                        deleted?: boolean;
                                     }[];
                                     refreshed_at?: string;
                                     /** @enum {string} */
@@ -10888,6 +10894,7 @@ export interface paths {
                                 agents: {
                                     slug: string;
                                     display_name: string | null;
+                                    deleted?: boolean;
                                 }[];
                                 refreshed_at?: string;
                                 /** @enum {string} */
@@ -11988,6 +11995,7 @@ export interface paths {
                                     agents: {
                                         slug: string;
                                         display_name: string | null;
+                                        deleted?: boolean;
                                     }[];
                                     refreshed_at?: string;
                                     /** @enum {string} */
@@ -13313,7 +13321,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description 已删除模版全部版本及关联条目，既有会话和远端资源保留 */
+                /** @description 模版已标记删除（软删，确认令牌已消费）；配置、版本与用量保留 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -13668,6 +13676,7 @@ export interface paths {
                                 id: string;
                                 /** @enum {string} */
                                 status: "unlisted" | "listed";
+                                deleted?: boolean;
                                 created_at: string;
                                 updated_at: string;
                             };

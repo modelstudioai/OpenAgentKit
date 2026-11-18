@@ -704,6 +704,42 @@ describe("会话生命周期与文件（B1/B2）", () => {
 		expect((await app.request(`/api/kit/sessions/${sessionId}`, { headers: { cookie } })).status).toBe(404);
 	});
 
+	// 已删/孤儿智能体的会话保留只读：详情与列表可回看，发消息被拒；下架未删仍可继续对话。
+	it("已删或孤儿智能体的会话只读，下架未删不受影响", async () => {
+		const { app, services } = makeApp();
+		services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
+		services.catalog.setStatus("assistant", "listed");
+		const { cookie, sessionId } = await seedAndCreate(app);
+		const send = () =>
+			app.request(`/api/kit/sessions/${sessionId}/messages`, {
+				method: "POST",
+				headers: { ...json, cookie },
+				body: JSON.stringify({ text: "hello", client_message_id: "cm1" }),
+			});
+		expect((await send()).status).toBe(202);
+		services.catalog.setStatus("assistant", "unlisted");
+		expect((await send()).status).toBe(202);
+
+		services.catalog.setStatus("assistant", "listed");
+		const entry = services.catalog.getBySlug("assistant");
+		services.catalog.markDeleted(entry!.id);
+		expect((await app.request(`/api/kit/sessions/${sessionId}`, { headers: { cookie } })).status).toBe(200);
+		const rejected = await send();
+		expect(rejected.status).toBe(403);
+		expect(await rejected.json()).toMatchObject({
+			error: { code: "forbidden", message: "该智能体已删除，会话仅可查看历史" },
+		});
+
+		// 旧硬删孤儿（slug 无目录行）同样只读
+		services.sessionIndex.create({ sessionId: "sesn_orphan", subjectId: "lifecycle", agentSlug: "ghost" });
+		const orphanSend = await app.request("/api/kit/sessions/sesn_orphan/messages", {
+			method: "POST",
+			headers: { ...json, cookie },
+			body: JSON.stringify({ text: "hello", client_message_id: "cm2" }),
+		});
+		expect(orphanSend.status).toBe(403);
+	});
+
 	it("文件上传 → 下载 roundtrip", async () => {
 		const { app } = makeApp();
 		const form = new FormData();

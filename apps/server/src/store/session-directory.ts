@@ -104,6 +104,7 @@ export function createSessionDirectoryIndex(db: DatabaseSync) {
 				.prepare(`SELECT agent_slug FROM kit_sessions
 				WHERE subject_id = ? AND purpose = 'experience' AND agent_slug IS NOT NULL
 				AND COALESCE(status, '') <> 'archived'
+				AND EXISTS (SELECT 1 FROM catalog_agents a WHERE a.slug = kit_sessions.agent_slug AND a.deleted_at IS NULL)
 				GROUP BY agent_slug ORDER BY MAX(COALESCE(last_event_at, created_at)) DESC, agent_slug ASC`)
 				.all(subjectId) as { agent_slug: string }[];
 			return rows.map((row) => row.agent_slug);

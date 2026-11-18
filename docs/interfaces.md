@@ -81,7 +81,7 @@
 | --- | --- | --- | --- |
 | `agents.list` | `GET /api/kit/agents` | 已上架 Catalog Entry 列表（slug/展示名/图标/描述/开场白/示例问题/主题/能力） | ✅ |
 | `agents.get` | `GET /api/kit/agents/:slug` | 单个已上架条目；未上架 404；懒读取远端 Agent 资源投影 `resources`（tools/skills/mcp_servers，仅成员侧展示），Provider 失败时省略该字段；目录记忆配置投影 `memory_stores`（仅名称/描述，无库 ID、权限或条目），未配置或读取失败时省略 | ✅ |
-| `sessions.agents.list` | `GET /api/kit/session-agents` | 当前 subjectId 的全部未归档体验会话关联的智能体 slug，返回 `{data:string[]}`；按各组最近活动倒序，不受会话单页数量限制，不依赖 Catalog 上架状态，不包含其他身份、调试会话或仅有归档的组；只读本地索引，不查询 Provider | ✅ |
+| `sessions.agents.list` | `GET /api/kit/session-agents` | 当前 subjectId 的全部未归档体验会话关联的智能体 slug，返回 `{data:string[]}`；按各组最近活动倒序，不受会话单页数量限制；仅展示仍有未删除 Catalog 条目的 slug（不看上架状态），不包含其他身份、调试会话或仅有归档的组；只读本地索引，不查询 Provider | ✅ |
 | `sessions.list` | `GET /api/kit/sessions` | 当前 subjectId 的体验会话摘要，`?agent_slug=&limit=&page_token=&include_archived=&q=`；按 `COALESCE(last_event_at,created_at)`、`session_id` 双字段倒序分页，返回 `{data,next_page_token}`。`limit` 为 1..200（缺省 50），`include_archived=false` 在分页前排除归档，缺省仍包含归档。`q` 为 1..100 字符关键词，在分页前按标题、智能体 slug 及当前 Catalog 展示名过滤，只覆盖本人体验会话索引。游标绑定身份、智能体筛选、归档条件及关键词，条件不匹配或游标无效返回 400；最后一页返回 null。仅查询运营索引，不读取事件正文。`last_event_at` 由发消息推进，订阅水合与归档仅同步状态，点开回看不改排序；运行态由完整事件账本和受理中的 pending turn 共同投影，重复的旧 idle 不得结束新回合。共享泵在订阅者离开后继续跟踪 running 回合到终态；仅对没有上游泵的存量 running 行在 2 分钟后兜底对账，详情 idle 仍需历史投影确认非 running，同一会话 60 秒内不重复探测，失败保留原值，最终一致 | ✅ |
 | `sessions.create` | `POST /api/kit/sessions` | `{ agent_slug, title?, files? }` → 建 Provider Session 并落本地索引；`files` 为已上传附件，服务层在建会话后经运行时挂载进 sandbox（创建载荷不带文件——创建时 file_resource 回显成功但沙箱不物化，实测 2026-11-03；mount_path 省略时按 `/mnt/session/uploads/<文件名>` 解析，重名自动 `-2`；挂载失败回滚已挂载并删除刚建会话），详情回显 `files`；已有会话追加挂载走 `sessions.messages.send` 的 `attachments`。provider wire 形状与沙箱物化矩阵见 `docs/research/bailian-session-file-mount.md` | ✅ |
 | `sessions.get` | `GET /api/kit/sessions/:sessionId` | 会话详情 + 归属校验（非本人 404，不泄露存在性）；含挂载的 `files`（本地索引为权威，运行时挂载 provider 不回显），Provider 返回时含累计 `usage` 与秒单位 `stats`，缺失不补零 | ✅ |
@@ -89,7 +89,7 @@
 | `sessions.plan` | `POST /api/kit/sessions/:sessionId/plan` | `{ action: archive\|delete }` → `{ plan_id, confirm_token, destructive, expires_at, diff }`；会话级破坏性动作的第一段 | ✅ |
 | `sessions.archive` | `POST /api/kit/sessions/:sessionId/archive` | `{ plan_id, confirm_token }` → 归档；空令牌 400、伪造/重放令牌 428 | ✅ |
 | `sessions.delete` | `DELETE /api/kit/sessions/:sessionId` | `{ plan_id, confirm_token }` → 删除 Provider 会话 + 本地索引；同上闸门。真实本地成员的 experience 会话必须先确认执行结束并持久化用量快照，失败 409 提示重试；已删除快照继续计入成员统计 | ✅ |
-| `sessions.messages.send` | `POST /api/kit/sessions/:sessionId/messages` | `{ text, skills?, client_message_id?, attachments? }` → 发送并触发流式。`skills` 为技能 token 授权名单（ADR-0016，从正文输入标记派生）：发送服务层在 mock/live 共用路径上把名单内技能名的 `/name` 输入标记转为协议 token `[使用 Skill:name]`（未授权名原样保留，无 skills 不改写），详见 `docs/protocol.md` 技能 token 节。`attachments` 非空时先经 SDK 公开 API 运行时挂载进 sandbox 再发送（发送失败自动卸载回滚；未就绪 409 `conflict` 可重试；非本人上传 404），详见 `docs/protocol.md`。订阅就绪及工具审批校验后，本地成员检查月度与日度 Token/执行时长，超限 403 `quota_exceeded`（月度 details 含 metric/month/limit/used/remaining/reset_at，日度含 period:"day"/day/reset_at，其余同），指标不可确认或上一轮未结束返回 409。随后记录 1 Turn，匿名/JWT 仍检查 Credits；前置拒绝不写账本，成功受理的 `client_message_id` 重放不重复发送或计量 | ✅ |
+| `sessions.messages.send` | `POST /api/kit/sessions/:sessionId/messages` | `{ text, skills?, client_message_id?, attachments? }` → 发送并触发流式。会话关联的智能体已删除或 slug 无目录行（旧硬删孤儿）时 403 `forbidden`（会话保留只读，可回看历史）；下架未删不受影响。`skills` 为技能 token 授权名单（ADR-0016，从正文输入标记派生）：发送服务层在 mock/live 共用路径上把名单内技能名的 `/name` 输入标记转为协议 token `[使用 Skill:name]`（未授权名原样保留，无 skills 不改写），详见 `docs/protocol.md` 技能 token 节。`attachments` 非空时先经 SDK 公开 API 运行时挂载进 sandbox 再发送（发送失败自动卸载回滚；未就绪 409 `conflict` 可重试；非本人上传 404），详见 `docs/protocol.md`。订阅就绪及工具审批校验后，本地成员检查月度与日度 Token/执行时长，超限 403 `quota_exceeded`（月度 details 含 metric/month/limit/used/remaining/reset_at，日度含 period:"day"/day/reset_at，其余同），指标不可确认或上一轮未结束返回 409。随后记录 1 Turn，匿名/JWT 仍检查 Credits；前置拒绝不写账本，成功受理的 `client_message_id` 重放不重复发送或计量 | ✅ |
 | `sessions.interrupt` | `POST /api/kit/sessions/:sessionId/interrupt` | 中断当前 Turn | ✅ |
 | `sessions.events.list` | `GET /api/kit/sessions/:sessionId/events` | 完整快照历史分页，`?after_id=&limit=&page_token=` | ✅ |
 | `sessions.threads.list` | `GET /api/kit/sessions/:sessionId/threads` | 子 Agent 线程摘要分页，`?limit=&page_token=`；校验本人 experience Session，SDK 查询并按绑定版本补充 Agent 名称 | ✅ |
@@ -249,8 +249,8 @@ Agent 显式版本按版本读取，旧记录版本仅作只读展示，不能�
 | `templates.update` | `PUT /api/admin/templates/:templateId` | `TemplateUpdateInput`：编辑或应用历史版本的完整配置（含必填 `category`）加当前 `base_version`；复核资源后原子追加版本并同步关联 Catalog，返回最新 `TemplateView`；版本或名称冲突 409、不存在 404，auditor 禁写 | ✅ |
 | `templates.listing.plan` | `POST /api/admin/templates/:templateId/listing/plan` | `TemplateListingInput`：`{display_name}`，复核模版引用并返回 `PlanResponse`；不写入 Catalog，计划绑定主体、模版、展示名及目标条目状态 | ✅ |
 | `templates.listing.confirm` | `POST /api/admin/templates/:templateId/listing` | `TemplateListingRequest`：展示名及 `plan_id/confirm_token`，显式确认后原子创建或重新上架关联条目，返回 `CatalogAgentView`；缺少或无效确认 428，冲突 409，auditor 禁写 | ✅ |
-| `templates.delete.plan` | `POST /api/admin/templates/:templateId/delete/plan` | 无请求体，返回 `PlanResponse`；只读列出删除模版全部版本及关联 Catalog 的影响，绑定主体、目标、当前版本和关联条目快照；不访问 Provider | ✅ |
-| `templates.delete` | `DELETE /api/admin/templates/:templateId` | `ApplyRequest` 确认令牌；原子删除模版、全部历史、关联关系及关联 Catalog，返回 `{data:{deleted:true}}`；缺少/无效令牌 428、快照漂移 409、不存在 404，auditor 禁写 | ✅ |
+| `templates.delete.plan` | `POST /api/admin/templates/:templateId/delete/plan` | 无请求体，返回 `PlanResponse`；只读列出软删模版及关联 Catalog 的影响（标记删除；配置、历史版本与用量保留），绑定主体、目标、当前版本和关联条目快照；不访问 Provider | ✅ |
+| `templates.delete` | `DELETE /api/admin/templates/:templateId` | `ApplyRequest` 确认令牌；软删：同一事务标记模版与关联 Catalog 的 `deleted_at`，不改上下架状态，配置/版本/关联行与用量账本保留，返回 `{data:{deleted:true}}`；缺少/无效令牌 428、快照漂移 409、不存在（含已删）404，auditor 禁写 | ✅ |
 
 - 名称去首尾空白后 1–64 字符，在模版目录内精确比较唯一；不会覆盖同名记录。
 - `category` 复用 `PlazaCategorySchema`，允许 `general/writing/coding/data/other`；新建与更新
@@ -318,10 +318,13 @@ Agent 显式版本按版本读取，旧记录版本仅作只读展示，不能�
 - 删除允许已上架与未上架模版；后台自动准备只读计划，弹窗正常正文固定为「是否删除该模版」，
   不显示模版名、`plan.diff` 或影响摘要，用户一次显式确认后执行。失败可在原弹窗展示错误与
   重试入口；重新准备计划成功后仍需显式确认，不自动执行删除。
-  模版与其全部历史、关联关系及 Catalog 条目在同一事务删除；不删除 Session、远端 Agent、
-  环境、文件、记忆或密钥库。既有会话仍由原归属与 Provider 合同控制，新会话入口不再可用。
-  一次性令牌绑定管理员、模版及当前配置/关联 Catalog 快照，修改版本、上下架或目录变动后
-  旧计划返回 409；跨主体/目标或重放拒绝执行。计划和删除不依赖 Provider 在线。
+  模版与关联 Catalog 条目在同一事务软删（标记 `deleted_at`，迁移 `033/034`）：配置、全部
+  历史版本与关联行保留，管理面（列表/详情/版本/编辑/上架/删除计划）按不存在处理（404），
+  用量区继续展示并带「已删除」标记；不删除 Session、远端 Agent、环境、文件、记忆或密钥库。
+  既有会话仍由原归属与 Provider 合同控制，新会话入口不再可用（条目软删后员工端不可见）。
+  模版名的唯一约束排除已删行，软删后可重建同名模版；一次性令牌绑定管理员、模版及当前
+  配置/关联 Catalog 快照，修改版本、上下架或目录变动后旧计划返回 409；跨主体/目标或
+  重放按不存在处理。计划和删除不依赖 Provider 在线。
 
 ### 上架目录（Catalog）
 
@@ -335,13 +338,20 @@ Agent 显式版本按版本读取，旧记录版本仅作只读展示，不能�
 | `catalog.listing.plan` | `POST /api/admin/agents/:slug/plan` | `{action: "listing", status}` 或 `{action: "delete"}` → `{plan_id, confirm_token, diff, destructive, expires_at}` | ✅ |
 | `catalog.setListing` | `PATCH /api/admin/agents/:slug` | `{status, plan_id, confirm_token}` 上/下架；缺令牌 `400`、伪造/重放 `428`（红线：上下架必须 plan → 确认） | ✅ |
 | `catalog.update` | `PUT /api/admin/agents/:slug` | 改展示信息与体验页配置（展示名/描述/图标/开场白/示例问题/能力/主题/可见性/排序/版本绑定/环境/文件/记忆/密钥库）；`agent_version` 与 `remote_environment_id` 省略保留、`null` 清除对应覆盖；改名与其他条目重名返回 `409 conflict`，保留自身原名可保存；**status 不在此路径改**，body 里夹带也忽略 | ✅ |
-| `catalog.delete` | `DELETE /api/admin/agents/:slug` | 删条目，需 `{plan_id, confirm_token}`（plan 的 `action:"delete"`）；缺令牌 `400`、伪造 `428`、条目不存在 `404`。只删 kit 目录，Provider 上的 Agent 与已有会话不受影响 | ✅ |
+| `catalog.delete` | `DELETE /api/admin/agents/:slug` | 软删条目（标记 `deleted_at`，不改上下架状态），需 `{plan_id, confirm_token}`（plan 的 `action:"delete"`）；缺令牌 `400`、伪造 `428`、条目不存在（含已删）`404`。条目从员工端与管理列表消失并解除模版关联；Provider 上的 Agent、历史会话与用量账本不受影响；slug 与展示名随之释放可复用，用量区保留展示并带「已删除」标记 | ✅ |
 | `catalog.preview` | — | 体验页预览配置；当前用体验页 `?agent=<slug>` 深链代替 | 🚧 未实现 |
 | `catalog.embed` | — | 生成嵌入代码片段（widget） | 📅 后续 |
 
 目录 ID 对应 API 的 `slug` 字段，长度为 3–64 位；首尾必须为英文字母或数字，中间还允许
 下划线与连字符。英文字母允许大小写，原样保存并区分大小写，支持直接使用 Provider 的
 `agent_...` ID；已有小写连字符 ID 继续有效。创建后 ID 不可修改。
+
+软删释放身份（迁移 `034`）：`slug` 的部分唯一索引与展示名冲突检查都排除已删行，
+删除后可新建同 ID 或同名条目；重新上架按 slug 复用 freed 身份创建新条目。用量账本按
+slug 关联条目时优先取活动行，无活动行时取最近更新的已删行并携带 `deleted` 标记；
+员工端会话分组只展示仍有未删除目录行的 slug：已删条目与无目录行的历史孤儿分组都隐藏；
+会话保留只读——仍可通过会话列表、搜索与「最近」查看历史，但发消息返回 403
+（`sessions.messages.send`），下架未删的智能体会话不受影响。
 
 展示名按原字符串精确比较，范围包含已上架与未上架条目。历史同名数据不自动改名或删除，
 仍可保留原名修改其他信息，但新建和改名不能产生新的重名条目。
@@ -400,12 +410,12 @@ Kit 不查询或复制库内 Credential，不提供创建库、生成密钥或�
 | `admin.members.create` | `POST /api/admin/members` | 创建本地账号：`username`、`display_name`、可选 `email`、`auth_type: local`、`password_mode: auto\|custom`；custom 须带 `password`。返回 `{data:{member,initial_password?}}`，只有 auto 首次创建响应含初始密码；同名 `409 conflict`，审计不记密码 | ✅ |
 | `admin.members.usage` | `GET /api/admin/members/:memberId/usage` | `{data: MemberUsageSummary}`；可选 `agent_slug` 筛选，`refresh=1` 强制调度后台刷新并立即返回当前缓存与进度；管理员与 auditor 可读 | ✅ |
 | `admin.members.sessions` | `GET /api/admin/members/:memberId/sessions` | 成员会话累计用量明细，含已删除快照；`?agent_slug=&cursor=&limit=`，limit 默认 20、最多 100；返回 `{data,next_cursor?}`；汇总不受明细分页大小限制 | ✅ |
-| `admin.usage.templates` | `GET /api/admin/usage/templates` | 以模版为主键聚合体验会话用量：只统计从该模版上架条目发起的会话（跨成员、含已删除）；模版全量返回，0 会话也出现，行含 `remote_agent_id`（模版绑定智能体，控制台用它按 agent_id 过滤模型/工具用量明细）；与成员用量的 `agent_slug` 明细同口径；`?search=` 过滤模版名/智能体名/模版 ID。读取即登记新会话并按成员后台补采，返回当前缓存；管理员与 auditor 可读 | ✅ |
+| `admin.usage.templates` | `GET /api/admin/usage/templates` | 以模版为主键聚合体验会话用量：只统计从该模版上架条目发起的会话（跨成员、含已删除）；模版全量返回（含已软删模版，行带 `deleted` 标记），0 会话也出现，行含 `remote_agent_id`（模版绑定智能体，控制台用它按 agent_id 过滤模型/工具用量明细）；与成员用量的 `agent_slug` 明细同口径；`?search=` 过滤模版名/智能体名/模版 ID。读取即登记新会话并按成员后台补采，返回当前缓存；管理员与 auditor 可读 | ✅ |
 | `admin.usage.templateSessions` | `GET /api/admin/usage/templates/:templateId/sessions` | 模版会话用量明细（跨成员、含已删除快照）；`?cursor=&limit=`，limit 默认 20、最多 100；行附带成员 `member_display_name`/`member_username`；返回 `{data,next_cursor?}`；模版不存在 404 | ✅ |
 | `admin.usage.templateTrend` | `GET /api/admin/usage/templates/daily-trend` | 模版用量逐日趋势（管理端「使用趋势」柱状图）：来自限额账本条目逐日账 `kit_usage_limit_agent_days`，`tokens`=输入+输出 Token 增量、`active_seconds`=执行时长增量，按采集确认日（UTC 日键）归属，自模版限额账本启用起记录、不含更早历史；`?template_id=&days=`，`days` 仅支持 7/14/28（缺省 7），`template_id` 缺省为全部模版条目求和（非模版条目不计入；同一条目被多模版引用时随各模版重复计入，与「全部=各模版求和」一致）；区间零值补全到今天，返回 `{data:{days,from_day,to_day,since_day,data:[{day,tokens,active_seconds}]}}`（`since_day` 为逐日账最早记录日，无记录为 null）；模版不存在 404，管理员与 auditor 可读 | ✅ |
 | `admin.usage.templateLimit.get` / `.put` / `.delete` | `GET` · `PUT` · `DELETE /api/admin/usage/templates/:templateId/usage-limit` | 模版限额（月度与日度，同成员限额口径，主体为该模版上架条目下全部成员合计）；PUT body 为 `UsageLimitConfig`（月度与日度两组字段，未设置覆盖时不限量）；超限发送返回 403 `quota_exceeded`；模版不存在 404，auditor 只读 | ✅ |
-| `admin.usage.summary` | `GET /api/admin/usage/summary` | Provider 侧用量汇总（app-control usage.summary，对应上游 `POST /v1/agentstudio/usage/summary`）：维度由参数决定——传 `session_id` 为 `dimension:"session"`（按会话自身窗口，不传 `time_range`/`granularity`），传 `agent_id` 为 `dimension:"agent"`，都不传为 `dimension:"workspace"`；`?start_time=&end_time=`（毫秒，缺省最近 7 天）在服务端转成 UTC+8 偏移的 RFC 3339 字符串；返回 `{data:{query_range,data_updated_at,usage:{total,models,tools}}}`，指标统一为 `{value,unit}`（未知为 `null`、已知零值为 `0`）；模型/工具明细同一次响应返回，无分页、无服务端名称筛选，单次明细合计上限 10 万条；workspace 由服务端凭据隐式确定，前端不可传；sdk 网关调百炼、mock 返回账本演示数据；管理员与 auditor 可读 | ✅ |
-| `admin.usage.trend` | `GET /api/admin/usage/trend` | 用量分桶趋势：传 `agent_id` 为 `dimension:"agent"`，否则 `dimension:"workspace"`（Provider 侧，对应上游 `POST /v1/agentstudio/usage/trend`）；`?start_time=&end_time=`（毫秒，缺省最近 7 天）服务端转 UTC+8 RFC 3339；粒度由 `?granularity=` 参数决定（`hour`/`day`/`month`，缺省 `day`；UTC+8 对齐，上游不支持 session 维度）；无数据的时间桶省略而非补零；服务端以 `page_size=100` 聚合全部分页后返回 `{data:{query_range,data_updated_at,granularity,points:[{start_time,end_time,usage:{total,models,tools}}],has_more,next_page_token}}`（`has_more` 恒为 `false`；`page_token` 15 分钟过期（上游 410）时清空聚合从第一页整轮重查一次）；管理员与 auditor 可读 | ✅ |
+| `admin.usage.summary` | `GET /api/admin/usage/summary` | Provider 侧用量汇总（app-control usage.summary，对应上游 `POST /v1/agentstudio/usage/summary`）：维度由参数决定——传 `session_id` 为 `dimension:"session"`（按会话自身窗口，不传 `time_range`/`granularity`），传 `agent_id` 为 `dimension:"agent"`，都不传为模版口径：服务端枚举全部模版（含已软删模版）绑定的 `remote_agent_id`（去重），逐个以 `dimension:"agent"` 查询并合并为各模版求和，未绑定模版的智能体不计入，无模版绑定时返回零值汇总；`?start_time=&end_time=`（毫秒，缺省最近 7 天）在服务端转成 UTC+8 偏移的 RFC 3339 字符串；返回 `{data:{query_range,data_updated_at,usage:{total,models,tools}}}`，指标统一为 `{value,unit}`（未知为 `null`、已知零值为 `0`；跨智能体合并时任一来源未知即未知，`cache_hit_ratio` 按合并后的 cache_read/input 重算，模型明细按 `model_name` 分组求和、工具明细按 `source`+`tool_name` 分组求和）；模型/工具明细同一次响应返回，无分页、无服务端名称筛选，单次明细合计上限 10 万条；管理员与 auditor 可读 | ✅ |
+| `admin.usage.trend` | `GET /api/admin/usage/trend` | 用量分桶趋势：传 `agent_id` 为 `dimension:"agent"`；都不传为模版口径：服务端枚举全部模版（含已软删模版）绑定的 `remote_agent_id`（去重），逐个以 `dimension:"agent"` 查询并按时间桶合并为各模版求和，未绑定模版的智能体不计入，无模版绑定时返回空点（Provider 侧，对应上游 `POST /v1/agentstudio/usage/trend`）；`?start_time=&end_time=`（毫秒，缺省最近 7 天）服务端转 UTC+8 RFC 3339；粒度由 `?granularity=` 参数决定（`hour`/`day`/`month`，缺省 `day`；UTC+8 对齐，上游不支持 session 维度）；无数据的时间桶省略而非补零，合并后按 `start_time` 升序；服务端以 `page_size=100` 逐 agent 聚合全部分页后返回 `{data:{query_range,data_updated_at,granularity,points:[{start_time,end_time,usage:{total,models,tools}}],has_more,next_page_token}}`（`has_more` 恒为 `false`；`page_token` 15 分钟过期（上游 410）时清空聚合从第一页整轮重查一次）；管理员与 auditor 可读 | ✅ |
 
 - `member` 包含 `member_id`、`username`、`display_name`、可选 `email`、`auth_type: local`、
   `status: active`、`created_at`、`updated_at`。时间均为 ISO-8601 UTC。
@@ -464,8 +474,9 @@ Kit 不查询或复制库内 Credential，不提供创建库、生成密钥或�
   缺失与错误均不能当成零，时长保持秒单位，不读取 SSE 正文推算 token。
 - `MemberUsageSummary` 包含 `session_count`、`deleted_session_count`、各指标
   `metrics.{name}.{value,covered_sessions}`、`refreshed_at?`、`refresh_status` 和
-  `completed_sessions`；`agents` 始终是该成员全部 Agent 的 `{slug, display_name}` 列表，用于筛选器；
-  `display_name` 来自 catalog 条目，条目已删除时为 `null`，界面回退显示 slug。
+  `completed_sessions`；`agents` 始终是该成员全部 Agent 的 `{slug, display_name, deleted?}` 列表，用于筛选器；
+  `display_name` 来自 catalog 条目：条目软删后仍解析展示名并携带 `deleted: true`（界面显示
+  「已删除」标记），slug 无任何条目行时为 `null`，界面回退显示 slug。
   `refresh_status` 为 `idle | refreshing | partial | failed`。无会话返回 0；存在会话但
   某指标全部未知时 `value=null`，部分已知时只汇总已知值并附覆盖数。上次采集成功但本次失败
   可以保留旧数值，成员列表与详情均须同时显示状态和采集时间；即使 coverage 完整，也

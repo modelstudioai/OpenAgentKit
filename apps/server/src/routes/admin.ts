@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
-import type { UsageGranularity, UsageTrend, UsageTrendPoint } from "@openagentpack/kit-sdk/protocol";
+import type { UsageGranularity, UsageSummary, UsageTrend, UsageTrendPoint } from "@openagentpack/kit-sdk/protocol";
 import {
 	CatalogAgentInputSchema,
 	CreateQuotaPackSchema,
@@ -30,6 +30,7 @@ import { redactSecrets } from "../config.ts";
 import type { ProviderGateway } from "../gateway/types.ts";
 import { prepareCatalogResources, updateCatalogResources } from "../services/catalog-resources.ts";
 import { requireAdmin, requireAdminWrite } from "../services/identity.ts";
+import { emptyUsageSummary, emptyUsageTrend, mergeTrends, mergeUsageSummaries } from "../services/usage-aggregate.ts";
 import { registerAgentVersionRoutes } from "./agent-versions.ts";
 import { registerAuditRoutes } from "./audit.ts";
 import { registerBrandingRoutes } from "./branding.ts";
@@ -165,7 +166,7 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 			const { subject } = requireAdmin(c, c.get("services").config);
 			const slug = c.req.param("slug") ?? "";
 			const entry = catalog.getBySlug(slug);
-			if (!entry) throw new KitError("not_found", "agent 不存在");
+			if (!entry || entry.deleted) throw new KitError("not_found", "agent 不存在");
 			const body = c.req.valid("json");
 			const isDelete = body.action === "delete";
 			// planId 每次唯一：同一条目反复上/下架不能被闸门的「已消费」集合误判为重放
@@ -184,7 +185,7 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 								action: isDelete ? "delete" : body.status === "listed" ? "list" : "unlist",
 								destructive: true,
 								summary: isDelete
-									? `${entry.display_name}：删除上架条目（当前 ${entry.status}；Provider 上的 Agent 不受影响）`
+									? `${entry.display_name}：删除上架条目（标记删除，当前 ${entry.status}；Provider 上的 Agent 不受影响）`
 									: `${entry.display_name}：${entry.status} → ${body.status}`,
 							},
 						],
@@ -295,21 +296,23 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 			},
 			responses: {
 				200: {
-					description: "条目已删除（确认令牌已消费）",
+					description: "条目已标记删除（软删，确认令牌已消费）",
 					content: { "application/json": { schema: z.object({ data: z.object({ deleted: z.boolean() }) }) } },
 				},
 				...errors,
 			},
 		},
 		async (c) => {
-			const { catalog, gate, audit } = c.get("services");
+			const { catalog, templates, gate, audit } = c.get("services");
 			const { subject } = requireAdmin(c, c.get("services").config);
 			const slug = c.req.param("slug") ?? "";
 			const entry = catalog.getBySlug(slug);
-			if (!entry) throw new KitError("not_found", "agent 不存在");
+			if (!entry || entry.deleted) throw new KitError("not_found", "agent 不存在");
 			const body = c.req.valid("json");
 			await gate.consume({ planId: body.plan_id, action: DELETE_ACTION, subject, token: body.confirm_token });
-			const deleted = catalog.remove(entry.id);
+			const deleted = catalog.markDeleted(entry.id);
+			// 原硬删经外键级联解除模版关联；软删改为显式解除，模版回到未上架展示。
+			templates.detachListingByCatalog(entry.id);
 			audit.append({
 				subject,
 				action: "catalog.delete",
@@ -504,7 +507,7 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 		session_id: z.string().min(1).max(128).optional(),
 		agent_id: z.string().min(1).max(128).optional(),
 	};
-	/** 维度组装：session_id 优先（会话维度），其次 agent_id（agent 维度），否则 workspace 维度。 */
+	/** 维度组装：session_id 优先（会话维度），其次 agent_id（agent 维度）；两者都缺省时走模版口径扇出，不暴露 workspace。 */
 	function usageSummaryRequest(query: {
 		session_id?: string;
 		agent_id?: string;
@@ -512,10 +515,21 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 		end_time?: number;
 	}): UsageSummaryRequest {
 		if (query.session_id) return { dimension: "session", session_id: query.session_id };
-		const time_range = usageTimeRange(query);
-		return query.agent_id
-			? { dimension: "agent", agent_id: query.agent_id, time_range }
-			: { dimension: "workspace", time_range };
+		return { dimension: "agent", agent_id: query.agent_id, time_range: usageTimeRange(query) };
+	}
+
+	/** 「全部」模版口径：逐模版绑定智能体（含已删模版，去重）以 agent 维度查询后合并，非模版智能体不计入。 */
+	async function usageSummaryAcrossTemplates(
+		gateway: Pick<ProviderGateway, "getUsageSummary">,
+		templates: { boundAgentIds(): string[] },
+		time_range: UsageSummaryRequest["time_range"],
+	): Promise<UsageSummary> {
+		const agentIds = templates.boundAgentIds();
+		if (!agentIds.length) return emptyUsageSummary(time_range);
+		const results = await Promise.all(
+			agentIds.map((agent_id) => gateway.getUsageSummary({ dimension: "agent", agent_id, time_range })),
+		);
+		return mergeUsageSummaries(results.map((result) => result.data)) ?? emptyUsageSummary(time_range);
 	}
 
 	app.openapi(
@@ -529,31 +543,48 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 			responses: {
 				200: {
 					description:
-						"Provider 侧用量汇总（app-control usage.summary）：维度由参数决定（session_id → session，agent_id → agent，否则 workspace），一次返回 total 与模型/工具明细；时间按 UTC+8 RFC 3339 传入，默认最近 7 天；无分页，明细合计上限 10 万条",
+						"Provider 侧用量汇总（app-control usage.summary）：维度由参数决定——传 session_id 为 dimension:session（按会话自身窗口，不传 time_range/granularity），传 agent_id 为 dimension:agent，都不传为模版口径（服务端逐模版绑定智能体——含已删模版、去重——以 agent 维度查询并合并为各模版求和，非模版智能体不计入）；?start_time=&end_time=（毫秒，缺省最近 7 天）在服务端转成 UTC+8 偏移的 RFC 3339 字符串；返回 {data:{query_range,data_updated_at,usage:{total,models,tools}}}，指标统一为 {value,unit}（未知为 null、已知零值为 0，跨智能体合并时任一来源未知即未知，cache_hit_ratio 按合并后的 cache_read/input 重算）；模型/工具明细同一次响应返回，无分页、无服务端名称筛选，单次明细合计上限 10 万条；无模版绑定时返回零值汇总；管理员与 auditor 可读",
 					content: { "application/json": { schema: z.object({ data: UsageSummarySchema }) } },
 				},
 				...errors,
 			},
 		},
 		async (c) => {
-			const { gateway } = c.get("services");
+			const { gateway, templates } = c.get("services");
+			const query = c.req.valid("query");
+			if (!query.session_id && !query.agent_id) {
+				return c.json({ data: await usageSummaryAcrossTemplates(gateway, templates, usageTimeRange(query)) }, 200);
+			}
 			const result = await gateway.getUsageSummary(usageSummaryRequest(c.req.valid("query")));
 			return c.json({ data: result.data }, 200);
 		},
 	);
 
-	/** 趋势查询：上游仅支持 workspace/agent 维度，无 session 维度；粒度可传 hour/day/month，缺省按天（UTC+8 对齐）。 */
+	/** 趋势查询（单智能体）：上游仅支持 workspace/agent 维度、无 session 维度；粒度可传 hour/day/month，缺省按天（UTC+8 对齐）。 */
 	function usageTrendRequest(query: {
-		agent_id?: string;
+		agent_id: string;
 		start_time?: number;
 		end_time?: number;
 		granularity?: UsageGranularity;
 	}): UsageTrendRequest {
 		const time_range = usageTimeRange(query);
 		const granularity: UsageGranularity = query.granularity ?? "day";
-		return query.agent_id
-			? { dimension: "agent", agent_id: query.agent_id, time_range, granularity }
-			: { dimension: "workspace", time_range, granularity };
+		return { dimension: "agent", agent_id: query.agent_id, time_range, granularity };
+	}
+
+	/** 「全部」模版口径：逐模版绑定智能体（含已删模版，去重）以 agent 维度查询后按时间桶合并，非模版智能体不计入。 */
+	async function usageTrendAcrossTemplates(
+		gateway: Pick<ProviderGateway, "getUsageTrend">,
+		templates: { boundAgentIds(): string[] },
+		query: { start_time?: number; end_time?: number; granularity?: UsageGranularity },
+	): Promise<UsageTrend> {
+		const agentIds = templates.boundAgentIds();
+		const granularity: UsageGranularity = query.granularity ?? "day";
+		if (!agentIds.length) return emptyUsageTrend(usageTimeRange(query), granularity);
+		const trends = await Promise.all(
+			agentIds.map((agent_id) => usageTrendAggregated(gateway, usageTrendRequest({ ...query, agent_id }))),
+		);
+		return mergeTrends(trends) ?? emptyUsageTrend(usageTimeRange(query), granularity);
 	}
 
 	const USAGE_TREND_PAGE_SIZE = 100;
@@ -614,16 +645,20 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 			responses: {
 				200: {
 					description:
-						"用量分桶趋势：agent_id → agent 维度，否则 workspace（Provider 侧，UTC+8 对齐，无数据的时间桶省略）；粒度由 granularity 参数决定（hour/day/month，缺省 day）；服务端聚合全部分页返回，has_more 恒为 false",
+						"用量分桶趋势：传 agent_id 为 agent 维度；都不传为模版口径（服务端逐模版绑定智能体——含已删模版、去重——以 agent 维度查询并按时间桶合并为各模版求和，非模版智能体不计入，无模版绑定时返回空点）（Provider 侧，UTC+8 对齐，无数据的时间桶省略）；粒度由 granularity 参数决定（hour/day/month，缺省 day）；服务端聚合全部分页返回，has_more 恒为 false",
 					content: { "application/json": { schema: z.object({ data: UsageTrendSchema }) } },
 				},
 				...errors,
 			},
 		},
 		async (c) => {
-			const { gateway } = c.get("services");
+			const { gateway, templates } = c.get("services");
 			const query = c.req.valid("query");
-			return c.json({ data: await usageTrendAggregated(gateway, usageTrendRequest(query)) }, 200);
+			const { agent_id } = query;
+			if (agent_id) {
+				return c.json({ data: await usageTrendAggregated(gateway, usageTrendRequest({ ...query, agent_id })) }, 200);
+			}
+			return c.json({ data: await usageTrendAcrossTemplates(gateway, templates, query) }, 200);
 		},
 	);
 

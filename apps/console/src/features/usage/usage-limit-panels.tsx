@@ -1,5 +1,6 @@
+import { ReloadOutlined } from "@ant-design/icons";
 import type { UsageLimitDayState, UsageLimitMetricState } from "@openagentpack/kit-sdk/protocol";
-import { Button, Result } from "antd";
+import { Button, Popover, Progress, Result, Tag, Tooltip } from "antd";
 import { useMemo, useState } from "react";
 import { type AdminClient, createAdminClient } from "../../lib/admin/index.ts";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
@@ -217,7 +218,168 @@ function PeriodUsageStatus({
 	);
 }
 
-/** 月度/日度限额统计与累计 Session 快照分别展示，不受 Agent 明细筛选影响。 */
+/** 限额进度行：名称 + 进度条（未设置上限时留空）+ 已用/上限数字；90% 起警示、100% 标红。 */
+function LimitMetricRow({
+	label,
+	sub,
+	unit,
+	metric,
+	limitText,
+}: {
+	label: string;
+	sub: string;
+	unit: string;
+	metric: UsageLimitMetricState;
+	/** 日维度跟随月度时的覆盖文案；缺省按 metric 自身展示。 */
+	limitText?: string;
+}) {
+	const usedText = metric.used === null ? "待确认" : metric.used.toLocaleString("zh-CN");
+	const capText = limitText ?? (metric.limit === null ? "不限量" : metric.limit.toLocaleString("zh-CN"));
+	const ratio = metric.used !== null && metric.limit !== null && metric.limit > 0 ? metric.used / metric.limit : null;
+	const percent = ratio === null ? null : Math.min(100, Math.round(ratio * 1000) / 10);
+	const strokeColor =
+		ratio !== null && ratio >= 1
+			? "var(--ant-color-error)"
+			: ratio !== null && ratio >= 0.9
+				? "var(--ant-color-warning)"
+				: undefined;
+	return (
+		<div className={styles.limitRow}>
+			<div className={styles.limitName}>
+				{label}
+				<small className={styles.limitNameSub}>{sub}</small>
+			</div>
+			{percent !== null ? (
+				<Progress
+					className={styles.limitBar}
+					aria-label={`${label}用量进度`}
+					percent={percent}
+					showInfo={false}
+					size="small"
+					strokeColor={strokeColor}
+				/>
+			) : (
+				<span aria-hidden="true" />
+			)}
+			<div className={styles.limitFig}>
+				已用 <b>{usedText}</b>
+				{unit === "秒" ? " 秒" : ""} / {capText}
+			</div>
+		</div>
+	);
+}
+
+type MemberUsageLimitView = Awaited<ReturnType<AdminClient["members"]["usageLimit"]>>;
+
+/** 紧凑卡头部：标题 + 作用域 tag + 口径说明 + 周期切换/设置/刷新操作。 */
+function LimitCardHead({
+	current,
+	period,
+	onPeriodChange,
+	canWrite,
+	editing,
+	onEdit,
+	refreshDisabled,
+	refreshing,
+	onRefresh,
+}: {
+	current: MemberUsageLimitView | null;
+	period: LimitPeriod;
+	onPeriodChange: (period: LimitPeriod) => void;
+	canWrite: boolean;
+	editing: boolean;
+	onEdit: () => void;
+	refreshDisabled: boolean;
+	refreshing: boolean;
+	onRefresh: () => void;
+}) {
+	return (
+		<div className={styles.limitCardHead}>
+			<h3 className={styles.limitTitle}>限额设置</h3>
+			{current && <Tag>{current.override ? "个人限额" : "跟随默认限额"}</Tag>}
+			<span className={styles.metaText}>全部 Agent 合计，不随上方 Agent 筛选变化</span>
+			<div className={styles.limitCardActions}>
+				{current && <LimitPeriodTabs period={period} onChange={onPeriodChange} />}
+				{canWrite && current && !editing && (
+					<Button size="small" onClick={onEdit}>
+						设置限额
+					</Button>
+				)}
+				<Tooltip title="刷新限额状态">
+					<Button
+						size="small"
+						type="text"
+						aria-label="刷新限额状态"
+						icon={<ReloadOutlined />}
+						loading={refreshing}
+						disabled={refreshDisabled}
+						onClick={onRefresh}
+					/>
+				</Tooltip>
+			</div>
+		</div>
+	);
+}
+
+/** 当前周期的限额进度区：两行进度 + 元信息（周期/重置/计量/更新 + 规则说明弹层）+ 超限警示。 */
+function LimitOverview({ current, period }: { current: MemberUsageLimitView; period: LimitPeriod }) {
+	const active =
+		period === "month"
+			? { key: current.month, resetAt: current.reset_at, tokens: current.tokens, seconds: current.active_seconds }
+			: {
+					key: current.day_state.day,
+					resetAt: current.day_state.reset_at,
+					tokens: current.day_state.tokens,
+					seconds: current.day_state.active_seconds,
+				};
+	const fallbackFor = (dayLimit: number | null, monthLimit: number | null, unit: string) =>
+		period === "day" ? dayFallbackText(dayLimit, monthLimit, unit) : undefined;
+	return (
+		<>
+			<div className={styles.limitRows}>
+				<LimitMetricRow
+					label="Token"
+					sub="输入 + 输出"
+					unit="Token"
+					metric={active.tokens}
+					limitText={fallbackFor(current.day_state.tokens.limit, current.tokens.limit, "Token")}
+				/>
+				<LimitMetricRow
+					label="运行时长"
+					sub="只统计执行时间"
+					unit="秒"
+					metric={active.seconds}
+					limitText={fallbackFor(current.day_state.active_seconds.limit, current.active_seconds.limit, "秒")}
+				/>
+			</div>
+			<p className={styles.limitMeta}>
+				{active.key}（UTC {period === "month" ? "月" : "日"}） · 下次重置 {timeText(active.resetAt)} UTC · 计量启用{" "}
+				{timeText(current.accounting_started_at)} · 最近更新 {timeText(current.refreshed_at)} UTC
+				<Popover content={<span className={styles.preLine}>{usageLimitNotice}</span>} title="限额规则" trigger="click">
+					<button type="button" className={styles.popLink}>
+						规则说明
+					</button>
+				</Popover>
+			</p>
+			{(active.tokens.status !== "ok" || active.seconds.status !== "ok") && (
+				<div role="status" className={styles.limitStatuses}>
+					{active.tokens.status !== "ok" && (
+						<p className={`${styles.statusNote} ${statusClass[active.tokens.status]}`}>
+							Token {statusLabels[active.tokens.status]}
+						</p>
+					)}
+					{active.seconds.status !== "ok" && (
+						<p className={`${styles.statusNote} ${statusClass[active.seconds.status]}`}>
+							运行时长 {statusLabels[active.seconds.status]}
+						</p>
+					)}
+				</div>
+			)}
+		</>
+	);
+}
+
+/** 月度/日度限额紧凑卡：头部 + 进度条行 + 元信息，编辑器就地展开。 */
 export function MemberUsageLimits({
 	memberId,
 	initiallyEditing = false,
@@ -241,63 +403,42 @@ export function MemberUsageLimits({
 	});
 	const current = view.data;
 	return (
-		<section aria-label="成员限额设置" className={styles.limitPanel}>
-			<header className={styles.limitHeader}>
-				<h3 className={styles.limitTitle}>限额设置</h3>
-				<div className={styles.limitActions}>
-					<Button
-						size="small"
-						loading={view.loading && !current}
-						disabled={!canRead || editing}
-						onClick={() => void view.refresh()}
-					>
-						刷新限额状态
-					</Button>
-					{canWrite && current && !editing && (
-						<Button size="small" onClick={() => setEditing(true)}>
-							设置限额
-						</Button>
-					)}
-				</div>
-			</header>
-			<p className={styles.metaText}>{usageLimitNotice}</p>
+		<section aria-label="成员限额设置" className={styles.limitCard}>
+			<LimitCardHead
+				current={current ?? null}
+				period={period}
+				onPeriodChange={setPeriod}
+				canWrite={canWrite}
+				editing={editing}
+				onEdit={() => setEditing(true)}
+				refreshDisabled={!canRead || editing}
+				refreshing={view.loading && !current}
+				onRefresh={() => void view.refresh()}
+			/>
 			{(identity.loading || view.loading) && !current && <p role="status">正在加载限额…</p>}
 			{identity.error && <LoadError error={identity.error} onRetry={() => void identity.refresh()} />}
 			{view.error && <LoadError error={view.error} onRetry={() => void view.refresh()} />}
-			{current && (
+			{current && <LimitOverview current={current} period={period} />}
+			{editing && canWrite && current && (
 				<>
-					<PeriodUsageStatus
-						period={period}
-						onChange={setPeriod}
-						view={current}
-						scopeLabel={current.override ? "个人限额" : "跟随默认限额"}
-					/>
-					<p className={styles.metaText}>
-						计量启用（UTC）：{timeText(current.accounting_started_at)}；最近更新（UTC）：
-						{timeText(current.refreshed_at)}。 此处汇总该成员所有 Agent，不随下方 Agent 筛选变化。
-					</p>
-					{editing && canWrite && (
-						<>
-							{policy.error && (
-								<LoadError error={`默认限额读取失败：${policy.error}`} onRetry={() => void policy.refresh()} />
-							)}
-							<UsageLimitEditor
-								title="成员限额"
-								initial={current.limits}
-								defaults={policy.data?.limits}
-								canReset={current.override !== null}
-								onSave={async (limits) => {
-									await client.members.setUsageLimit(memberId, limits);
-									await view.refresh();
-								}}
-								onReset={async () => {
-									await client.members.resetUsageLimit(memberId);
-									await view.refresh();
-								}}
-								onClose={() => setEditing(false)}
-							/>
-						</>
+					{policy.error && (
+						<LoadError error={`默认限额读取失败：${policy.error}`} onRetry={() => void policy.refresh()} />
 					)}
+					<UsageLimitEditor
+						title="成员限额"
+						initial={current.limits}
+						defaults={policy.data?.limits}
+						canReset={current.override !== null}
+						onSave={async (limits) => {
+							await client.members.setUsageLimit(memberId, limits);
+							await view.refresh();
+						}}
+						onReset={async () => {
+							await client.members.resetUsageLimit(memberId);
+							await view.refresh();
+						}}
+						onClose={() => setEditing(false)}
+					/>
 				</>
 			)}
 			{identity.data?.role === "auditor" && <p className={styles.metaText}>当前身份只读。</p>}

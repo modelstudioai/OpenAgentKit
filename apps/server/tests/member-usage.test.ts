@@ -7,7 +7,11 @@ import type {
 	TemplateSessionUsage,
 	TemplateUsageRow,
 	TemplateUsageTrend,
+	UsageMetric,
+	UsageModelRow,
 	UsageSummary,
+	UsageToolRow,
+	UsageTotal,
 	UsageTrend,
 } from "@openagentpack/kit-sdk/protocol";
 import {
@@ -407,6 +411,13 @@ describe("成员累计会话用量", () => {
 			metrics: { input_tokens: { value: 0, covered_sessions: 0 } },
 		});
 
+		// 模版软删标记独立于已删会话计数（SQL 同名列曾互相覆盖）：软删模版带 deleted，
+		// 活模版即使有已删会话也不带标记。
+		db.prepare("UPDATE kit_templates SET deleted_at = ? WHERE name = ?").run(new Date().toISOString(), "空闲模版");
+		const after = services.memberUsage.summaryByTemplate();
+		expect(after[1]).toMatchObject({ name: "空闲模版", deleted: true, deleted_session_count: 0 });
+		expect(after[0]!.deleted).toBeUndefined();
+
 		// search 按模版名/智能体名（大小写不敏感）/模版 ID 过滤；LIKE 通配符按字面匹配。
 		expect(services.memberUsage.summaryByTemplate({ search: "客服" }).map((row) => row.name)).toEqual(["客服模版"]);
 		expect(services.memberUsage.summaryByTemplate({ search: "XKTEST" }).map((row) => row.name)).toEqual(["客服模版"]);
@@ -589,6 +600,29 @@ describe("成员累计会话用量", () => {
 		expect((await app.request("/api/admin/usage/templates/daily-trend")).status).toBe(401);
 	});
 
+	// 条目软删保留用量候选：解析展示名并携带 deleted；slug 复用后取活动行，不残留已删标记。
+	it("成员用量候选：条目软删后带 deleted 标记，slug 复用取活动行", async () => {
+		const { db, services, member, session } = setup();
+		member("member_a");
+		const now0 = new Date().toISOString();
+		db.prepare(
+			"INSERT INTO catalog_agents (id, slug, display_name, remote_agent_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+		).run("cat-del", "old-agent", "旧条目", "agent-a", now0, now0);
+		session("s-old", "member_a", "old-agent");
+		vi.spyOn(services.gateway, "getSession").mockImplementation(async (id) => detail(id));
+		await services.memberUsage.refresh("member_a", true);
+		expect(services.memberUsage.summary("member_a").agents).toEqual([{ slug: "old-agent", display_name: "旧条目" }]);
+		db.prepare("UPDATE catalog_agents SET deleted_at = ? WHERE id = ?").run(new Date().toISOString(), "cat-del");
+		expect(services.memberUsage.summary("member_a").agents).toEqual([
+			{ slug: "old-agent", display_name: "旧条目", deleted: true },
+		]);
+		const now1 = new Date().toISOString();
+		db.prepare(
+			"INSERT INTO catalog_agents (id, slug, display_name, remote_agent_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+		).run("cat-new", "old-agent", "新条目", "agent-a", now1, now1);
+		expect(services.memberUsage.summary("member_a").agents).toEqual([{ slug: "old-agent", display_name: "新条目" }]);
+	});
+
 	it("模型/工具用量汇总：auditor 可读、维度映射与时间格式校验", async () => {
 		const { db, services, app, member, session } = setup();
 		let captured: UsageSummaryRequest | undefined;
@@ -631,8 +665,9 @@ describe("成员累计会话用量", () => {
 		expect(summary.data.usage.models[0]?.usage.input_tokens.value).toBe(10);
 		expect(summary.data.usage.models[0]?.usage.call_count.value).toBe(1);
 		expect(summary.data.usage.total.model_call_count.value).toBe(1);
-		// 未传 agent_id/session_id：workspace 维度，时间统一成 UTC+8 RFC 3339 字符串。
-		expect(captured?.dimension).toBe("workspace");
+		// 未传 agent_id/session_id：模版口径扇出——逐模版绑定智能体以 agent 维度查询，时间统一成 UTC+8 RFC 3339 字符串。
+		expect(captured?.dimension).toBe("agent");
+		expect(captured?.agent_id).toBe("agent-a");
 		expect(captured?.time_range?.start_time).toMatch(/\+08:00$/);
 		expect(captured?.time_range?.end_time).toMatch(/\+08:00$/);
 		const range = captured?.time_range;
@@ -672,6 +707,11 @@ describe("成员累计会话用量", () => {
 			BAILIAN_API_KEY: "sk-telemetry",
 			BAILIAN_BASE_URL: "https://provider.example.test/api/v1/agentstudio",
 		});
+		sdkOnly.db
+			.prepare(
+				"INSERT INTO kit_templates (template_id, name, remote_agent_id, remote_agent_name, config_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+			)
+			.run("t-sdk", "sdk模版", "agent-a", "agent-a", "{}", new Date().toISOString());
 		const captured: UsageSummaryRequest[] = [];
 		// 这里只验证路由组装，响应体用最小占位对象（不关心具体指标）。
 		const stub = { request_id: "req_stub", data: {} } as unknown as UsageSummaryResponse;
@@ -681,7 +721,8 @@ describe("成员累计会话用量", () => {
 		});
 		const ok = await sdkOnly.app.request("/api/admin/usage/summary", { headers: auditor });
 		expect(ok.status).toBe(200);
-		expect(captured[0]?.dimension).toBe("workspace");
+		// 无 agent_id 时按模版口径扇出：该模版绑定 agent-a，以 agent 维度查询。
+		expect(captured[0]).toMatchObject({ dimension: "agent", agent_id: "agent-a" });
 		expect(captured[0]?.time_range?.start_time).toMatch(/\+08:00$/);
 
 		const agent = await sdkOnly.app.request("/api/admin/usage/summary?agent_id=agent-a", { headers: auditor });
@@ -690,7 +731,11 @@ describe("成员累计会话用量", () => {
 	});
 
 	it("用量趋势：auditor 可读、维度映射、分页聚合与过期令牌整轮重查", async () => {
-		const { services, app } = setup();
+		const { db, services, app } = setup();
+		// 全部口径按模版绑定智能体扇出：本测试用单模版固定扇出目标为 agent-a。
+		db.prepare(
+			"INSERT INTO kit_templates (template_id, name, remote_agent_id, remote_agent_name, config_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+		).run("t-trend", "趋势模版", "agent-a", "agent-a", "{}", new Date().toISOString());
 		/** 最小占位的 Provider trend 页（路由组装测试不关心具体指标）。 */
 		function trendPage(days: string[], overrides: Partial<UsageTrend> = {}): UsageTrendResponse {
 			return {
@@ -723,7 +768,7 @@ describe("成员累计会话用量", () => {
 
 		expect((await app.request("/api/admin/usage/trend")).status).toBe(401);
 
-		// 维度映射：缺省 workspace + 缺省 day 粒度 + page_size 100；agent_id → agent 维度；granularity 原样透传。
+		// 维度映射：缺省为模版口径扇出（此处单模版 → agent-a）+ 缺省 day 粒度 + page_size 100；agent_id → agent 维度；granularity 原样透传。
 		pages = [
 			trendPage(["2026-11-17T00:00:00+08:00"]),
 			trendPage(["2026-11-17T00:00:00+08:00"]),
@@ -736,14 +781,14 @@ describe("成员累计会话用量", () => {
 		expect(body.data.granularity).toBe("day");
 		expect(body.data.has_more).toBe(false);
 		expect(body.data.next_page_token).toBeNull();
-		expect(captured[0]).toMatchObject({ dimension: "workspace", granularity: "day", page_size: 100 });
+		expect(captured[0]).toMatchObject({ dimension: "agent", agent_id: "agent-a", granularity: "day", page_size: 100 });
 		expect(captured[0]?.time_range?.start_time).toMatch(/\+08:00$/);
 		const agent = await app.request("/api/admin/usage/trend?agent_id=agent-a", { headers: auditor });
 		expect(agent.status).toBe(200);
 		expect(captured[1]).toMatchObject({ dimension: "agent", agent_id: "agent-a", granularity: "day" });
 		const hourly = await app.request("/api/admin/usage/trend?granularity=hour", { headers: auditor });
 		expect(hourly.status).toBe(200);
-		expect(captured[2]).toMatchObject({ dimension: "workspace", granularity: "hour" });
+		expect(captured[2]).toMatchObject({ dimension: "agent", agent_id: "agent-a", granularity: "hour" });
 		expect((await app.request("/api/admin/usage/trend?granularity=week", { headers: auditor })).status).toBe(400);
 		const now = Date.now();
 		const reversed = await app.request(`/api/admin/usage/trend?start_time=${now}&end_time=${now - 3_600_000}`, {
@@ -787,5 +832,163 @@ describe("成员累计会话用量", () => {
 		const broken = await app.request("/api/admin/usage/trend", { headers: auditor });
 		expect(broken.status).toBe(502);
 		expect(((await broken.json()) as { error: { code: string } }).error.code).toBe("provider_error");
+	});
+
+	it("全部用量 = 各模版绑定智能体求和：扇出 agent 维度、非模版智能体不查询、时间桶与明细合并", async () => {
+		const { db, services, app } = setup();
+		function metricOf(value: number | null, unit = "count"): UsageMetric {
+			return { value, unit };
+		}
+		function stubTotal(input: number, cacheRead: number, calls: number): UsageTotal {
+			return {
+				input_tokens: metricOf(input, "tokens"),
+				output_tokens: metricOf(0, "tokens"),
+				total_tokens: metricOf(input, "tokens"),
+				cache_read_tokens: metricOf(cacheRead, "tokens"),
+				cache_creation_tokens: metricOf(0, "tokens"),
+				cache_hit_ratio: metricOf(0, "ratio"),
+				model_call_count: metricOf(calls),
+				tool_call_count: metricOf(calls),
+				builtin_tool_call_count: metricOf(calls),
+				mcp_tool_call_count: metricOf(0),
+				custom_tool_call_count: metricOf(0),
+				turns: metricOf(calls),
+				steps: metricOf(calls),
+				interrupt_error_count: metricOf(0),
+				model_failed_count: metricOf(0),
+				tool_failed_count: metricOf(0),
+				runtime_ms: metricOf(0, "ms"),
+			};
+		}
+		function stubModel(name: string, input: number, calls: number): UsageModelRow {
+			return {
+				model_name: name,
+				usage: {
+					input_tokens: metricOf(input, "tokens"),
+					output_tokens: metricOf(0, "tokens"),
+					total_tokens: metricOf(input, "tokens"),
+					cache_read_tokens: metricOf(0, "tokens"),
+					cache_creation_tokens: metricOf(0, "tokens"),
+					cache_hit_ratio: metricOf(0, "ratio"),
+					call_count: metricOf(calls),
+					failed_count: metricOf(0),
+				},
+			};
+		}
+		function stubTool(source: string, name: string, calls: number): UsageToolRow {
+			return { source, tool_name: name, usage: { call_count: metricOf(calls), failed_count: metricOf(0) } };
+		}
+		const summaryByAgent: Record<string, UsageSummary> = {
+			"agent-a": {
+				query_range: { start_time: "2026-11-11T00:00:00+08:00", end_time: "2026-11-18T00:00:00+08:00" },
+				data_updated_at: "2026-11-18T09:00:00+08:00",
+				usage: {
+					total: stubTotal(100, 40, 2),
+					models: [stubModel("qwen-max", 100, 2)],
+					tools: [stubTool("builtin", "web_search", 2)],
+				},
+			},
+			"agent-b": {
+				query_range: { start_time: "2026-11-11T00:00:00+08:00", end_time: "2026-11-18T00:00:00+08:00" },
+				data_updated_at: "2026-11-18T10:00:00+08:00",
+				usage: {
+					total: stubTotal(50, 10, 1),
+					models: [stubModel("qwen-max", 50, 1)],
+					tools: [stubTool("builtin", "web_search", 1), stubTool("mcp", "memory_search", 2)],
+				},
+			},
+		};
+		const summaryRequests: UsageSummaryRequest[] = [];
+		vi.spyOn(services.gateway, "getUsageSummary").mockImplementation(async (request) => {
+			summaryRequests.push(request);
+			if (request.dimension !== "agent" || !request.agent_id || !summaryByAgent[request.agent_id])
+				throw new Error("全部口径只能按模版绑定智能体以 agent 维度查询");
+			return { request_id: "req_stub", data: summaryByAgent[request.agent_id] } as UsageSummaryResponse;
+		});
+
+		// 无模版绑定时返回零值汇总，不发出任何请求。
+		const bare = await app.request("/api/admin/usage/summary", { headers: auditor });
+		expect(bare.status).toBe(200);
+		const bareBody = (await bare.json()) as { data: UsageSummary };
+		expect(bareBody.data.usage.models).toEqual([]);
+		expect(bareBody.data.usage.total.input_tokens).toEqual(metricOf(0, "tokens"));
+		expect(summaryRequests).toHaveLength(0);
+
+		// 两个模版分别绑定 agent-a/agent-b；未绑定模版的 agent-rogue 不应被查询。
+		const now = new Date().toISOString();
+		const insertTemplate = db.prepare(
+			"INSERT INTO kit_templates (template_id, name, remote_agent_id, remote_agent_name, config_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+		);
+		insertTemplate.run("t1", "模版一", "agent-a", "agent-a", "{}", now);
+		insertTemplate.run("t2", "模版二", "agent-b", "agent-b", "{}", now);
+
+		const all = await app.request("/api/admin/usage/summary", { headers: auditor });
+		expect(all.status).toBe(200);
+		const body = (await all.json()) as { data: UsageSummary };
+		expect(summaryRequests.map((request) => request.agent_id).sort()).toEqual(["agent-a", "agent-b"]);
+		expect(body.data.usage.total.input_tokens).toEqual(metricOf(150, "tokens"));
+		expect(body.data.usage.total.model_call_count).toEqual(metricOf(3));
+		expect(body.data.usage.models).toHaveLength(1);
+		expect(body.data.usage.models[0]?.model_name).toBe("qwen-max");
+		expect(body.data.usage.models[0]?.usage.input_tokens).toEqual(metricOf(150, "tokens"));
+		expect(body.data.usage.tools).toHaveLength(2);
+		expect(body.data.usage.tools.find((row) => row.tool_name === "web_search")?.usage.call_count).toEqual(metricOf(3));
+		expect(body.data.usage.tools.find((row) => row.tool_name === "memory_search")?.usage.call_count).toEqual(
+			metricOf(2),
+		);
+
+		// 趋势同口径：时间桶求和、缺口并集升序。
+		const trendByAgent: Record<string, UsageTrend> = {
+			"agent-a": {
+				query_range: { start_time: "2026-11-11T00:00:00+08:00", end_time: "2026-11-18T00:00:00+08:00" },
+				data_updated_at: null,
+				granularity: "day",
+				points: [
+					{
+						start_time: "2026-11-17T00:00:00+08:00",
+						end_time: "2026-11-18T00:00:00+08:00",
+						usage: { total: stubTotal(100, 0, 1), models: [], tools: [] },
+					},
+				],
+				has_more: false,
+				next_page_token: null,
+			},
+			"agent-b": {
+				query_range: { start_time: "2026-11-11T00:00:00+08:00", end_time: "2026-11-18T00:00:00+08:00" },
+				data_updated_at: null,
+				granularity: "day",
+				points: [
+					{
+						start_time: "2026-11-17T00:00:00+08:00",
+						end_time: "2026-11-18T00:00:00+08:00",
+						usage: { total: stubTotal(50, 0, 1), models: [], tools: [] },
+					},
+					{
+						start_time: "2026-11-18T00:00:00+08:00",
+						end_time: "2026-11-19T00:00:00+08:00",
+						usage: { total: stubTotal(20, 0, 1), models: [], tools: [] },
+					},
+				],
+				has_more: false,
+				next_page_token: null,
+			},
+		};
+		const trendRequests: UsageTrendRequest[] = [];
+		vi.spyOn(services.gateway, "getUsageTrend").mockImplementation(async (request) => {
+			trendRequests.push(request);
+			if (request.dimension !== "agent" || !request.agent_id || !trendByAgent[request.agent_id])
+				throw new Error("全部口径只能按模版绑定智能体以 agent 维度查询");
+			return { request_id: "req_stub", data: trendByAgent[request.agent_id] } as UsageTrendResponse;
+		});
+		const trend = await app.request("/api/admin/usage/trend", { headers: auditor });
+		expect(trend.status).toBe(200);
+		const trendBody = (await trend.json()) as { data: UsageTrend };
+		expect(trendRequests.map((request) => request.agent_id).sort()).toEqual(["agent-a", "agent-b"]);
+		expect(trendBody.data.points.map((entry) => entry.start_time)).toEqual([
+			"2026-11-17T00:00:00+08:00",
+			"2026-11-18T00:00:00+08:00",
+		]);
+		expect(trendBody.data.points[0]?.usage.total.input_tokens).toEqual(metricOf(150, "tokens"));
+		expect(trendBody.data.points[1]?.usage.total.input_tokens).toEqual(metricOf(20, "tokens"));
 	});
 });

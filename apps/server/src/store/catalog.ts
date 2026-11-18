@@ -23,6 +23,7 @@ export interface CatalogRow {
 	category: string;
 	featured: number;
 	status: string;
+	deleted_at: string | null;
 	created_at: string;
 	updated_at: string;
 }
@@ -89,6 +90,11 @@ function newEntry(input: CatalogEntryInput): CatalogAgentView {
 	};
 }
 
+/** 写入失败归因：slug 被活动行占用 vs 展示名冲突；已删行不占用 slug。 */
+function conflictReason(owner: CatalogAgentView | null): string {
+	return owner && !owner.deleted ? "ID 已存在，请使用其他 ID" : "展示名已存在，请使用其他展示名";
+}
+
 function toView(row: CatalogRow): CatalogAgentView {
 	return {
 		id: row.id,
@@ -111,6 +117,7 @@ function toView(row: CatalogRow): CatalogAgentView {
 		category: row.category as CatalogAgentView["category"],
 		featured: row.featured === 1,
 		status: row.status as CatalogAgentView["status"],
+		...(row.deleted_at ? { deleted: true as const } : {}),
 		created_at: row.created_at,
 		updated_at: row.updated_at,
 	};
@@ -120,13 +127,15 @@ export function createCatalogStore(db: DatabaseSync) {
 	return {
 		list(): CatalogAgentView[] {
 			const rows = db
-				.prepare("SELECT * FROM catalog_agents ORDER BY ordering ASC, created_at ASC")
+				.prepare("SELECT * FROM catalog_agents WHERE deleted_at IS NULL ORDER BY ordering ASC, created_at ASC")
 				.all() as unknown as CatalogRow[];
 			return rows.map(toView);
 		},
 		listed(): CatalogAgentView[] {
 			const rows = db
-				.prepare("SELECT * FROM catalog_agents WHERE status = 'listed' ORDER BY ordering ASC, created_at ASC")
+				.prepare(
+					"SELECT * FROM catalog_agents WHERE status = 'listed' AND deleted_at IS NULL ORDER BY ordering ASC, created_at ASC",
+				)
 				.all() as unknown as CatalogRow[];
 			return rows.map(toView);
 		},
@@ -135,9 +144,12 @@ export function createCatalogStore(db: DatabaseSync) {
 			return row ? toView(row) : null;
 		},
 		getBySlug(slug: string): CatalogAgentView | null {
-			const row = db.prepare("SELECT * FROM catalog_agents WHERE slug = ?").get(slug) as unknown as
-				| CatalogRow
-				| undefined;
+			// slug 可被已删行与活动行复用；优先返回活动行，保证编辑/删除/上架流程不会命中已删行。
+			const row = db
+				.prepare(
+					"SELECT * FROM catalog_agents WHERE slug = ? ORDER BY (deleted_at IS NOT NULL), updated_at DESC LIMIT 1",
+				)
+				.get(slug) as unknown as CatalogRow | undefined;
 			return row ? toView(row) : null;
 		},
 		insert(view: CatalogAgentView) {
@@ -147,8 +159,8 @@ export function createCatalogStore(db: DatabaseSync) {
 					`INSERT INTO catalog_agents (id, slug, display_name, description, icon, opening_remarks, suggested_prompts,
 				 capabilities, theme, remote_agent_id, remote_agent_version, agent_version, remote_environment_id, files_json, memory_stores_json, vault_ids_json, visibility, ordering, category, featured, status, created_at, updated_at, listed_at)
 					 SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CASE WHEN ?='listed' THEN ? ELSE NULL END
-					 WHERE NOT EXISTS (SELECT 1 FROM catalog_agents WHERE display_name = ?)
-					 ON CONFLICT(slug) DO NOTHING`,
+					 WHERE NOT EXISTS (SELECT 1 FROM catalog_agents WHERE display_name = ? AND deleted_at IS NULL)
+					 ON CONFLICT DO NOTHING`,
 				)
 				.run(
 					view.id,
@@ -178,12 +190,7 @@ export function createCatalogStore(db: DatabaseSync) {
 					new Date().toISOString(),
 					view.display_name,
 				);
-			if (!inserted.changes) {
-				throw new KitError(
-					"conflict",
-					this.getBySlug(view.slug) ? "ID 已存在，请使用其他 ID" : "展示名已存在，请使用其他展示名",
-				);
-			}
+			if (!inserted.changes) throw new KitError("conflict", conflictReason(this.getBySlug(view.slug)));
 		},
 		update(id: string, patch: Partial<CatalogAgentView>) {
 			const current = this.get(id);
@@ -198,7 +205,7 @@ export function createCatalogStore(db: DatabaseSync) {
 				 capabilities=?, theme=?, remote_agent_id=?, remote_agent_version=?, agent_version=?, remote_environment_id=?, files_json=?, memory_stores_json=?, vault_ids_json=?, visibility=?, ordering=?, category=?, featured=?, status=?, updated_at=?,
 				 listed_at=CASE WHEN status<>'listed' AND ?='listed' THEN ? ELSE listed_at END
 				 WHERE id=? AND (display_name=? OR NOT EXISTS (
-				   SELECT 1 FROM catalog_agents WHERE display_name=? AND id<>?
+				   SELECT 1 FROM catalog_agents WHERE display_name=? AND id<>? AND deleted_at IS NULL
 				 ))`,
 				)
 				.run(
@@ -250,7 +257,8 @@ export function createCatalogStore(db: DatabaseSync) {
 		upsert(input: CatalogEntryInput) {
 			const { slug, ...display } = input;
 			const existing = this.getBySlug(slug);
-			if (existing) return this.update(existing.id, definedOnly(display)) as CatalogAgentView;
+			// 已删行不参与 upsert：slug 已被部分唯一索引释放，按创建新条目处理，不会"复活"已删行。
+			if (existing && !existing.deleted) return this.update(existing.id, definedOnly(display)) as CatalogAgentView;
 			return this.create(input);
 		},
 		/** 按 slug 改展示信息（PUT /api/admin/agents/:slug）；不存在返回 null。 */
@@ -264,8 +272,12 @@ export function createCatalogStore(db: DatabaseSync) {
 			if (!existing) return null;
 			return this.update(existing.id, { status });
 		},
-		remove(id: string): boolean {
-			const result = db.prepare("DELETE FROM catalog_agents WHERE id = ?").run(id);
+		/** 软删：仅标记 deleted_at，不改上下架 status；历史会话与用量账本保留，员工端按此列过滤。 */
+		markDeleted(id: string): boolean {
+			const now = new Date().toISOString();
+			const result = db
+				.prepare("UPDATE catalog_agents SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL")
+				.run(now, now, id);
 			return result.changes > 0;
 		},
 	};

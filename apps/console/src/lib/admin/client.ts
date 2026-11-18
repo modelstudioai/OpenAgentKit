@@ -362,7 +362,7 @@ export function createAdminClient(options: AdminClientOptions) {
 					{ signal },
 				);
 			},
-			/** 用量分桶趋势：agentId 缺省为 workspace 维度；granularity 缺省 day；时间毫秒，服务端按该粒度（UTC+8）分桶并聚合全部分页。 */
+			/** 用量分桶趋势：agentId 缺省为全部模版口径（服务端逐模版绑定智能体求和）；granularity 缺省 day；时间毫秒，服务端按该粒度（UTC+8）分桶并聚合全部分页。 */
 			trend: (
 				query: {
 					agentId?: string;

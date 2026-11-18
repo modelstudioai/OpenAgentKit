@@ -1,6 +1,6 @@
 import type { MemberView, TemplateUsageRow } from "@openagentpack/kit-sdk/protocol";
 import type { TableColumnsType } from "antd";
-import { Button, Empty, Input, Result, Segmented, Spin, Table } from "antd";
+import { Button, Empty, Input, Result, Segmented, Spin, Table, Tag } from "antd";
 import { useMemo, useState } from "react";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
@@ -233,18 +233,24 @@ function TemplatePicker({
 }) {
 	const rows = templatesList.data ?? [];
 	return (
-		<div className={styles.pickerWrap}>
+		<div className={styles.pickerControl}>
 			<RemoteResourcePicker
 				value={value}
 				onChange={onChange}
 				label="选择模版"
+				hideLabel
 				resource="模版"
 				placeholder="全部"
 				defaultOption={{ id: "", name: "全部" }}
 				/* 候选与下方统计卡同源，展开重拉会连带整页刷新。 */
 				refreshOnOpen={false}
 				remote={{
-					data: rows.map((row) => ({ id: row.template_id, name: row.name, detail: row.remote_agent_name })),
+					data: rows.map((row) => ({
+						id: row.template_id,
+						name: row.name,
+						tag: row.deleted ? <Tag>已删除</Tag> : undefined,
+						detail: row.remote_agent_name,
+					})),
 					loading: templatesList.loading || (!templatesList.data && !templatesList.error),
 					error: templatesList.error,
 					refresh: templatesList.refresh,
@@ -284,9 +290,10 @@ function TemplateDetailView({
 	);
 }
 
-/** 控件行：按当前视角给成员搜索框或模版选择器，右侧统一刷新按钮。 */
+/** 控件行：视角切换 + 按视角的筛选（模版选择器或成员搜索），右侧统一刷新按钮。 */
 function UsageControls({
 	tab,
+	onTabChange,
 	members,
 	memberSearch,
 	onMemberSearch,
@@ -296,6 +303,7 @@ function UsageControls({
 	onTemplateSelect,
 }: {
 	tab: UsageTab;
+	onTabChange: (tab: UsageTab) => void;
 	members: ReturnType<typeof useMembers>;
 	memberSearch: string;
 	onMemberSearch: (value: string) => void;
@@ -306,12 +314,25 @@ function UsageControls({
 }) {
 	return (
 		<div className={styles.controlsRow}>
+			<Segmented
+				aria-label="用量视角"
+				value={tab}
+				onChange={(value) => onTabChange(value as UsageTab)}
+				options={[
+					{ label: "模版用量", value: "templates" },
+					{ label: "成员用量", value: "members" },
+				]}
+			/>
 			{tab === "members" ? (
 				<MembersSearchForm value={memberSearch} onChange={onMemberSearch} onSubmit={onMemberSearchSubmit} />
 			) : (
-				<TemplatePicker value={selectedTemplateId} onChange={onTemplateSelect} templatesList={templatesList} />
+				<div className={styles.pickerInline}>
+					<span className={styles.inlineLabel}>选择模版</span>
+					<TemplatePicker value={selectedTemplateId} onChange={onTemplateSelect} templatesList={templatesList} />
+				</div>
 			)}
 			<Button
+				className={styles.controlsRefresh}
 				loading={tab === "members" ? members.loading : templatesList.loading}
 				onClick={() => (tab === "members" ? members.reload() : void templatesList.refresh())}
 			>
@@ -390,18 +411,9 @@ export function SessionUsagePage() {
 				/>
 			)}
 			<UsageLimitsArea tab={tab} access={access} />
-			<Segmented
-				aria-label="用量视角"
-				className={styles.viewToggle}
-				value={tab}
-				onChange={(value) => setTab(value as UsageTab)}
-				options={[
-					{ label: "模版用量", value: "templates" },
-					{ label: "成员用量", value: "members" },
-				]}
-			/>
 			<UsageControls
 				tab={tab}
+				onTabChange={setTab}
 				members={members}
 				memberSearch={memberSearch}
 				onMemberSearch={setMemberSearch}

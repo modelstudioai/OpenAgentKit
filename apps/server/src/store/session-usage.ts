@@ -12,6 +12,10 @@ import {
 } from "@openagentpack/kit-sdk/protocol";
 
 type SnapshotValues = SessionUsage & SessionStats;
+
+/** slug 可被已删行与活动行复用：按 slug 连接条目时固定选活动行（无活动行取最近更新的已删行），保证一行匹配。 */
+const CATALOG_BY_SLUG_ACTIVE =
+	"c.id = (SELECT i.id FROM catalog_agents i WHERE i.slug = u.agent_slug ORDER BY (i.deleted_at IS NOT NULL), i.updated_at DESC LIMIT 1)";
 type Row = Omit<MemberSessionUsage, "usage" | "stats" | "title" | "status" | "captured_at" | "deleted_at"> & {
 	title: string | null;
 	status: string | null;
@@ -145,8 +149,9 @@ export function createSessionUsageStore(db: DatabaseSync) {
 				: "";
 			const rows = db
 				.prepare(`SELECT t.template_id, t.name, t.remote_agent_id, t.remote_agent_name,
+				(t.deleted_at IS NOT NULL) AS deleted,
 				CASE WHEN c.status = 'listed' THEN 'listed' ELSE 'unlisted' END AS listing_status,
-				COUNT(u.session_id) AS total, COUNT(u.deleted_at) AS deleted, MAX(u.captured_at) AS refreshed,
+				COUNT(u.session_id) AS total, COUNT(u.deleted_at) AS deleted_count, MAX(u.captured_at) AS refreshed,
 				${SESSION_USAGE_METRICS.map((key) => `SUM(u.${key}) AS ${key}, COUNT(u.${key}) AS ${key}_count`).join(",")}
 				FROM kit_templates t
 				LEFT JOIN kit_template_listings l ON l.template_id = t.template_id
@@ -161,7 +166,7 @@ export function createSessionUsageStore(db: DatabaseSync) {
 				remote_agent_name: string;
 				listing_status: "listed" | "unlisted";
 				total: number;
-				deleted: number;
+				deleted_count: number;
 				refreshed: string | null;
 			})[];
 			return rows.map((row) => ({
@@ -170,8 +175,9 @@ export function createSessionUsageStore(db: DatabaseSync) {
 				remote_agent_id: row.remote_agent_id,
 				remote_agent_name: row.remote_agent_name,
 				listing_status: row.listing_status,
+				...(row.deleted ? { deleted: true as const } : {}),
 				session_count: row.total,
-				deleted_session_count: row.deleted,
+				deleted_session_count: row.deleted_count,
 				...(row.refreshed ? { refreshed_at: row.refreshed } : {}),
 				metrics: metricSummary(row, row.total),
 			}));
@@ -185,7 +191,7 @@ export function createSessionUsageStore(db: DatabaseSync) {
 				COALESCE(SUM(u.cache_read_input_tokens), 0) AS cache_read_tokens,
 				COALESCE(SUM(u.cache_creation_input_tokens), 0) AS cache_creation_tokens
 				FROM kit_session_usage u
-				JOIN catalog_agents c ON c.slug = u.agent_slug
+				JOIN catalog_agents c ON ${CATALOG_BY_SLUG_ACTIVE}
 				JOIN kit_template_listings l ON l.catalog_id = c.id
 				JOIN kit_templates t ON t.template_id = l.template_id
 				GROUP BY t.remote_agent_id`)
@@ -226,7 +232,7 @@ export function createSessionUsageStore(db: DatabaseSync) {
 				COALESCE(SUM(u.cache_read_input_tokens), 0) AS cache_read_tokens,
 				COALESCE(SUM(u.cache_creation_input_tokens), 0) AS cache_creation_tokens
 				FROM kit_session_usage u
-				JOIN catalog_agents c ON c.slug = u.agent_slug
+				JOIN catalog_agents c ON ${CATALOG_BY_SLUG_ACTIVE}
 				JOIN kit_template_listings l ON l.catalog_id = c.id
 				JOIN kit_templates t ON t.template_id = l.template_id
 				GROUP BY t.remote_agent_id, hour`)
@@ -355,18 +361,22 @@ export function createSessionUsageStore(db: DatabaseSync) {
 				.get(...params) as Record<string, number | null>;
 			const metrics = metricSummary(totals, counts.total);
 			const agents = db
-				.prepare(`SELECT u.agent_slug AS slug, c.display_name AS display_name
+				.prepare(`SELECT u.agent_slug AS slug, c.display_name AS display_name, (c.deleted_at IS NOT NULL) AS deleted
 				FROM kit_session_usage u
-				LEFT JOIN catalog_agents c ON c.slug = u.agent_slug
+				LEFT JOIN catalog_agents c ON ${CATALOG_BY_SLUG_ACTIVE}
 				WHERE u.member_id = ?
 				GROUP BY u.agent_slug
 				ORDER BY u.agent_slug`)
-				.all(memberId) as { slug: string; display_name: string | null }[];
+				.all(memberId) as { slug: string; display_name: string | null; deleted: number }[];
 			return {
 				session_count: counts.total,
 				deleted_session_count: counts.deleted,
 				metrics,
-				agents,
+				agents: agents.map((agent) => ({
+					slug: agent.slug,
+					display_name: agent.display_name,
+					...(agent.deleted ? { deleted: true as const } : {}),
+				})),
 				...(counts.refreshed ? { refreshed_at: counts.refreshed } : {}),
 				completed_sessions: counts.completed ?? 0,
 				refresh_status: refreshStatus(counts, Boolean(refreshStartedAt)),
