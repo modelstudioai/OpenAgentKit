@@ -442,6 +442,22 @@ export function ContentExamples({ messages, tool, attachment, onDownload, onCopy
 }
 ```
 
+## custom-strings.tsx
+
+[源文件](../examples/custom-strings.tsx)
+
+```tsx
+import { resolveStrings, senderStrings, useKitLocale, useKitStrings } from "@openagentpack/kit-chat-ui";
+
+// 自定义文案：读取当前语言与词典，再叠加调用方的局部覆盖。
+export function SendLabel() {
+	const locale = useKitLocale();
+	const strings = useKitStrings(senderStrings);
+	const merged = resolveStrings(senderStrings, locale, { send: `${strings.send} →` });
+	return <span>{merged.send}</span>;
+}
+```
+
 ## discovery-usage.tsx
 
 [源文件](../examples/discovery-usage.tsx)
@@ -896,6 +912,23 @@ export function WorkspaceLayout(props: WorkspaceLayoutProps) {
 				{props.children}
 			</Layout>
 		</div>
+	);
+}
+```
+
+## locale-provider.tsx
+
+[源文件](../examples/locale-provider.tsx)
+
+```tsx
+import { KitLocaleProvider, Sender } from "@openagentpack/kit-chat-ui";
+
+// 宿主一处设定组件语言；strings 对单个组件覆盖具体措辞，与语言无关。
+export function Composer({ en }: { en: boolean }) {
+	return (
+		<KitLocaleProvider locale={en ? "en" : "zh-CN"}>
+			<Sender strings={en ? undefined : { placeholderPlain: "想聊点什么…" }} />
+		</KitLocaleProvider>
 	);
 }
 ```

@@ -154,6 +154,44 @@
 		]
 	},
 	{
+		"name": "KitLocaleProvider",
+		"export": "KitLocaleProvider",
+		"description": "为整棵 chat-ui 子树设定界面语言，未包裹时回落 zh-CN。",
+		"doc": "apps/storybook/content/docs/components/general/i18n.mdx",
+		"example": "examples/locale-provider.tsx",
+		"notes": [
+			"locale 仅支持内置词典的 zh-CN 与 en；第三种语言通过组件 strings 覆盖传入自研词典。",
+			"只影响组件内置文案，不翻译会话内容或调用方数据。"
+		]
+	},
+	{
+		"name": "useKitLocale",
+		"export": "useKitLocale",
+		"kind": "helper",
+		"description": "读取当前 chat-ui 子树的语言。",
+		"doc": "apps/storybook/content/docs/components/general/i18n.mdx",
+		"example": "examples/custom-strings.tsx",
+		"notes": ["返回最近 KitLocaleProvider 的值；缺省 zh-CN。"]
+	},
+	{
+		"name": "resolveStrings",
+		"export": "resolveStrings",
+		"kind": "helper",
+		"description": "纯合并：按 locale 取词典并叠加调用方 strings 覆盖。",
+		"doc": "apps/storybook/content/docs/components/general/i18n.mdx",
+		"example": "examples/custom-strings.tsx",
+		"notes": ["无 DOM 依赖，可直接单测；组件内部取词优先用 useKitStrings。"]
+	},
+	{
+		"name": "useKitStrings",
+		"export": "useKitStrings",
+		"kind": "helper",
+		"description": "组件内取当前语言的基础词典。",
+		"doc": "apps/storybook/content/docs/components/general/i18n.mdx",
+		"example": "examples/custom-strings.tsx",
+		"notes": ["词典须以 zh-CN 为唯一事实来源，en 键对齐由 pnpm check:i18n 守护。"]
+	},
+	{
 		"name": "ConfirmDialog",
 		"export": "ConfirmDialog",
 		"description": "展示显式确认和取消选项。",
@@ -383,7 +421,8 @@
 			"variant=workspace 把编辑区放在工具栏上方，前缀在左，发送或停止在右。默认 variant 使用行内布局。",
 			"onSubmit 后由调用方清理文本，submitDisabled 禁止提交但保留编辑。",
 			"skills 将已知 /name 标记显示为原子标签，斜杠选择器通过 Suggestion 组合。",
-			"文件上传和会话挂载由调用方负责。"
+			"文件上传和会话挂载由调用方负责。",
+			"strings 覆盖内置文案；界面语言由 KitLocaleProvider 提供，未提供时回落 zh-CN，词典键对齐由 check:i18n 守护。"
 		]
 	},
 	{

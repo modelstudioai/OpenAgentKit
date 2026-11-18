@@ -18,6 +18,10 @@
 - [Chat](#chat)
 - [AgentHeader](#agentheader)
 - [isIconImageSource](#isiconimagesource)
+- [KitLocaleProvider](#kitlocaleprovider)
+- [useKitLocale](#usekitlocale)
+- [resolveStrings](#resolvestrings)
+- [useKitStrings](#usekitstrings)
 - [ConfirmDialog](#confirmdialog)
 - [EmptyState](#emptystate)
 - [ErrorState](#errorstate)
@@ -414,6 +418,91 @@ export function isIconImageSource(icon: string | undefined): boolean;
 
 
 <!-- source-sha256: 0fb46ee3b81b9118dbcecdb60ad17b76a43507e2205f31e2fe49b6a90fbc6906; doc-sha256: a4a0f172c3b58e9eb0e3fb1254d40cdc8f25bf4b1f498d111cfb7e749905e660 -->
+
+## KitLocaleProvider
+
+为整棵 chat-ui 子树设定界面语言，未包裹时回落 zh-CN。
+
+从 `@openagentpack/kit-chat-ui` 导入 `KitLocaleProvider`。
+公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/kit-i18n/index.ts`。
+说明来自 `apps/storybook/content/docs/components/general/i18n.mdx`。
+[可编译示例](../examples/locale-provider.tsx)
+
+- locale 仅支持内置词典的 zh-CN 与 en；第三种语言通过组件 strings 覆盖传入自研词典。
+- 只影响组件内置文案，不翻译会话内容或调用方数据。
+
+```ts
+export function KitLocaleProvider({ locale, children }: { locale: KitLocale; children: ReactNode; }): FunctionComponentElement<ProviderProps<KitLocale>>;
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `locale` | 是 | `KitLocale` |
+| `children` | 是 | `ReactNode` |
+
+<!-- source-sha256: f4b1d77019f58355825fc610cd79910194f4a1090f32c76b477c93564cbb1449; doc-sha256: f3409e773facd745a5fab894c889e7a5a1be88c55163c0f63567811f39622b2f -->
+
+## useKitLocale
+
+读取当前 chat-ui 子树的语言。
+
+从 `@openagentpack/kit-chat-ui` 导入 `useKitLocale`。
+公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/kit-i18n/index.ts`。
+说明来自 `apps/storybook/content/docs/components/general/i18n.mdx`。
+[可编译示例](../examples/custom-strings.tsx)
+
+- 返回最近 KitLocaleProvider 的值；缺省 zh-CN。
+
+```ts
+export function useKitLocale(): KitLocale;
+```
+
+
+<!-- source-sha256: f4b1d77019f58355825fc610cd79910194f4a1090f32c76b477c93564cbb1449; doc-sha256: f3409e773facd745a5fab894c889e7a5a1be88c55163c0f63567811f39622b2f -->
+
+## resolveStrings
+
+纯合并：按 locale 取词典并叠加调用方 strings 覆盖。
+
+从 `@openagentpack/kit-chat-ui` 导入 `resolveStrings`。
+公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/kit-i18n/index.ts`。
+说明来自 `apps/storybook/content/docs/components/general/i18n.mdx`。
+[可编译示例](../examples/custom-strings.tsx)
+
+- 无 DOM 依赖，可直接单测；组件内部取词优先用 useKitStrings。
+
+```ts
+export function resolveStrings<T extends object>(table: KitStringTable<T>, locale: KitLocale, overrides?: Partial<T>): T;
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `zh-CN` | 是 | `T` |
+| `en` | 是 | `T` |
+
+<!-- source-sha256: f4b1d77019f58355825fc610cd79910194f4a1090f32c76b477c93564cbb1449; doc-sha256: f3409e773facd745a5fab894c889e7a5a1be88c55163c0f63567811f39622b2f -->
+
+## useKitStrings
+
+组件内取当前语言的基础词典。
+
+从 `@openagentpack/kit-chat-ui` 导入 `useKitStrings`。
+公开入口为 `packages/chat-ui/src/index.ts`，声明位于 `packages/chat-ui/src/components/kit-i18n/index.ts`。
+说明来自 `apps/storybook/content/docs/components/general/i18n.mdx`。
+[可编译示例](../examples/custom-strings.tsx)
+
+- 词典须以 zh-CN 为唯一事实来源，en 键对齐由 pnpm check:i18n 守护。
+
+```ts
+export function useKitStrings<T extends object>(table: KitStringTable<T>): T;
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `zh-CN` | 是 | `T` |
+| `en` | 是 | `T` |
+
+<!-- source-sha256: f4b1d77019f58355825fc610cd79910194f4a1090f32c76b477c93564cbb1449; doc-sha256: f3409e773facd745a5fab894c889e7a5a1be88c55163c0f63567811f39622b2f -->
 
 ## ConfirmDialog
 
@@ -958,6 +1047,7 @@ export function Prompts({ items, title, onItemClick, vertical, wrap, fadeIn, fad
 - onSubmit 后由调用方清理文本，submitDisabled 禁止提交但保留编辑。
 - skills 将已知 /name 标记显示为原子标签，斜杠选择器通过 Suggestion 组合。
 - 文件上传和会话挂载由调用方负责。
+- strings 覆盖内置文案；界面语言由 KitLocaleProvider 提供，未提供时回落 zh-CN，词典键对齐由 check:i18n 守护。
 
 ```ts
 export function Sender(props: SenderProps & RefAttributes<SenderRef>): ReactNode;
@@ -981,6 +1071,7 @@ export function Sender(props: SenderProps & RefAttributes<SenderRef>): ReactNode
 | `skills` | 否 | `SenderSkill[] \| undefined` |
 | `onSelectionChange` | 否 | `((selection: SenderSelection) => void) \| undefined` |
 | `submitType` | 否 | `SenderSubmitType \| undefined` |
+| `strings` | 否 | `Partial<SenderStrings> \| undefined` |
 | `autoSize` | 否 | `boolean \| { minRows?: number; maxRows?: number; } \| undefined` |
 | `inputProps` | 否 | `(AriaAttributes & { id?: string; role?: AriaRole; }) \| undefined` |
 | `prefix` | 否 | `ReactNode` |
@@ -990,7 +1081,7 @@ export function Sender(props: SenderProps & RefAttributes<SenderRef>): ReactNode
 | `className` | 否 | `string \| undefined` |
 | `classNames` | 否 | `Partial<Record<SenderSemantic, string>> \| undefined` |
 
-<!-- source-sha256: 59d2e7a426ce784b651daef89670e0f6d6591738ad3dd186d1b3f426e0d4f979; doc-sha256: 2895344f2a91513a43d04e0f1764061e5deefea3435f06df64562a8a8297f35f -->
+<!-- source-sha256: d9de85c8b0212497a70e076a9abef6541fab905600661840784cdf7b4b4ce7d3; doc-sha256: 2895344f2a91513a43d04e0f1764061e5deefea3435f06df64562a8a8297f35f -->
 
 ## SenderHeader
 
@@ -1016,7 +1107,7 @@ export function SenderHeader({ title, open, onOpenChange, closable, children, cl
 | `children` | 否 | `ReactNode` |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 59d2e7a426ce784b651daef89670e0f6d6591738ad3dd186d1b3f426e0d4f979; doc-sha256: 2895344f2a91513a43d04e0f1764061e5deefea3435f06df64562a8a8297f35f -->
+<!-- source-sha256: d9de85c8b0212497a70e076a9abef6541fab905600661840784cdf7b4b4ce7d3; doc-sha256: 2895344f2a91513a43d04e0f1764061e5deefea3435f06df64562a8a8297f35f -->
 
 ## Sender.Header
 
@@ -1044,7 +1135,7 @@ export function SenderHeader({ title, open, onOpenChange, closable, children, cl
 | `children` | 否 | `ReactNode` |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 59d2e7a426ce784b651daef89670e0f6d6591738ad3dd186d1b3f426e0d4f979; doc-sha256: 2895344f2a91513a43d04e0f1764061e5deefea3435f06df64562a8a8297f35f -->
+<!-- source-sha256: d9de85c8b0212497a70e076a9abef6541fab905600661840784cdf7b4b4ce7d3; doc-sha256: 2895344f2a91513a43d04e0f1764061e5deefea3435f06df64562a8a8297f35f -->
 
 ## SessionList
 
@@ -1380,7 +1471,7 @@ export function SkillGlyph({ className }: { className?: string; }): JSX.Element;
 | --- | --- | --- |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 59d2e7a426ce784b651daef89670e0f6d6591738ad3dd186d1b3f426e0d4f979; doc-sha256: f320870970c84a798596399d8c6fc4e526493f31c70f26c3b25195fbaa3d8201 -->
+<!-- source-sha256: d9de85c8b0212497a70e076a9abef6541fab905600661840784cdf7b4b4ce7d3; doc-sha256: f320870970c84a798596399d8c6fc4e526493f31c70f26c3b25195fbaa3d8201 -->
 
 ## 相关类型
 
@@ -1779,6 +1870,30 @@ import type { FileCardProps } from "@openagentpack/kit-chat-ui";
 | `className` | 否 | `string \| undefined` |
 
 
+### KitLocale
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+export type KitLocale = "zh-CN" | "en";
+```
+
+
+
+### KitStringTable
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { KitStringTable } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `zh-CN` | 是 | `T` |
+| `en` | 是 | `T` |
+
+
 ### LayoutAsideControls
 
 来自 `@openagentpack/kit-chat-ui`。
@@ -2053,6 +2168,7 @@ import type { SenderProps } from "@openagentpack/kit-chat-ui";
 | `skills` | 否 | `SenderSkill[] \| undefined` |
 | `onSelectionChange` | 否 | `((selection: SenderSelection) => void) \| undefined` |
 | `submitType` | 否 | `SenderSubmitType \| undefined` |
+| `strings` | 否 | `Partial<SenderStrings> \| undefined` |
 | `autoSize` | 否 | `boolean \| { minRows?: number; maxRows?: number; } \| undefined` |
 | `inputProps` | 否 | `(AriaAttributes & { id?: string; role?: AriaRole; }) \| undefined` |
 | `prefix` | 否 | `ReactNode` |
@@ -2118,6 +2234,26 @@ import type { SenderSkill } from "@openagentpack/kit-chat-ui";
 | --- | --- | --- |
 | `name` | 是 | `string` |
 | `description` | 否 | `string \| undefined` |
+
+
+### SenderStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { SenderStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `send` | 是 | `string` |
+| `stop` | 是 | `string` |
+| `clear` | 是 | `string` |
+| `inputLabel` | 是 | `string` |
+| `collapseLabel` | 是 | `string` |
+| `placeholderEnter` | 是 | `string` |
+| `placeholderShiftEnter` | 是 | `string` |
+| `placeholderPlain` | 是 | `string` |
 
 
 ### SenderSubmitType
