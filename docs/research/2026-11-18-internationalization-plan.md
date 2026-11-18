@@ -178,3 +178,13 @@ apps/<web|console>/src/i18n/
   quota-banner、year-heatmap 约 35 串）；`lib/kit.ts`、`lib/chat-backend.ts`、`member-session-storage.ts`
   的 KitError 文本按方案 §6 保留为开发向信息，UI 展示层后续按 code 映射。
 - web e2e `?lang=en` 冒烟在 usage 批次完成后补。
+
+#### 阶段 2 收尾（同日）
+
+- `features/usage/*`（usage-view、member-usage-limits、apply-credits-dialog、quota-banner、year-heatmap）
+  已全部迁入 `usage` 命名空间；web 业务可见中文清零（`lib/*` 的 KitError 开发向文本按 §6 保留）。
+- 结构处理：`activityRange(rows, t)` 纯函数注入 t；热力图月份轴用 `monthSuffix` 键（zh「月」/en 空）；
+  配额横幅因保留行内 `title` 徽标拆为 `exceededPrefix/exceededSuffix` 两个插值键。
+- 新增 `e2e/locale.experience.spec.ts`：`?lang=en` 直达断言 `<html lang>`、英文搜索框/导航与
+  chat-ui 输入框英文占位；第二条断言「用户显式选择优先于 URL」的持久化语义。
+  本机 8787 被开发中 server 占用，本轮未执行；端口空闲时 `pnpm e2e` 即可跑。
