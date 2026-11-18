@@ -154,3 +154,14 @@ apps/<web|console>/src/i18n/
   kit-components catalog 登记 4 个新公开导出（Skill 生成器要求 helper 在示例中有真实调用，补
   `examples/locale-provider.tsx` / `examples/custom-strings.tsx`）；`pnpm gen:skills` 已同步产物。
 - 其余组件（约 700 处）按同一形态批量迁移，属阶段 1 后续批次；message 时间戳拍板格式不变。
+
+#### 批次进度（2026-11-18）
+
+| 批次 | 组件 | 可见串数 |
+| --- | --- | --- |
+| 打样 | sender | 8 |
+| 批次 1 | actions、message、message-list、processing-indicator、status-indicator | 约 25 |
+| 待迁 | session-list、session-sidebar、file-card、plaza-card、tool-approval-*、sub-agent-*、process 细节、layout、mermaid 等 | 约 115 |
+
+待迁清单以 `rg --pcre2 '"[^"]*\p{Han}' packages/chat-ui/src/components -g '!*strings.ts' -g '!*.test.*'` 为准；
+每个组件按 sender 形态迁移后由 `check:i18n` 自动纳管，无需改脚本。
