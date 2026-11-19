@@ -210,7 +210,7 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
 | --- | --- | --- |
 | templates | 661 | 待迁（最大块，后续分批） |
 | usage | 138 | 待迁 |
-| members | 88 | 待迁 |
+| members | 88 | 🔶 列表页 + 用量采集状态 + 路由已迁（含共享指标词表入 common）；member-usage-page、create-member-page 待迁 |
 | preset-packs | 83 | 待迁 |
 | catalog / navigation / operations | 18 × 3 | navigation ✅（含 JSX 文本约 20）；其余待迁 |
 | branding | 15 | 待迁 |

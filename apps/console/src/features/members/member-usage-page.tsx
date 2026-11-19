@@ -8,6 +8,7 @@ import type {
 import type { TableColumnsType } from "antd";
 import { Button, Empty, Result, Select, Spin, Table } from "antd";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { createAdminClient } from "../../lib/admin/index.ts";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { useMemberUsage } from "../../lib/admin/use-member-usage.ts";
@@ -217,6 +218,7 @@ function SessionUsageTelemetry({ sessionId }: { sessionId: string }) {
 
 /** 选中会话的身份行 + 用量统计卡：与模版用量卡片同款式（蓝/灰交替浅色卡，缺失不按 0 计算）。 */
 function SessionOverviewCards({ session }: { session: MemberSessionUsage }) {
+	const { t } = useTranslation();
 	const metrics = { ...session.usage, ...session.stats };
 	/** 已采集但 Provider 未返回的指标用「未返回」，未采集的用「待获取」。 */
 	const missingText = session.captured_at ? "未返回" : "待获取";
@@ -227,7 +229,7 @@ function SessionOverviewCards({ session }: { session: MemberSessionUsage }) {
 				<p className={styles.sessionMeta}>
 					{session.session_id} · {session.agent_slug} ·{" "}
 					{session.deleted_at ? "已删除（用量保留）" : session.status || "—"} · 创建 {captureTime(session.created_at)} ·{" "}
-					{collectionLabels[session.collection_status]} · 采集时间 {captureTime(session.captured_at)}
+					{t(collectionLabels[session.collection_status])} · 采集时间 {captureTime(session.captured_at)}
 				</p>
 			</div>
 			<dl className={styles.cardGrid}>

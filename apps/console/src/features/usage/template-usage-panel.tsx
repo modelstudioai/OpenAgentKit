@@ -10,7 +10,9 @@ import type {
 import type { TableColumnsType } from "antd";
 import { Button, DatePicker, Empty, Result, Select, Table } from "antd";
 import dayjs from "dayjs";
+import type { TFunction } from "i18next";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { ToolUsageQuery } from "../../lib/admin/index.ts";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
@@ -122,56 +124,60 @@ function TemplateUsageCards({
 	);
 }
 
-function metricText(session: TemplateSessionUsage, key: (typeof usageMetrics)[number][0]) {
+function metricText(session: TemplateSessionUsage, key: (typeof usageMetrics)[number][0], t: TFunction<"common">) {
 	const metrics = { ...session.usage, ...session.stats };
 	return (
-		metrics[key]?.toLocaleString("zh-CN", { maximumFractionDigits: 2 }) ?? (session.captured_at ? "未返回" : "待获取")
+		metrics[key]?.toLocaleString("zh-CN", { maximumFractionDigits: 2 }) ??
+		(session.captured_at ? t("collection.notReturned") : t("collection.pending"))
 	);
 }
 
-const sessionDetailColumns: TableColumnsType<TemplateSessionUsage> = [
-	{
-		title: "会话",
-		dataIndex: "session_id",
-		render: (_, row) => (
-			<div>
-				<span className={styles.sessionTitle}>{row.title || row.session_id}</span>{" "}
-				<span className={styles.metaText}>{row.session_id}</span>
-			</div>
-		),
-	},
-	{
-		title: "成员",
-		render: (_, row) => (
-			<div>
-				<span>{row.member_display_name}</span> <span className={styles.metaText}>{row.member_username}</span>
-			</div>
-		),
-	},
-	{ title: "状态", render: (_, row) => (row.deleted_at ? "已删除（用量保留）" : row.status || "—") },
-	{ title: "创建时间", dataIndex: "created_at", render: (value: string | undefined) => captureTime(value) },
-	...usageMetrics.map(([key, label]) => ({
-		title: label,
-		align: "right" as const,
-		render: (_: unknown, row: TemplateSessionUsage) => (
-			<span className={styles.tabularNum}>{metricText(row, key)}</span>
-		),
-	})),
-	{
-		title: "采集状态",
-		dataIndex: "collection_status",
-		render: (status: TemplateSessionUsage["collection_status"]) => collectionLabels[status],
-	},
-	{ title: "采集时间", dataIndex: "captured_at", render: (value: string | undefined) => captureTime(value) },
-];
+function sessionDetailColumns(t: TFunction<"common">): TableColumnsType<TemplateSessionUsage> {
+	return [
+		{
+			title: "会话",
+			dataIndex: "session_id",
+			render: (_, row) => (
+				<div>
+					<span className={styles.sessionTitle}>{row.title || row.session_id}</span>{" "}
+					<span className={styles.metaText}>{row.session_id}</span>
+				</div>
+			),
+		},
+		{
+			title: "成员",
+			render: (_, row) => (
+				<div>
+					<span>{row.member_display_name}</span> <span className={styles.metaText}>{row.member_username}</span>
+				</div>
+			),
+		},
+		{ title: "状态", render: (_, row) => (row.deleted_at ? "已删除（用量保留）" : row.status || "—") },
+		{ title: "创建时间", dataIndex: "created_at", render: (value: string | undefined) => captureTime(value) },
+		...usageMetrics.map(([key, labelKey]) => ({
+			title: t(labelKey),
+			align: "right" as const,
+			render: (_: unknown, row: TemplateSessionUsage) => (
+				<span className={styles.tabularNum}>{metricText(row, key, t)}</span>
+			),
+		})),
+		{
+			title: "采集状态",
+			dataIndex: "collection_status",
+			render: (status: TemplateSessionUsage["collection_status"]) => t(collectionLabels[status]),
+		},
+		{ title: "采集时间", dataIndex: "captured_at", render: (value: string | undefined) => captureTime(value) },
+	];
+}
 
 function TemplateSessionsTable({ rows, loading }: { rows: TemplateSessionUsage[]; loading: boolean }) {
+	const { t } = useTranslation();
 	return (
 		<Table
 			rowKey="session_id"
 			size="middle"
 			loading={loading}
-			columns={sessionDetailColumns}
+			columns={sessionDetailColumns(t)}
 			dataSource={rows}
 			pagination={false}
 			scroll={{ x: "max-content" }}

@@ -1,29 +1,31 @@
 import type { MemberUsageSummary } from "@openagentpack/kit-sdk/protocol";
+import { useTranslation } from "react-i18next";
 
 import styles from "./members.module.less";
 
 export function UsageCollectionStatus({ summary }: { summary?: MemberUsageSummary }) {
+	const { t } = useTranslation(["members", "common"]);
 	const labels = {
-		idle: summary?.session_count ? "已采集" : "暂无会话",
-		refreshing: "采集中…",
-		partial: "部分统计，可能含旧数据",
-		failed: "采集失败",
+		idle: summary?.session_count ? t("status.idleWithSessions") : t("status.idleNoSessions"),
+		refreshing: t("status.refreshing"),
+		partial: t("status.partial"),
+		failed: t("status.failed"),
 	};
 	return (
 		<div className={styles.statusRoot}>
-			<span role="status" aria-label="用量采集状态">
-				{summary ? labels[summary.refresh_status] : "待获取"}
+			<span role="status" aria-label={t("status.aria")}>
+				{summary ? labels[summary.refresh_status] : t("common:collection.pending")}
 			</span>{" "}
 			<span className={styles.statusTime}>
 				{summary?.refreshed_at ? (
 					<>
-						最近成功采集：
+						{t("status.lastSuccess")}
 						<time dateTime={summary.refreshed_at}>
 							{new Date(summary.refreshed_at).toLocaleString("zh-CN", { hour12: false })}
 						</time>
 					</>
 				) : (
-					"尚未成功采集"
+					t("status.never")
 				)}
 			</span>
 		</div>

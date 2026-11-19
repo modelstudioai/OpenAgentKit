@@ -1,7 +1,9 @@
 import type { MemberView, TemplateUsageRow } from "@openagentpack/kit-sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Button, Empty, Input, Result, Segmented, Spin, Table } from "antd";
+import type { TFunction } from "i18next";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import { RemoteResourcePicker } from "../catalog/remote-resource-picker.tsx";
@@ -16,7 +18,11 @@ import { DefaultUsageLimits, useUsageLimitAccess } from "./usage-limit-panels.ts
 
 type UsageTab = "members" | "templates";
 
-function usageColumns(onSelect: (member: MemberView) => void, onLimits?: (member: MemberView) => void) {
+function usageColumns(
+	onSelect: (member: MemberView) => void,
+	onLimits: ((member: MemberView) => void) | undefined,
+	t: TFunction<"common">,
+) {
 	return [
 		{
 			title: "成员",
@@ -36,23 +42,26 @@ function usageColumns(onSelect: (member: MemberView) => void, onLimits?: (member
 				const summary = row.usage_summary;
 				return (
 					<div>
-						<span className={styles.tabularNum}>{summary?.session_count ?? "待获取"}</span>
+						<span className={styles.tabularNum}>{summary?.session_count ?? t("collection.pending")}</span>
 						{summary && <span className={styles.cellSub}>含已删除 {summary.deleted_session_count}</span>}
 					</div>
 				);
 			},
 		},
-		...usageMetrics.map(([key, label]) => ({
-			title: label,
+		...usageMetrics.map(([key, labelKey]) => ({
+			title: t(labelKey),
 			align: "right" as const,
 			render: (_: unknown, row: MemberView) => {
 				const summary = row.usage_summary;
 				return (
 					<div>
-						<span className={styles.tabularNum}>{usageValue(summary, key)}</span>
+						<span className={styles.tabularNum}>{usageValue(summary, key, t)}</span>
 						{summary && (
 							<span className={styles.cellSub}>
-								覆盖 {summary.metrics[key].covered_sessions} / {summary.session_count} 个会话
+								{t("collection.coverage", {
+									covered: summary.metrics[key].covered_sessions,
+									total: summary.session_count,
+								})}
 							</span>
 						)}
 					</div>
@@ -91,11 +100,12 @@ function SessionUsageTable({
 	onSelect: (member: MemberView) => void;
 	onLimits?: (member: MemberView) => void;
 }) {
+	const { t } = useTranslation();
 	return (
 		<Table
 			rowKey="member_id"
 			size="middle"
-			columns={usageColumns(onSelect, onLimits)}
+			columns={usageColumns(onSelect, onLimits, t)}
 			dataSource={rows}
 			pagination={false}
 			scroll={{ x: "max-content" }}

@@ -5,4 +5,22 @@ export default {
 		zh: "中文",
 		en: "English",
 	},
+	metrics: {
+		inputTokens: "Input tokens",
+		outputTokens: "Output tokens",
+		cacheRead: "Cache read tokens",
+		cacheWrite: "Cache write tokens",
+		activeSeconds: "Execution time (s)",
+		durationSeconds: "Session time (s)",
+	},
+	collection: {
+		pending: "Pending",
+		complete: "Collected",
+		partial: "Partially missing",
+		failed: "Collection failed",
+		notFound: "Remote session not found",
+		partialSuffix: " (partially missing)",
+		coverage: "Covers {{covered}} of {{total}} sessions",
+		notReturned: "Not returned",
+	},
 };
