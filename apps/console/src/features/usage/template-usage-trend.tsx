@@ -1,8 +1,4 @@
-import type {
-	UsageGranularity,
-	UsageTrend,
-	UsageTrendPoint,
-} from "@openagentkit/sdk/protocol";
+import type { UsageGranularity, UsageTrend, UsageTrendPoint } from "@openagentkit/sdk/protocol";
 import { ErrorState } from "@openagentpack/kit-chat-ui";
 import { Segmented, Tooltip } from "antd";
 import { type MouseEvent, useMemo, useRef, useState } from "react";
