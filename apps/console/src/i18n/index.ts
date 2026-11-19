@@ -1,3 +1,4 @@
+import { setKitErrorMessageResolver } from "@openagentpack/kit-sdk/state";
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import enAuth from "./locales/en/auth.ts";
@@ -22,6 +23,7 @@ import zhOperations from "./locales/zh-CN/operations.ts";
 import zhPresetPacks from "./locales/zh-CN/presetPacks.ts";
 import zhTemplates from "./locales/zh-CN/templates.ts";
 import zhUsage from "./locales/zh-CN/usage.ts";
+import { resolveServerErrorMessage } from "./server-error.ts";
 
 export const SUPPORTED_LOCALES = ["zh-CN", "en"] as const;
 export type KitLocale = (typeof SUPPORTED_LOCALES)[number];
@@ -138,6 +140,7 @@ export async function initI18n() {
 			},
 		},
 	});
+	setKitErrorMessageResolver(resolveServerErrorMessage);
 	document.documentElement.lang = i18n.resolvedLanguage ?? lng;
 	return i18n;
 }

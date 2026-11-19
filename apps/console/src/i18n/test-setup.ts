@@ -1,5 +1,6 @@
 import i18n from "i18next";
 
+import enCommon from "./locales/en/common.ts";
 import zhAuth from "./locales/zh-CN/auth.ts";
 import zhBranding from "./locales/zh-CN/branding.ts";
 import zhCatalog from "./locales/zh-CN/catalog.ts";
@@ -18,6 +19,7 @@ await i18n.init({
 	fallbackLng: "zh-CN",
 	defaultNS: "common",
 	resources: {
+		en: { common: enCommon },
 		"zh-CN": {
 			common: zhCommon,
 			auth: zhAuth,

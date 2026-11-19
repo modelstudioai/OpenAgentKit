@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { KitError } from "./protocol/index.ts";
-import { createMutation, createQuery } from "./state.ts";
+import { createMutation, createQuery, setKitErrorMessageResolver } from "./state.ts";
 
 function deferred<T>() {
 	let resolve!: (value: T) => void;
@@ -13,6 +13,21 @@ function deferred<T>() {
 }
 
 describe("通用调用状态", () => {
+	afterEach(() => setKitErrorMessageResolver(undefined));
+
+	it("宿主解析器可覆盖错误文案，返回 undefined 时保留原 message", async () => {
+		const query = createQuery<never>(() => Promise.reject(new KitError("conflict", "记录不存在")));
+		setKitErrorMessageResolver((error) =>
+			error instanceof KitError && error.code === "conflict" ? "Record not found" : undefined,
+		);
+		await query.refresh();
+		expect(query.getSnapshot().error).toBe("Record not found");
+		setKitErrorMessageResolver(() => undefined);
+		await query.refresh();
+		expect(query.getSnapshot().error).toBe("记录不存在");
+		query.dispose();
+	});
+
 	it("较早查询迟到不会覆盖刷新结果，后续失败保留最近成功快照", async () => {
 		const first = deferred<string>();
 		const load = vi

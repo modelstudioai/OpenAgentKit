@@ -1151,7 +1151,7 @@ export function createQuery<T>(load: (signal: AbortSignal) => Promise<T>): { get
 ```
 
 
-<!-- source-sha256: c445d8ea8478f1309244374e43573505a7c439a7cbd5d5788d92836a517824aa; doc-sha256: 846f7e01c289b77cd575be29a85a407b0ae71b6f35f4863135f08809b53887df -->
+<!-- source-sha256: 2b1b37d8d409b0dd748a8e63895fffeadbc85cb63b4e585ada2415be97e73820; doc-sha256: 846f7e01c289b77cd575be29a85a407b0ae71b6f35f4863135f08809b53887df -->
 
 ## createMutation
 
@@ -1170,7 +1170,7 @@ export function createMutation<Args extends unknown[], Result>(action: (...args:
 ```
 
 
-<!-- source-sha256: c445d8ea8478f1309244374e43573505a7c439a7cbd5d5788d92836a517824aa; doc-sha256: 846f7e01c289b77cd575be29a85a407b0ae71b6f35f4863135f08809b53887df -->
+<!-- source-sha256: 2b1b37d8d409b0dd748a8e63895fffeadbc85cb63b4e585ada2415be97e73820; doc-sha256: 846f7e01c289b77cd575be29a85a407b0ae71b6f35f4863135f08809b53887df -->
 
 ## createObservable
 
@@ -1188,7 +1188,7 @@ export function createObservable<T>(initial: T): { getSnapshot: () => T; subscri
 ```
 
 
-<!-- source-sha256: c445d8ea8478f1309244374e43573505a7c439a7cbd5d5788d92836a517824aa; doc-sha256: 846f7e01c289b77cd575be29a85a407b0ae71b6f35f4863135f08809b53887df -->
+<!-- source-sha256: 2b1b37d8d409b0dd748a8e63895fffeadbc85cb63b4e585ada2415be97e73820; doc-sha256: 846f7e01c289b77cd575be29a85a407b0ae71b6f35f4863135f08809b53887df -->
 
 ## QuerySnapshot
 
@@ -1210,7 +1210,7 @@ import type { QuerySnapshot } from "@openagentpack/kit-sdk/state";
 | `loading` | 是 | `boolean` |
 | `error` | 是 | `string \| null` |
 
-<!-- source-sha256: c445d8ea8478f1309244374e43573505a7c439a7cbd5d5788d92836a517824aa; doc-sha256: 846f7e01c289b77cd575be29a85a407b0ae71b6f35f4863135f08809b53887df -->
+<!-- source-sha256: 2b1b37d8d409b0dd748a8e63895fffeadbc85cb63b4e585ada2415be97e73820; doc-sha256: 846f7e01c289b77cd575be29a85a407b0ae71b6f35f4863135f08809b53887df -->
 
 ## 相关类型
 

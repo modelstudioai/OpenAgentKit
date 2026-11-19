@@ -322,3 +322,6 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
   资源类型、名称、动作与标识；上游 SDK 的自由文本 `summary` 不再作为英文界面的主文案。
 - 下一步：逐步为 server 用户可见错误补 `message_key`，并为本仓库自有的上下架/删除计划补
   `summary_key`；上游 `@openagentpack/sdk` 的 `reason` 保持自由文本，不做包内改造。
+- 运行时兜底：`@openagentpack/kit-sdk/state` 增加 `setKitErrorMessageResolver`；console/web
+  初始化 i18n 时注册解析器。中文保留 server 具体提示，其他语言优先 `message_key`，
+  缺键且原文含中文时按 `KitError.code` 映射到 `common.serverErrors.*`。

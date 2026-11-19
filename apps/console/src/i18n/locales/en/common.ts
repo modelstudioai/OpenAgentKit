@@ -45,4 +45,18 @@ export default {
 		unrecognizedKeys: "The value contains unsupported fields",
 		invalid: "The field format or reference is invalid",
 	},
+	serverErrors: {
+		invalid_request: "The request parameters are invalid",
+		unauthorized: "Your session has expired. Sign in again.",
+		forbidden: "This identity cannot perform this action",
+		not_found: "The requested resource does not exist",
+		conflict: "The state changed. Refresh and try again.",
+		confirmation_required: "Confirm the action again",
+		rate_limited: "Too many requests. Try again later.",
+		quota_exceeded: "Insufficient quota",
+		request_pending: "A request is already pending",
+		provider_error: "The upstream service is temporarily unavailable",
+		not_implemented: "This operation is not implemented yet",
+		internal: "Internal server error",
+	},
 };
