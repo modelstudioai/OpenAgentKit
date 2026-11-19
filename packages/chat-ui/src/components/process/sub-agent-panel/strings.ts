@@ -4,6 +4,7 @@ import type { KitStringTable } from "../../kit-i18n/index.ts";
 export interface SubAgentPanelStrings {
 	label: string;
 	dotCount: string;
+	timesCount: string;
 	statusRunning: string;
 	statusError: string;
 	failed: string;
@@ -20,6 +21,7 @@ const subAgentPanelStrings: KitStringTable<SubAgentPanelStrings> = {
 	"zh-CN": {
 		label: "子 Agent",
 		dotCount: "· {{count}}",
+		timesCount: "{{count}} 次",
 		statusRunning: "执行中",
 		statusError: "出错",
 		failed: "执行出错",
@@ -34,6 +36,7 @@ const subAgentPanelStrings: KitStringTable<SubAgentPanelStrings> = {
 	en: {
 		label: "Sub-agents",
 		dotCount: "· {{count}}",
+		timesCount: "{{count}} times",
 		statusRunning: "Running",
 		statusError: "Error",
 		failed: "Execution failed",

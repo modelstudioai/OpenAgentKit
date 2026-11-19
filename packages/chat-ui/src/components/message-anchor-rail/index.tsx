@@ -1,6 +1,8 @@
 import type { ChatMessage, MessagePart } from "@openagentpack/kit-sdk/messages";
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
+import { format, resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
 import { Tooltip } from "../tooltip/index.tsx";
+import messageAnchorRailStrings, { type MessageAnchorRailStrings } from "./strings.ts";
 
 export interface MessageAnchorItem {
 	/** 回合标题：用户消息首句（折叠空白、截断）；纯附件回合回退为「附件消息」。 */
@@ -33,7 +35,12 @@ function truncate(text: string, max: number): string {
 }
 
 /** 回合内摘要：助手回复的开头文本；没有正文时回退为工具执行次数，纯审批/等待回合无摘要。 */
-function turnSummary(messages: ChatMessage[], start: number, end: number): string | undefined {
+function turnSummary(
+	messages: ChatMessage[],
+	start: number,
+	end: number,
+	strings: MessageAnchorRailStrings,
+): string | undefined {
 	let text: string | undefined;
 	let tools = 0;
 	for (let index = start; index < end; index += 1) {
@@ -46,21 +53,24 @@ function turnSummary(messages: ChatMessage[], start: number, end: number): strin
 		tools += reply.parts.filter((part) => part.type === "tool").length;
 	}
 	if (text) return truncate(text, 80);
-	return tools > 0 ? `执行工具 ${tools} 次` : undefined;
+	return tools > 0 ? format(strings.toolsCount, { count: tools }) : undefined;
 }
 
 /** 回合推导：每条用户消息开启一个回合；标题取该消息文本首句，摘要取回合内助手回复。 */
-export function deriveAnchorTurns(messages: ChatMessage[]): MessageAnchorTurn[] {
+export function deriveAnchorTurns(
+	messages: ChatMessage[],
+	strings: MessageAnchorRailStrings = messageAnchorRailStrings["zh-CN"],
+): MessageAnchorTurn[] {
 	const turns: MessageAnchorTurn[] = [];
 	for (const [messageIndex, message] of messages.entries()) {
 		if (message.role !== "user") continue;
 		const text = collapseText(message.parts);
-		const label = text ? truncate(text, 60) : message.parts.length > 0 ? "附件消息" : "新回合";
+		const label = text ? truncate(text, 60) : message.parts.length > 0 ? strings.attachmentMessage : strings.newTurn;
 		turns.push({ messageIndex, label });
 	}
 	turns.forEach((turn, index) => {
 		const end = turns[index + 1]?.messageIndex ?? messages.length;
-		turn.summary = turnSummary(messages, turn.messageIndex + 1, end);
+		turn.summary = turnSummary(messages, turn.messageIndex + 1, end, strings);
 	});
 	return turns;
 }
@@ -76,16 +86,20 @@ export function MessageAnchorRail({
 	activeIndex,
 	onSelect,
 	className = "",
+	strings: stringsOverride,
 }: {
 	items: readonly MessageAnchorItem[];
 	activeIndex: number;
 	onSelect?: (index: number) => void;
 	className?: string;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<MessageAnchorRailStrings>;
 }) {
+	const strings = resolveStrings(messageAnchorRailStrings, useKitLocale(), stringsOverride);
 	if (items.length < 2) return null;
 	return (
 		<nav
-			aria-label="会话锚点"
+			aria-label={strings.railAria}
 			className={`pointer-events-none absolute inset-y-0 right-2 z-10 flex w-[26px] flex-col justify-center max-md:hidden ${className}`}
 		>
 			{items.map((item, index) => {
@@ -104,7 +118,7 @@ export function MessageAnchorRail({
 					>
 						<button
 							type="button"
-							aria-label={`第 ${index + 1} 回合：${item.label}`}
+							aria-label={format(strings.turnAria, { index: index + 1, label: item.label })}
 							aria-current={active || undefined}
 							className="relative block h-4 w-full cursor-pointer border-0 bg-transparent p-0"
 							onClick={() => onSelect?.(index)}

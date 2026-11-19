@@ -1,8 +1,10 @@
 import type { MessagePart } from "@openagentpack/kit-sdk/messages";
 import { useEffect, useState } from "react";
+import { format, resolveStrings, useKitLocale } from "../../kit-i18n/index.ts";
 import { ReasoningBlock } from "../reasoning-block/index.tsx";
 import { ProcessDots } from "../step/index.tsx";
 import { ToolCallCard } from "../tool-call-card/index.tsx";
+import executionGroupStrings, { type ExecutionGroupStrings } from "./strings.ts";
 
 type ProcessPart = Extract<MessagePart, { type: "reasoning" }> | Extract<MessagePart, { type: "tool" }>;
 
@@ -46,6 +48,7 @@ export function ExecutionGroup({
 	messageStreaming = false,
 	ended = false,
 	className = "",
+	strings: stringsOverride,
 }: {
 	parts: ProcessPart[];
 	createdAt?: string;
@@ -55,7 +58,10 @@ export function ExecutionGroup({
 	ended?: boolean;
 	/** 追加到容器根节点（details）的工具类。 */
 	className?: string;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<ExecutionGroupStrings>;
 }) {
+	const strings = resolveStrings(executionGroupStrings, useKitLocale(), stringsOverride);
 	const running = parts.some(
 		(part) =>
 			(part.type === "tool" && part.status === "running") || (part.type === "reasoning" && part.status === "streaming"),
@@ -71,14 +77,14 @@ export function ExecutionGroup({
 		return Number.isNaN(time) ? latest : Math.max(latest, time);
 	}, 0);
 	const elapsed = useElapsed(start, running, end > 0 ? new Date(end).toISOString() : undefined);
-	const label = running ? "正在执行" : failed ? "执行出错" : "已执行";
+	const label = running ? strings.running : failed ? strings.failed : strings.done;
 	// 运行中展开；消息流式期间仅最后一组保持展开（等待后续步骤，步骤间隙不抖动），
 	// 被正文终结的组与消息完成后的所有组收起。属性值不变时保留用户手动展开/收起。
 	const open = running || (messageStreaming && !ended);
 	return (
 		<details
 			open={open}
-			aria-label="执行过程"
+			aria-label={strings.aria}
 			className={`kit-collapse group/exec my-2 min-w-0 text-[length:var(--kit-text-label)] animate-[var(--kit-animate-in)] ${className}`}
 		>
 			<summary className="flex min-w-0 cursor-pointer list-none items-center gap-2.5 rounded-[var(--kit-radius-sm)] px-2 py-1.5 text-[var(--kit-fg-muted)] transition-colors select-none hover:bg-[var(--kit-bg-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] [&::-webkit-details-marker]:hidden">
@@ -109,7 +115,7 @@ export function ExecutionGroup({
 					</span>
 				) : null}
 				<span className="ml-auto shrink-0 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
-					{parts.length} 步
+					{format(strings.steps, { count: parts.length })}
 				</span>
 			</summary>
 			{/* 竖线对准头部折叠按钮的中心（px-2 + size-6 的一半 = 20px） */}

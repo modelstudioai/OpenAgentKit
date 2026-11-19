@@ -4,16 +4,33 @@
   "version": 1,
   "usage": "pnpm kit:add <component> 会把组件源码复制进你的项目（copy-in），可自由修改；升级时按 docs 的 diff 指引合并。",
   "components": {
-    "layout": { "file": "src/components/layout/index.tsx", "deps": [], "npmDependencies": ["@radix-ui/react-dialog", "@openagentpack/kit-sdk"] },
-    "chat": { "file": "src/components/chat/index.tsx", "deps": ["sender", "suggestion", "message", "process-step"] },
+    "layout": {
+      "file": "src/components/layout/index.tsx",
+      "deps": ["kit-i18n"],
+      "extraFiles": ["src/components/layout/strings.ts"],
+      "npmDependencies": ["@radix-ui/react-dialog", "@openagentpack/kit-sdk"]
+    },
+    "chat": {
+      "file": "src/components/chat/index.tsx",
+      "deps": ["kit-i18n", "sender", "suggestion", "message", "process-step"],
+      "extraFiles": ["src/components/chat/strings.ts"]
+    },
     "kit-i18n": { "file": "src/components/kit-i18n/index.ts", "deps": [] },
     "sender": {
       "file": "src/components/sender/index.tsx",
       "deps": ["kit-i18n"],
       "extraFiles": ["src/components/sender/strings.ts"]
     },
-    "attachments": { "file": "src/components/attachments/index.tsx", "deps": ["file-card"] },
-    "suggestion": { "file": "src/components/suggestion/index.tsx", "deps": [] },
+    "attachments": {
+      "file": "src/components/attachments/index.tsx",
+      "deps": ["kit-i18n", "file-card"],
+      "extraFiles": ["src/components/attachments/strings.ts"]
+    },
+    "suggestion": {
+      "file": "src/components/suggestion/index.tsx",
+      "deps": ["kit-i18n"],
+      "extraFiles": ["src/components/suggestion/strings.ts"]
+    },
     "tooltip": { "file": "src/components/tooltip/index.tsx", "deps": [] },
     "menu": { "file": "src/components/menu/index.tsx", "deps": [], "npmDependencies": ["@radix-ui/react-dropdown-menu"] },
     "message": {
@@ -21,13 +38,21 @@
       "deps": ["kit-i18n", "markdown", "actions", "file-card", "execution-group", "reasoning-block", "tool-call-card", "sub-agent-card", "sender", "artifact-card", "message-list", "processing-indicator"],
       "extraFiles": ["src/components/message/strings.ts"]
     },
-    "message-anchor-rail": { "file": "src/components/message-anchor-rail/index.tsx", "deps": ["tooltip"] },
+    "message-anchor-rail": {
+      "file": "src/components/message-anchor-rail/index.tsx",
+      "deps": ["kit-i18n", "tooltip"],
+      "extraFiles": ["src/components/message-anchor-rail/strings.ts"]
+    },
     "message-skeleton": {
       "file": "src/components/message-skeleton/index.tsx",
       "deps": ["kit-i18n"],
       "extraFiles": ["src/components/message-skeleton/strings.ts"]
     },
-    "execution-group": { "file": "src/components/process/execution-group/index.tsx", "deps": ["reasoning-block", "tool-call-card"] },
+    "execution-group": {
+      "file": "src/components/process/execution-group/index.tsx",
+      "deps": ["kit-i18n", "reasoning-block", "tool-call-card"],
+      "extraFiles": ["src/components/process/execution-group/strings.ts"]
+    },
     "sub-agent-card": {
       "file": "src/components/process/sub-agent-card/index.tsx",
       "deps": ["kit-i18n", "reasoning-block", "tool-call-card", "file-card"],
@@ -40,9 +65,21 @@
       "npmDependencies": ["@radix-ui/react-dialog"]
     },
     "process-step": { "file": "src/components/process/step/index.tsx", "deps": [] },
-    "tool-call-card": { "file": "src/components/process/tool-call-card/index.tsx", "deps": ["process-step", "tool-summary", "markdown", "code-highlighter"] },
-    "reasoning-block": { "file": "src/components/process/reasoning-block/index.tsx", "deps": ["process-step"] },
-    "tool-summary": { "file": "src/components/process/tool-summary/index.ts", "deps": [] },
+    "tool-call-card": {
+      "file": "src/components/process/tool-call-card/index.tsx",
+      "deps": ["kit-i18n", "process-step", "tool-summary", "markdown", "code-highlighter"],
+      "extraFiles": ["src/components/process/tool-call-card/strings.ts"]
+    },
+    "reasoning-block": {
+      "file": "src/components/process/reasoning-block/index.tsx",
+      "deps": ["kit-i18n", "process-step"],
+      "extraFiles": ["src/components/process/reasoning-block/strings.ts"]
+    },
+    "tool-summary": {
+      "file": "src/components/process/tool-summary/index.ts",
+      "deps": ["kit-i18n"],
+      "extraFiles": ["src/components/process/tool-summary/strings.ts"]
+    },
     "markdown": {
       "file": "src/components/markdown/index.tsx",
       "deps": ["kit-i18n", "code-highlighter", "mermaid"],
@@ -58,9 +95,21 @@
       "deps": ["kit-i18n"],
       "extraFiles": ["src/components/file-card/strings.ts"]
     },
-    "code-highlighter": { "file": "src/components/code-highlighter/index.tsx", "deps": ["actions"] },
-    "mermaid": { "file": "src/components/mermaid/index.tsx", "deps": ["actions", "code-highlighter"] },
-    "agent-header": { "file": "src/components/agent-header/index.tsx", "deps": [] },
+    "code-highlighter": {
+      "file": "src/components/code-highlighter/index.tsx",
+      "deps": ["kit-i18n", "actions"],
+      "extraFiles": ["src/components/code-highlighter/strings.ts"]
+    },
+    "mermaid": {
+      "file": "src/components/mermaid/index.tsx",
+      "deps": ["kit-i18n", "actions", "code-highlighter"],
+      "extraFiles": ["src/components/mermaid/strings.ts"]
+    },
+    "agent-header": {
+      "file": "src/components/agent-header/index.tsx",
+      "deps": ["kit-i18n"],
+      "extraFiles": ["src/components/agent-header/strings.ts"]
+    },
     "session-list": {
       "file": "src/components/session-list/index.tsx",
       "deps": ["kit-i18n", "tooltip", "process-step"],
@@ -98,7 +147,11 @@
       "extraFiles": ["src/components/confirm-dialog/strings.ts"],
       "npmDependencies": ["@radix-ui/react-alert-dialog"]
     },
-    "thread-panel": { "file": "src/components/thread-panel/index.tsx", "deps": ["message"] },
+    "thread-panel": {
+      "file": "src/components/thread-panel/index.tsx",
+      "deps": ["kit-i18n", "message"],
+      "extraFiles": ["src/components/thread-panel/strings.ts"]
+    },
     "empty-state": { "file": "src/components/empty-state/index.tsx", "deps": [] },
     "error-state": {
       "file": "src/components/error-state/index.tsx",

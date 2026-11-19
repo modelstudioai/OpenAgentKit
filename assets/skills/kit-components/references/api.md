@@ -218,7 +218,7 @@ export function ActionsFeedback({ value, onChange, disabled, variant, className,
 - 上传中或禁用时隐藏移除，缺少 percent 时显示不确定进度。
 
 ```ts
-export function AttachmentFileCard({ item, onRemove, disabled, className }: AttachmentFileCardProps): JSX.Element;
+export function AttachmentFileCard({ item, onRemove, disabled, className, strings: stringsOverride, }: AttachmentFileCardProps): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -227,8 +227,9 @@ export function AttachmentFileCard({ item, onRemove, disabled, className }: Atta
 | `onRemove` | 否 | `((item: AttachmentItem) => void) \| undefined` |
 | `disabled` | 否 | `boolean \| undefined` |
 | `className` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<AttachmentsStrings> \| undefined` |
 
-<!-- source-sha256: bc8be78d9c58600725cb4594c7dc525d20c295a31bf01dacdd2c9620c69d4d94; doc-sha256: 5f7604d96cf0c6ea3cb857d642731d8c694c961874dbbe2f80ca82feb15c1ded -->
+<!-- source-sha256: a486f07931fe095fb9d9b74c2cd797438852a82c8835c5f0e908505ba0fca5ec; doc-sha256: 5f7604d96cf0c6ea3cb857d642731d8c694c961874dbbe2f80ca82feb15c1ded -->
 
 ## Attachments
 
@@ -263,8 +264,9 @@ export function Attachments(props: AttachmentsProps & RefAttributes<AttachmentsR
 | `getDropContainer` | 否 | `(() => HTMLElement \| null \| undefined) \| undefined` |
 | `className` | 否 | `string \| undefined` |
 | `classNames` | 否 | `Partial<Record<AttachmentsSemantic, string>> \| undefined` |
+| `strings` | 否 | `Partial<AttachmentsStrings> \| undefined` |
 
-<!-- source-sha256: bc8be78d9c58600725cb4594c7dc525d20c295a31bf01dacdd2c9620c69d4d94; doc-sha256: 5f7604d96cf0c6ea3cb857d642731d8c694c961874dbbe2f80ca82feb15c1ded -->
+<!-- source-sha256: a486f07931fe095fb9d9b74c2cd797438852a82c8835c5f0e908505ba0fca5ec; doc-sha256: 5f7604d96cf0c6ea3cb857d642731d8c694c961874dbbe2f80ca82feb15c1ded -->
 
 ## Attachments.FileCard
 
@@ -280,7 +282,7 @@ export function Attachments(props: AttachmentsProps & RefAttributes<AttachmentsR
 
 ```ts
 // Attachments.FileCard 的类型
-({ item, onRemove, disabled, className }: AttachmentFileCardProps) => JSX.Element
+({ item, onRemove, disabled, className, strings: stringsOverride, }: AttachmentFileCardProps) => JSX.Element
 ```
 
 | 字段 | 必填 | 类型 |
@@ -289,8 +291,9 @@ export function Attachments(props: AttachmentsProps & RefAttributes<AttachmentsR
 | `onRemove` | 否 | `((item: AttachmentItem) => void) \| undefined` |
 | `disabled` | 否 | `boolean \| undefined` |
 | `className` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<AttachmentsStrings> \| undefined` |
 
-<!-- source-sha256: bc8be78d9c58600725cb4594c7dc525d20c295a31bf01dacdd2c9620c69d4d94; doc-sha256: 5f7604d96cf0c6ea3cb857d642731d8c694c961874dbbe2f80ca82feb15c1ded -->
+<!-- source-sha256: a486f07931fe095fb9d9b74c2cd797438852a82c8835c5f0e908505ba0fca5ec; doc-sha256: 5f7604d96cf0c6ea3cb857d642731d8c694c961874dbbe2f80ca82feb15c1ded -->
 
 ## Layout
 
@@ -309,7 +312,7 @@ export function Attachments(props: AttachmentsProps & RefAttributes<AttachmentsR
 - 显式启用 workspace 主题，并提供高度有界的父容器。
 
 ```ts
-export function Layout({ sidebar, header, mobileTitle, sidebarLabel, dialogs, aside, asideOpen, asideLabel, onAsideOpenChange, fitViewport, children, className, ...props }: LayoutProps): JSX.Element;
+export function Layout({ sidebar, header, mobileTitle, sidebarLabel, dialogs, aside, asideOpen, asideLabel, onAsideOpenChange, fitViewport, children, className, strings: stringsOverride, ...props }: LayoutProps): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -325,8 +328,9 @@ export function Layout({ sidebar, header, mobileTitle, sidebarLabel, dialogs, as
 | `onAsideOpenChange` | 否 | `((open: boolean) => void) \| undefined` |
 | `fitViewport` | 否 | `boolean \| undefined` |
 | `children` | 是 | `ReactNode` |
+| `strings` | 否 | `Partial<LayoutStrings> \| undefined` |
 
-<!-- source-sha256: 5e12192da77fe249e1370519f62a4033090e7884ebe02abc3a40ddd2870d2c96; doc-sha256: 290b1c5d205a626756eb0bbab3bc63e7bfe9399c5f6039d33061ad85a9b733c3 -->
+<!-- source-sha256: 7284dd0fa0fd6ca2f72ba77ec633cb94e89531ab8477df7813861bfb213c7bce; doc-sha256: 290b1c5d205a626756eb0bbab3bc63e7bfe9399c5f6039d33061ad85a9b733c3 -->
 
 ## Chat
 
@@ -348,7 +352,7 @@ export function Layout({ sidebar, header, mobileTitle, sidebarLabel, dialogs, as
 - composerDisabled 禁用默认输入框但仍允许停止，canSend 只限制提交。
 
 ```ts
-export function Chat({ messages, variant, turnRunning, sending, canSend, composerDisabled, approvals, onSend, onStop, onArtifactDownload, onArtifactOpen, onCopy, empty, scrollKey, sender, multiAgent, anchorRail, virtualize, skills, }: { messages: ChatMessage[]; variant?: "default" | "workspace"; turnRunning?: boolean; sending?: boolean; canSend?: boolean; composerDisabled?: boolean; approvals?: ReactNode; multiAgent?: ChatMultiAgent; onSend?: (text: string, skills?: string[]) => void | Promise<void>; onStop?: () => void | Promise<void>; onArtifactDownload?: (fileId: string) => void; onArtifactOpen?: (fileId: string, contentType?: string) => void; onCopy?: (text: string) => void | Promise<void>; empty?: ReactNode; scrollKey?: string | null; sender?: ReactNode; skills?: SenderSkill[]; anchorRail?: boolean; virtualize?: boolean; }): JSX.Element;
+export function Chat({ messages, variant, turnRunning, sending, canSend, composerDisabled, approvals, onSend, onStop, onArtifactDownload, onArtifactOpen, onCopy, empty, scrollKey, sender, multiAgent, anchorRail, virtualize, skills, strings: stringsOverride, }: { messages: ChatMessage[]; variant?: "default" | "workspace"; turnRunning?: boolean; sending?: boolean; canSend?: boolean; composerDisabled?: boolean; approvals?: ReactNode; multiAgent?: ChatMultiAgent; onSend?: (text: string, skills?: string[]) => void | Promise<void>; onStop?: () => void | Promise<void>; onArtifactDownload?: (fileId: string) => void; onArtifactOpen?: (fileId: string, contentType?: string) => void; onCopy?: (text: string) => void | Promise<void>; empty?: ReactNode; scrollKey?: string | null; sender?: ReactNode; skills?: SenderSkill[]; strings?: Partial<ChatStrings>; anchorRail?: boolean; virtualize?: boolean; }): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -370,10 +374,11 @@ export function Chat({ messages, variant, turnRunning, sending, canSend, compose
 | `scrollKey` | 否 | `string \| null \| undefined` |
 | `sender` | 否 | `ReactNode` |
 | `skills` | 否 | `SenderSkill[] \| undefined` |
+| `strings` | 否 | `Partial<ChatStrings> \| undefined` |
 | `anchorRail` | 否 | `boolean \| undefined` |
 | `virtualize` | 否 | `boolean \| undefined` |
 
-<!-- source-sha256: 7b708c0d6a00e90d4662246e32389fb5fdc4df4ae6ce77d1ff89394ffe14cdda; doc-sha256: 50cab69e97848f95a6d8eb01f3a21719e94659831eb149a7ecc4edee32b88a6a -->
+<!-- source-sha256: cd6947361bac5f96e5ae6c81c480fa20b8f5c0ed02f5a28f5ced2921de49d281; doc-sha256: 50cab69e97848f95a6d8eb01f3a21719e94659831eb149a7ecc4edee32b88a6a -->
 
 ## AgentHeader
 
@@ -390,7 +395,7 @@ export function Chat({ messages, variant, turnRunning, sending, canSend, compose
 - 图标支持图片 URL、相对路径和 Emoji 等文本。
 
 ```ts
-export function AgentHeader({ agent, agents, onPickAgent, leading, compact, actions, onNewSession, }: AgentHeaderProps): JSX.Element;
+export function AgentHeader({ agent, agents, onPickAgent, leading, compact, actions, onNewSession, strings: stringsOverride, }: AgentHeaderProps): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -402,8 +407,9 @@ export function AgentHeader({ agent, agents, onPickAgent, leading, compact, acti
 | `compact` | 否 | `boolean \| undefined` |
 | `actions` | 否 | `ReactNode` |
 | `onNewSession` | 否 | `(() => void) \| undefined` |
+| `strings` | 否 | `Partial<AgentHeaderStrings> \| undefined` |
 
-<!-- source-sha256: 0fb46ee3b81b9118dbcecdb60ad17b76a43507e2205f31e2fe49b6a90fbc6906; doc-sha256: a4a0f172c3b58e9eb0e3fb1254d40cdc8f25bf4b1f498d111cfb7e749905e660 -->
+<!-- source-sha256: 38de96cd9b64fed6f4d02c3d18834dc73c0d7259022e73802096d65060342fc6; doc-sha256: a4a0f172c3b58e9eb0e3fb1254d40cdc8f25bf4b1f498d111cfb7e749905e660 -->
 
 ## isIconImageSource
 
@@ -423,7 +429,7 @@ export function isIconImageSource(icon: string | undefined): boolean;
 ```
 
 
-<!-- source-sha256: 0fb46ee3b81b9118dbcecdb60ad17b76a43507e2205f31e2fe49b6a90fbc6906; doc-sha256: a4a0f172c3b58e9eb0e3fb1254d40cdc8f25bf4b1f498d111cfb7e749905e660 -->
+<!-- source-sha256: 38de96cd9b64fed6f4d02c3d18834dc73c0d7259022e73802096d65060342fc6; doc-sha256: a4a0f172c3b58e9eb0e3fb1254d40cdc8f25bf4b1f498d111cfb7e749905e660 -->
 
 ## KitLocaleProvider
 
@@ -702,7 +708,7 @@ export function SubAgentPanel({ multiAgent, className, strings: stringsOverride,
 | `className` | 否 | `string \| undefined` |
 | `strings` | 否 | `Partial<SubAgentPanelStrings> \| undefined` |
 
-<!-- source-sha256: a69dfbd7f3f8d57d1d43f28369f3d7c77ea574babdf5a871ea06550ccce49d48; doc-sha256: 5b2ac21e1241dee856fcaef406c0c5904e3fde3e694fd6b0bba3815d24ac00e1 -->
+<!-- source-sha256: 0055b028912e65756da979ff6d1e4c6f2e895637575d6e48eec5ac110af3bcd4; doc-sha256: 5b2ac21e1241dee856fcaef406c0c5904e3fde3e694fd6b0bba3815d24ac00e1 -->
 
 ## ThreadPanel
 
@@ -718,7 +724,7 @@ export function SubAgentPanel({ multiAgent, className, strings: stringsOverride,
 - 线程发现、历史加载和分页由调用方承担。主回合是否结束以主会话为准。
 
 ```ts
-export function ThreadPanel({ threads, onArtifactDownload, onCopy, }: { threads: Record<string, ChatMessage[]>; onArtifactDownload?: (fileId: string) => void; onCopy?: (text: string) => void | Promise<void>; }): JSX.Element | null;
+export function ThreadPanel({ threads, onArtifactDownload, onCopy, strings: stringsOverride, }: { threads: Record<string, ChatMessage[]>; onArtifactDownload?: (fileId: string) => void; onCopy?: (text: string) => void | Promise<void>; strings?: Partial<ThreadPanelStrings>; }): JSX.Element | null;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -726,8 +732,9 @@ export function ThreadPanel({ threads, onArtifactDownload, onCopy, }: { threads:
 | `threads` | 是 | `Record<string, ChatMessage[]>` |
 | `onArtifactDownload` | 否 | `((fileId: string) => void) \| undefined` |
 | `onCopy` | 否 | `((text: string) => void \| Promise<void>) \| undefined` |
+| `strings` | 否 | `Partial<ThreadPanelStrings> \| undefined` |
 
-<!-- source-sha256: 3e866916166834bd399dfeda9153b3c1c03d1c8c8abcd30f5c882592b7d48674; doc-sha256: 12ca4909d0e7c74f174e45e582ce408541fd45c81294b645364216ca42c3b8cc -->
+<!-- source-sha256: d5267bdfbf2d31cd2489fc9d2074bb83d93b0dd062f9dc893ddd4c6ec9c906af; doc-sha256: 12ca4909d0e7c74f174e45e582ce408541fd45c81294b645364216ca42c3b8cc -->
 
 ## CodeHighlighter
 
@@ -743,7 +750,7 @@ export function ThreadPanel({ threads, onArtifactDownload, onCopy, }: { threads:
 - header=false 隐藏头部和其中的复制操作。
 
 ```ts
-export function CodeHighlighter({ children, lang, header, copyable, showLineNumbers, className, }: CodeHighlighterProps): JSX.Element;
+export function CodeHighlighter({ children, lang, header, copyable, showLineNumbers, className, strings: stringsOverride, }: CodeHighlighterProps): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -754,8 +761,9 @@ export function CodeHighlighter({ children, lang, header, copyable, showLineNumb
 | `copyable` | 否 | `boolean \| undefined` |
 | `showLineNumbers` | 否 | `boolean \| undefined` |
 | `className` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<CodeHighlighterStrings> \| undefined` |
 
-<!-- source-sha256: 85cef0f0d23fda3ceeb0b0a9f355247669948d9c1591089ec5e0220a5114bee5; doc-sha256: d4ee9c4c04d6436109d28eae75e0500336e2da8c1a776a73a28d5bbbf4f9199f -->
+<!-- source-sha256: dca1a688ae18f78a5be1f416f7e54599996e2a3398c0aa26ed17a3bc9b565bf9; doc-sha256: d4ee9c4c04d6436109d28eae75e0500336e2da8c1a776a73a28d5bbbf4f9199f -->
 
 ## FileCard
 
@@ -826,7 +834,7 @@ export function Markdown({ children }: { children: string; }): JSX.Element;
 - 在 Mermaid 严格安全模式下将 SVG 作为图片渲染。
 
 ```ts
-export function Mermaid({ children, header, className, defaultRenderType, copyable, streaming, onRenderTypeChange, }: MermaidProps): JSX.Element;
+export function Mermaid({ children, header, className, defaultRenderType, copyable, streaming, onRenderTypeChange, strings: stringsOverride, }: MermaidProps): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -838,8 +846,9 @@ export function Mermaid({ children, header, className, defaultRenderType, copyab
 | `copyable` | 否 | `boolean \| undefined` |
 | `streaming` | 否 | `boolean \| undefined` |
 | `onRenderTypeChange` | 否 | `((value: "image" \| "code") => void) \| undefined` |
+| `strings` | 否 | `Partial<MermaidStrings> \| undefined` |
 
-<!-- source-sha256: 16a6682c5d9b61a0317ca2a870aa7449ebde5d62def45f4aefb97a7e8b336d13; doc-sha256: 14289bef79b85671c3eaf2127d50496ccb2d3e6ab2b22fb12b5e5f778d681a72 -->
+<!-- source-sha256: 59b154ef6f0910a312bf0fbda14309996079abd1f82e9f2b5a15f74c028e19aa; doc-sha256: 14289bef79b85671c3eaf2127d50496ccb2d3e6ab2b22fb12b5e5f778d681a72 -->
 
 ## ArtifactCard
 
@@ -950,7 +959,7 @@ export function MessageList({ messages, variant, onArtifactDownload, onArtifactO
 - MessageList.anchorRail 派生回合，随滚动更新当前锚点。跳转只滚动自身容器。
 
 ```ts
-export function MessageAnchorRail({ items, activeIndex, onSelect, className, }: { items: readonly MessageAnchorItem[]; activeIndex: number; onSelect?: (index: number) => void; className?: string; }): JSX.Element | null;
+export function MessageAnchorRail({ items, activeIndex, onSelect, className, strings: stringsOverride, }: { items: readonly MessageAnchorItem[]; activeIndex: number; onSelect?: (index: number) => void; className?: string; strings?: Partial<MessageAnchorRailStrings>; }): JSX.Element | null;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -959,8 +968,9 @@ export function MessageAnchorRail({ items, activeIndex, onSelect, className, }: 
 | `activeIndex` | 是 | `number` |
 | `onSelect` | 否 | `((index: number) => void) \| undefined` |
 | `className` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<MessageAnchorRailStrings> \| undefined` |
 
-<!-- source-sha256: 549cd6dffe13cd8b20c8ceaf21b4800c7e9bf462fd011cbeb1b9f41afd3959ca; doc-sha256: 8f73e7706168cde077440c1a133f7bae090ce7aef01a00c5d790c3e433a383ff -->
+<!-- source-sha256: e16a270981848d2037e14c867db35c2ebde45eb60f36a79d138fd7876b01b903; doc-sha256: 8f73e7706168cde077440c1a133f7bae090ce7aef01a00c5d790c3e433a383ff -->
 
 ## MessageListSkeleton
 
@@ -999,7 +1009,7 @@ export function MessageListSkeleton({ className, strings: stringsOverride, }: { 
 - contentMaxHeight 可覆盖展开内容区默认的 max-h-80。
 
 ```ts
-export function ReasoningBlock({ text, status, className, contentMaxHeight, }: { text: string; status?: "streaming" | "done" | "failed" | "interrupted"; className?: string; contentMaxHeight?: string; }): JSX.Element;
+export function ReasoningBlock({ text, status, className, contentMaxHeight, strings: stringsOverride, }: { text: string; status?: "streaming" | "done" | "failed" | "interrupted"; className?: string; contentMaxHeight?: string; strings?: Partial<ReasoningBlockStrings>; }): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1008,8 +1018,9 @@ export function ReasoningBlock({ text, status, className, contentMaxHeight, }: {
 | `status` | 否 | `"streaming" \| "failed" \| "done" \| "interrupted" \| undefined` |
 | `className` | 否 | `string \| undefined` |
 | `contentMaxHeight` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<ReasoningBlockStrings> \| undefined` |
 
-<!-- source-sha256: d25e4309d81302cef761e2d838de8c582bb06c678af16c9596b2000ea091b2dd; doc-sha256: 360fbe042ded35b656365fc82951419dce8eb5208186907df0e0eef9975520e5 -->
+<!-- source-sha256: 376893b1e785b5eb700aa63e934c918b83dbe1be10007e0b142ff51517fd05c3; doc-sha256: 360fbe042ded35b656365fc82951419dce8eb5208186907df0e0eef9975520e5 -->
 
 ## ToolCallCard
 
@@ -1024,7 +1035,7 @@ export function ReasoningBlock({ text, status, className, contentMaxHeight, }: {
 - 工具执行与审批由相应的业务操作负责。
 
 ```ts
-export function ToolCallCard({ part, className, contentMaxHeight, }: { part: ToolPart; className?: string; contentMaxHeight?: string; }): JSX.Element;
+export function ToolCallCard({ part, className, contentMaxHeight, strings: stringsOverride, }: { part: ToolPart; className?: string; contentMaxHeight?: string; strings?: Partial<ToolCallCardStrings>; }): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1032,8 +1043,9 @@ export function ToolCallCard({ part, className, contentMaxHeight, }: { part: Too
 | `part` | 是 | `{ type: "tool"; toolId: string; name: string; status: "running" \| "done" \| "error"; input?: unknown; output?: unknown; startedAt?: string; endedAt?: string; } & { id?: string; }` |
 | `className` | 否 | `string \| undefined` |
 | `contentMaxHeight` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<ToolCallCardStrings> \| undefined` |
 
-<!-- source-sha256: 62b9a52979de39eee1bf3706a31ccac302212edf4aa058b5ae549309994ca372; doc-sha256: 360fbe042ded35b656365fc82951419dce8eb5208186907df0e0eef9975520e5 -->
+<!-- source-sha256: d0458a1ddf14f44a0ac83ce1762453da2507be7505fabefada393b44bffd8f9a; doc-sha256: 360fbe042ded35b656365fc82951419dce8eb5208186907df0e0eef9975520e5 -->
 
 ## Prompts
 
@@ -1203,7 +1215,7 @@ export function SessionList({ sessions, activeId, activeStatus, onSelect, menu, 
 | `strings` | 否 | `Partial<SessionListStrings> \| undefined` |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: b8222c1cf04062c0e0e2da0c1824c3b4855cc9e768a63a76d65c0955a7aafdad; doc-sha256: 65a9b9feea1e0cd1d04e2fe3e69f9fb267012d1e78860d3c0912d739be8e6936 -->
+<!-- source-sha256: 67f70e18db7bd557793170f5c95b642257de3afea57ea2120f3d7b68638572e6; doc-sha256: 65a9b9feea1e0cd1d04e2fe3e69f9fb267012d1e78860d3c0912d739be8e6936 -->
 
 ## Tooltip
 
@@ -1319,7 +1331,7 @@ export function MenuItem(props: Omit<DropdownMenu.DropdownMenuItemProps & RefAtt
 - 调用方通过 onSelect(value, item, context) 定义筛选后的插入行为。
 
 ```ts
-export function Suggestion<T = unknown>({ items, value, caret, trigger, filter, open, onOpenChange, onSelect, block, children, className, classNames, }: SuggestionProps<T>): JSX.Element;
+export function Suggestion<T = unknown>({ items, value, caret, trigger, filter, open, onOpenChange, onSelect, block, children, className, classNames, strings: stringsOverride, }: SuggestionProps<T>): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1336,8 +1348,9 @@ export function Suggestion<T = unknown>({ items, value, caret, trigger, filter, 
 | `children` | 是 | `(props: SuggestionRenderProps<T>) => ReactNode` |
 | `className` | 否 | `string \| undefined` |
 | `classNames` | 否 | `Partial<Record<SuggestionSemantic, string>> \| undefined` |
+| `strings` | 否 | `Partial<SuggestionStrings> \| undefined` |
 
-<!-- source-sha256: 197b4cd2d2ed041441f9641f2f7243f588ad8f8065e813e21edb1a3636240ec1; doc-sha256: f320870970c84a798596399d8c6fc4e526493f31c70f26c3b25195fbaa3d8201 -->
+<!-- source-sha256: 0cdb0d72da5f47b30d07905b037e3c6a12801b143265c0554e576b4bd9166bfb; doc-sha256: f320870970c84a798596399d8c6fc4e526493f31c70f26c3b25195fbaa3d8201 -->
 
 ## ToolApprovalCard
 
@@ -1683,6 +1696,22 @@ import type { AgentHeaderProps } from "@openagentpack/kit-chat-ui";
 | `compact` | 否 | `boolean \| undefined` |
 | `actions` | 否 | `ReactNode` |
 | `onNewSession` | 否 | `(() => void) \| undefined` |
+| `strings` | 否 | `Partial<AgentHeaderStrings> \| undefined` |
+
+
+### AgentHeaderStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { AgentHeaderStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `noAgent` | 是 | `string` |
+| `switchAgent` | 是 | `string` |
+| `newSession` | 是 | `string` |
 
 
 ### ArtifactDescriptor
@@ -1715,6 +1744,7 @@ import type { AttachmentFileCardProps } from "@openagentpack/kit-chat-ui";
 | `onRemove` | 否 | `((item: AttachmentItem) => void) \| undefined` |
 | `disabled` | 否 | `boolean \| undefined` |
 | `className` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<AttachmentsStrings> \| undefined` |
 
 
 ### AttachmentItem
@@ -1791,6 +1821,7 @@ import type { AttachmentsProps } from "@openagentpack/kit-chat-ui";
 | `getDropContainer` | 否 | `(() => HTMLElement \| null \| undefined) \| undefined` |
 | `className` | 否 | `string \| undefined` |
 | `classNames` | 否 | `Partial<Record<AttachmentsSemantic, string>> \| undefined` |
+| `strings` | 否 | `Partial<AttachmentsStrings> \| undefined` |
 
 
 ### AttachmentsRef
@@ -1815,6 +1846,27 @@ import type { AttachmentsRef } from "@openagentpack/kit-chat-ui";
 export type AttachmentsSemantic = "placeholder" | "root" | "list" | "item" | "drop";
 ```
 
+
+
+### AttachmentsStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { AttachmentsStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `inlineTitle` | 是 | `string` |
+| `inlineDescription` | 是 | `string` |
+| `dropTitle` | 是 | `string` |
+| `uploading` | 是 | `string` |
+| `uploadingPercent` | 是 | `string` |
+| `progressAria` | 是 | `string` |
+| `uploadFailed` | 是 | `string` |
+| `removeAria` | 是 | `string` |
+| `addFile` | 是 | `string` |
 
 
 ### CategoryTabsStrings
@@ -1893,6 +1945,20 @@ import type { ChatMultiAgent } from "@openagentpack/kit-sdk/chat";
 | `loadThreadEvents` | 是 | `(id: string, options?: { more?: boolean; retry?: boolean; }) => Promise<void>` |
 
 
+### ChatStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { ChatStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `sending` | 是 | `string` |
+| `awaitingApproval` | 是 | `string` |
+
+
 ### ChatToolApproval
 
 来自 `@openagentpack/kit-sdk/chat`。
@@ -1932,6 +1998,22 @@ import type { CodeHighlighterProps } from "@openagentpack/kit-chat-ui";
 | `copyable` | 否 | `boolean \| undefined` |
 | `showLineNumbers` | 否 | `boolean \| undefined` |
 | `className` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<CodeHighlighterStrings> \| undefined` |
+
+
+### CodeHighlighterStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { CodeHighlighterStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `blockAria` | 是 | `string` |
+| `copyCode` | 是 | `string` |
+| `contentAria` | 是 | `string` |
 
 
 ### ConfirmDialogStrings
@@ -1970,6 +2052,23 @@ import type { ErrorStateStrings } from "@openagentpack/kit-chat-ui";
 | --- | --- | --- |
 | `heading` | 是 | `string` |
 | `retry` | 是 | `string` |
+
+
+### ExecutionGroupStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { ExecutionGroupStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `running` | 是 | `string` |
+| `failed` | 是 | `string` |
+| `done` | 是 | `string` |
+| `aria` | 是 | `string` |
+| `steps` | 是 | `string` |
 
 
 ### FileCardProps
@@ -2068,6 +2167,7 @@ import type { LayoutProps } from "@openagentpack/kit-chat-ui";
 | `onAsideOpenChange` | 否 | `((open: boolean) => void) \| undefined` |
 | `fitViewport` | 否 | `boolean \| undefined` |
 | `children` | 是 | `ReactNode` |
+| `strings` | 否 | `Partial<LayoutStrings> \| undefined` |
 
 
 ### LayoutSidebarControls
@@ -2082,6 +2182,22 @@ import type { LayoutSidebarControls } from "@openagentpack/kit-chat-ui";
 | --- | --- | --- |
 | `closeSidebar` | 是 | `() => void` |
 | `closeButton` | 是 | `ReactNode` |
+
+
+### LayoutStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { LayoutStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `closeAria` | 是 | `string` |
+| `openAria` | 是 | `string` |
+| `sidebarLabel` | 是 | `string` |
+| `asideLabel` | 是 | `string` |
 
 
 ### MarkdownStrings
@@ -2114,6 +2230,28 @@ import type { MermaidProps } from "@openagentpack/kit-chat-ui";
 | `copyable` | 否 | `boolean \| undefined` |
 | `streaming` | 否 | `boolean \| undefined` |
 | `onRenderTypeChange` | 否 | `((value: "image" \| "code") => void) \| undefined` |
+| `strings` | 否 | `Partial<MermaidStrings> \| undefined` |
+
+
+### MermaidStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { MermaidStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `header` | 是 | `string` |
+| `chart` | 是 | `string` |
+| `source` | 是 | `string` |
+| `copySource` | 是 | `string` |
+| `resourceNotice` | 是 | `string` |
+| `streamingNotice` | 是 | `string` |
+| `renderError` | 是 | `string` |
+| `rerender` | 是 | `string` |
+| `rendering` | 是 | `string` |
 
 
 ### MessageAnchorItem
@@ -2128,6 +2266,23 @@ import type { MessageAnchorItem } from "@openagentpack/kit-chat-ui";
 | --- | --- | --- |
 | `label` | 是 | `string` |
 | `summary` | 否 | `string \| undefined` |
+
+
+### MessageAnchorRailStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { MessageAnchorRailStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `toolsCount` | 是 | `string` |
+| `attachmentMessage` | 是 | `string` |
+| `newTurn` | 是 | `string` |
+| `railAria` | 是 | `string` |
+| `turnAria` | 是 | `string` |
 
 
 ### MessageListSkeletonStrings
@@ -2357,6 +2512,24 @@ import type { PromptsProps } from "@openagentpack/kit-chat-ui";
 export type PromptsSemantic = "title" | "root" | "list" | "item" | "itemContent" | "subList" | "subItem";
 ```
 
+
+
+### ReasoningBlockStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { ReasoningBlockStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `streaming` | 是 | `string` |
+| `done` | 是 | `string` |
+| `failed` | 是 | `string` |
+| `interrupted` | 是 | `string` |
+| `aria` | 是 | `string` |
+| `title` | 是 | `string` |
 
 
 ### SenderComponents
@@ -2783,6 +2956,7 @@ import type { SubAgentPanelStrings } from "@openagentpack/kit-chat-ui";
 | --- | --- | --- |
 | `label` | 是 | `string` |
 | `dotCount` | 是 | `string` |
+| `timesCount` | 是 | `string` |
 | `statusRunning` | 是 | `string` |
 | `statusError` | 是 | `string` |
 | `failed` | 是 | `string` |
@@ -2837,6 +3011,7 @@ import type { SuggestionProps } from "@openagentpack/kit-chat-ui";
 | `children` | 是 | `(props: SuggestionRenderProps<T>) => ReactNode` |
 | `className` | 否 | `string \| undefined` |
 | `classNames` | 否 | `Partial<Record<SuggestionSemantic, string>> \| undefined` |
+| `strings` | 否 | `Partial<SuggestionStrings> \| undefined` |
 
 
 ### SuggestionRenderProps
@@ -2879,6 +3054,33 @@ import type { SuggestionSelectContext } from "@openagentpack/kit-chat-ui";
 export type SuggestionSemantic = "root" | "list" | "item" | "popup";
 ```
 
+
+
+### SuggestionStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { SuggestionStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `shortcut` | 是 | `string` |
+| `nextLevel` | 是 | `string` |
+
+
+### ThreadPanelStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { ThreadPanelStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `title` | 是 | `string` |
 
 
 ### ToolApprovalCardProps
@@ -2955,6 +3157,37 @@ import type { ToolApprovalGroupStrings } from "@openagentpack/kit-chat-ui";
 | --- | --- | --- |
 | `previous` | 是 | `string` |
 | `next` | 是 | `string` |
+
+
+### ToolCallCardStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { ToolCallCardStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `serializeFallback` | 是 | `string` |
+| `status` | 是 | `{ running: string; done: string; error: string; }` |
+| `aria` | 是 | `string` |
+| `inputParams` | 是 | `string` |
+| `result` | 是 | `string` |
+| `noDetail` | 是 | `string` |
+
+
+### ToolSummaryStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { ToolSummaryStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `verbs` | 是 | `{ readFile: string; writeFile: string; search: string; runCommand: string; }` |
 
 
 ### TooltipSide

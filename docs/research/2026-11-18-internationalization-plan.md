@@ -164,7 +164,10 @@ apps/<web|console>/src/i18n/
 | 批次 2a | error-state、message-skeleton、confirm-dialog、meter-bar、category-tabs、markdown、activity-heatmap | 约 20 |
 | 批次 2b | file-card、session-list、plaza-card | 约 27 |
 | 批次 3 | session-sidebar、sub-agent-card、sub-agent-panel、tool-approval-card、tool-approval-group | 约 70 |
-| 待迁 | attachments、mermaid、code-highlighter、tool-call-card、tool-summary、reasoning-block、execution-group、step、layout、chat、suggestion、message-anchor-rail、agent-header、thread-panel | 约 45 |
+| 批次 4 | attachments、code-highlighter、mermaid、chat、layout、thread-panel、suggestion、tool-call-card、tool-summary、reasoning-block、execution-group、agent-header、message-anchor-rail | 约 45 |
+
+**chat-ui 全部组件文案已清零**（`rg '\p{Han}' components -g '!*strings.ts' -g '!*.test.*'` 仅剩注释；
+`deriveAnchorTurns`/`toolSummary` 纯函数以 `strings` 缺省参数保持向后兼容）。共计 **34 份组件词典**。
 
 批次 3 补充形态：深层子树组件（session-sidebar）用内部 context 下传解析结果；
 sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面板复用，locale 经全局 Provider 生效）。

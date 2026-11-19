@@ -115,7 +115,7 @@ export function SubAgentPanel({
 											{group.name}
 										</span>
 										<span className="ml-auto shrink-0 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)] tabular-nums">
-											{group.threads.length} 次
+											{format(strings.timesCount, { count: group.threads.length })}
 										</span>
 										<svg
 											aria-hidden="true"
