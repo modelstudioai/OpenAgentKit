@@ -1,4 +1,5 @@
 import { KitError } from "@openagentpack/kit-sdk/protocol";
+import i18n from "i18next";
 import type { AdminClient } from "../../lib/admin/index.ts";
 
 type CleanupClient = { debug: Pick<AdminClient["debug"], "planDelete" | "deleteSession"> };
@@ -17,6 +18,7 @@ interface CleanupTask extends TemplateDebugCleanupState {
 
 /** 队列独立于预览组件生命周期；失败任务保留原客户端，只在用户重试时重新准备计划。 */
 export function createTemplateDebugCleanupQueue() {
+	const t = i18n.getFixedT(null, "templates");
 	const tasks = new Map<number, CleanupTask>();
 	const byClient = new WeakMap<CleanupClient, Map<string, CleanupTask>>();
 	const listeners = new Set<() => void>();
@@ -40,12 +42,12 @@ export function createTemplateDebugCleanupQueue() {
 					plan_id: plan.plan_id,
 					confirm_token: plan.confirm_token,
 				});
-				if (!result.deleted) throw new Error("服务未确认调试会话已删除，请重试清理");
+				if (!result.deleted) throw new Error(t("cleanup.notDeleted"));
 				forget(task);
 			})
 			.catch((error: unknown) => {
 				if (error instanceof KitError && error.status === 404) forget(task);
-				else task.error = error instanceof Error ? error.message : "清理请求未完成，请重试";
+				else task.error = error instanceof Error ? error.message : t("cleanup.requestIncomplete");
 			})
 			.finally(() => {
 				task.pending = false;

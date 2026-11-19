@@ -208,7 +208,7 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
 
 | feature | 引号内串数 | 状态 |
 | --- | --- | --- |
-| templates | 661 | 迁移中（批次 1–4a：配置/资源子编辑器/保存发布/详情调试；其余分批） |
+| templates | 661 | ✅ 全部（列表/创建外壳/Agent 配置/环境/文件/记忆库/密钥库/保存发布/详情调试/版本与已保存资源/Skill 上传） |
 | usage | 138 | ✅ 全部（限额链路、Session 用量页、趋势卡、模版用量详情与 Provider 遥测表；聚合行名称参数化） |
 | members | 88 | ✅ 全部（列表/用量页/遥测表/创建页/hook 错误兜底；共享指标与采集状态词表入 common） |
 | preset-packs | 83 | ✅ 全部（选择/资源详情抽屉/会话资源；纯函数消息以缺省参数保持兼容） |
@@ -280,3 +280,13 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
   Tab、版本/保存时间、应用版本提示、只读态、示例问题与审批只读文案已迁移。
 - 发布资源类型/动作在纯函数中经 `i18n.getFixedT` 渲染，计划文本结构保持不变。
 - 仍待迁：版本历史、已保存配置/资源、Skill 上传弹窗、上传队列与草稿上下文、清理队列。
+
+#### templates 批次 4b：版本、已保存资源、Skill 上传与草稿上下文（2026-11-19）
+
+- 版本：`template-version-history`、`template-version-drawer`；时间线、分页、当前版本徽标、运行时摘要全部入词表。
+- 已保存视图：`template-saved-configuration`、`template-saved-resources`；展示配置、文件/记忆/密钥引用、
+  脱敏字段提示与版本说明。
+- Skill 上传：`template-skill-upload-dialog`、`use-project-uploads`；选择校验、诊断信息、上传失败聚合。
+- 草稿与恢复：`template-resource-draft`、`template-resource-draft-owner`、`template-local-resources`、
+  `use-template-resource-resolution`、`use-template-agent-detail`、`template-debug-cleanup`、`template-draft`。
+- templates 可见中文已清零（仅保留代码注释与内部上下文守卫错误）；SDK `PLAZA_CATEGORY_LABELS` 仍按 §6 处理。

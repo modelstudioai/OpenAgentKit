@@ -1,6 +1,7 @@
 import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui";
 import { PLAZA_CATEGORY_LABELS, type TemplateVersionSummary } from "@openagentpack/kit-sdk/protocol";
 import { type ReactNode, useId, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import { ghostButtonClass } from "../../lib/styles.ts";
@@ -30,15 +31,16 @@ export function TemplateVersionHistory({
 	selectedVersion?: number;
 	onSelect: (version: number) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const { versions, cursors, setCursors, loading, rows, nextCursor } = useTemplateVersions(templateId);
 	return (
-		<section aria-label="模版版本列表" className={styles.historyRoot}>
-			<h3 className={styles.listHeading}>版本列表</h3>
-			{loading ? <EmptyState loading title="正在加载版本列表…" /> : null}
+		<section aria-label={t("history.aria")} className={styles.historyRoot}>
+			<h3 className={styles.listHeading}>{t("history.title")}</h3>
+			{loading ? <EmptyState loading title={t("history.loading")} /> : null}
 			{versions.error ? <ErrorState message={versions.error} onRetry={() => void versions.refresh()} /> : null}
-			{!loading && !versions.error && rows.length === 0 ? <EmptyState title="暂无版本记录" /> : null}
+			{!loading && !versions.error && rows.length === 0 ? <EmptyState title={t("history.empty")} /> : null}
 			{rows.length ? (
-				<ol aria-label="模版版本时间线" className={styles.shrinkRoot}>
+				<ol aria-label={t("history.timelineAria")} className={styles.shrinkRoot}>
 					{rows.map((version) => (
 						<VersionRow
 							key={version.version}
@@ -51,16 +53,16 @@ export function TemplateVersionHistory({
 				</ol>
 			) : null}
 			{cursors.length > 1 || nextCursor ? (
-				<nav aria-label="模版版本分页" className={styles.pagerEnd}>
+				<nav aria-label={t("history.pagerAria")} className={styles.pagerEnd}>
 					<button
 						type="button"
 						className={ghostButtonClass}
 						disabled={loading || cursors.length === 1}
 						onClick={() => setCursors((current) => current.slice(0, -1))}
 					>
-						上一页
+						{t("history.previous")}
 					</button>
-					<span>第 {cursors.length} 页</span>
+					<span>{t("history.page", { page: cursors.length })}</span>
 					<button
 						type="button"
 						className={ghostButtonClass}
@@ -69,7 +71,7 @@ export function TemplateVersionHistory({
 							if (nextCursor) setCursors((current) => [...current, nextCursor]);
 						}}
 					>
-						下一页
+						{t("history.next")}
 					</button>
 				</nav>
 			) : null}
@@ -88,6 +90,7 @@ function VersionRow({
 	selected: boolean;
 	onSelect: () => void;
 }) {
+	const { t } = useTranslation("templates");
 	const summaryId = useId();
 	return (
 		<li className={styles.timelineRow}>
@@ -102,7 +105,7 @@ function VersionRow({
 			/>
 			<button
 				type="button"
-				aria-label={`查看模版版本 v${version.version}`}
+				aria-label={t("history.viewAria", { version: version.version })}
 				aria-describedby={summaryId}
 				aria-pressed={selected}
 				className={selected ? `${styles.versionRowCard} ${styles.versionRowSelected}` : styles.versionRowCard}
@@ -110,11 +113,11 @@ function VersionRow({
 			>
 				<span className={styles.headRow}>
 					<span className={styles.versionLabel}>v{version.version}</span>
-					{current ? <span className={styles.currentBadge}>当前版本</span> : null}
+					{current ? <span className={styles.currentBadge}>{t("history.current")}</span> : null}
 				</span>
 				<span className={styles.blockNameAny}>{version.name}</span>
 				<span className={styles.blockCaptionAny}>
-					保存时间：
+					{t("history.savedAt")}
 					<VersionTime value={version.created_at} />
 				</span>
 				<span id={summaryId} className={styles.summaryBlock}>
@@ -137,42 +140,59 @@ function SummaryPoint({ children }: { children: ReactNode }) {
 }
 
 function VersionConfigurationSummary({ version }: { version: TemplateVersionSummary }) {
+	const { t } = useTranslation("templates");
 	const agentVersion =
 		version.agent_version !== undefined
-			? `版本：v${version.agent_version}`
+			? t("history.agentVersion", { version: version.agent_version })
 			: version.remote_agent_version !== undefined
-				? `版本：v${version.remote_agent_version}`
-				: "版本：未记录";
+				? t("history.agentVersion", { version: version.remote_agent_version })
+				: t("history.agentVersionMissing");
 	return (
 		<>
 			<span className={styles.summaryGroup}>
-				<span className={styles.blockMedium}>智能体</span>
+				<span className={styles.blockMedium}>{t("history.agent")}</span>
 				<SummaryPoint>
-					{version.remote_agent_name || version.remote_agent_id}（{agentVersion}）
+					{version.remote_agent_name || version.remote_agent_id}
+					{t("agent.form.parenOpen")}
+					{agentVersion}
+					{t("agent.form.parenClose")}
 				</SummaryPoint>
 			</span>
 			<span className={styles.summaryGroup}>
-				<span className={styles.blockMedium}>运行时配置</span>
+				<span className={styles.blockMedium}>{t("history.runtime")}</span>
 				<SummaryPoint>
-					环境：
+					{t("history.environment")}
 					{version.remote_environment_id
 						? version.remote_environment_name || version.remote_environment_id
-						: "使用智能体默认环境"}
+						: t("history.defaultEnvironment")}
 				</SummaryPoint>
 				<SummaryPoint>
-					文件：{version.files.map((file) => file.filename || file.file_id).join("、") || "未选择"}
+					{t("history.files")}
+					{version.files.map((file) => file.filename || file.file_id).join(t("history.separator")) ||
+						t("history.notSelected")}
 				</SummaryPoint>
 				<SummaryPoint>
-					记忆库：
+					{t("history.memories")}
 					{version.memory_stores
-						.map((memory) => `${memory.memory_store_id}（${memory.access === "read_only" ? "只读" : "读写"}）`)
-						.join("、") || "未选择"}
+						.map((memory) =>
+							t("history.memoryAccess", {
+								id: memory.memory_store_id,
+								access: memory.access === "read_only" ? t("history.readOnly") : t("history.readWrite"),
+							}),
+						)
+						.join(t("history.separator")) || t("history.notSelected")}
 				</SummaryPoint>
-				<SummaryPoint>密钥库：{version.vault_ids.join("、") || "未选择"}</SummaryPoint>
+				<SummaryPoint>
+					{t("history.vaults")}
+					{version.vault_ids.join(t("history.separator")) || t("history.notSelected")}
+				</SummaryPoint>
 			</span>
 			<span className={styles.summaryGroup}>
-				<span className={styles.blockMedium}>展示配置</span>
-				<SummaryPoint>分类：{PLAZA_CATEGORY_LABELS[version.category]}</SummaryPoint>
+				<span className={styles.blockMedium}>{t("history.presentation")}</span>
+				<SummaryPoint>
+					{t("history.category")}
+					{PLAZA_CATEGORY_LABELS[version.category]}
+				</SummaryPoint>
 			</span>
 		</>
 	);

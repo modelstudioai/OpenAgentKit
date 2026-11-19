@@ -1,5 +1,6 @@
 import { PLAZA_CATEGORY_LABELS, type TemplateView } from "@openagentpack/kit-sdk/protocol";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import styles from "./template-resources.module.less";
 import {
 	SavedAgentConfiguration,
@@ -18,28 +19,29 @@ function DetailSection({ title, children }: { title: string; children: ReactNode
 }
 
 export function SavedConfiguration({ template }: { template: Omit<TemplateView, "listing" | "updated_at"> }) {
+	const { t } = useTranslation("templates");
 	return (
 		<div className={styles.savedRoot}>
-			<DetailSection title="展示配置">
+			<DetailSection title={t("savedConfig.presentation")}>
 				<dl className={styles.presentationList}>
 					<div>
-						<dt className={styles.termLabel}>模版名称</dt>
+						<dt className={styles.termLabel}>{t("savedConfig.name")}</dt>
 						<dd className={styles.termValue}>{template.name}</dd>
 					</div>
 					<div>
-						<dt className={styles.termLabel}>分类</dt>
+						<dt className={styles.termLabel}>{t("savedConfig.category")}</dt>
 						<dd className={styles.termValue}>{PLAZA_CATEGORY_LABELS[template.category]}</dd>
 					</div>
 					<div>
-						<dt className={styles.termLabel}>描述</dt>
-						<dd className={styles.termValuePre}>{template.description || "未配置"}</dd>
+						<dt className={styles.termLabel}>{t("savedConfig.description")}</dt>
+						<dd className={styles.termValuePre}>{template.description || t("savedConfig.notConfigured")}</dd>
 					</div>
 					<div>
-						<dt className={styles.termLabel}>开场白</dt>
-						<dd className={styles.termValuePre}>{template.opening_remarks || "未配置"}</dd>
+						<dt className={styles.termLabel}>{t("savedConfig.opening")}</dt>
+						<dd className={styles.termValuePre}>{template.opening_remarks || t("savedConfig.notConfigured")}</dd>
 					</div>
 					<div>
-						<dt className={styles.termLabel}>示例问题</dt>
+						<dt className={styles.termLabel}>{t("savedConfig.prompts")}</dt>
 						<dd className={styles.termValue}>
 							{template.suggested_prompts.length ? (
 								<ol className={styles.promptList}>
@@ -48,42 +50,47 @@ export function SavedConfiguration({ template }: { template: Omit<TemplateView, 
 									))}
 								</ol>
 							) : (
-								"未配置"
+								t("savedConfig.notConfigured")
 							)}
 						</dd>
 					</div>
 				</dl>
 			</DetailSection>
-			<DetailSection title="基础配置">
+			<DetailSection title={t("savedConfig.base")}>
 				<SavedAgentConfiguration template={template} />
 			</DetailSection>
-			<p className={styles.sectionNote}>
-				以下资源按本版本保存的引用展示当前远端配置，记忆条目与密钥元数据不作为历史快照保存。
-			</p>
-			<DetailSection title="环境">
+			<p className={styles.sectionNote}>{t("savedConfig.resourcesNote")}</p>
+			<DetailSection title={t("savedConfig.environment")}>
 				{template.remote_environment_id ? (
 					<SavedEnvironmentConfiguration id={template.remote_environment_id} name={template.remote_environment_name} />
 				) : (
-					<p className={styles.mutedNote}>使用默认环境</p>
+					<p className={styles.mutedNote}>{t("savedConfig.defaultEnvironment")}</p>
 				)}
 			</DetailSection>
-			<DetailSection title="文件">
+			<DetailSection title={t("savedConfig.files")}>
 				{template.files.length ? (
 					<ul className={styles.savedFileList}>
 						{template.files.map((file) => (
 							<li key={file.file_id} className={styles.savedFileItem}>
 								<p className={styles.fileName}>{file.filename || file.file_id}</p>
 								<p className={styles.fileId}>{file.file_id}</p>
-								{file.mount_path ? <p>挂载路径：{file.mount_path}</p> : null}
-								{file.size !== undefined ? <p>大小：{file.size.toLocaleString("zh-CN")} 字节</p> : null}
+								{file.mount_path ? (
+									<p>
+										{t("savedConfig.mountPath")}
+										{file.mount_path}
+									</p>
+								) : null}
+								{file.size !== undefined ? (
+									<p>{t("savedConfig.size", { size: file.size.toLocaleString("zh-CN") })}</p>
+								) : null}
 							</li>
 						))}
 					</ul>
 				) : (
-					<p className={styles.mutedNote}>未选择文件</p>
+					<p className={styles.mutedNote}>{t("savedConfig.notSelectedFiles")}</p>
 				)}
 			</DetailSection>
-			<DetailSection title="记忆库">
+			<DetailSection title={t("savedConfig.memories")}>
 				{template.memory_stores.length ? (
 					<ul className={styles.savedMemoryList}>
 						{template.memory_stores.map((memory) => (
@@ -93,10 +100,10 @@ export function SavedConfiguration({ template }: { template: Omit<TemplateView, 
 						))}
 					</ul>
 				) : (
-					<p className={styles.mutedNote}>未选择记忆库</p>
+					<p className={styles.mutedNote}>{t("savedConfig.notSelectedMemories")}</p>
 				)}
 			</DetailSection>
-			<DetailSection title="密钥库">
+			<DetailSection title={t("savedConfig.vaults")}>
 				{template.vault_ids.length ? (
 					<ul className={styles.vaultList}>
 						{template.vault_ids.map((id) => (
@@ -106,7 +113,7 @@ export function SavedConfiguration({ template }: { template: Omit<TemplateView, 
 						))}
 					</ul>
 				) : (
-					<p className={styles.mutedNote}>未选择密钥库</p>
+					<p className={styles.mutedNote}>{t("savedConfig.notSelectedVaults")}</p>
 				)}
 			</DetailSection>
 		</div>

@@ -1,6 +1,7 @@
 import type { ProjectSkillUploadCommit } from "@openagentpack/kit-sdk/protocol";
 import { Alert, Button, Modal } from "antd";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import styles from "./template-forms.module.less";
@@ -26,6 +27,7 @@ type Props = {
 };
 
 export function TemplateSkillUploadAction(props: Props) {
+	const { t } = useTranslation("templates");
 	const [open, setOpen] = useState(false);
 	const trigger = useRef<HTMLButtonElement>(null);
 	const focusAfterClose = useRef(false);
@@ -69,7 +71,7 @@ export function TemplateSkillUploadAction(props: Props) {
 					else setOpen(true);
 				}}
 			>
-				上传 Skill
+				{t("skillUpload.trigger")}
 			</Button>
 			{open && props.revision ? <SkillUploadDialog {...props} revision={props.revision} onClose={close} /> : null}
 		</>
@@ -85,6 +87,7 @@ function SkillUploadDialog({
 	onSaved,
 	onPendingChange,
 }: Props & { revision: string; onClose: () => void }) {
+	const { t } = useTranslation("templates");
 	const { markContent } = useTemplateResourceDraft();
 	const client = useMemo(getAdminClient, []);
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -103,12 +106,13 @@ function SkillUploadDialog({
 		enabled: ready,
 	});
 	const save = useAdminMutation(async () => {
-		if (!ready || !selectedFile) throw new Error("请先选择 Skill 文件。");
+		if (!ready || !selectedFile) throw new Error(t("skillUpload.selectFirst"));
 		const staged = skills.uploads.length ? skills.uploads : await skills.upload([selectedFile]);
-		if (!staged.length) throw new Error("上传已取消，请重新选择 Skill 文件。");
+		if (!staged.length) throw new Error(t("skillUpload.cancelled"));
 		const ids = staged.map((skill) => skill.upload_id);
 		const preview = await skills.preview(ids);
-		if (!preview.can_commit) throw new Error(preview.diagnostics.join("；") || "Skill 校验未通过，请检查后重试。");
+		if (!preview.can_commit)
+			throw new Error(preview.diagnostics.join(t("skillUpload.diagnosticSeparator")) || t("skillUpload.previewFailed"));
 		// 本队列固定 kind: skill，共用上传 hook 的返回类型还包含文件结果。
 		const result = (await skills.commit(ids)) as ProjectSkillUploadCommit;
 		markContent(projectName);
@@ -132,7 +136,7 @@ function SkillUploadDialog({
 			centered
 			focusTriggerAfterClose={false}
 			width={512}
-			title="上传 Skill"
+			title={t("skillUpload.title")}
 			closable={!save.pending}
 			keyboard={!save.pending}
 			maskClosable={!save.pending}
@@ -140,7 +144,7 @@ function SkillUploadDialog({
 			footer={
 				<div className={styles.formActions}>
 					<Button disabled={save.pending} onClick={close}>
-						取消
+						{t("cancel")}
 					</Button>
 					<Button
 						type="primary"
@@ -148,7 +152,7 @@ function SkillUploadDialog({
 						loading={save.pending}
 						onClick={() => void save.run().catch(() => undefined)}
 					>
-						确认
+						{t("save.confirm")}
 					</Button>
 				</div>
 			}
@@ -160,19 +164,19 @@ function SkillUploadDialog({
 				onDragOver={(event) => event.preventDefault()}
 				onDrop={(event) => event.preventDefault()}
 			>
-				<p className={styles.formNote}>保存后自动添加到当前智能体，随智能体一起发布。</p>
+				<p className={styles.formNote}>{t("skillUpload.hint")}</p>
 				<div ref={fileSelection} className={styles.blockStack}>
-					<p className={styles.formLabel}>上传</p>
+					<p className={styles.formLabel}>{t("skillUpload.label")}</p>
 					{selectedFile ? (
-						<ul aria-label="待保存 Skill">
+						<ul aria-label={t("skillUpload.pendingAria")}>
 							<li className={styles.entryRow}>
 								<div className={styles.fileChip}>
 									<span className={`${styles.flexFill} ${styles.truncate} ${styles.body13}`}>{selectedFile.name}</span>
 									<span className={`${styles.shrinkZero} ${styles.metaText}`}>{formatByte(selectedFile.size)}</span>
 								</div>
 								<Button
-									aria-label={`移除 ${selectedFile.name}`}
-									title="移除文件"
+									aria-label={t("skillUpload.removeAria", { name: selectedFile.name })}
+									title={t("skillUpload.removeTitle")}
 									className={styles.shrinkZero}
 									disabled={pending}
 									onClick={() => {
@@ -188,20 +192,20 @@ function SkillUploadDialog({
 						</ul>
 					) : (
 						<TemplateUploadDropzone
-							label="选择 Skill 文件"
-							title="点击或拖拽上传 Skill"
-							hint="支持单个 ZIP 技能包或 SKILL.md。ZIP 包需包含 SKILL.md，文件头须包含 name。"
+							label={t("skillUpload.dropLabel")}
+							title={t("skillUpload.dropTitle")}
+							hint={t("skillUpload.dropHint")}
 							accept=".zip,.md"
 							disabled={!ready || pending}
 							onSelect={(files) => {
 								if (!files.length) return;
 								if (files.length > 1) {
-									setSelectionError("每次只能选择一个 Skill 文件。");
+									setSelectionError(t("skillUpload.singleError"));
 									return;
 								}
 								const file = files[0]!;
 								if (file.name.toLowerCase() !== "skill.md" && !file.name.toLowerCase().endsWith(".zip")) {
-									setSelectionError("请上传 ZIP 技能包或 SKILL.md。");
+									setSelectionError(t("skillUpload.invalidError"));
 									return;
 								}
 								setSelectionError(undefined);
@@ -218,12 +222,12 @@ function SkillUploadDialog({
 				) : null}
 				{baseRevision !== revision ? (
 					<p role="alert" className={styles.errorText}>
-						项目已变化，请关闭后重新上传。
+						{t("skillUpload.projectChanged")}
 					</p>
 				) : null}
 				{skills.pending ? (
 					<p role="status" className={styles.body13}>
-						正在上传 Skill…
+						{t("skillUpload.uploading")}
 					</p>
 				) : null}
 				{save.error ? <Alert type="error" showIcon message={save.error} /> : null}
