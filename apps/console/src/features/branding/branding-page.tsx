@@ -6,7 +6,9 @@ import {
 	type BrandingView,
 } from "@openagentpack/kit-sdk/protocol";
 import { Alert, Button, Input, Result, Segmented, Skeleton, Space, Typography, Upload } from "antd";
+import type { TFunction } from "i18next";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { adminApi, getAdminClient } from "../../lib/api.ts";
@@ -14,26 +16,29 @@ import { InnerLayout } from "../navigation/inner-layout.tsx";
 
 type LogoMode = "upload" | "url";
 
-function logoError(value: string): string | undefined {
+function logoError(value: string, t: TFunction<"branding">): string | undefined {
 	const logo = value.trim();
 	if (!logo) return undefined;
 	return (logo.startsWith("/") && !logo.startsWith("//")) || /^https?:\/\//i.test(logo)
 		? undefined
-		: "请输入以单个 / 开头的员工端本站路径，或 http(s) 在线地址";
+		: t("logoInvalidUrl");
 }
 
-function fileError(file: File): string | undefined {
-	if (!(BRANDING_LOGO_TYPES as readonly string[]).includes(file.type)) return "仅支持 PNG、JPEG、WebP 或 SVG 图片";
-	if (file.size > BRANDING_LOGO_MAX_BYTES) return `图片不能超过 ${Math.floor(BRANDING_LOGO_MAX_BYTES / 1024)}KB`;
+function fileError(file: File, t: TFunction<"branding">): string | undefined {
+	if (!(BRANDING_LOGO_TYPES as readonly string[]).includes(file.type)) return t("fileTypeInvalid");
+	if (file.size > BRANDING_LOGO_MAX_BYTES) {
+		return t("fileTooLarge", { kb: Math.floor(BRANDING_LOGO_MAX_BYTES / 1024) });
+	}
 	return undefined;
 }
 
 function BrandPreview({ productName, logoUrl }: { productName: string; logoUrl?: string }) {
+	const { t } = useTranslation("branding");
 	const [failed, setFailed] = useState(false);
 	const name = productName.trim() || "OpenAgentPack Kit";
 	return (
 		<div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-			<Typography.Text type="secondary">员工端预览</Typography.Text>
+			<Typography.Text type="secondary">{t("previewTitle")}</Typography.Text>
 			<div className="mt-3 flex items-center gap-3">
 				{logoUrl && !failed ? (
 					<img
@@ -72,6 +77,7 @@ function UploadLogoControl({
 	onFile: (file: File) => void;
 	onRemove: () => void;
 }) {
+	const { t } = useTranslation("branding");
 	return (
 		<div className="space-y-3">
 			<div className="flex flex-wrap items-center gap-3">
@@ -85,18 +91,18 @@ function UploadLogoControl({
 					}}
 				>
 					<Button icon={<UploadOutlined />} disabled={disabled}>
-						选择图片
+						{t("chooseImage")}
 					</Button>
 				</Upload>
 				{file ? <span className="min-w-0 break-all text-xs text-neutral-500">{file.name}</span> : null}
 				{hasLogo && !file ? (
 					<Button type="link" danger disabled={disabled} onClick={onRemove}>
-						移除当前 Logo
+						{t("removeLogo")}
 					</Button>
 				) : null}
 			</div>
 			<span className="block text-xs leading-5 text-neutral-500">
-				支持 PNG、JPEG、WebP、SVG，最大 {Math.floor(BRANDING_LOGO_MAX_BYTES / 1024)}KB；不选择新图片时沿用当前 Logo。
+				{t("uploadHint", { kb: Math.floor(BRANDING_LOGO_MAX_BYTES / 1024) })}
 			</span>
 			{error ? <span className="block text-xs text-red-600">{error}</span> : null}
 		</div>
@@ -104,6 +110,7 @@ function UploadLogoControl({
 }
 
 function useLogoEditor(initialUrl: string | undefined, onDirty: () => void) {
+	const { t } = useTranslation("branding");
 	const [logoUrl, setLogoUrl] = useState(initialUrl ?? "");
 	const [mode, setMode] = useState<LogoMode>("upload");
 	const [file, setFile] = useState<File | null>(null);
@@ -129,7 +136,7 @@ function useLogoEditor(initialUrl: string | undefined, onDirty: () => void) {
 		onDirty();
 	};
 	const chooseFile = (next: File) => {
-		const error = fileError(next);
+		const error = fileError(next, t);
 		setUploadError(error);
 		if (error) return;
 		setFile(next);
@@ -164,7 +171,7 @@ function useLogoEditor(initialUrl: string | undefined, onDirty: () => void) {
 		removeLogo,
 		previewUrl,
 		hasLogo: Boolean((logoUrl || file) && !removeLogo),
-		urlError: mode === "url" ? logoError(logoUrl) : undefined,
+		urlError: mode === "url" ? logoError(logoUrl, t) : undefined,
 		changeMode,
 		changeUrl,
 		chooseFile,
@@ -174,14 +181,15 @@ function useLogoEditor(initialUrl: string | undefined, onDirty: () => void) {
 }
 
 function LogoFields({ editor, disabled }: { editor: ReturnType<typeof useLogoEditor>; disabled: boolean }) {
+	const { t } = useTranslation("branding");
 	return (
 		<div className="space-y-4 rounded-lg border border-neutral-200 p-4">
 			<div className="flex flex-wrap items-center justify-between gap-3">
-				<span className="text-sm font-medium">Logo</span>
+				<span className="text-sm font-medium">{t("logo")}</span>
 				<Segmented<LogoMode>
 					options={[
-						{ label: "上传图片", value: "upload" },
-						{ label: "填写 URL", value: "url" },
+						{ label: t("modeUpload"), value: "upload" },
+						{ label: t("modeUrl"), value: "url" },
 					]}
 					value={editor.mode}
 					disabled={disabled}
@@ -200,11 +208,11 @@ function LogoFields({ editor, disabled }: { editor: ReturnType<typeof useLogoEdi
 			) : (
 				<div className="space-y-3">
 					<label htmlFor="branding-logo-url" className="text-sm font-medium">
-						Logo 地址
+						{t("logoUrl")}
 					</label>
 					<Input
 						id="branding-logo-url"
-						aria-label="Logo 地址"
+						aria-label={t("logoUrl")}
 						value={editor.logoUrl}
 						placeholder={`${BRANDING_LOGO_PATH} 或 https://cdn.example.com/logo.svg`}
 						maxLength={2048}
@@ -212,9 +220,7 @@ function LogoFields({ editor, disabled }: { editor: ReturnType<typeof useLogoEdi
 						disabled={disabled}
 						onChange={(event) => editor.changeUrl(event.target.value)}
 					/>
-					<span className="block text-xs leading-5 text-neutral-500">
-						支持员工端本站路径（以单个 / 开头）或在线 http(s) 地址；留空回退名称首字母。
-					</span>
+					<span className="block text-xs leading-5 text-neutral-500">{t("urlHint")}</span>
 					{editor.urlError ? <span className="block text-xs text-red-600">{editor.urlError}</span> : null}
 				</div>
 			)}
@@ -235,6 +241,7 @@ function BrandingForm({
 	onSaved: () => void;
 	onDirty: () => void;
 }) {
+	const { t } = useTranslation("branding");
 	const [productName, setProductName] = useState(initial.productName);
 	const editor = useLogoEditor(initial.logoUrl, onDirty);
 	const save = useAdminMutation(async () => {
@@ -248,7 +255,7 @@ function BrandingForm({
 		}
 		return adminApi.branding.update({ productName: name, logoUrl: editor.logoUrl.trim() || null });
 	});
-	const nameError = productName.trim() ? undefined : "产品名称不能为空";
+	const nameError = productName.trim() ? undefined : t("nameRequired");
 	const invalid = Boolean(nameError || editor.urlError || editor.uploadError);
 	const disabled = !canWrite || save.pending;
 	const submit = () => {
@@ -265,11 +272,11 @@ function BrandingForm({
 		>
 			<div className="space-y-2">
 				<label htmlFor="branding-product-name" className="text-sm font-medium">
-					产品名称
+					{t("productName")}
 				</label>
 				<Input
 					id="branding-product-name"
-					aria-label="产品名称"
+					aria-label={t("productName")}
 					value={productName}
 					maxLength={60}
 					showCount
@@ -288,11 +295,11 @@ function BrandingForm({
 				productName={productName}
 				logoUrl={editor.previewUrl}
 			/>
-			{readOnly ? <Alert type="info" showIcon title="当前身份只读，不能修改品牌配置。" /> : null}
-			{save.error ? <Alert type="error" showIcon title="保存失败" description={save.error} /> : null}
+			{readOnly ? <Alert type="info" showIcon title={t("readOnly")} /> : null}
+			{save.error ? <Alert type="error" showIcon title={t("saveFailed")} description={save.error} /> : null}
 			<Space className="pt-1">
 				<Button type="primary" htmlType="submit" loading={save.pending} disabled={!canWrite || invalid}>
-					保存
+					{t("save")}
 				</Button>
 				<Button
 					disabled={disabled}
@@ -301,7 +308,7 @@ function BrandingForm({
 						editor.reset();
 					}}
 				>
-					重置
+					{t("reset")}
 				</Button>
 			</Space>
 		</form>
@@ -310,6 +317,7 @@ function BrandingForm({
 
 /** 管理端维护员工端名称与 Logo；默认上传，也可切换为 URL。保存后员工端刷新 /api/config 生效。 */
 export function BrandingPage() {
+	const { t } = useTranslation("branding");
 	const query = useAdminQuery("branding:config", (signal) => adminApi.branding.get(signal));
 	const identity = useAdminQuery("branding:identity", (signal) => getAdminClient().identity(signal));
 	const [saved, setSaved] = useState(false);
@@ -317,23 +325,20 @@ export function BrandingPage() {
 		return (
 			<Result
 				status="error"
-				title="品牌配置加载失败"
+				title={t("loadFailed")}
 				subTitle={query.error}
 				extra={
-					<Button aria-label="重试" onClick={() => void query.refresh()}>
-						重试
+					<Button aria-label={t("retry")} onClick={() => void query.refresh()}>
+						{t("retry")}
 					</Button>
 				}
 			/>
 		);
 	if (!query.data) return <Skeleton active paragraph={{ rows: 5 }} />;
 	return (
-		<section aria-label="品牌配置" className="space-y-6">
-			<InnerLayout
-				title="品牌配置"
-				description="配置员工端左侧导航顶部的产品名称与 Logo。默认上传图片，也可切换为填写 URL。保存后员工端下次加载配置时生效。"
-			/>
-			{saved ? <Alert type="success" showIcon title="已保存，员工端刷新后生效。" /> : null}
+		<section aria-label={t("sectionAria")} className="space-y-6">
+			<InnerLayout title={t("title")} description={t("description")} />
+			{saved ? <Alert type="success" showIcon title={t("saved")} /> : null}
 			<BrandingForm
 				key={`${query.data.updatedAt}:${query.data.productName}:${query.data.logoUrl ?? ""}`}
 				initial={query.data}

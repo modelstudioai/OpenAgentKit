@@ -1,0 +1,28 @@
+/** branding 命名空间：员工端品牌（名称 + Logo）配置页。 */
+export default {
+	sectionAria: "品牌配置",
+	title: "品牌配置",
+	description:
+		"配置员工端左侧导航顶部的产品名称与 Logo。默认上传图片，也可切换为填写 URL。保存后员工端下次加载配置时生效。",
+	loadFailed: "品牌配置加载失败",
+	retry: "重试",
+	saved: "已保存，员工端刷新后生效。",
+	readOnly: "当前身份只读，不能修改品牌配置。",
+	saveFailed: "保存失败",
+	logoInvalidUrl: "请输入以单个 / 开头的员工端本站路径，或 http(s) 在线地址",
+	fileTypeInvalid: "仅支持 PNG、JPEG、WebP 或 SVG 图片",
+	fileTooLarge: "图片不能超过 {{kb}}KB",
+	previewTitle: "员工端预览",
+	chooseImage: "选择图片",
+	removeLogo: "移除当前 Logo",
+	uploadHint: "支持 PNG、JPEG、WebP、SVG，最大 {{kb}}KB；不选择新图片时沿用当前 Logo。",
+	logo: "Logo",
+	modeUpload: "上传图片",
+	modeUrl: "填写 URL",
+	logoUrl: "Logo 地址",
+	urlHint: "支持员工端本站路径（以单个 / 开头）或在线 http(s) 地址；留空回退名称首字母。",
+	productName: "产品名称",
+	nameRequired: "产品名称不能为空",
+	save: "保存",
+	reset: "重置",
+};

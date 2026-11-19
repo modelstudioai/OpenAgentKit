@@ -1,14 +1,20 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import enAuth from "./locales/en/auth.ts";
+import enBranding from "./locales/en/branding.ts";
 import enCommon from "./locales/en/common.ts";
 import enMembers from "./locales/en/members.ts";
 import enNavigation from "./locales/en/navigation.ts";
+import enOperations from "./locales/en/operations.ts";
+import enPresetPacks from "./locales/en/presetPacks.ts";
 import enUsage from "./locales/en/usage.ts";
 import zhAuth from "./locales/zh-CN/auth.ts";
+import zhBranding from "./locales/zh-CN/branding.ts";
 import zhCommon from "./locales/zh-CN/common.ts";
 import zhMembers from "./locales/zh-CN/members.ts";
 import zhNavigation from "./locales/zh-CN/navigation.ts";
+import zhOperations from "./locales/zh-CN/operations.ts";
+import zhPresetPacks from "./locales/zh-CN/presetPacks.ts";
 import zhUsage from "./locales/zh-CN/usage.ts";
 
 export const SUPPORTED_LOCALES = ["zh-CN", "en"] as const;
@@ -54,6 +60,9 @@ export interface I18nResources {
 		navigation: typeof zhNavigation;
 		members: typeof zhMembers;
 		usage: typeof zhUsage;
+		operations: typeof zhOperations;
+		branding: typeof zhBranding;
+		presetPacks: typeof zhPresetPacks;
 	};
 	en: {
 		common: typeof enCommon;
@@ -61,6 +70,9 @@ export interface I18nResources {
 		navigation: typeof enNavigation;
 		members: typeof enMembers;
 		usage: typeof enUsage;
+		operations: typeof enOperations;
+		branding: typeof enBranding;
+		presetPacks: typeof enPresetPacks;
 	};
 }
 
@@ -72,10 +84,28 @@ export async function initI18n() {
 		fallbackLng: "zh-CN",
 		supportedLngs: [...SUPPORTED_LOCALES],
 		defaultNS: "common",
-		ns: ["common", "auth", "navigation", "members", "usage"],
+		ns: ["common", "auth", "navigation", "members", "usage", "operations", "branding", "presetPacks"],
 		resources: {
-			"zh-CN": { common: zhCommon, auth: zhAuth, navigation: zhNavigation, members: zhMembers, usage: zhUsage },
-			en: { common: enCommon, auth: enAuth, navigation: enNavigation, members: enMembers, usage: enUsage },
+			"zh-CN": {
+				common: zhCommon,
+				auth: zhAuth,
+				navigation: zhNavigation,
+				members: zhMembers,
+				usage: zhUsage,
+				operations: zhOperations,
+				branding: zhBranding,
+				presetPacks: zhPresetPacks,
+			},
+			en: {
+				common: enCommon,
+				auth: enAuth,
+				navigation: enNavigation,
+				members: enMembers,
+				usage: enUsage,
+				operations: enOperations,
+				branding: enBranding,
+				presetPacks: enPresetPacks,
+			},
 		},
 	});
 	document.documentElement.lang = i18n.resolvedLanguage ?? lng;
