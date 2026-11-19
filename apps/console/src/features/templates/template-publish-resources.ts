@@ -34,6 +34,10 @@ export function publishResourceNames(declarations: ResourceDraftDeclaration[]): 
 
 export function pendingPublishDescription(plan: ProjectPlan, names: Record<string, string>, includeNoop = false) {
 	const t = i18n.getFixedT(null, "templates");
+	const translateSummary = i18n.getFixedT(null, "templates") as unknown as (
+		key: string,
+		options?: Record<string, unknown>,
+	) => string;
 	const changes = includeNoop ? plan.diff : pendingPublishResources(plan);
 	const rows = changes.map((entry) => {
 		const address = /^([^:/]+)[:/](.+)$/.exec(entry.resource);
@@ -44,9 +48,10 @@ export function pendingPublishDescription(plan: ProjectPlan, names: Record<strin
 			? t(RESOURCE_KEYS[type as keyof typeof RESOURCE_KEYS])
 			: t("publish.resources.fallbackType");
 		const action = `${t(ACTION_KEYS[entry.action])}${entry.destructive ? t("publish.resources.destructive") : ""}`;
+		const summary = entry.summary_key ? translateSummary(entry.summary_key, entry.summary_params) : undefined;
 		return (
 			t("publish.resources.row", { type: typeLabel, name, action, resource: entry.resource }) +
-			(entry.summary ? t("publish.resources.summary", { summary: entry.summary }) : "")
+			(summary ? t("publish.resources.summary", { summary }) : "")
 		);
 	});
 	return `${t("publish.resources.title", { count: changes.length })}\n\n${rows.join("\n\n")}`;

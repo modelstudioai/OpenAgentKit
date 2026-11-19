@@ -313,3 +313,12 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
   已接入创建成员、密钥条目、Agent 表单、环境/记忆库/密钥库创建校验。
 - 仍待处理：server 生成的发布计划摘要、配额分类名等文本没有 locale 参数；需要在 server 响应中
   返回结构化参数或英文模板（计划中的 server error `params` 扩展）后另行迁移。
+
+#### 协议层结构化文案基础（2026-11-19）
+
+- `KitError` 增加可选 `message_key` / `message_params`：`message` 继续作为日志与旧客户端兜底，
+  新客户端可按稳定键查词表；HTTP 错误体由 server 原样透传，服务端不读取 `Accept-Language`。
+- `PlanDiffEntry` 增加可选 `summary_key` / `summary_params`。console 发布确认改为只展示本地化的
+  资源类型、名称、动作与标识；上游 SDK 的自由文本 `summary` 不再作为英文界面的主文案。
+- 下一步：逐步为 server 用户可见错误补 `message_key`，并为本仓库自有的上下架/删除计划补
+  `summary_key`；上游 `@openagentpack/sdk` 的 `reason` 保持自由文本，不做包内改造。
