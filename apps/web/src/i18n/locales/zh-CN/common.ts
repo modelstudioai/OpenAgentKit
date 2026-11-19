@@ -18,6 +18,7 @@ export default {
 		label: "界面语言",
 		zh: "中文",
 		en: "English",
+		switchTo: "切换到{{language}}",
 	},
 	appTitle: "OpenAgentPack Kit 体验页",
 	bootstrapFailed: "无法读取服务配置",

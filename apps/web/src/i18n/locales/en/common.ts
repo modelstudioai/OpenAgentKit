@@ -18,6 +18,7 @@ export default {
 		label: "Interface language",
 		zh: "中文",
 		en: "English",
+		switchTo: "Switch to {{language}}",
 	},
 	appTitle: "OpenAgentPack Kit Workspace",
 	bootstrapFailed: "Unable to load the service configuration",
