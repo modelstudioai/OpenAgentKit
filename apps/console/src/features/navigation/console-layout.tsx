@@ -167,7 +167,7 @@ export function ConsoleLayout({
 								{nav}
 								{!collapsed ? (
 									<div className={styles.siderFooter}>
-										<LanguageSwitcher />
+										<LanguageSwitcher block />
 									</div>
 								) : null}
 							</div>
@@ -207,7 +207,7 @@ export function ConsoleLayout({
 					<div className={styles.drawerBody}>
 						{nav}
 						<div className={styles.drawerFooter}>
-							<LanguageSwitcher />
+							<LanguageSwitcher block />
 						</div>
 					</div>
 				</Drawer>
