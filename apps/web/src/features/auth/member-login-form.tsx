@@ -24,29 +24,10 @@ export function MemberLoginForm({
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
 	return (
-		<main className="relative grid min-h-full min-w-0 place-items-center px-4 py-8 sm:px-6">
-			<button
-				type="button"
-				aria-label={t("common:languageSwitcher.switchTo", { language: nextLabel })}
-				onClick={() => void setLocale(nextLocale)}
-				className="absolute top-4 right-4 inline-flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[length:var(--kit-text-label)] text-[var(--kit-fg-muted)] transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] hover:bg-[var(--kit-bg-subtle)] hover:text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] motion-reduce:transition-none sm:top-5 sm:right-5"
-			>
-				<svg
-					aria-hidden="true"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					strokeWidth="1.5"
-					className="size-3.5"
-				>
-					<circle cx="12" cy="12" r="9" />
-					<path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
-				</svg>
-				<span>{nextLabel}</span>
-			</button>
+		<main className="grid min-h-full min-w-0 place-items-center px-4 py-8 sm:px-6">
 			<form
 				aria-labelledby="member-login-heading"
-				className="w-full min-w-0 max-w-sm space-y-6 rounded-[var(--kit-radius)] border border-[var(--kit-border-subtle)] bg-[var(--kit-surface)] p-6 shadow-[var(--kit-shadow)] sm:p-8"
+				className="relative w-full min-w-0 max-w-sm space-y-6 rounded-[var(--kit-radius)] border border-[var(--kit-border-subtle)] bg-[var(--kit-surface)] p-6 shadow-[var(--kit-shadow)] sm:p-8"
 				onSubmit={(event) => {
 					event.preventDefault();
 					if (pending) return;
@@ -57,6 +38,25 @@ export function MemberLoginForm({
 						});
 				}}
 			>
+				<button
+					type="button"
+					aria-label={t("common:languageSwitcher.switchTo", { language: nextLabel })}
+					onClick={() => void setLocale(nextLocale)}
+					className="absolute top-3 right-3 inline-flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[length:var(--kit-text-label)] text-[var(--kit-fg-muted)] transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] hover:bg-[var(--kit-bg-subtle)] hover:text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] motion-reduce:transition-none"
+				>
+					<svg
+						aria-hidden="true"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						strokeWidth="1.5"
+						className="size-3.5"
+					>
+						<circle cx="12" cy="12" r="9" />
+						<path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+					</svg>
+					<span>{nextLabel}</span>
+				</button>
 				<header className="text-center">
 					<p className="mb-3 text-[length:var(--kit-text-caption)] font-medium text-[var(--kit-fg-muted)]">
 						Managed Agent
