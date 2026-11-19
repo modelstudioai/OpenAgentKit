@@ -2,6 +2,7 @@ import { ErrorState } from "@openagentpack/kit-chat-ui";
 import type { TemplateUsageTrendPoint } from "@openagentpack/kit-sdk/protocol";
 import { Segmented, Select } from "antd";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import styles from "./usage.module.less";
@@ -27,14 +28,15 @@ function TrendTotal({ label, value, unit }: { label: string; value: number; unit
 
 /** 指标切换：Token 消耗 / 运行时长（两者量级悬殊，图内一次展示一个，汇总行始终同时给出两个总数）。 */
 function TrendMetricToggle({ value, onChange }: { value: TrendMetric; onChange: (metric: TrendMetric) => void }) {
+	const { t } = useTranslation("usage");
 	return (
 		<Segmented
-			aria-label="趋势指标"
+			aria-label={t("trend.metricAria")}
 			value={value}
 			onChange={(next) => onChange(next as TrendMetric)}
 			options={[
-				{ label: "Token 消耗", value: "tokens" },
-				{ label: "运行时长", value: "active_seconds" },
+				{ label: t("trend.metricTokens"), value: "tokens" },
+				{ label: t("trend.metricSeconds"), value: "active_seconds" },
 			]}
 		/>
 	);
@@ -50,8 +52,9 @@ function TrendChart({
 	metric: TrendMetric;
 	toDay: string;
 }) {
+	const { t } = useTranslation("usage");
 	const max = Math.max(...points.map((point) => point[metric]), 0);
-	const unit = metric === "tokens" ? " Token" : " 秒";
+	const unit = metric === "tokens" ? t("trend.unitToken") : ` ${t("unitSeconds")}`;
 	const fmt = (value: number) => value.toLocaleString("zh-CN", { maximumFractionDigits: metric === "tokens" ? 0 : 1 });
 	return (
 		<div className={styles.chart}>
@@ -102,6 +105,7 @@ function TrendChart({
 /** 模版用量逐日趋势卡：柱状图展示每日 Token 消耗与运行时长；数据来自限额账本条目逐日账（启用后开始记录）。
  * templateId 缺省为「全部」视角（全部模版条目求和），由服务端零值补全到今天（UTC 日键）。 */
 export function TemplateUsageTrendCard({ templateId }: { templateId?: string }) {
+	const { t } = useTranslation("usage");
 	const client = useMemo(getAdminClient, []);
 	const [days, setDays] = useState<7 | 14 | 28>(7);
 	const [metric, setMetric] = useState<TrendMetric>("tokens");
@@ -115,26 +119,26 @@ export function TemplateUsageTrendCard({ templateId }: { templateId?: string }) 
 		<section aria-labelledby="template-usage-trend-heading" className={styles.card}>
 			<div className={styles.cardHeader}>
 				<h3 id="template-usage-trend-heading" className={styles.cardTitle}>
-					使用趋势
+					{t("trend.title")}
 				</h3>
 				<div className={styles.headerControls}>
 					<TrendMetricToggle value={metric} onChange={setMetric} />
 					<Select
-						aria-label="趋势统计天数"
+						aria-label={t("trend.daysAria")}
 						className={styles.daysSelect}
 						value={days}
 						onChange={(value) => setDays(value as 7 | 14 | 28)}
 						options={[
-							{ value: 7, label: "近 7 天" },
-							{ value: 14, label: "近 14 天" },
-							{ value: 28, label: "近 28 天" },
+							{ value: 7, label: t("trend.days7") },
+							{ value: 14, label: t("trend.days14") },
+							{ value: 28, label: t("trend.days28") },
 						]}
 					/>
 				</div>
 			</div>
 			{loading ? (
 				<p role="status" className={styles.loadingText}>
-					正在加载使用趋势…
+					{t("trend.loading")}
 				</p>
 			) : null}
 			{query.error ? <ErrorState message={query.error} onRetry={() => void query.refresh()} /> : null}
@@ -142,23 +146,26 @@ export function TemplateUsageTrendCard({ templateId }: { templateId?: string }) 
 				<>
 					<dl className={styles.totals}>
 						<TrendTotal
-							label={`近 ${days} 天 Token 消耗`}
+							label={t("trend.totalTokens", { days })}
 							value={points.reduce((sum, point) => sum + point.tokens, 0)}
 						/>
 						<TrendTotal
-							label={`近 ${days} 天运行时长`}
+							label={t("trend.totalSeconds", { days })}
 							value={points.reduce((sum, point) => sum + point.active_seconds, 0)}
-							unit="秒"
+							unit={t("unitSeconds")}
 						/>
 					</dl>
 					{points.some((point) => point[metric] > 0) ? (
 						<TrendChart points={points} metric={metric} toDay={trend.to_day} />
 					) : (
-						<p className={styles.emptyChart}>统计区间内暂无逐日用量记录</p>
+						<p className={styles.emptyChart}>{t("trend.emptyChart")}</p>
 					)}
 					<p className={styles.footnote}>
-						统计周期：{shortDay(trend.from_day)} – {shortDay(trend.to_day)} · 逐日数值按限额账本增量统计
-						{trend.since_day ? `，自 ${trend.since_day} 起记录，不含更早历史` : "，暂无记录"}
+						{t("trend.footnote", {
+							from: shortDay(trend.from_day),
+							to: shortDay(trend.to_day),
+							since: trend.since_day ? t("trend.sinceRecorded", { day: trend.since_day }) : t("trend.sinceNone"),
+						})}
 					</p>
 				</>
 			) : null}
