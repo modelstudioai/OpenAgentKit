@@ -1,6 +1,7 @@
 import type { PresetPackAgentResources } from "@openagentpack/kit-sdk/protocol";
 import { Alert, Button, Drawer, Spin } from "antd";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { usePresetPackResources } from "../preset-packs/preset-pack-session-resources.tsx";
 import { AgentVersionConfigurationView } from "./agent-version-configuration-view.tsx";
 import { TemplateAgentVersionPicker } from "./template-agent-version-picker.tsx";
@@ -26,6 +27,7 @@ function AgentDetailPreview({
 	ready: boolean;
 	versionLabel: string;
 }) {
+	const { t } = useTranslation("templates");
 	if (detail.error)
 		return (
 			<Alert
@@ -34,7 +36,7 @@ function AgentDetailPreview({
 				message={detail.error}
 				action={
 					<Button size="small" onClick={() => void detail.refresh()}>
-						重试
+						{t("retry")}
 					</Button>
 				}
 			/>
@@ -59,12 +61,13 @@ function AgentDetailContent({
 	onClose: () => void;
 	onConfirm: (version?: number, resources?: PresetPackAgentResources) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const [version, setVersion] = useState(initialVersion);
 	const detail = useTemplateAgentDetail(agent, version);
 	const resources = useAgentResourcePreview(agent);
 	const ready = !detail.loading && !detail.error && Boolean(detail.data);
 	const createdAt = ready ? detail.data?.created_at : undefined;
-	const versionLabel = agent.local ? "待发布" : `v${version}`;
+	const versionLabel = agent.local ? t("agent.detail.pendingPublish") : `v${version}`;
 	return (
 		<Drawer
 			open
@@ -72,15 +75,15 @@ function AgentDetailContent({
 			width={672}
 			title={
 				<div className={styles.drawerHead}>
-					<div className={styles.drawerTitle}>智能体详情</div>
+					<div className={styles.drawerTitle}>{t("agent.detail.title")}</div>
 					<p className={createdAt ? styles.drawerMeta : styles.srOnly}>
 						{createdAt ? (
 							<>
-								创建时间：
+								{t("agent.detail.createdAt")}
 								<time dateTime={createdAt}>{new Date(createdAt).toLocaleString("zh-CN", { hour12: false })}</time>
 							</>
 						) : (
-							"查看配置后确认选择此智能体。"
+							t("agent.detail.pickHint")
 						)}
 					</p>
 				</div>
@@ -105,20 +108,20 @@ function AgentDetailContent({
 						loading={resources.checking}
 						onClick={() => onConfirm(version, resources.confirmedResources)}
 					>
-						确认选择
+						{t("agent.detail.confirm")}
 					</Button>
 				</div>
 			}
 		>
 			<div className={styles.drawerBody}>
-				{resources.checking ? <p role="status">正在检测关联的运行时资源…</p> : null}
+				{resources.checking ? <p role="status">{t("agent.detail.checking")}</p> : null}
 				{resources.error ? (
 					<Alert
 						type="warning"
 						showIcon
-						title="运行时资源检测失败"
+						title={t("agent.detail.detectFailed")}
 						description={resources.error}
-						action={<Button onClick={() => void resources.refresh()}>重试</Button>}
+						action={<Button onClick={() => void resources.refresh()}>{t("retry")}</Button>}
 					/>
 				) : null}
 				<AgentDetailPreview detail={detail} ready={ready} versionLabel={versionLabel} />
@@ -139,13 +142,14 @@ export function TemplateAgentDetailDrawer({
 	selected: boolean;
 	onSelect: (version?: number, resources?: PresetPackAgentResources) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const [open, setOpen] = useState(false);
 	const name = agent.name || agent.agent_id;
 	return (
 		<>
 			<button
 				type="button"
-				aria-label={`选择智能体 ${name}（${agent.agent_id}）`}
+				aria-label={t("agent.detail.selectAria", { name, id: agent.agent_id })}
 				aria-pressed={selected}
 				disabled={!agent.local && version === undefined}
 				onClick={() => setOpen(true)}

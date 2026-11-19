@@ -6,7 +6,7 @@ import {
 	versionMcpServers,
 	versionToolkits,
 } from "./agent-version-configuration.ts";
-import { MANAGED_AGENT_MODELS } from "./managed-agent-models.ts";
+import { MANAGED_AGENT_MODELS, managedAgentModelLabel } from "./managed-agent-models.ts";
 import type { AgentFormDetail } from "./template-agent-form-draft.ts";
 
 /** 创建预览与管理列表共用字段顺序及配置投影。 */
@@ -29,8 +29,9 @@ export function agentConfigurationValues(detail?: AgentFormDetail) {
 		fields.name ?? fields.id ?? configObject(provider).name ?? configObject(provider).id ?? provider ?? config.model,
 	);
 	const toolkits = versionToolkits(config.tools).filter((group) => group.kind !== "mcp");
+	const managed = MANAGED_AGENT_MODELS.find((option) => option.id === model);
 	return {
-		model: (MANAGED_AGENT_MODELS.find((option) => option.id === model)?.name ?? model) || t("common.notSelected"),
+		model: (managed ? managedAgentModelLabel(managed) : model) || t("common.notSelected"),
 		multiagent:
 			configObject(config.multiagent).type === "coordinator" ? t("configuration.enabled") : t("configuration.disabled"),
 		description: detail?.description || "—",

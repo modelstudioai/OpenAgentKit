@@ -208,7 +208,7 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
 
 | feature | 引号内串数 | 状态 |
 | --- | --- | --- |
-| templates | 661 | 迁移中（批次 1：列表/创建入口/编辑器外壳；其余分批） |
+| templates | 661 | 迁移中（批次 1–2：列表/创建外壳/Agent 表单与版本配置；其余分批） |
 | usage | 138 | ✅ 全部（限额链路、Session 用量页、趋势卡、模版用量详情与 Provider 遥测表；聚合行名称参数化） |
 | members | 88 | ✅ 全部（列表/用量页/遥测表/创建页/hook 错误兜底；共享指标与采集状态词表入 common） |
 | preset-packs | 83 | ✅ 全部（选择/资源详情抽屉/会话资源；纯函数消息以缺省参数保持兼容） |
@@ -241,3 +241,15 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
   经全局 i18n 实例取文案，签名不变。`InnerLayout` 的返回按钮在模板页显式传 `backLabel`。
 - 仍待迁：Agent 表单/运行资源、环境/文件/记忆库/密钥库子编辑器、保存/发布/预览调试弹窗、
   版本历史与详情、残余草稿与工具函数；上下架/删除对话框已在本批完成。
+
+#### templates 批次 2（2026-11-19）
+
+- Agent 配置链路迁完：`template-agent-form`、`template-agent-configuration`、模型/Multi-Agent/工具/MCP 字段、
+  Skill 选择与上传入口、`template-agent-list`、版本选择与历史、详情抽屉、运行时资源选择、应用版本动作、
+  `agent-version-configuration` 及只读视图。
+- 纯函数（复制校验、MCP 草稿、历史配置投影）经 `i18n.getFixedT` 取文案，签名不变；`MANAGED_AGENT_MODELS`
+  的智能模式名称按 id 映射词表，模型 ID 保持 Provider 原值。
+- 纯函数测试依赖全局 i18n：console 新增 `src/i18n/test-setup.ts` 预载 zh-CN `templates`，
+  由 `vitest.config.ts` 的 `setupFiles` 加载；测试断言与默认中文行为不变。
+- 仍待迁：环境/文件/记忆库/密钥库子编辑器、保存/发布/预览调试弹窗、模版详情/版本历史/已保存资源、
+  残余草稿与工具函数。

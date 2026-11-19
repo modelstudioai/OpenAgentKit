@@ -1,6 +1,7 @@
 import { ConfirmDialog } from "@openagentpack/kit-chat-ui";
 import { KitError, type TemplateVersionView, type TemplateView } from "@openagentpack/kit-sdk/protocol";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import { primaryButtonClass } from "../../lib/styles.ts";
@@ -20,6 +21,7 @@ export function TemplateApplyVersionAction({
 	onApplied: (template: TemplateView) => void;
 	onPendingChange: (pending: boolean) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const client = useMemo(getAdminClient, []);
 	const [confirming, setConfirming] = useState(false);
 	const [conflict, setConflict] = useState(false);
@@ -56,20 +58,20 @@ export function TemplateApplyVersionAction({
 				disabled={disabled || apply.pending || conflict}
 				onClick={() => setConfirming(true)}
 			>
-				应用此版本
+				{t("agent.apply.button")}
 			</button>
 			{apply.error ? (
 				<p role="alert" className={styles.actionError}>
 					{apply.error}
-					{conflict ? "。请返回模版列表重新打开详情，核对当前配置后再应用。" : null}
+					{conflict ? t("agent.apply.conflict") : null}
 				</p>
 			) : null}
 			{confirming ? (
 				<ConfirmDialog
-					title="确认应用此版本"
-					body="应用后会自动生效，是否确认？"
+					title={t("agent.apply.title")}
+					body={t("agent.apply.body")}
 					danger={false}
-					confirmLabel={apply.pending ? "应用中…" : "确认应用"}
+					confirmLabel={apply.pending ? t("agent.apply.pending") : t("agent.apply.confirm")}
 					busy={apply.pending}
 					onCancel={() => setConfirming(false)}
 					onConfirm={() => {

@@ -1,6 +1,7 @@
 import type { PresetPackAgentResources, PresetPackPreview } from "@openagentpack/kit-sdk/protocol";
 import { Alert, Button, Drawer, Modal, Spin } from "antd";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { PresetPackResourceSelection, usePresetPackResources } from "../preset-packs/preset-pack-session-resources.tsx";
 import type { TemplateAgentSelection } from "./template-local-resources.tsx";
 
@@ -13,23 +14,24 @@ function DetectionStatus({
 	checking: boolean;
 	onClose: () => void;
 }) {
+	const { t } = useTranslation("templates");
 	return (
-		<section aria-label="关联运行时资源检测" className="space-y-4">
+		<section aria-label={t("agent.runtime.detectAria")} className="space-y-4">
 			{checking ? (
 				<div role="status" className="flex items-center gap-2">
 					<Spin size="small" />
-					正在检测关联的运行时资源…
+					{t("agent.runtime.checking")}
 				</div>
 			) : (
 				<Alert
 					type={query.error ? "error" : "warning"}
 					showIcon
-					title={query.error ? "运行时资源检测失败" : "运行时资源未完整读取"}
-					description={query.error ?? "暂未检测到已成功读取的资源，可重试以补齐结果。"}
-					action={<Button onClick={() => void query.refresh()}>重试</Button>}
+					title={query.error ? t("agent.runtime.detectFailed") : t("agent.runtime.incomplete")}
+					description={query.error ?? t("agent.runtime.incompleteHint")}
+					action={<Button onClick={() => void query.refresh()}>{t("retry")}</Button>}
 				/>
 			)}
-			<Button onClick={onClose}>取消检测</Button>
+			<Button onClick={onClose}>{t("agent.runtime.cancelDetect")}</Button>
 		</section>
 	);
 }
@@ -46,6 +48,7 @@ export function TemplateAgentRuntimeResources({
 	onApply: (preset: PresetPackPreview) => void;
 	onClose: () => void;
 }) {
+	const { t } = useTranslation("templates");
 	const query = usePresetPackResources(agent.agent_id, { initialData: initialResources });
 	const [phase, setPhase] = useState<"prompt" | "opening" | "select" | "closing">("prompt");
 	const [preparing, setPreparing] = useState(false);
@@ -65,10 +68,10 @@ export function TemplateAgentRuntimeResources({
 				<DetectionStatus query={query} checking={checking} onClose={onClose} />
 			) : null}
 			<Modal
-				title="关联运行时资源"
+				title={t("agent.runtime.title")}
 				open={!checking && !query.error && hasResources && phase === "prompt"}
-				okText="确定"
-				cancelText="取消"
+				okText={t("agent.runtime.ok")}
+				cancelText={t("cancel")}
 				onOk={() => setPhase("opening")}
 				onCancel={closeSelection}
 				afterOpenChange={(visible) => {
@@ -77,10 +80,10 @@ export function TemplateAgentRuntimeResources({
 					else if (phase === "closing") onClose();
 				}}
 			>
-				<p>检测到当前配置有关联的运行时资源，是否直接使用？</p>
+				<p>{t("agent.runtime.prompt")}</p>
 			</Modal>
 			<Drawer
-				title="选择运行时资源"
+				title={t("agent.runtime.selectTitle")}
 				size="large"
 				open={phase === "select"}
 				onClose={closeSelection}
@@ -96,19 +99,19 @@ export function TemplateAgentRuntimeResources({
 						<div ref={setFeedbackContainer} className="empty:hidden" />
 						<div className="flex justify-end gap-2">
 							<Button disabled={preparing} onClick={closeSelection}>
-								取消
+								{t("cancel")}
 							</Button>
 							<div ref={setActionContainer} />
 						</div>
 					</div>
 				}
 			>
-				<p className="mb-4 text-sm">点击资源行查看配置后确认选择，保留当前基础配置；选择环境将替换当前环境。</p>
+				<p className="mb-4 text-sm">{t("agent.runtime.hint")}</p>
 				<PresetPackResourceSelection
 					agent={{ ...agent, version: agent.agent_version ?? agent.version }}
 					query={query}
 					requireSelection
-					actionLabel="使用所选资源"
+					actionLabel={t("agent.runtime.action")}
 					actionContainer={actionContainer}
 					feedbackContainer={feedbackContainer}
 					onPendingChange={setPreparing}

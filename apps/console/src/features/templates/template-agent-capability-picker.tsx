@@ -1,6 +1,8 @@
 import type { ProjectAgentCreateInput, ProjectAgentOptions, RemoteSkill } from "@openagentpack/kit-sdk/protocol";
 import { Alert, Button, Drawer, Empty, Input, Spin } from "antd";
+import i18n from "i18next";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import styles from "./template-forms.module.less";
@@ -34,7 +36,10 @@ function rowClass(selected: boolean) {
 	return selected ? `${styles.choiceRow} ${styles.choiceRowOn}` : `${styles.choiceRow} ${styles.choiceRowIdle}`;
 }
 
-const sourceNames: Record<Source, string> = { custom: "我的 Skill", official: "官方 Skill" };
+const SOURCE_KEYS: Record<Source, "agent.skills.custom" | "agent.skills.official"> = {
+	custom: "agent.skills.custom",
+	official: "agent.skills.official",
+};
 
 /** 选择仅更新新建表单；远端 Skill 固定版本，本地资源随同一源码 revision 提交。 */
 export function TemplateAgentCapabilities(props: Props) {
@@ -48,6 +53,7 @@ export function TemplateAgentCapabilities(props: Props) {
 }
 
 function CapabilitySection({ kind, ...props }: Props & { kind: Kind }) {
+	const { t } = useTranslation("templates");
 	const [open, setOpen] = useState(false);
 	const [source, setSource] = useState<Source>("custom");
 	const [uploadMessage, setUploadMessage] = useState<string>();
@@ -56,13 +62,16 @@ function CapabilitySection({ kind, ...props }: Props & { kind: Kind }) {
 		name: skill.name,
 		version:
 			typeof skill.reference === "string"
-				? "项目声明"
-				: `${sourceNames[skill.reference.type]} · 版本：${skill.reference.version}`,
+				? t("agent.skills.projectDeclaration")
+				: t("agent.skills.sourceVersion", {
+						source: t(SOURCE_KEYS[skill.reference.type]),
+						version: skill.reference.version,
+					}),
 	}));
 	return (
 		<div className={`${styles.shrinkRoot} ${styles.blockStack}`}>
 			<div className={styles.rowBetween}>
-				<p className={styles.formNote}>最多选择 10 个 Skill，云端 Skill 使用选中时的具体版本。</p>
+				<p className={styles.formNote}>{t("agent.skills.note", { max: MAX_SKILLS })}</p>
 				<div className={styles.actionsWrap}>
 					{kind === "Skill" ? (
 						<TemplateSkillUploadAction
@@ -79,7 +88,7 @@ function CapabilitySection({ kind, ...props }: Props & { kind: Kind }) {
 									skills.set(key, { key, name: skill.name, reference: skill.skill_key });
 								}
 								props.onChange({ ...props.value, skills: [...skills.values()] });
-								setUploadMessage(`已保存并添加 ${uploaded.length} 个 Skill。`);
+								setUploadMessage(t("agent.skills.addSaved", { count: uploaded.length, kind }));
 								await props.onReloadProject();
 							}}
 						/>
@@ -95,7 +104,7 @@ function CapabilitySection({ kind, ...props }: Props & { kind: Kind }) {
 							else setOpen(true);
 						}}
 					>
-						添加 {kind}
+						{t("agent.skills.add", { kind })}
 					</Button>
 					{open ? (
 						<CapabilityPicker
@@ -109,7 +118,7 @@ function CapabilitySection({ kind, ...props }: Props & { kind: Kind }) {
 				</div>
 			</div>
 			{kind === "Skill" && props.value.skills.length >= MAX_SKILLS ? (
-				<p className={styles.formNote}>最多选择 10 个 Skill，请先移除一个再上传。</p>
+				<p className={styles.formNote}>{t("agent.skills.limitHint", { max: MAX_SKILLS })}</p>
 			) : null}
 			{uploadMessage ? (
 				<p role="status" className={styles.formNote}>
@@ -117,7 +126,7 @@ function CapabilitySection({ kind, ...props }: Props & { kind: Kind }) {
 				</p>
 			) : null}
 			{selected.length ? (
-				<ul aria-label={`已选 ${kind}`} className={styles.stack2}>
+				<ul aria-label={t("agent.skills.selectedAria", { kind })} className={styles.stack2}>
 					{selected.map((item) => (
 						<li key={item.key} className={styles.selectedItemCard}>
 							<div className={`${styles.shrinkRoot} ${styles.fieldStack}`}>
@@ -128,7 +137,7 @@ function CapabilitySection({ kind, ...props }: Props & { kind: Kind }) {
 								size="small"
 								className={styles.shrinkZero}
 								disabled={props.disabled}
-								aria-label={`移除 ${kind} ${item.name}`}
+								aria-label={t("agent.skills.removeAria", { kind, name: item.name })}
 								onClick={() =>
 									props.onChange({
 										...props.value,
@@ -136,13 +145,13 @@ function CapabilitySection({ kind, ...props }: Props & { kind: Kind }) {
 									})
 								}
 							>
-								移除
+								{t("agent.skills.remove")}
 							</Button>
 						</li>
 					))}
 				</ul>
 			) : (
-				<p className={styles.formNote}>暂未添加 {kind}</p>
+				<p className={styles.formNote}>{t("agent.skills.empty", { kind })}</p>
 			)}
 		</div>
 	);
@@ -160,6 +169,7 @@ function CapabilityPicker({
 	onSourceChange: (source: Source) => void;
 	onClose: () => void;
 }) {
+	const { t } = useTranslation("templates");
 	return (
 		<Drawer
 			open
@@ -167,24 +177,24 @@ function CapabilityPicker({
 			width={672}
 			title={
 				<div className={styles.stack2}>
-					<div className={styles.drawerTitle}>选择 {kind}</div>
-					<p className={styles.drawerAgent}>最多选择 10 个 Skill，云端 Skill 使用选中时的具体版本。</p>
+					<div className={styles.drawerTitle}>{t("agent.skills.chooseTitle", { kind })}</div>
+					<p className={styles.drawerAgent}>{t("agent.skills.note", { max: MAX_SKILLS })}</p>
 				</div>
 			}
 			footer={
 				<div className={styles.rowBetween}>
 					<p role="status" className={styles.formNote}>
-						已选择 {props.value.skills.length} 个 {kind}
+						{t("agent.skills.selectedCount", { count: props.value.skills.length, kind })}
 					</p>
 					<Button type="primary" onClick={onClose}>
-						完成
+						{t("agent.skills.done")}
 					</Button>
 				</div>
 			}
 		>
 			<div className={styles.pageStack}>
 				{kind === "Skill" ? (
-					<fieldset aria-label="Skill 来源" className={styles.sourceTabs}>
+					<fieldset aria-label={t("agent.skills.sourceAria")} className={styles.sourceTabs}>
 						{(["custom", "official"] as const).map((item) => (
 							<button
 								key={item}
@@ -193,7 +203,7 @@ function CapabilityPicker({
 								aria-pressed={source === item}
 								onClick={() => onSourceChange(item)}
 							>
-								{sourceNames[item]}
+								{t(SOURCE_KEYS[item])}
 							</button>
 						))}
 					</fieldset>
@@ -207,13 +217,14 @@ function CapabilityPicker({
 type SkillChoice = Choice & { selection?: AgentSkillSelection };
 
 function remoteSkillChoice(skill: RemoteSkill): SkillChoice {
+	const t = i18n.getFixedT(null, "templates");
 	const key = `${skill.source}:${skill.skill_id}`;
 	const available = Boolean(skill.available && skill.latest_version);
 	return {
 		key,
 		name: skill.name,
 		description: skill.description,
-		detail: available ? `版本：${skill.latest_version}` : "暂不可用",
+		detail: available ? t("agent.skills.version", { version: skill.latest_version }) : t("agent.skills.unavailable"),
 		available,
 		selection:
 			available && skill.latest_version
@@ -234,11 +245,12 @@ function projectSkillSnapshot(
 ) {
 	if (!enabled) return { skills: [], error: null, outdated: false };
 	const outdated = Boolean(query.data && query.data.base_revision !== revision);
-	const error = outdated ? "项目源码已变化，请重试以重新加载项目。" : query.error;
+	const error = outdated ? i18n.getFixedT(null, "templates")("agent.skills.projectOutdated") : query.error;
 	return { skills: query.loading || error ? [] : (query.data?.skills ?? []), error, outdated };
 }
 
 function SkillChoices(props: Props & { source: Source }) {
+	const { t } = useTranslation("templates");
 	const client = useMemo(getAdminClient, []);
 	const remote = useAdminQuery(`templates:agent-create:skills:${props.source}`, (signal) =>
 		client.remoteSkills(props.source, signal),
@@ -258,7 +270,7 @@ function SkillChoices(props: Props & { source: Source }) {
 			key,
 			name: skill.name,
 			description: skill.description,
-			detail: "本地 Skill",
+			detail: t("agent.skills.local"),
 			available: true,
 			selection: { key, name: skill.name, reference: skill.id },
 		});
@@ -278,7 +290,7 @@ function SkillChoices(props: Props & { source: Source }) {
 					message={remote.error}
 					action={
 						<Button size="small" onClick={() => void remote.refresh()}>
-							重试
+							{t("retry")}
 						</Button>
 					}
 				/>
@@ -290,7 +302,7 @@ function SkillChoices(props: Props & { source: Source }) {
 					message={local.error}
 					action={
 						<Button size="small" onClick={local.outdated ? props.onReloadProject : () => void project.refresh()}>
-							重试
+							{t("retry")}
 						</Button>
 					}
 				/>
@@ -312,13 +324,14 @@ function SkillChoices(props: Props & { source: Source }) {
 					}
 					props.onChange({ ...props.value, skills: selection });
 				}}
-				empty="暂无可选 Skill"
+				empty={t("agent.skills.emptyChoices")}
 			/>
 		</div>
 	);
 }
 
 function ChoicesErrorAlert({ error, onRetry }: { error: string; onRetry?: () => void }) {
+	const { t } = useTranslation("templates");
 	return (
 		<Alert
 			type="error"
@@ -327,7 +340,7 @@ function ChoicesErrorAlert({ error, onRetry }: { error: string; onRetry?: () => 
 			action={
 				onRetry ? (
 					<Button size="small" onClick={onRetry}>
-						重试
+						{t("retry")}
 					</Button>
 				) : undefined
 			}
@@ -358,6 +371,7 @@ function CapabilityChoices({
 	onToggle: (key: string) => void;
 	empty: string;
 }) {
+	const { t } = useTranslation("templates");
 	const [search, setSearch] = useState("");
 	const [page, setPage] = useState(1);
 	const filtered = rows.filter((row) =>
@@ -365,13 +379,15 @@ function CapabilityChoices({
 	);
 	const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
 	const currentPage = Math.min(page, pages);
-	const emptyState = hideEmpty ? null : <Empty description={search.trim() ? `没有匹配的 ${kind}` : empty} />;
+	const emptyState = hideEmpty ? null : (
+		<Empty description={search.trim() ? t("agent.skills.noMatch", { kind }) : empty} />
+	);
 	return (
 		<div className={`${styles.shrinkRoot} ${styles.blockStack}`}>
 			<Input
 				type="search"
-				aria-label={`搜索 ${kind}`}
-				placeholder={`搜索 ${kind} 名称或标识`}
+				aria-label={t("agent.skills.searchAria", { kind })}
+				placeholder={t("agent.skills.searchPlaceholder", { kind })}
 				value={search}
 				onChange={(event) => {
 					setSearch(event.target.value);
@@ -386,7 +402,7 @@ function CapabilityChoices({
 				<ChoicesErrorAlert error={error} onRetry={onRetry} />
 			) : filtered.length ? (
 				<>
-					<ul aria-label={`${kind} 列表`} className={styles.choiceListCard}>
+					<ul aria-label={t("agent.skills.listAria", { kind })} className={styles.choiceListCard}>
 						{filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((row) => (
 							<li key={row.key}>
 								<CapabilityRow
@@ -400,15 +416,13 @@ function CapabilityChoices({
 						))}
 					</ul>
 					{pages > 1 ? (
-						<nav aria-label={`${kind} 列表分页`} className={styles.rowEnd13}>
+						<nav aria-label={t("agent.skills.paginationAria", { kind })} className={styles.rowEnd13}>
 							<Button size="small" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>
-								上一页
+								{t("agent.skills.previous")}
 							</Button>
-							<span>
-								第 {currentPage} / {pages} 页
-							</span>
+							<span>{t("agent.skills.page", { page: currentPage, pages })}</span>
 							<Button size="small" disabled={currentPage >= pages} onClick={() => setPage(currentPage + 1)}>
-								下一页
+								{t("agent.skills.next")}
 							</Button>
 						</nav>
 					) : null}
@@ -433,10 +447,19 @@ function CapabilityRow({
 	limitReached: boolean;
 	onToggle: (key: string) => void;
 }) {
+	const { t } = useTranslation("templates");
 	return (
 		<button
 			type="button"
-			aria-label={`选择 ${kind} ${row.name}${kind === "Skill" ? `（${row.key.slice(row.key.indexOf(":") + 1)}）` : ""}`}
+			aria-label={
+				kind === "Skill"
+					? t("agent.skills.selectAriaWithKey", {
+							kind,
+							name: row.name,
+							key: row.key.slice(row.key.indexOf(":") + 1),
+						})
+					: t("agent.skills.selectAria", { kind, name: row.name })
+			}
 			aria-pressed={selected}
 			disabled={!selected && (!row.available || limitReached)}
 			className={rowClass(selected)}

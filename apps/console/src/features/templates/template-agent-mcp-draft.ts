@@ -1,4 +1,5 @@
 import { type ProjectAgentCreateInput, ProjectAgentMcpNameSchema } from "@openagentpack/kit-sdk/protocol";
+import i18n from "i18next";
 
 type McpToolkit = NonNullable<NonNullable<ProjectAgentCreateInput["tools"]>["mcp"]>[number];
 export type AgentMcpDraft = {
@@ -32,27 +33,29 @@ export function mcpDraftFingerprint(draft: AgentMcpDraft) {
 }
 
 function nameError(name: string, label: string) {
-	if (!name.trim()) return `请输入${label}`;
-	if (name.trim().length > 200) return `${label}最多 200 个字符`;
-	if (!ProjectAgentMcpNameSchema.safeParse(name).success) return `${label}格式无效，请勿填写凭据或变量引用`;
+	const t = i18n.getFixedT(null, "templates");
+	if (!name.trim()) return t("agent.mcpDraft.required", { label });
+	if (name.trim().length > 200) return t("agent.mcpDraft.maxLength", { label, max: 200 });
+	if (!ProjectAgentMcpNameSchema.safeParse(name).success) return t("agent.mcpDraft.invalid", { label });
 	return undefined;
 }
 
 /** 错误以稳定行 ID 定位；不将错误配置值写进提示。 */
 export function mcpDraftErrors(servers: AgentMcpDraft[]) {
+	const t = i18n.getFixedT(null, "templates");
 	const errors = new Map<string, string>();
 	const names = servers.map((server) => server.name.trim());
 	for (const server of servers) {
-		const error = nameError(server.name, "MCP 服务标识");
+		const error = nameError(server.name, t("agent.mcpDraft.serverLabel"));
 		if (error) errors.set(server.id, error);
 		else if (names.filter((name) => name === server.name.trim()).length > 1)
-			errors.set(server.id, "MCP 服务标识不可重复");
+			errors.set(server.id, t("agent.mcpDraft.duplicateServer"));
 		const toolNames = server.tools.map((tool) => tool.name.trim());
 		for (const tool of server.tools) {
-			const error = nameError(tool.name, "工具名称");
+			const error = nameError(tool.name, t("agent.mcpDraft.toolLabel"));
 			if (error) errors.set(tool.id, error);
 			else if (toolNames.filter((name) => name === tool.name.trim()).length > 1)
-				errors.set(tool.id, "同一 MCP 的工具名称不可重复");
+				errors.set(tool.id, t("agent.mcpDraft.duplicateTool"));
 		}
 	}
 	return errors;

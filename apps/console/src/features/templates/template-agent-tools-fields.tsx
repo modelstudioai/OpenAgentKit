@@ -1,5 +1,6 @@
 import type { ProjectAgentCreateInput } from "@openagentpack/kit-sdk/protocol";
 import { Checkbox, Select } from "antd";
+import { useTranslation } from "react-i18next";
 import { formRowClass, formRowLabelClass } from "../../lib/form-row.ts";
 import { BUILTIN_TOOLS } from "./template-agent-form-draft.ts";
 import styles from "./template-forms.module.less";
@@ -12,9 +13,10 @@ const canonicalToolName = (name: string) =>
 		.toLowerCase();
 
 export function TemplateAgentToolsFields({ value, onChange }: { value?: Tools; onChange: (tools: Tools) => void }) {
+	const { t } = useTranslation("templates");
 	const tools: Tools = value ?? { builtin: [...BUILTIN_TOOLS] };
 	const defaultPermission = tools.default_permission ?? "allow";
-	const inheritedLabel = defaultPermission === "ask" ? "每次询问" : "总是允许";
+	const inheritedLabel = defaultPermission === "ask" ? t("agent.tools.askEveryTime") : t("agent.tools.alwaysAllow");
 	const names = [...new Set([...BUILTIN_TOOLS, ...tools.builtin])];
 	const overrides = new Map(
 		Object.entries(tools.permissions ?? {}).map(([name, permission]) => [canonicalToolName(name), permission]),
@@ -34,12 +36,12 @@ export function TemplateAgentToolsFields({ value, onChange }: { value?: Tools; o
 		onChange({ ...rest, ...(Object.keys(permissions).length ? { permissions } : {}) });
 	};
 	return (
-		<section aria-label="工具" className={formRowClass}>
-			<h4 className={`${formRowLabelClass} ${styles.toolsLabel}`}>工具</h4>
+		<section aria-label={t("agent.tools.title")} className={formRowClass}>
+			<h4 className={`${formRowLabelClass} ${styles.toolsLabel}`}>{t("agent.tools.title")}</h4>
 			<div className={styles.toolsBody}>
 				<div className={styles.permissionRow}>
 					<label htmlFor="agent-default-permission" className={styles.fieldLabel}>
-						默认审批策略
+						{t("agent.tools.permissionLabel")}
 					</label>
 					<Select
 						id="agent-default-permission"
@@ -50,22 +52,24 @@ export function TemplateAgentToolsFields({ value, onChange }: { value?: Tools; o
 								onChange({ ...tools, default_permission: permission });
 						}}
 						options={[
-							{ value: "allow", label: "总是允许" },
-							{ value: "ask", label: "每次询问" },
+							{ value: "allow", label: t("agent.tools.alwaysAllow") },
+							{ value: "ask", label: t("agent.tools.askEveryTime") },
 						]}
 					/>
 				</div>
-				<p className={styles.toolsHint}>未单独设置的工具跟随默认审批策略。</p>
+				<p className={styles.toolsHint}>{t("agent.tools.hint")}</p>
 				<div className={styles.toolsTableWrap}>
 					<table className={styles.toolsTable}>
-						<caption className={styles.srOnly}>内置工具权限配置</caption>
+						<caption className={styles.srOnly}>{t("agent.tools.caption")}</caption>
 						<thead className={styles.toolsTableHead}>
 							<tr>
-								{["工具名称", "启用", "权限控制"].map((label) => (
-									<th key={label} scope="col" className={styles.toolsTableTh}>
-										{label}
-									</th>
-								))}
+								{[t("agent.tools.colName"), t("agent.tools.colEnabled"), t("agent.tools.colPermission")].map(
+									(label) => (
+										<th key={label} scope="col" className={styles.toolsTableTh}>
+											{label}
+										</th>
+									),
+								)}
 							</tr>
 						</thead>
 						<tbody className={styles.toolsTableBody}>
@@ -83,15 +87,15 @@ export function TemplateAgentToolsFields({ value, onChange }: { value?: Tools; o
 									</td>
 									<td className={styles.toolsTableCell}>
 										<Select
-											aria-label={`${name} 权限控制`}
+											aria-label={t("agent.tools.permissionAria", { name })}
 											className={styles.permissionCellSelect}
 											value={overrides.get(canonicalToolName(name)) ?? "default"}
 											disabled={!tools.builtin.includes(name)}
 											onChange={(permission) => changePermission(name, permission)}
 											options={[
-												{ value: "default", label: `跟随默认（${inheritedLabel}）` },
-												{ value: "allow", label: "总是允许" },
-												{ value: "ask", label: "每次询问" },
+												{ value: "default", label: t("agent.tools.followDefault", { label: inheritedLabel }) },
+												{ value: "allow", label: t("agent.tools.alwaysAllow") },
+												{ value: "ask", label: t("agent.tools.askEveryTime") },
 											]}
 										/>
 									</td>
