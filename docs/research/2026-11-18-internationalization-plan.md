@@ -208,7 +208,7 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
 
 | feature | 引号内串数 | 状态 |
 | --- | --- | --- |
-| templates | 661 | 待迁（最大块，后续分批） |
+| templates | 661 | 迁移中（批次 1：列表/创建入口/编辑器外壳；其余分批） |
 | usage | 138 | ✅ 全部（限额链路、Session 用量页、趋势卡、模版用量详情与 Provider 遥测表；聚合行名称参数化） |
 | members | 88 | ✅ 全部（列表/用量页/遥测表/创建页/hook 错误兜底；共享指标与采集状态词表入 common） |
 | preset-packs | 83 | ✅ 全部（选择/资源详情抽屉/会话资源；纯函数消息以缺省参数保持兼容） |
@@ -230,3 +230,14 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
   `captureTime` 纯函数注入 `t`；跨命名空间键用 `t(key, { ns: "common" })`。
 - 残留风险：创建成员表单的字段校验消息来自 SDK `CreateMemberRequestSchema`（zod 中文 message），
   属 §6「协议错误/枚举词表映射」议题；migrate 后 en 界面会出现中文校验提示，需随 §6 一并处理。
+
+#### templates 批次 1（2026-11-19）
+
+- 新增第 10 个命名空间 `templates`；已迁：`create-template-page`、`edit-template-page`、`template-editor-page`
+  外壳、`template-wizard-steps`、`template-name-field`、`template-exit-confirmation`、
+  `template-debug-cleanup-notice`、`template-list-page`、`template-list-configuration`、
+  `template-preset-picker`、`template-listing-dialog`、`template-delete-dialog`、`template-configuration-summary`。
+- `AGENT_CONFIGURATION_FIELDS.label` 改为词表键；`agentConfigurationValues`/`agentConfigurationText`
+  经全局 i18n 实例取文案，签名不变。`InnerLayout` 的返回按钮在模板页显式传 `backLabel`。
+- 仍待迁：Agent 表单/运行资源、环境/文件/记忆库/密钥库子编辑器、保存/发布/预览调试弹窗、
+  版本历史与详情、残余草稿与工具函数；上下架/删除对话框已在本批完成。

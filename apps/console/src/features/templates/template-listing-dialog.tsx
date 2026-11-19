@@ -1,6 +1,7 @@
 import type { ApplyRequest, CatalogAgentView, TemplateView } from "@openagentpack/kit-sdk/protocol";
 import { Modal } from "antd";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { adminApi, getAdminClient } from "../../lib/api.ts";
@@ -18,10 +19,11 @@ export function TemplateListingDialog({
 	onUpdated: (catalog: CatalogAgentView) => void;
 	onPendingChange: (pending: boolean) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const client = useMemo(getAdminClient, []);
 	const listing = template.listing;
 	const unlisting = listing?.status === "listed";
-	const action = unlisting ? "下架" : "上架";
+	const action = unlisting ? t("actions.unlist") : t("actions.list");
 	const displayName = (template.listing?.display_name ?? template.name).trim().slice(0, 60).trimEnd();
 	const [phase, setPhase] = useState<"plan" | "confirm">("plan");
 	const plan = useAdminQuery<ApplyRequest>(`templates:listing:${template.template_id}:${action}:${displayName}`, () =>
@@ -46,16 +48,16 @@ export function TemplateListingDialog({
 		return () => onPendingChange(false);
 	}, [busy, onPendingChange]);
 	const message = unlisting
-		? `是否下架模版「${displayName}」？下架后员工端将不再展示。`
-		: `是否上架模版「${displayName}」？${listing ? "将使用模版配置更新原条目，" : ""}上架后员工即可使用。`;
+		? t("listing.unlistMessage", { name: displayName })
+		: t("listing.listMessage", { name: displayName, note: listing ? t("listing.updateNote") : "" });
 	return (
 		<Modal
 			open
 			centered
-			title={`确认${action}`}
-			okText={preparing ? "准备中…" : error ? "重试" : `确认${action}`}
+			title={t("listing.title", { action })}
+			okText={preparing ? t("listing.preparing") : error ? t("retry") : t("listing.confirm", { action })}
 			okButtonProps={{ danger: unlisting, loading: busy }}
-			cancelText="取消"
+			cancelText={t("cancel")}
 			onCancel={onClose}
 			onOk={() => {
 				if (busy) return;
@@ -71,7 +73,9 @@ export function TemplateListingDialog({
 					.catch(() => {});
 			}}
 		>
-			<p className={styles.dialogMessage}>{error ? `${message}\n\n${action}失败：${error}` : message}</p>
+			<p className={styles.dialogMessage}>
+				{error ? `${message}\n\n${t("listing.failed", { action, error })}` : message}
+			</p>
 		</Modal>
 	);
 }

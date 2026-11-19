@@ -1,9 +1,10 @@
 import { Steps } from "antd";
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 
 const STEPS = [
-	{ id: "config", label: "选择配置" },
-	{ id: "preview", label: "预览调试" },
+	{ id: "config", labelKey: "wizard.configure" },
+	{ id: "preview", labelKey: "wizard.preview" },
 ] as const;
 export type TemplateStep = (typeof STEPS)[number]["id"];
 
@@ -20,6 +21,7 @@ export function TemplateWizardSteps({
 	editing: boolean;
 	onSelect: (step: TemplateStep) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const nav = useRef<HTMLElement>(null);
 	const previous = useRef(step);
 	useEffect(() => {
@@ -28,12 +30,16 @@ export function TemplateWizardSteps({
 		previous.current = step;
 	}, [step]);
 	return (
-		<nav ref={nav} aria-label={editing ? "编辑模版步骤" : "新建模版步骤"} className="mx-auto mb-6 w-full max-w-xl">
+		<nav
+			ref={nav}
+			aria-label={editing ? t("wizard.stepsEditAria") : t("wizard.stepsCreateAria")}
+			className="mx-auto mb-6 w-full max-w-xl"
+		>
 			<Steps
 				size="middle"
 				current={STEPS.findIndex(({ id }) => id === step)}
-				items={STEPS.map(({ id, label }) => ({
-					title: label,
+				items={STEPS.map(({ id, labelKey }) => ({
+					title: t(labelKey),
 					disabled: busy || (id === "preview" && !canPreview),
 				}))}
 				onChange={(index) => {

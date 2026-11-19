@@ -8,6 +8,7 @@ import enMembers from "./locales/en/members.ts";
 import enNavigation from "./locales/en/navigation.ts";
 import enOperations from "./locales/en/operations.ts";
 import enPresetPacks from "./locales/en/presetPacks.ts";
+import enTemplates from "./locales/en/templates.ts";
 import enUsage from "./locales/en/usage.ts";
 import zhAuth from "./locales/zh-CN/auth.ts";
 import zhBranding from "./locales/zh-CN/branding.ts";
@@ -17,6 +18,7 @@ import zhMembers from "./locales/zh-CN/members.ts";
 import zhNavigation from "./locales/zh-CN/navigation.ts";
 import zhOperations from "./locales/zh-CN/operations.ts";
 import zhPresetPacks from "./locales/zh-CN/presetPacks.ts";
+import zhTemplates from "./locales/zh-CN/templates.ts";
 import zhUsage from "./locales/zh-CN/usage.ts";
 
 export const SUPPORTED_LOCALES = ["zh-CN", "en"] as const;
@@ -66,6 +68,7 @@ export interface I18nResources {
 		branding: typeof zhBranding;
 		presetPacks: typeof zhPresetPacks;
 		catalog: typeof zhCatalog;
+		templates: typeof zhTemplates;
 	};
 	en: {
 		common: typeof enCommon;
@@ -77,6 +80,7 @@ export interface I18nResources {
 		branding: typeof enBranding;
 		presetPacks: typeof enPresetPacks;
 		catalog: typeof enCatalog;
+		templates: typeof enTemplates;
 	};
 }
 
@@ -88,7 +92,18 @@ export async function initI18n() {
 		fallbackLng: "zh-CN",
 		supportedLngs: [...SUPPORTED_LOCALES],
 		defaultNS: "common",
-		ns: ["common", "auth", "navigation", "members", "usage", "operations", "branding", "presetPacks", "catalog"],
+		ns: [
+			"common",
+			"auth",
+			"navigation",
+			"members",
+			"usage",
+			"operations",
+			"branding",
+			"presetPacks",
+			"catalog",
+			"templates",
+		],
 		resources: {
 			"zh-CN": {
 				common: zhCommon,
@@ -100,6 +115,7 @@ export async function initI18n() {
 				branding: zhBranding,
 				presetPacks: zhPresetPacks,
 				catalog: zhCatalog,
+				templates: zhTemplates,
 			},
 			en: {
 				common: enCommon,
@@ -111,6 +127,7 @@ export async function initI18n() {
 				branding: enBranding,
 				presetPacks: enPresetPacks,
 				catalog: enCatalog,
+				templates: enTemplates,
 			},
 		},
 	});

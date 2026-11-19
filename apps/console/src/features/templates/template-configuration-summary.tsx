@@ -1,6 +1,7 @@
 import { useIsMobile } from "@openagentpack/kit-sdk/hooks";
 import { Button, Drawer } from "antd";
 import { type ReactNode, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { AgentFormDetail } from "./template-agent-form-draft.ts";
 import { AGENT_CONFIGURATION_FIELDS, agentConfigurationValues } from "./template-configuration-fields.ts";
 import type { TemplateFileDraft } from "./template-file-selection.tsx";
@@ -31,7 +32,8 @@ function SummaryField({ label, children }: { label: string; children: ReactNode 
 	);
 }
 
-function SummaryValues({ values, empty = "未配置" }: { values: string[]; empty?: string }) {
+function SummaryValues({ values, empty }: { values: string[]; empty?: string }) {
+	const { t } = useTranslation("templates");
 	const unique = [...new Set(values.filter((value) => value.trim()))];
 	return unique.length ? (
 		<ul className={styles.valueList}>
@@ -40,20 +42,21 @@ function SummaryValues({ values, empty = "未配置" }: { values: string[]; empt
 			))}
 		</ul>
 	) : (
-		empty
+		(empty ?? t("common.notConfigured"))
 	);
 }
 
 function AgentConfigurationFields({ detail }: { detail?: AgentFormDetail }) {
+	const { t } = useTranslation("templates");
 	const values = agentConfigurationValues(detail);
 	return (
 		<>
 			{AGENT_CONFIGURATION_FIELDS.map(({ key, label }) => {
 				const value = values[key];
 				return (
-					<SummaryField key={key} label={label}>
+					<SummaryField key={key} label={t(label)}>
 						{Array.isArray(value) ? (
-							<SummaryValues values={value} empty={key === "skills" ? "未选择" : "未配置"} />
+							<SummaryValues values={value} empty={key === "skills" ? t("common.notSelected") : undefined} />
 						) : (
 							value
 						)}
@@ -65,10 +68,13 @@ function AgentConfigurationFields({ detail }: { detail?: AgentFormDetail }) {
 }
 
 function ResourceName({ name, id, local }: { name?: string; id: string } & TemplateLocalResource) {
+	const { t } = useTranslation("templates");
 	return (
 		<>
 			<p>{name?.trim() || id}</p>
-			{name?.trim() && name !== id ? <p className={styles.resourceId}>{local ? `${local.id} · 待发布` : id}</p> : null}
+			{name?.trim() && name !== id ? (
+				<p className={styles.resourceId}>{local ? `${local.id} · ${t("summary.pendingPublish")}` : id}</p>
+			) : null}
 		</>
 	);
 }
@@ -83,50 +89,57 @@ function ConfigurationSummaryContent({
 	memories,
 	vaults,
 }: ConfigurationSummaryProps) {
+	const { t } = useTranslation("templates");
 	const selectedMemories = memories.filter((memory) => memory.memory_store_id.trim());
 	return (
 		<dl className={styles.summaryRoot}>
-			<SummaryField label="智能体名称">{name.trim() || "—"}</SummaryField>
+			<SummaryField label={t("fields.name")}>{name.trim() || "—"}</SummaryField>
 			<AgentConfigurationFields detail={agentConfiguration} />
-			<SummaryField label="环境">
+			<SummaryField label={t("fields.environment")}>
 				{environmentName !== undefined ? (
-					<p>{environmentName.trim() || "待填写环境名称"}</p>
+					<p>{environmentName.trim() || t("summary.environmentNamePending")}</p>
 				) : environment ? (
 					<ResourceName name={environment.name} id={environment.environment_id} local={environment.local} />
 				) : (
-					"使用智能体默认环境"
+					t("summary.defaultEnvironment")
 				)}
 			</SummaryField>
-			<SummaryField label="文件">
+			<SummaryField label={t("fields.files")}>
 				{files.length ? (
 					<ul className={styles.resourceList}>
 						{files.map((file) => (
 							<li key={file.file_id}>
 								<ResourceName name={file.filename} id={file.file_id} local={file.local} />
-								<p className={styles.resourceMeta}>挂载路径：{file.mount_path || "—"}</p>
+								<p className={styles.resourceMeta}>{t("summary.mountPath", { path: file.mount_path || "—" })}</p>
 							</li>
 						))}
 					</ul>
 				) : (
-					"未选择"
+					t("common.notSelected")
 				)}
 			</SummaryField>
-			<SummaryField label="记忆库">
+			<SummaryField label={t("fields.memories")}>
 				{selectedMemories.length ? (
 					<ul className={styles.resourceList}>
 						{selectedMemories.map((memory) => (
 							<li key={memory.key}>
 								<ResourceName name={memory.name} id={memory.memory_store_id} local={memory.local} />
-								<p>权限：{memory.access === "read_only" ? "只读" : "读写"}</p>
-								<p className={styles.resourceMeta}>说明：{memory.instructions.trim() || "—"}</p>
+								<p>
+									{t("summary.access", {
+										access: memory.access === "read_only" ? t("summary.readOnly") : t("summary.readWrite"),
+									})}
+								</p>
+								<p className={styles.resourceMeta}>
+									{t("summary.instructions", { text: memory.instructions.trim() || "—" })}
+								</p>
 							</li>
 						))}
 					</ul>
 				) : (
-					"未选择"
+					t("common.notSelected")
 				)}
 			</SummaryField>
-			<SummaryField label="密钥库">
+			<SummaryField label={t("fields.vaults")}>
 				{vaults.length ? (
 					<ul className={styles.resourceList}>
 						{vaults.map((vault) => (
@@ -136,7 +149,7 @@ function ConfigurationSummaryContent({
 						))}
 					</ul>
 				) : (
-					"未选择"
+					t("common.notSelected")
 				)}
 			</SummaryField>
 		</dl>
@@ -144,16 +157,17 @@ function ConfigurationSummaryContent({
 }
 
 function ConfigurationSummaryDrawer(props: ConfigurationSummaryProps) {
+	const { t } = useTranslation("templates");
 	const [open, setOpen] = useState(false);
 	return (
 		<>
-			<Button onClick={() => setOpen(true)}>查看已选配置</Button>
+			<Button onClick={() => setOpen(true)}>{t("summary.view")}</Button>
 			<Drawer
 				open={open}
 				onClose={() => setOpen(false)}
 				destroyOnHidden
 				width={448}
-				title={<div className={styles.drawerTitle}>已选配置预览</div>}
+				title={<div className={styles.drawerTitle}>{t("summary.title")}</div>}
 			>
 				<ConfigurationSummaryContent {...props} />
 			</Drawer>
@@ -162,15 +176,16 @@ function ConfigurationSummaryDrawer(props: ConfigurationSummaryProps) {
 }
 
 export function TemplateConfigurationSummary(props: ConfigurationSummaryProps) {
+	const { t } = useTranslation("templates");
 	const narrow = useIsMobile(1280);
 	return (
 		<div className={styles.summaryAside}>
 			{narrow ? (
 				<ConfigurationSummaryDrawer {...props} />
 			) : (
-				<section aria-label="已选配置预览" className={styles.summaryCard}>
+				<section aria-label={t("summary.title")} className={styles.summaryCard}>
 					<header className={styles.summaryCardHeader}>
-						<h3 className={styles.summaryCardTitle}>已选配置预览</h3>
+						<h3 className={styles.summaryCardTitle}>{t("summary.title")}</h3>
 					</header>
 					<div className={styles.summaryCardBody}>
 						<ConfigurationSummaryContent {...props} />

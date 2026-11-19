@@ -1,6 +1,7 @@
 import type { ApplyRequest, TemplateView } from "@openagentpack/kit-sdk/protocol";
 import { Modal } from "antd";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
@@ -18,6 +19,7 @@ export function TemplateDeleteDialog({
 	onDeleted: () => void;
 	onPendingChange: (pending: boolean) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const client = useMemo(getAdminClient, []);
 	const [phase, setPhase] = useState<"plan" | "confirm">("plan");
 	const plan = useAdminQuery(`templates:delete:${template.template_id}`, () =>
@@ -33,15 +35,15 @@ export function TemplateDeleteDialog({
 		onPendingChange(busy);
 		return () => onPendingChange(false);
 	}, [busy, onPendingChange]);
-	const message = error ? `是否删除该模版\n\n删除失败：${error}` : "是否删除该模版";
+	const message = error ? t("delete.messageWithError", { error }) : t("delete.message");
 	return (
 		<Modal
 			open
 			centered
-			title="确认删除"
-			okText={preparing ? "准备中…" : error ? "重试" : "确认删除"}
+			title={t("delete.title")}
+			okText={preparing ? t("listing.preparing") : error ? t("retry") : t("delete.confirm")}
 			okButtonProps={{ danger: true, loading: busy }}
-			cancelText="取消"
+			cancelText={t("cancel")}
 			onCancel={onClose}
 			onOk={() => {
 				if (busy) return;

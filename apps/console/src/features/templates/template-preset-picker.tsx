@@ -2,11 +2,12 @@ import { ConfirmDialog } from "@openagentpack/kit-chat-ui";
 import type { PresetPackPreview } from "@openagentpack/kit-sdk/protocol";
 import { Button, Drawer } from "antd";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { PresetPackSelection } from "../preset-packs/preset-pack-selection.tsx";
 
 /** 创建页的远端智能体与资源选择；准备结果只交给当前表单，不保存预设包。 */
 export function TemplatePresetPicker({
-	buttonLabel = "导入预设包",
+	buttonLabel,
 	disabled,
 	hasConfiguration,
 	onImport,
@@ -18,6 +19,7 @@ export function TemplatePresetPicker({
 	onImport: (preset: PresetPackPreview) => void;
 	onPendingChange: (pending: boolean) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const [open, setOpen] = useState(false);
 	const [drawerVisible, setDrawerVisible] = useState(false);
 	const [preparing, setPreparing] = useState(false);
@@ -36,12 +38,12 @@ export function TemplatePresetPicker({
 	return (
 		<>
 			<Button disabled={disabled} onClick={showPicker}>
-				{buttonLabel}
+				{buttonLabel ?? t("preset.import")}
 			</Button>
 			<Drawer
 				open={open}
 				size="large"
-				title="导入预设包"
+				title={t("preset.import")}
 				onClose={close}
 				afterOpenChange={(visible) => {
 					if (!visible) setDrawerVisible(false);
@@ -52,7 +54,7 @@ export function TemplatePresetPicker({
 				footer={
 					<div className="flex justify-end">
 						<Button disabled={preparing} onClick={close}>
-							取消
+							{t("cancel")}
 						</Button>
 					</div>
 				}
@@ -68,15 +70,9 @@ export function TemplatePresetPicker({
 			</Drawer>
 			{pending && !drawerVisible ? (
 				<ConfirmDialog
-					title="确认替换配置"
-					body={
-						"将导入 " +
-						pending.remote_agent_name +
-						"（v" +
-						pending.agent_version +
-						"），替换当前基础配置和运行时资源，未发布资源将被清理。已填写的名称、分类和展示文案保持不变。"
-					}
-					confirmLabel="确认导入"
+					title={t("preset.replaceTitle")}
+					body={t("preset.replaceBody", { name: pending.remote_agent_name, version: pending.agent_version })}
+					confirmLabel={t("preset.confirmImport")}
 					onCancel={() => {
 						setPending(null);
 						showPicker();
