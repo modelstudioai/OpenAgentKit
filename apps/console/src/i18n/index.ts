@@ -4,6 +4,7 @@ import enAuth from "./locales/en/auth.ts";
 import enBranding from "./locales/en/branding.ts";
 import enCatalog from "./locales/en/catalog.ts";
 import enCommon from "./locales/en/common.ts";
+import enEval from "./locales/en/eval.ts";
 import enMembers from "./locales/en/members.ts";
 import enNavigation from "./locales/en/navigation.ts";
 import enOperations from "./locales/en/operations.ts";
@@ -14,6 +15,7 @@ import zhAuth from "./locales/zh-CN/auth.ts";
 import zhBranding from "./locales/zh-CN/branding.ts";
 import zhCatalog from "./locales/zh-CN/catalog.ts";
 import zhCommon from "./locales/zh-CN/common.ts";
+import zhEval from "./locales/zh-CN/eval.ts";
 import zhMembers from "./locales/zh-CN/members.ts";
 import zhNavigation from "./locales/zh-CN/navigation.ts";
 import zhOperations from "./locales/zh-CN/operations.ts";
@@ -69,6 +71,7 @@ export interface I18nResources {
 		presetPacks: typeof zhPresetPacks;
 		catalog: typeof zhCatalog;
 		templates: typeof zhTemplates;
+		eval: typeof zhEval;
 	};
 	en: {
 		common: typeof enCommon;
@@ -81,6 +84,7 @@ export interface I18nResources {
 		presetPacks: typeof enPresetPacks;
 		catalog: typeof enCatalog;
 		templates: typeof enTemplates;
+		eval: typeof enEval;
 	};
 }
 
@@ -103,6 +107,7 @@ export async function initI18n() {
 			"presetPacks",
 			"catalog",
 			"templates",
+			"eval",
 		],
 		resources: {
 			"zh-CN": {
@@ -116,6 +121,7 @@ export async function initI18n() {
 				presetPacks: zhPresetPacks,
 				catalog: zhCatalog,
 				templates: zhTemplates,
+				eval: zhEval,
 			},
 			en: {
 				common: enCommon,
@@ -128,6 +134,7 @@ export async function initI18n() {
 				presetPacks: enPresetPacks,
 				catalog: enCatalog,
 				templates: enTemplates,
+				eval: enEval,
 			},
 		},
 	});

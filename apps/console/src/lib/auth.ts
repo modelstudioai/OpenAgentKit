@@ -1,3 +1,5 @@
+import i18n from "i18next";
+
 const LEGACY_TOKEN_KEY = "kit_admin_token";
 let activeBaseUrl: string | undefined;
 
@@ -5,7 +7,7 @@ let activeBaseUrl: string | undefined;
 export function normalizeAdminBaseUrl(value: string): string {
 	const url = new URL(value, window.location.origin);
 	if (!/^https?:$/.test(url.protocol) || url.username || url.password || url.search || url.hash)
-		throw new Error("管理端服务地址必须是无凭据、查询参数和片段的 HTTP(S) 地址");
+		throw new Error(i18n.t("runtime.invalidBaseUrl"));
 	return `${url.origin}${url.pathname.replace(/\/+$/, "")}`;
 }
 
@@ -28,7 +30,7 @@ export function bindAdminBackend(baseUrl: string | undefined) {
 }
 
 export function adminBaseUrl(): string {
-	if (!activeBaseUrl) throw new Error("管理端尚未完成服务配置初始化");
+	if (!activeBaseUrl) throw new Error(i18n.t("runtime.adminNotReady"));
 	return activeBaseUrl;
 }
 

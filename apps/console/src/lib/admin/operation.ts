@@ -1,6 +1,7 @@
 import { createBackoff, sleep } from "@openagentpack/kit-sdk/chat";
 import { KitError, type OperationView } from "@openagentpack/kit-sdk/protocol";
 import { createObservable } from "@openagentpack/kit-sdk/state";
+import i18n from "i18next";
 import type { AdminClient } from "./client.ts";
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
@@ -27,7 +28,9 @@ async function observeOperation(options: {
 		try {
 			await options.connect();
 			if (finished()) return;
-			throw new KitError("provider_error", "操作进度连接已断开", { retryable: true });
+			throw new KitError("provider_error", i18n.t("progressDisconnected", { ns: "operations" }), {
+				retryable: true,
+			});
 		} catch (error) {
 			if (finished()) return;
 			options.failure(error);

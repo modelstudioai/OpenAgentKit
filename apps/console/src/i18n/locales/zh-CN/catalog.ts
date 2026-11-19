@@ -30,6 +30,7 @@ export default {
 		duplicate: "同一个密钥库只能选择一次",
 	},
 	picker: {
+		loading: "正在加载{{noun}}…",
 		noMatch: "未找到匹配的{{noun}}",
 		empty: "暂无远端{{noun}}",
 	},

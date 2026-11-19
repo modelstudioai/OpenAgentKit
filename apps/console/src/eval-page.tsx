@@ -1,29 +1,31 @@
 import type { EvalRunDetail, EvalRunSummary, EvalWorkspaceView } from "@openagentpack/kit-sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Alert, Button, Select, Table } from "antd";
+import type { TFunction } from "i18next";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import styles from "./app.module.less";
 import { useConsoleRoute } from "./features/navigation/console-router.tsx";
 import { adminApi } from "./lib/api.ts";
 
-function runColumns(onOpen: (runId: string) => void) {
+function runColumns(t: TFunction<"eval">, onOpen: (runId: string) => void) {
 	return [
 		{
-			title: "run",
+			title: t("columns.run"),
 			dataIndex: "run_id",
 			render: (_, row: EvalRunSummary) => <span className={styles.monoMeta}>{row.run_id}</span>,
 		},
 		{
-			title: "skill",
+			title: t("columns.skill"),
 			render: (_, row: EvalRunSummary) => `${row.skill.name} v${row.skill.version}`,
 		},
 		{
-			title: "pass_rate",
+			title: t("columns.passRate"),
 			align: "right" as const,
 			render: (_, row: EvalRunSummary) => <span className={styles.passRate}>{row.pass_rate.toFixed(2)}</span>,
 		},
 		{
-			title: "baseline Δ",
+			title: t("columns.baselineDelta"),
 			align: "right" as const,
 			render: (_, row: EvalRunSummary) => (
 				<span className={styles.tabularNum}>
@@ -32,25 +34,25 @@ function runColumns(onOpen: (runId: string) => void) {
 			),
 		},
 		{
-			title: "infra 排除",
+			title: t("columns.infraExcluded"),
 			render: (_, row: EvalRunSummary) => row.infra_excluded || "-",
 		},
 		{
-			title: "cases",
+			title: t("columns.cases"),
 			align: "right" as const,
 			render: (_, row: EvalRunSummary) => <span className={styles.tabularNum}>{row.case_count}</span>,
 		},
 		{
-			title: "创建时间",
+			title: t("columns.createdAt"),
 			render: (_, row: EvalRunSummary) => (
 				<span className={styles.metaText}>{row.created_at.slice(0, 16).replace("T", " ")}</span>
 			),
 		},
 		{
-			title: "操作",
+			title: t("columns.actions"),
 			render: (_, row: EvalRunSummary) => (
 				<Button type="link" size="small" data-testid={`eval-open-${row.run_id}`} onClick={() => onOpen(row.run_id)}>
-					查看报告
+					{t("viewReport")}
 				</Button>
 			),
 		},
@@ -62,6 +64,7 @@ function runColumns(onOpen: (runId: string) => void) {
  * 令牌只走 Authorization header，不进 URL）。触发执行留给 CLI/CI（跑几分钟且碰本地 FS）。
  */
 export function EvalPage() {
+	const { t } = useTranslation("eval");
 	const [workspaces, setWorkspaces] = useState<EvalWorkspaceView[]>([]);
 	const { route, navigate } = useConsoleRoute();
 	const workspace = route.workspace ?? workspaces[0]?.path ?? "";
@@ -129,49 +132,54 @@ export function EvalPage() {
 		<div className={styles.evalRoot}>
 			<section className={styles.evalPanel}>
 				<div className={styles.evalControls}>
-					<strong>评测 workspace</strong>
+					<strong>{t("workspace")}</strong>
 					<Select
-						aria-label="评测 workspace"
+						aria-label={t("workspaceAria")}
 						className={styles.workspaceSelect}
-						placeholder={workspaces.length === 0 ? "（服务端未配置 KIT_EVAL_WORKSPACES）" : "请选择 workspace"}
+						placeholder={workspaces.length === 0 ? t("workspaceUnconfigured") : t("workspacePlaceholder")}
 						value={workspace || undefined}
 						options={workspaceOptions}
 						onChange={(value) => navigate({ page: "eval", workspace: value })}
 					/>
 					<span className={styles.metaText}>
-						只读浏览；跑评测用 <code>pnpm eval run</code>（仓库脚本/CI）
+						{t("readonlyPrefix")}
+						<code>pnpm eval run</code>
+						{t("readonlySuffix")}
 					</span>
 				</div>
 				{error ? <Alert type="error" showIcon message={error} /> : null}
 			</section>
 
 			<section className={styles.runsSection}>
-				<h3 className={styles.runsTitle}>Runs（complete，新→旧）</h3>
+				<h3 className={styles.runsTitle}>{t("runsTitle")}</h3>
 				<Table
 					rowKey="run_id"
 					size="middle"
 					loading={loadingRuns}
-					columns={runColumns((id) => navigate({ page: "eval", workspace, run: id }))}
+					columns={runColumns(t, (id) => navigate({ page: "eval", workspace, run: id }))}
 					dataSource={runs}
 					pagination={false}
 					scroll={{ x: "max-content" }}
-					locale={{ emptyText: "暂无 complete run" }}
+					locale={{ emptyText: t("emptyRuns") }}
 				/>
 			</section>
 
 			{detail ? (
 				<section className={styles.evalPanel}>
 					<div className={styles.evalControls}>
-						<strong>报告 {detail.summary.run_id}</strong>
+						<strong>{t("reportTitle", { id: detail.summary.run_id })}</strong>
 						<span className={styles.metaText}>
 							pass_rate {detail.summary.pass_rate.toFixed(2)}
 							{detail.summary.baseline_pass_rate == null
 								? ""
-								: `（基线 ${detail.summary.baseline_pass_rate.toFixed(2)}，Δ ${detail.summary.delta_pass_rate ?? 0}）`}
+								: t("baseline", {
+										baseline: detail.summary.baseline_pass_rate.toFixed(2),
+										delta: detail.summary.delta_pass_rate ?? 0,
+									})}
 						</span>
 					</div>
 					<iframe
-						title="评测报告"
+						title={t("reportFrameTitle")}
 						data-testid="eval-report-frame"
 						srcDoc={detail.report_html}
 						className={styles.reportFrame}

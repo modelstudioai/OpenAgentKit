@@ -64,6 +64,7 @@ export function App() {
 }
 
 function ConsoleApp() {
+	const { t } = useTranslation("common");
 	const { route, navigate, complete, locked: navigationLocked, setLocked: setNavigationLocked } = useConsoleRoute();
 	const tab = consoleRouteTab(route);
 	const [token, setToken] = useState(adminToken());
@@ -105,7 +106,7 @@ function ConsoleApp() {
 				<MembersPage onPendingChange={setNavigationLocked} />
 			)}
 			{tab !== "template-create" && tab !== "template-list" ? (
-				<p className={styles.pageFootnote}>智能体资产用于创建、编辑和调试模版，智能体管理提供上架与下架操作。</p>
+				<p className={styles.pageFootnote}>{t("footnote.agentAssets")}</p>
 			) : null}
 		</ConsoleLayout>
 	);

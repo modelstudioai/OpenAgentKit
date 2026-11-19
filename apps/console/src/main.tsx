@@ -1,4 +1,5 @@
 import { ErrorState } from "@openagentpack/kit-chat-ui";
+import i18n from "i18next";
 import { createRoot } from "react-dom/client";
 import styles from "./app.module.less";
 import { App } from "./app.tsx";
@@ -18,7 +19,7 @@ try {
 	root.render(
 		<main className={styles.bootstrapMain}>
 			<ErrorState
-				message={error instanceof Error ? error.message : "无法读取服务配置"}
+				message={error instanceof Error ? error.message : i18n.t("runtime.configReadFailed")}
 				onRetry={() => window.location.reload()}
 			/>
 		</main>,

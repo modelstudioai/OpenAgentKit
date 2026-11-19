@@ -29,6 +29,7 @@ export default {
 		duplicate: "The same vault can only be selected once",
 	},
 	picker: {
+		loading: "Loading {{noun}}…",
 		noMatch: "No matching {{noun}} found",
 		empty: "No remote {{noun}} yet",
 	},

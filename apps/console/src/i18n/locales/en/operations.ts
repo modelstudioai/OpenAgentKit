@@ -1,4 +1,5 @@
 export default {
+	progressDisconnected: "The operation progress connection was closed",
 	title: "Operation logs",
 	note: "Only records the current administrator's creates, edits, deletions, listings, and unlistings of agents, plus changes to the employee-side branding.",
 	loadFailed: "Failed to load operation logs",

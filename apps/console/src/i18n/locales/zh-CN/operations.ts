@@ -1,5 +1,6 @@
 /** operations 命名空间：操作日志页与审计动作名。 */
 export default {
+	progressDisconnected: "操作进度连接已断开",
 	title: "操作日志",
 	note: "仅记录当前管理员对智能体的新建、编辑、删除、上架、下架及员工端品牌配置的修改。",
 	loadFailed: "操作日志加载失败",

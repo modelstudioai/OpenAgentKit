@@ -1,5 +1,6 @@
 /** presetPacks 命名空间：预设包导入（智能体选择、会话资源、详情抽屉）。 */
 export default {
+	memoryNotFound: "记忆库不存在或已不可访问，请重新读取资源列表",
 	selectionAria: "预设包选择",
 	agentsAria: "智能体",
 	agentsTitle: "智能体",

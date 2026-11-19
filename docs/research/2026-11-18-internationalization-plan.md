@@ -214,7 +214,8 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
 | preset-packs | 83 | ✅ 全部（选择/资源详情抽屉/会话资源；纯函数消息以缺省参数保持兼容） |
 | catalog / navigation / operations | 18 × 3 | ✅ 全部（catalog 校验消息经全局 i18n 实例，签名不变；分类枚举名仍走 SDK 词表待 §6） |
 | branding | 15 | ✅ |
-| lib / root / auth | 6 / 8 / 4 | auth ✅，其余待迁 |
+| eval | — | ✅（workspace 选择、run 列表、报告 iframe） |
+| lib / root / auth | 6 / 8 / 4 | ✅ 全部（启动失败、服务地址、统计占位、成员用量/Operation 兜底、页脚） |
 
 - console 首批：`navigation`（外壳导航/品牌/抽屉）+ `auth`（登录页）命名空间；
   NAV_GROUPS 改为 `NavigationKey` 字面量键表，渲染时 `t(key)`；`ConfigProvider` 联动阶段 0 已就绪。
@@ -290,3 +291,13 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
 - 草稿与恢复：`template-resource-draft`、`template-resource-draft-owner`、`template-local-resources`、
   `use-template-resource-resolution`、`use-template-agent-detail`、`template-debug-cleanup`、`template-draft`。
 - templates 可见中文已清零（仅保留代码注释与内部上下文守卫错误）；SDK `PLAZA_CATEGORY_LABELS` 仍按 §6 处理。
+
+#### console 收尾：全量残留扫描（2026-11-19）
+
+- 新增第 11 个命名空间 `eval`，迁移评测浏览页（workspace、run 表头、报告标题、基线说明）。
+- 清理根与共享层：`app.tsx` 页脚、`main.tsx` 启动失败、`lib/auth`/`lib/kit` 服务地址与初始化错误、
+  `StatCell` 默认缺失占位、成员用量与 Operation 兜底、`remote-resource-picker` 加载态、
+  `aggregateTemplateRows` 聚合行名称、预设包记忆库缺失提示。
+- `InnerLayout` 移除中文默认 `backLabel`，所有带返回按钮的调用方显式传入本地化标签。
+- 扫描结果：`apps/console/src` 可见中文已清零（仅剩代码注释）；`PLAZA_CATEGORY_LABELS` 与 SDK zod
+  校验消息仍按 §6「协议错误/枚举词表映射」处理。

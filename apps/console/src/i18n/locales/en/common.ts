@@ -23,4 +23,17 @@ export default {
 		coverage: "Covers {{covered}} of {{total}} sessions",
 		notReturned: "Not returned",
 	},
+	statPending: "Pending",
+	back: "Back",
+	runtime: {
+		configReadFailed: "Unable to read the service configuration",
+		adminNotReady: "Admin service configuration is not initialized",
+		invalidBaseUrl: "The admin service URL must be an HTTP(S) URL without credentials, query parameters, or fragments",
+		missingRouterContext: "Missing admin router context",
+		missingTemplateExitContext: "Missing agent exit confirmation context",
+	},
+	footnote: {
+		agentAssets:
+			"Agent assets are used to create, edit, and debug agents; agent management provides listing and unlisting actions.",
+	},
 };

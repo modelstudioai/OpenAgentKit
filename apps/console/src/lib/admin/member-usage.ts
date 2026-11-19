@@ -1,5 +1,6 @@
 import type { MemberSessionUsage, MemberUsageSummary } from "@openagentpack/kit-sdk/protocol";
 import { createObservable } from "@openagentpack/kit-sdk/state";
+import i18n from "i18next";
 import type { AdminClient } from "./client.ts";
 
 export interface MemberUsageSnapshot {
@@ -63,7 +64,10 @@ export function createMemberUsageController(client: Pick<AdminClient, "members">
 			if (summary.refresh_status === "refreshing") timer = setTimeout(() => void load(), 2_000);
 		} catch (error) {
 			if (!current()) return;
-			update({ loading: false, error: error instanceof Error ? error.message : "成员用量加载失败" });
+			update({
+				loading: false,
+				error: error instanceof Error ? error.message : i18n.t("usagePage.loadFailed", { ns: "members" }),
+			});
 		}
 	}
 	return {

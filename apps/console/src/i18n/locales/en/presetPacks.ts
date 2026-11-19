@@ -1,4 +1,5 @@
 export default {
+	memoryNotFound: "The memory store does not exist or is no longer accessible; reload the resource list",
 	selectionAria: "Preset pack selection",
 	agentsAria: "Agents",
 	agentsTitle: "Agents",

@@ -67,6 +67,7 @@ export default {
 	deletedKept: "已删除（用量保留）",
 	usagePage: {
 		title: "{{name}}的会话用量",
+		loadFailed: "成员用量加载失败",
 		description: "{{username}} · 累计该成员全部体验会话的最新用量，包含已删除会话。",
 		refresh: "刷新用量",
 		refreshing: "采集中…",

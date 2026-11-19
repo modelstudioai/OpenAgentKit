@@ -63,7 +63,7 @@ function notFoundContent(
 		return (
 			<div role="status" className={styles.pickerLoading}>
 				<Spin size="small" />
-				正在加载{resource}…
+				{t("picker.loading", { noun: resource })}
 			</div>
 		);
 	if (remote.error)

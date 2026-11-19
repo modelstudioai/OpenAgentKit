@@ -66,6 +66,7 @@ export default {
 	deletedKept: "Deleted (usage kept)",
 	usagePage: {
 		title: "Session usage of {{name}}",
+		loadFailed: "Failed to load member usage",
 		description: "{{username}} · Latest usage across all of this member's experience sessions, including deleted ones.",
 		refresh: "Refresh usage",
 		refreshing: "Collecting…",

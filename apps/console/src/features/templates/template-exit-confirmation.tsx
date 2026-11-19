@@ -1,4 +1,5 @@
 import { ConfirmDialog } from "@openagentpack/kit-chat-ui";
+import i18n from "i18next";
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -46,7 +47,7 @@ export function TemplateExitConfirmationProvider({ children }: { children: React
 
 export function useTemplateExitConfirmation() {
 	const guard = useContext(Context);
-	if (!guard) throw new Error("缺少模版退出确认上下文");
+	if (!guard) throw new Error(i18n.t("runtime.missingTemplateExitContext"));
 	return guard;
 }
 
