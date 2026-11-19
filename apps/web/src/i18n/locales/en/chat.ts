@@ -32,6 +32,10 @@ export default {
 		downloadFailed: "File download failed",
 		copyFailed: "Copy failed",
 	},
+	notification: {
+		completedTitle: "{{name}} finished replying",
+		completedBody: "Click to return to the conversation.",
+	},
 	noAgents: {
 		title: "No agents published yet",
 		hint: "Publish and list an agent in the console, and conversable roles will appear here.",

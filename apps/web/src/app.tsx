@@ -32,6 +32,7 @@ import { PlazaView } from "./features/plaza/plaza-view.tsx";
 import { QuotaBanner } from "./features/usage/quota-banner.tsx";
 import { UsageView } from "./features/usage/usage-view.tsx";
 import type { Branding } from "./lib/branding.ts";
+import { requestCompletionNotificationPermission, showCompletionNotification } from "./lib/browser-notifications.ts";
 import { createArtifactHost, resolveHostCapabilities } from "./lib/host.ts";
 import { type NavigateFn, useRoute } from "./lib/use-route.ts";
 import { type SessionDirectory, useSessionDirectory } from "./lib/use-session-directory.ts";
@@ -202,6 +203,7 @@ function ChatView({
 	const isMobile = useIsMobile();
 	const [asideOpen, setAsideOpen] = useState(!isMobile);
 	const chat = useChat({ sessionId, provider: chatProvider });
+	const agent = useMemo(() => agents.find((a) => a.slug === agentSlug) ?? agents[0] ?? null, [agents, agentSlug]);
 	// 切换会话的历史回放与断线重连期间（未 connected 且暂无消息）内容区显示加载态，而不是误显示新会话欢迎页。
 	// 重连中保留的旧错误不算硬错误（isSessionUnavailable），否则会退化成欢迎页。
 	const sessionLoading =
@@ -229,9 +231,17 @@ function ChatView({
 			return;
 		}
 		if (chat.phase === "running") setCompletedSessionId(null);
-		else if (chat.phase === "idle" && (prev.phase === "running" || prev.phase === "requires_action"))
+		else if (chat.phase === "idle" && (prev.phase === "running" || prev.phase === "requires_action")) {
 			setCompletedSessionId(sessionId);
-	}, [sessionId, chat.phase]);
+			// 与侧栏「已完成」共用同一相位收敛判定：HTTP 成功/断流、用户停止和失败都不算完成。
+			showCompletionNotification({
+				title: t("notification.completedTitle", { name: agent?.display_name ?? branding.productName }),
+				body: t("notification.completedBody"),
+				tag: sessionId ?? "kit-chat",
+				...(branding.logoUrl ? { icon: branding.logoUrl } : {}),
+			});
+		}
+	}, [sessionId, chat.phase, t, agent, branding]);
 	// 会话切换或回到新会话态时重置输入框草稿；首次建会话（null→id）不清，发送失败后草稿仍可重试。
 	const lastSessionRef = useRef<string | null>(null);
 	useEffect(() => {
@@ -255,7 +265,6 @@ function ChatView({
 		[host, upload],
 	);
 
-	const agent = useMemo(() => agents.find((a) => a.slug === agentSlug) ?? agents[0] ?? null, [agents, agentSlug]);
 	// Agent 资源一次拉取两处用：输入框技能选择（面板关闭时也要可用）与资源面板分区。
 	const resources = useAgentResources(agent?.slug ?? null);
 	const memories = resources?.memory_stores ?? null;
@@ -308,6 +317,8 @@ function ChatView({
 	const delivering = composer.pending;
 	const sendViaComposer = useCallback(
 		async (text: string, skills?: string[]) => {
+			// 在发送这一用户手势内申请权限；浏览器不支持或已拒绝时静默跳过。
+			void requestCompletionNotificationPermission();
 			try {
 				await composer.send(text, skills);
 				directory.refreshStatuses();

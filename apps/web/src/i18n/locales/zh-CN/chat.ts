@@ -32,6 +32,10 @@ export default {
 		downloadFailed: "文件下载失败",
 		copyFailed: "复制失败",
 	},
+	notification: {
+		completedTitle: "{{name}} 已完成回复",
+		completedBody: "点击返回对话查看结果。",
+	},
 	noAgents: {
 		title: "还没有上架的 Agent",
 		hint: "到管理端完成 publish 与上架后，这里就会出现可对话的角色。",
