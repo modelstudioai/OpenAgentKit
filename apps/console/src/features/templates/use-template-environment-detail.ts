@@ -1,4 +1,5 @@
 import { ProjectEnvironmentNetworkingSchema, type RemoteEnvironmentDetail } from "@openagentpack/kit-sdk/protocol";
+import i18n from "i18next";
 import { useMemo } from "react";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
@@ -58,7 +59,7 @@ export function useTemplateEnvironmentDetail(environment: TemplateEnvironmentSel
 	return useAdminQuery<RemoteEnvironmentDetail>(
 		`templates:environment-form:${environment?.environment_id}:${revision}`,
 		async (signal) => {
-			if (!environment) throw new Error("请选择环境");
+			if (!environment) throw new Error(i18n.getFixedT(null, "templates")("agent.environment.config.select"));
 			if (!environment.local) return client.remoteEnvironment(environment.environment_id, signal);
 			const source = await client.draftResources.declaration(
 				environment.local.projectName,

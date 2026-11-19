@@ -208,7 +208,7 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
 
 | feature | 引号内串数 | 状态 |
 | --- | --- | --- |
-| templates | 661 | 迁移中（批次 1–2：列表/创建外壳/Agent 表单与版本配置；其余分批） |
+| templates | 661 | 迁移中（批次 1–3a：列表/创建外壳/Agent 配置/环境子编辑器；其余分批） |
 | usage | 138 | ✅ 全部（限额链路、Session 用量页、趋势卡、模版用量详情与 Provider 遥测表；聚合行名称参数化） |
 | members | 88 | ✅ 全部（列表/用量页/遥测表/创建页/hook 错误兜底；共享指标与采集状态词表入 common） |
 | preset-packs | 83 | ✅ 全部（选择/资源详情抽屉/会话资源；纯函数消息以缺省参数保持兼容） |
@@ -253,3 +253,11 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
   由 `vitest.config.ts` 的 `setupFiles` 加载；测试断言与默认中文行为不变。
 - 仍待迁：环境/文件/记忆库/密钥库子编辑器、保存/发布/预览调试弹窗、模版详情/版本历史/已保存资源、
   残余草稿与工具函数。
+
+#### templates 批次 3a：环境子编辑器（2026-11-19）
+
+- 已迁：`environment-create-fields`、`environment-networking-fields`、`environment-detail-view`、
+  `template-environment-configuration/form/list/detail-drawer`、`template-environment-form-draft`、
+  `use-template-environment-detail`；词表归入 `templates.agent.environment.*`。
+- 相对时间按 `i18n.language` 使用 `Intl.RelativeTimeFormat`；复制受限字段的标签映射为词表键。
+- 仍待迁：文件、记忆库、密钥库子编辑器（批次 3b）。
