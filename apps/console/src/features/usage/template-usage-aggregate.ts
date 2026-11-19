@@ -14,7 +14,7 @@ function aggregateMetric(
 }
 
 /** 「全部」视角的聚合行：数值列跨模版求和，采集时间取最近一次；身份字段仅占位，由聚合卡片单独渲染。 */
-export function aggregateTemplateRows(rows: TemplateUsageRow[]): TemplateUsageRow {
+export function aggregateTemplateRows(rows: TemplateUsageRow[], aggregateName = "全部模版"): TemplateUsageRow {
 	const refreshed = rows
 		.map((row) => row.refreshed_at)
 		.filter((value): value is string => Boolean(value))
@@ -22,7 +22,7 @@ export function aggregateTemplateRows(rows: TemplateUsageRow[]): TemplateUsageRo
 		.at(-1);
 	return {
 		template_id: "",
-		name: "全部模版",
+		name: aggregateName,
 		remote_agent_name: "",
 		remote_agent_id: "",
 		listing_status: "unlisted",
