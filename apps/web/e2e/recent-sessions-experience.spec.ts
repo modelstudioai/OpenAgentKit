@@ -1,4 +1,4 @@
-import type { SessionSummary } from "@openagentpack/kit-sdk/protocol";
+import type { SessionSummary } from "@openagentkit/sdk/protocol";
 import { expect, test } from "./fixtures.ts";
 import { openSessionList, scrollSessionDirectoryDown as scrollDown, seedListedAgent } from "./helpers.ts";
 

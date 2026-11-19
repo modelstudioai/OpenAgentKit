@@ -1,4 +1,4 @@
-import { KitError, type ToolApprovalDecision, type ToolApprovalsResponse } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type ToolApprovalDecision, type ToolApprovalsResponse } from "@openagentkit/sdk/protocol";
 import { GatewaySendRejectedError } from "../gateway/send-error.ts";
 import type { ProviderGateway } from "../gateway/types.ts";
 import { readApprovalState } from "./approval-history.ts";

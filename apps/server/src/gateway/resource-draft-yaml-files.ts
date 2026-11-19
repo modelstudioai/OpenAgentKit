@@ -1,6 +1,6 @@
 import { lstat, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { KitError } from "@openagentpack/kit-sdk/protocol";
+import { KitError } from "@openagentkit/sdk/protocol";
 import { type ResourceDraftProof, ResourceDraftProofSchema } from "./resource-draft-proof.ts";
 import { initialDraftYaml } from "./yaml-draft-document.ts";
 

@@ -1,4 +1,4 @@
-import { KitError, type SessionStats, type SessionUsage } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type SessionStats, type SessionUsage } from "@openagentkit/sdk/protocol";
 
 function object(value: unknown): Record<string, unknown> | undefined {
 	return value !== null && typeof value === "object" && !Array.isArray(value)

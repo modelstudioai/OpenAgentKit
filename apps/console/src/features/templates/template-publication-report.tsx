@@ -1,4 +1,4 @@
-import type { PublicationReport } from "@openagentpack/kit-sdk/protocol";
+import type { PublicationReport } from "@openagentkit/sdk/protocol";
 import { Table } from "antd";
 import { useTranslation } from "react-i18next";
 

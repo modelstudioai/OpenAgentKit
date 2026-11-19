@@ -1,7 +1,7 @@
 "use client";
 
+import type { ChatMessage, MessagePart } from "@openagentkit/sdk/messages";
 import { ArtifactCard, Markdown, Message, MessageList, ReasoningBlock, ToolCallCard } from "@openagentpack/kit-chat-ui";
-import type { ChatMessage, MessagePart } from "@openagentpack/kit-sdk/messages";
 import { useState } from "react";
 
 const SAMPLE_MARKDOWN = [

@@ -1,3 +1,4 @@
+import type { ChatMessage, MessagePart } from "@openagentkit/sdk/messages";
 import {
 	Actions,
 	ActionsCopy,
@@ -17,7 +18,6 @@ import {
 	SenderHeader,
 	ToolCallCard,
 } from "@openagentpack/kit-chat-ui";
-import type { ChatMessage, MessagePart } from "@openagentpack/kit-sdk/messages";
 import { useState } from "react";
 
 export interface ContentExamplesProps {

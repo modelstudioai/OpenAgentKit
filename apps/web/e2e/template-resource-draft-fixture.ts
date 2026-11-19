@@ -1,4 +1,4 @@
-import type { ResourceDraftView } from "@openagentpack/kit-sdk/protocol";
+import type { ResourceDraftView } from "@openagentkit/sdk/protocol";
 import type { Page, Route } from "@playwright/test";
 import { expect } from "./fixtures.ts";
 import { ADMIN_TOKEN } from "./helpers.ts";

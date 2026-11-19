@@ -1,7 +1,7 @@
 "use client";
 
+import type { ChatMessage } from "@openagentkit/sdk/messages";
 import { Message } from "@openagentpack/kit-chat-ui";
-import type { ChatMessage } from "@openagentpack/kit-sdk/messages";
 import { type ReactNode, useState } from "react";
 import { CONTROL_CLASS, TOOLBAR_CLASS } from "./general-demo.tsx";
 
@@ -260,7 +260,7 @@ export function MessageSkillsDemo() {
 function exampleSource(data: string, body: string, stateful = false) {
 	return `"use client";
 
-import type { ChatMessage } from "@openagentpack/kit-sdk/messages";
+import type { ChatMessage } from "@openagentkit/sdk/messages";
 import { Message } from "@openagentpack/kit-chat-ui";
 ${stateful ? 'import { useState } from "react";\n' : ""}
 ${data}

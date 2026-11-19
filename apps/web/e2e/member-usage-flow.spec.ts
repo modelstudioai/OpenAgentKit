@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import type { MemberView, SessionDetail } from "@openagentpack/kit-sdk/protocol";
+import type { MemberView, SessionDetail } from "@openagentkit/sdk/protocol";
 import { expect, test } from "./fixtures.ts";
 import { ADMIN_TOKEN, seedListedAgent } from "./helpers.ts";
 

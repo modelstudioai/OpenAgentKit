@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import type { SessionPurpose } from "@openagentpack/kit-sdk/protocol";
+import type { SessionPurpose } from "@openagentkit/sdk/protocol";
 
 /** 只记录上传归属（含迁移确认的历史挂载归属）；文件字节仍由 Provider 保存。 */
 export function createFileStore(db: DatabaseSync) {

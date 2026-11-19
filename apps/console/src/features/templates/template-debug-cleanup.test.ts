@@ -1,4 +1,4 @@
-import { KitError, type PlanResponse } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type PlanResponse } from "@openagentkit/sdk/protocol";
 import { describe, expect, it, vi } from "vitest";
 import { createTemplateDebugCleanupQueue } from "./template-debug-cleanup.ts";
 

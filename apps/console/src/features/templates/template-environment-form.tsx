@@ -1,5 +1,5 @@
+import type { RemoteEnvironmentDetail } from "@openagentkit/sdk/protocol";
 import { ErrorState } from "@openagentpack/kit-chat-ui";
-import type { RemoteEnvironmentDetail } from "@openagentpack/kit-sdk/protocol";
 import { type Ref, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";

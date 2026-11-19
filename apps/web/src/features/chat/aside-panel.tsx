@@ -1,12 +1,12 @@
-import { SubAgentPanel, Tooltip } from "@openagentpack/kit-chat-ui";
-import type { ChatMultiAgent } from "@openagentpack/kit-sdk/chat";
+import type { ChatMultiAgent } from "@openagentkit/sdk/chat";
 import type {
 	AgentMemoryStore,
 	AgentResourceItem,
 	AgentSummary,
 	ArtifactDescriptor,
 	RemoteAgentResources,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
+import { SubAgentPanel, Tooltip } from "@openagentpack/kit-chat-ui";
 
 /** 产物行首的扩展名徽标文案，与 chat-ui FileCard 的 fileIcon 同一套图标语言（黑白灰）。 */
 function artifactBadge(name: string | undefined, type: string | undefined): string {

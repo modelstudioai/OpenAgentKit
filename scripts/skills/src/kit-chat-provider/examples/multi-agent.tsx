@@ -1,11 +1,11 @@
-import { Chat } from "@openagentpack/kit-chat-ui";
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
+import { useChat } from "@openagentkit/sdk/chat/hooks";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
 import {
 	type BailianChatProviderOptions,
 	createBailianChatProvider,
 	createBailianThreadOperations,
-} from "@openagentpack/kit-sdk/providers/bailian";
+} from "@openagentkit/sdk/providers/bailian";
+import { Chat } from "@openagentpack/kit-chat-ui";
 import { useState } from "react";
 
 // 标准事件后端使用公开 DTO 实现这两个可选操作。

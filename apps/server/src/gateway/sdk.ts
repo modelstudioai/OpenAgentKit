@@ -6,7 +6,7 @@ import {
 	type SessionEvent,
 	type SessionThreadSummary,
 	SessionThreadSummarySchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import {
 	type AgentPage,
 	ApiError,

@@ -5,7 +5,7 @@ import {
 	type SseFrame,
 	sessionStatusOf,
 	threadIdOf,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { GatewaySessionInfo, ProviderGateway } from "../gateway/types.ts";
 import type { EventBufferRegistry, EventChange } from "./event-buffer.ts";
 import { type AcceptedTurn, projectSessionRuntime } from "./session-runtime.ts";

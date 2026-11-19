@@ -1,4 +1,4 @@
-import type { MemoryStoreConfiguration } from "@openagentpack/kit-sdk/protocol";
+import type { MemoryStoreConfiguration } from "@openagentkit/sdk/protocol";
 import { expect, it, vi } from "vitest";
 import { loadPresetPackMemoryConfiguration } from "./preset-pack-memory-configuration.ts";
 

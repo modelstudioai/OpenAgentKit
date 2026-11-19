@@ -1,4 +1,4 @@
-import type { ProjectResourceBindings } from "@openagentpack/kit-sdk/protocol";
+import type { ProjectResourceBindings } from "@openagentkit/sdk/protocol";
 import i18n from "i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";

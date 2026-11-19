@@ -2,8 +2,8 @@
 
 ## 从包导入
 
-示例从 `@openagentpack/kit-chat-ui` 导入公开 API，并从 `@openagentpack/kit-sdk/messages`
-及 `@openagentpack/kit-sdk/protocol` 导入类型。使用示例的 workspace 需要能访问这些包，
+示例从 `@openagentpack/kit-chat-ui` 导入公开 API，并从 `@openagentkit/sdk/messages`
+及 `@openagentkit/sdk/protocol` 导入类型。使用示例的 workspace 需要能访问这些包，
 并提供兼容的 React 和 React DOM。当前仓库的 Kit 包为私有 workspace 包，以实际发布情况为准。
 
 在已有 Tailwind v4 样式入口导入主题。
@@ -60,16 +60,16 @@ Registry 按源码文件分组，完整的公开组件名单见 [API 参考](api
 
 使用 copy-in 时在目标项目另行安装 npm 依赖。Markdown 使用 `react-markdown`、`remark-gfm`、
 `rehype-sanitize`、`lowlight` 和 `mermaid`。工具审批与确认使用 `@radix-ui/react-alert-dialog`。
-Layout 使用 `@radix-ui/react-dialog` 和 `@openagentpack/kit-sdk/hooks`。
+Layout 使用 `@radix-ui/react-dialog` 和 `@openagentkit/sdk/hooks`。
 版本以目标项目与组件 registry、包清单共同支持的范围为准。更新已复制的组件前先查看源码差异，
 合并需要保留的本地修改。
 
 ## 运行时边界
 
 - `kit-chat-ui` 负责渲染和本地交互。请求、上传、下载、复制与反馈持久化使用注入的 Hook 或应用回调。
-- `kit-sdk/chat/hooks` 提供会话状态。`kit-sdk/providers/kit/react` 的 `KitProvider` 提供默认 Context，
+- `@openagentkit/sdk/chat/hooks` 提供会话状态。`@openagentkit/sdk/providers/kit/react` 的 `KitProvider` 提供默认 Context，
   也可以直接传入自定义 `ChatProvider`。
-- `kit-sdk` 将 SDK 事件投影为消息、线程和审批数据，组件直接消费投影结果。
+- `@openagentkit/sdk` 将 SDK 事件投影为消息、线程和审批数据，组件直接消费投影结果。
 - 浏览器运行时仅使用 SDK 的浏览器安全入口，Provider 凭据保留在后端。
 - Kit 宿主应用从注入的运行时配置获取 `apiBaseUrl`，支持与页面不同源的后端。
 

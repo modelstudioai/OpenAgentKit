@@ -1,5 +1,5 @@
 import { type OpenAPIHono, z } from "@hono/zod-openapi";
-import { AuditLogsPageSchema, AuditLogsQuerySchema } from "@openagentpack/kit-sdk/protocol";
+import { AuditLogsPageSchema, AuditLogsQuerySchema } from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 
 const errorSchema = z.object({ error: z.object({ code: z.string(), message: z.string() }) });

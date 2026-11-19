@@ -10,7 +10,7 @@ import {
 	SendMessageResponseSchema,
 	ToolApprovalDecisionSchema,
 	ToolApprovalsResponseSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 import { ProtocolVersionHeadersSchema } from "./protocol-header.ts";
 import { streamSession } from "./session-stream.ts";

@@ -1,5 +1,7 @@
 # ADR-0026：SDK 按功能组织源码与导入入口
 
+> SDK 当前包名为 `@openagentkit/sdk`。完整导出清单见 [package.json](../../packages/sdk/package.json)。
+
 ## 背景
 
 SDK 合包后，聊天、会话目录、上传和额度的实现分散在技术分层目录、`experience/` 与

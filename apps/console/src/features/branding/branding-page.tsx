@@ -4,7 +4,8 @@ import {
 	BRANDING_LOGO_PATH,
 	BRANDING_LOGO_TYPES,
 	type BrandingView,
-} from "@openagentpack/kit-sdk/protocol";
+	DEFAULT_BRAND_PRODUCT_NAME,
+} from "@openagentkit/sdk/protocol";
 import { Alert, Button, Input, Result, Segmented, Skeleton, Space, Typography, Upload } from "antd";
 import type { TFunction } from "i18next";
 import { useEffect, useState } from "react";
@@ -35,7 +36,7 @@ function fileError(file: File, t: TFunction<"branding">): string | undefined {
 function BrandPreview({ productName, logoUrl }: { productName: string; logoUrl?: string }) {
 	const { t } = useTranslation("branding");
 	const [failed, setFailed] = useState(false);
-	const name = productName.trim() || "OpenAgentPack Kit";
+	const name = productName.trim() || DEFAULT_BRAND_PRODUCT_NAME;
 	return (
 		<div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
 			<Typography.Text type="secondary">{t("previewTitle")}</Typography.Text>

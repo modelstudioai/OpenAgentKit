@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import { BRANDING_LOGO_PATH, DEFAULT_BRAND_PRODUCT_NAME } from "@openagentpack/kit-sdk/protocol";
+import { BRANDING_LOGO_PATH, DEFAULT_BRAND_PRODUCT_NAME } from "@openagentkit/sdk/protocol";
 
 export interface BrandingRow {
 	product_name: string;

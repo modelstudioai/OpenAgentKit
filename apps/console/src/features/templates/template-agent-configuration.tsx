@@ -1,4 +1,4 @@
-import type { PresetPackAgentResources } from "@openagentpack/kit-sdk/protocol";
+import type { PresetPackAgentResources } from "@openagentkit/sdk/protocol";
 import { Alert, Button, Drawer } from "antd";
 import { type Ref, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";

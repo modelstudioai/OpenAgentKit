@@ -14,7 +14,7 @@ import {
 	SendMessageResponseSchema,
 	SessionDetailSchema,
 	type SessionEvent,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 import { mergeSessionFiles } from "../services/catalog-files.ts";
 import { ProtocolVersionHeadersSchema } from "./protocol-header.ts";

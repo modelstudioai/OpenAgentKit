@@ -60,8 +60,8 @@
 ## 验收
 
 ```bash
-pnpm --filter @openagentpack/kit-sdk typecheck
-pnpm --filter @openagentpack/kit-sdk test
+pnpm --filter @openagentkit/sdk typecheck
+pnpm --filter @openagentkit/sdk test
 pnpm check:architecture
 pnpm check:docs
 ```

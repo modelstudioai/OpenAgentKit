@@ -5,7 +5,7 @@ import {
 	ResourceDraftDiscardResultSchema,
 	ResourceDraftOwnershipHeadersSchema,
 	ResourceDraftViewSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 
 const errorBody = z.object({ error: z.object({ code: z.string(), message: z.string() }) });

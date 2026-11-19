@@ -1,3 +1,11 @@
+import { useAgentCatalog, useAgentResources } from "@openagentkit/sdk/agents/hooks";
+import { useChat, useComposer } from "@openagentkit/sdk/chat/hooks";
+import type { ArtifactHost } from "@openagentkit/sdk/files";
+import { useArtifactActions, useAttachments } from "@openagentkit/sdk/files/hooks";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
+import type { KitClient } from "@openagentkit/sdk/providers/kit";
+import { useSessionDetails, useSessionDirectory, useSessionSearch } from "@openagentkit/sdk/sessions/hooks";
+import { useQuotaRecovery, useUsageLimits } from "@openagentkit/sdk/usage/hooks";
 import {
 	AgentHeader,
 	type AttachmentItem,
@@ -8,14 +16,6 @@ import {
 	SessionSidebar,
 	type SessionSidebarSection,
 } from "@openagentpack/kit-chat-ui";
-import { useAgentCatalog, useAgentResources } from "@openagentpack/kit-sdk/agents/hooks";
-import { useChat, useComposer } from "@openagentpack/kit-sdk/chat/hooks";
-import type { ArtifactHost } from "@openagentpack/kit-sdk/files";
-import { useArtifactActions, useAttachments } from "@openagentpack/kit-sdk/files/hooks";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
-import type { KitClient } from "@openagentpack/kit-sdk/providers/kit";
-import { useSessionDetails, useSessionDirectory, useSessionSearch } from "@openagentpack/kit-sdk/sessions/hooks";
-import { useQuotaRecovery, useUsageLimits } from "@openagentpack/kit-sdk/usage/hooks";
 import { useState } from "react";
 import { AgentResourcesPanel } from "./agent-resources-panel.tsx";
 import { ApprovalList } from "./approval-list.tsx";

@@ -2,7 +2,7 @@
   "name": "storybook",
   "version": "1.0.0",
   "private": true,
-  "description": "OpenAgentPack Kit 文档站（Fumadocs + Next.js，对齐 ai-sdk.dev 的组织方式）",
+  "description": "OpenAgentKit 文档站（Fumadocs + Next.js，对齐 ai-sdk.dev 的组织方式）",
   "license": "Apache-2.0",
   "scripts": {
     "predev": "node scripts/sync-openapi.mjs && node ../../scripts/skills/pack.mjs --docs",
@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@openagentpack/kit-chat-ui": "workspace:*",
-    "@openagentpack/kit-sdk": "workspace:*",
+    "@openagentkit/sdk": "workspace:*",
     "fumadocs-core": "^16.17.1",
     "fumadocs-mdx": "^15.4.7",
     "fumadocs-openapi": "^12.4.2",

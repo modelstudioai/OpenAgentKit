@@ -11,95 +11,95 @@ export const modules = {
 	},
 	chat: {
 		path: "packages/sdk/src/chat/index.ts",
-		name: "@openagentpack/kit-sdk/chat",
+		name: "@openagentkit/sdk/chat",
 	},
 	sessions: {
 		path: "packages/sdk/src/sessions/index.ts",
-		name: "@openagentpack/kit-sdk/sessions",
+		name: "@openagentkit/sdk/sessions",
 	},
 	files: {
 		path: "packages/sdk/src/files/index.ts",
-		name: "@openagentpack/kit-sdk/files",
+		name: "@openagentkit/sdk/files",
 	},
 	usage: {
 		path: "packages/sdk/src/usage/index.ts",
-		name: "@openagentpack/kit-sdk/usage",
+		name: "@openagentkit/sdk/usage",
 	},
 	auth: {
 		path: "packages/sdk/src/auth/index.ts",
-		name: "@openagentpack/kit-sdk/auth",
+		name: "@openagentkit/sdk/auth",
 	},
 	messages: {
 		path: "packages/sdk/src/messages/index.ts",
-		name: "@openagentpack/kit-sdk/messages",
+		name: "@openagentkit/sdk/messages",
 	},
 	config: {
 		path: "packages/sdk/src/config/index.ts",
-		name: "@openagentpack/kit-sdk/config",
+		name: "@openagentkit/sdk/config",
 	},
 	state: {
 		path: "packages/sdk/src/state.ts",
-		name: "@openagentpack/kit-sdk/state",
+		name: "@openagentkit/sdk/state",
 	},
 	request: {
 		path: "packages/sdk/src/request/index.ts",
-		name: "@openagentpack/kit-sdk/request",
+		name: "@openagentkit/sdk/request",
 	},
 	stream: {
 		path: "packages/sdk/src/stream/index.ts",
-		name: "@openagentpack/kit-sdk/stream",
+		name: "@openagentkit/sdk/stream",
 	},
 	providers: {
 		path: "packages/sdk/src/providers/index.ts",
-		name: "@openagentpack/kit-sdk/providers",
+		name: "@openagentkit/sdk/providers",
 	},
 	"providers/kit": {
 		path: "packages/sdk/src/providers/kit/index.ts",
-		name: "@openagentpack/kit-sdk/providers/kit",
+		name: "@openagentkit/sdk/providers/kit",
 	},
 	"providers/kit/react": {
 		path: "packages/sdk/src/providers/kit/react/index.ts",
-		name: "@openagentpack/kit-sdk/providers/kit/react",
+		name: "@openagentkit/sdk/providers/kit/react",
 	},
 	"providers/session-events": {
 		path: "packages/sdk/src/providers/session-events/index.ts",
-		name: "@openagentpack/kit-sdk/providers/session-events",
+		name: "@openagentkit/sdk/providers/session-events",
 	},
 	"providers/bailian": {
 		path: "packages/sdk/src/providers/bailian/index.ts",
-		name: "@openagentpack/kit-sdk/providers/bailian",
+		name: "@openagentkit/sdk/providers/bailian",
 	},
 	protocol: {
 		path: "packages/sdk/src/protocol/index.ts",
-		name: "@openagentpack/kit-sdk/protocol",
+		name: "@openagentkit/sdk/protocol",
 	},
 	hooks: {
 		path: "packages/sdk/src/hooks/index.ts",
-		name: "@openagentpack/kit-sdk/hooks",
+		name: "@openagentkit/sdk/hooks",
 	},
 	"chat/hooks": {
 		path: "packages/sdk/src/chat/hooks/index.ts",
-		name: "@openagentpack/kit-sdk/chat/hooks",
+		name: "@openagentkit/sdk/chat/hooks",
 	},
 	"sessions/hooks": {
 		path: "packages/sdk/src/sessions/hooks/index.ts",
-		name: "@openagentpack/kit-sdk/sessions/hooks",
+		name: "@openagentkit/sdk/sessions/hooks",
 	},
 	"files/hooks": {
 		path: "packages/sdk/src/files/hooks/index.ts",
-		name: "@openagentpack/kit-sdk/files/hooks",
+		name: "@openagentkit/sdk/files/hooks",
 	},
 	"agents/hooks": {
 		path: "packages/sdk/src/agents/hooks/index.ts",
-		name: "@openagentpack/kit-sdk/agents/hooks",
+		name: "@openagentkit/sdk/agents/hooks",
 	},
 	"usage/hooks": {
 		path: "packages/sdk/src/usage/hooks/index.ts",
-		name: "@openagentpack/kit-sdk/usage/hooks",
+		name: "@openagentkit/sdk/usage/hooks",
 	},
 	"auth/hooks": {
 		path: "packages/sdk/src/auth/hooks/index.ts",
-		name: "@openagentpack/kit-sdk/auth/hooks",
+		name: "@openagentkit/sdk/auth/hooks",
 	},
 };
 

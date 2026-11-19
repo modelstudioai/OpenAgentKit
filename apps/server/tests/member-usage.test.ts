@@ -7,7 +7,7 @@ import type {
 	TemplateSessionUsage,
 	TemplateUsageRow,
 	TemplateUsageTrend,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { ModelUsagePage, ModelUsageRequest, ToolUsagePage } from "@openagentpack/sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.ts";

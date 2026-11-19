@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import type { AuditLogsPage, AuditLogsQuery, AuditLogView } from "@openagentpack/kit-sdk/protocol";
+import type { AuditLogsPage, AuditLogsQuery, AuditLogView } from "@openagentkit/sdk/protocol";
 
 // 管理端可审计动作：智能体管理、旧目录兼容入口与员工端品牌配置。
 const agentActions = [

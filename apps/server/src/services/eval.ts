@@ -1,13 +1,13 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { type CaseResultRow, latestRunId, readRun, renderHtml } from "@openagentpack/kit-eval";
 import {
 	type EvalRunCaseRow,
 	type EvalRunDetail,
 	type EvalRunSummary,
 	type EvalWorkspaceView,
 	KitError,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
+import { type CaseResultRow, latestRunId, readRun, renderHtml } from "@openagentpack/kit-eval";
 
 function readSkillName(workspacePath: string): string | undefined {
 	const evalsJson = join(workspacePath, "evals", "evals.json");

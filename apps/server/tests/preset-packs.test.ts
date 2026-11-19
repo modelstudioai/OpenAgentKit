@@ -2,7 +2,7 @@ import "@hono/zod-openapi";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { PresetPackAgentResourcesSchema } from "@openagentpack/kit-sdk/protocol";
+import { PresetPackAgentResourcesSchema } from "@openagentkit/sdk/protocol";
 import { afterEach, expect, it } from "vitest";
 import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";

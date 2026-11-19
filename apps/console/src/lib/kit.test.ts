@@ -1,4 +1,4 @@
-import { PROTOCOL_VERSION } from "@openagentpack/kit-sdk/protocol";
+import { PROTOCOL_VERSION } from "@openagentkit/sdk/protocol";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { adminApi, adminToken, setAdminToken } from "./api.ts";
 import { adminBaseUrl, bindAdminBackend } from "./auth.ts";

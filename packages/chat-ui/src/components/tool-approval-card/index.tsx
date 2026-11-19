@@ -1,5 +1,5 @@
-import type { ChatToolApproval } from "@openagentpack/kit-sdk/chat";
-import type { ToolApprovalDecision } from "@openagentpack/kit-sdk/protocol";
+import type { ChatToolApproval } from "@openagentkit/sdk/chat";
+import type { ToolApprovalDecision } from "@openagentkit/sdk/protocol";
 import { useState } from "react";
 import { format, resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
 import toolApprovalCardStrings, { type ToolApprovalCardStrings } from "./strings.ts";

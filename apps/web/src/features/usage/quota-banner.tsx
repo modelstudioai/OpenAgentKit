@@ -1,4 +1,4 @@
-import { useQuotaRecovery } from "@openagentpack/kit-sdk/usage/hooks";
+import { useQuotaRecovery } from "@openagentkit/sdk/usage/hooks";
 import { useTranslation } from "react-i18next";
 import { formatBeijingTime } from "../../lib/beijing-time.ts";
 import { formatExactTokenCount, formatTokenCount } from "../../lib/format-token-count.ts";

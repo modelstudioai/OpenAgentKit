@@ -5,7 +5,7 @@ import {
 	PROTOCOL_VERSION,
 	PROTOCOL_VERSION_HEADER,
 	RESOURCE_DRAFT_KEY_HEADER,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
@@ -161,7 +161,7 @@ export function createApp(services: KitServices) {
 
 	app.doc("/openapi.json", {
 		openapi: "3.1.0",
-		info: { title: "OpenAgentPack Kit Server", version: PROTOCOL_VERSION },
+		info: { title: "OpenAgentKit Server", version: PROTOCOL_VERSION },
 		// tag 描述会出现在文档站侧栏分组与页面头部（fumadocs-openapi 按 tag 分组）
 		tags: [
 			{ name: "meta", description: "探针与运行时公开配置（不需要身份）" },

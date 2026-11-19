@@ -1,5 +1,5 @@
 import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
-import { ProjectVaultCreateInputSchema, ResourceDraftVaultCreateResultSchema } from "@openagentpack/kit-sdk/protocol";
+import { ProjectVaultCreateInputSchema, ResourceDraftVaultCreateResultSchema } from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 import { requireAdmin } from "../services/identity.ts";
 

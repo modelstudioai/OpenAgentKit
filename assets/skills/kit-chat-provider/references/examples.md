@@ -7,8 +7,8 @@
 [源文件](../examples/backend-data.ts)
 
 ```ts
-import { type ClientOperations, createKitClient } from "@openagentpack/kit-sdk/providers/kit";
-import type { RequestClient } from "@openagentpack/kit-sdk/request";
+import { type ClientOperations, createKitClient } from "@openagentkit/sdk/providers/kit";
+import type { RequestClient } from "@openagentkit/sdk/request";
 
 // 只配置后端支持的功能。未配置的操作不会调用 Kit 路由。
 export function createDataClient(request: RequestClient) {
@@ -85,9 +85,9 @@ export function createDataClient(request: RequestClient) {
 [源文件](../examples/backend-http.ts)
 
 ```ts
-import { KitError, SendMessageResponseSchema, ToolApprovalsResponseSchema } from "@openagentpack/kit-sdk/protocol";
-import type { SessionEventChatProviderOptions } from "@openagentpack/kit-sdk/providers/session-events";
-import { createRequest } from "@openagentpack/kit-sdk/request";
+import { KitError, SendMessageResponseSchema, ToolApprovalsResponseSchema } from "@openagentkit/sdk/protocol";
+import type { SessionEventChatProviderOptions } from "@openagentkit/sdk/providers/session-events";
+import { createRequest } from "@openagentkit/sdk/request";
 
 export interface BackendConfig {
 	// 显式传入运行时配置，后端可以与页面不同源。
@@ -183,8 +183,8 @@ export function createBackendHttp(config: BackendConfig) {
 [源文件](../examples/kit-client-provider.ts)
 
 ```ts
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
-import { createKitChatProvider, type KitClient } from "@openagentpack/kit-sdk/providers/kit";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
+import { createKitChatProvider, type KitClient } from "@openagentkit/sdk/providers/kit";
 
 // 兼容已经持有完整 KitClient 的应用。
 export function wrapExistingKitClient(client: KitClient): ChatProvider {
@@ -197,8 +197,8 @@ export function wrapExistingKitClient(client: KitClient): ChatProvider {
 [源文件](../examples/message-transform.ts)
 
 ```ts
-import { type MessageTransformer, transformSessionEvent } from "@openagentpack/kit-sdk/messages";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
+import { type MessageTransformer, transformSessionEvent } from "@openagentkit/sdk/messages";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
 
 // 幂等替换展示标签，后续事件重建线程时可重复调用，原始 SessionEvent 与生命周期保持原样。
 const replaceDisplayLabel: MessageTransformer = (input) => {
@@ -233,14 +233,14 @@ export function withDisplayLabel(provider: ChatProvider): ChatProvider {
 [源文件](../examples/multi-agent.tsx)
 
 ```tsx
-import { Chat } from "@openagentpack/kit-chat-ui";
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
+import { useChat } from "@openagentkit/sdk/chat/hooks";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
 import {
 	type BailianChatProviderOptions,
 	createBailianChatProvider,
 	createBailianThreadOperations,
-} from "@openagentpack/kit-sdk/providers/bailian";
+} from "@openagentkit/sdk/providers/bailian";
+import { Chat } from "@openagentpack/kit-chat-ui";
 import { useState } from "react";
 
 // 标准事件后端使用公开 DTO 实现这两个可选操作。
@@ -296,9 +296,9 @@ export function MultiAgentChat({ sessionId, provider }: { sessionId: string; pro
 [源文件](../examples/normalized-provider.ts)
 
 ```ts
-import { PROTOCOL_VERSION, PROTOCOL_VERSION_HEADER } from "@openagentpack/kit-sdk/protocol";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
-import { createSessionEventChatProvider } from "@openagentpack/kit-sdk/providers/session-events";
+import { PROTOCOL_VERSION, PROTOCOL_VERSION_HEADER } from "@openagentkit/sdk/protocol";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
+import { createSessionEventChatProvider } from "@openagentkit/sdk/providers/session-events";
 import { type BackendConfig, createBackendHttp } from "./backend-http.ts";
 
 // Web 应用复用此公开工厂，配置自己的路径和 { data } 映射。
@@ -333,9 +333,9 @@ export function createNormalizedProvider(config: BackendConfig): ChatProvider {
 [源文件](../examples/protocol-frames.ts)
 
 ```ts
-import type { SseFrame } from "@openagentpack/kit-sdk/protocol";
-import { streamProtocolFrames } from "@openagentpack/kit-sdk/providers/kit";
-import type { RequestClient } from "@openagentpack/kit-sdk/request";
+import type { SseFrame } from "@openagentkit/sdk/protocol";
+import { streamProtocolFrames } from "@openagentkit/sdk/providers/kit";
+import type { RequestClient } from "@openagentkit/sdk/request";
 
 /** Request 已配置后端 base URL 及所需的身份与协议版本头。 */
 export async function observeProtocolFrames(
@@ -360,8 +360,8 @@ export async function observeProtocolFrames(
 [源文件](../examples/raw-bailian-provider.ts)
 
 ```ts
-import { KitError } from "@openagentpack/kit-sdk/protocol";
-import { createBailianChatProvider } from "@openagentpack/kit-sdk/providers/bailian";
+import { KitError } from "@openagentkit/sdk/protocol";
+import { createBailianChatProvider } from "@openagentkit/sdk/providers/bailian";
 import { type BackendConfig, createBackendHttp, readJson, record } from "./backend-http.ts";
 
 export function createRawBailianProvider(config: BackendConfig) {
@@ -411,8 +411,8 @@ export function createRawBailianProvider(config: BackendConfig) {
 [源文件](../examples/request.ts)
 
 ```ts
-import { createRequest, type RequestClient } from "@openagentpack/kit-sdk/request";
-import type { RawSseMessage } from "@openagentpack/kit-sdk/stream";
+import { createRequest, type RequestClient } from "@openagentkit/sdk/request";
+import type { RawSseMessage } from "@openagentkit/sdk/stream";
 
 export function createApplicationRequest(baseUrl: string, getAppToken: () => Promise<string>): RequestClient {
 	return createRequest({
@@ -446,7 +446,7 @@ export async function observeUpdates(
 [源文件](../examples/sse-stream.ts)
 
 ```ts
-import { createSseStream, type RawSseMessage } from "@openagentpack/kit-sdk/stream";
+import { createSseStream, type RawSseMessage } from "@openagentkit/sdk/stream";
 
 // 调用方传入已持有的响应体。
 export async function consumeSse(

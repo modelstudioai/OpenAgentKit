@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { GroupView, MemberLoginResult, MemberView, PlanResponse } from "@openagentpack/kit-sdk/protocol";
+import type { GroupView, MemberLoginResult, MemberView, PlanResponse } from "@openagentkit/sdk/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";

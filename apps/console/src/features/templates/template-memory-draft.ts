@@ -2,7 +2,7 @@ import {
 	type MemoryEntry,
 	type MemoryStoreConfiguration,
 	ProjectMemoryStoreCreateInputSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import i18n from "i18next";
 import { localizedValidationMessage } from "../../lib/validation-message.ts";
 import { type CatalogMemoryDraft, validateCatalogMemories } from "../catalog/catalog-memory-fields.tsx";

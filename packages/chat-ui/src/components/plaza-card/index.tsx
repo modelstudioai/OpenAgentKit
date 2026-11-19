@@ -1,4 +1,4 @@
-import type { PlazaEntry } from "@openagentpack/kit-sdk/protocol";
+import type { PlazaEntry } from "@openagentkit/sdk/protocol";
 import type { ReactNode } from "react";
 import { isIconImageSource } from "../agent-header/index.tsx";
 import { format, resolveStrings, useKitLocale } from "../kit-i18n/index.ts";

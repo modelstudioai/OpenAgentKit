@@ -1,4 +1,4 @@
-import { KitError, type ResourceDraftView } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type ResourceDraftView } from "@openagentkit/sdk/protocol";
 import i18n from "i18next";
 import type { AdminClient } from "../../lib/admin/index.ts";
 

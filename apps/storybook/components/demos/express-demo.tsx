@@ -1,5 +1,6 @@
 "use client";
 
+import { skillInputTokens } from "@openagentkit/sdk/protocol";
 import {
 	type AttachmentItem,
 	Attachments,
@@ -11,7 +12,6 @@ import {
 	Suggestion,
 	type SuggestionItem,
 } from "@openagentpack/kit-chat-ui";
-import { skillInputTokens } from "@openagentpack/kit-sdk/protocol";
 import { useRef, useState } from "react";
 import { DEMO_SKILLS } from "./demo-skills.ts";
 import { CONTROL_CLASS, TOOLBAR_CLASS } from "./general-demo.tsx";

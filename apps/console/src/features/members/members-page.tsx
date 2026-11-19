@@ -1,4 +1,4 @@
-import type { AdminMemberView, MemberView } from "@openagentpack/kit-sdk/protocol";
+import type { AdminMemberView, MemberView } from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Button, Empty, Input, Result, Spin, Table, Tag, Typography } from "antd";
 import { useMemo, useState } from "react";

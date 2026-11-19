@@ -1,4 +1,4 @@
-import type { MemoryStoreConfiguration, RemoteMemoryStore } from "@openagentpack/kit-sdk/protocol";
+import type { MemoryStoreConfiguration, RemoteMemoryStore } from "@openagentkit/sdk/protocol";
 import i18n from "i18next";
 
 export type PresetPackMemoryConfiguration =

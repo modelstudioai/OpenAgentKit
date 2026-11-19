@@ -1,4 +1,4 @@
-import type { PresetPackPreview, PresetPackView } from "@openagentpack/kit-sdk/protocol";
+import type { PresetPackPreview, PresetPackView } from "@openagentkit/sdk/protocol";
 import { expect, it } from "vitest";
 import { createTemplateDraft, mergeTemplateRuntimeResources } from "./template-draft.ts";
 

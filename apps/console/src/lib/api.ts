@@ -31,8 +31,8 @@ import type {
 	RemoteMemoryStore,
 	RemoteVault,
 	ReviewQuotaRequest,
-} from "@openagentpack/kit-sdk/protocol";
-import { BRANDING_LOGO_PATH } from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
+import { BRANDING_LOGO_PATH } from "@openagentkit/sdk/protocol";
 import { createAdminClient } from "./admin/index.ts";
 import { adminBaseUrl } from "./auth.ts";
 import { adminRequest } from "./kit.ts";

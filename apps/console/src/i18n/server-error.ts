@@ -1,4 +1,4 @@
-import { type ErrorCode, KitError } from "@openagentpack/kit-sdk/protocol";
+import { type ErrorCode, KitError } from "@openagentkit/sdk/protocol";
 import i18n from "i18next";
 
 const HAN = /\p{Script=Han}/u;

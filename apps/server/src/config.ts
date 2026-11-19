@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { UPLOAD_MAX_BYTES } from "@openagentpack/kit-sdk/protocol";
+import { UPLOAD_MAX_BYTES } from "@openagentkit/sdk/protocol";
 
 export interface BailianCredentials {
 	apiKey: string;

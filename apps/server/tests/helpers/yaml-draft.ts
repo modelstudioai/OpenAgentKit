@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { ResourceDraftView } from "@openagentpack/kit-sdk/protocol";
+import type { ResourceDraftView } from "@openagentkit/sdk/protocol";
 import { setDefaultFetch } from "@openagentpack/sdk";
 import { afterEach, expect, vi } from "vitest";
 import { createApp } from "../../src/app.ts";

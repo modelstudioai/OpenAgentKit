@@ -1,4 +1,4 @@
-import type { RemoteAgentVersionDetail } from "@openagentpack/kit-sdk/protocol";
+import type { RemoteAgentVersionDetail } from "@openagentkit/sdk/protocol";
 import { Button } from "antd";
 import i18n from "i18next";
 import { type ReactNode, useId, useState } from "react";

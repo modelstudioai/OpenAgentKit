@@ -1,6 +1,6 @@
-import { PROTOCOL_VERSION, PROTOCOL_VERSION_HEADER } from "@openagentpack/kit-sdk/protocol";
-import { type ClientOperations, createKitClient } from "@openagentpack/kit-sdk/providers/kit";
-import type { RequestClient } from "@openagentpack/kit-sdk/request";
+import { PROTOCOL_VERSION, PROTOCOL_VERSION_HEADER } from "@openagentkit/sdk/protocol";
+import { type ClientOperations, createKitClient } from "@openagentkit/sdk/providers/kit";
+import type { RequestClient } from "@openagentkit/sdk/request";
 
 /** Demo configuration only. An external frontend replaces these paths and response mappings for its own backend. */
 export function createExampleClient(request: RequestClient) {

@@ -1,4 +1,4 @@
-import type { PlazaCategory, PresetPackPreview, TemplateView } from "@openagentpack/kit-sdk/protocol";
+import type { PlazaCategory, PresetPackPreview, TemplateView } from "@openagentkit/sdk/protocol";
 import i18n from "i18next";
 import { type AgentPresentationDraft, EMPTY_AGENT_PRESENTATION } from "../catalog/agent-presentation-fields.tsx";
 import type { TemplateAgentSelection } from "./template-agent-list.tsx";

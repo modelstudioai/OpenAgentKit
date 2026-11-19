@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { sessionStatusOf } from "@openagentpack/kit-sdk/protocol";
+import { sessionStatusOf } from "@openagentkit/sdk/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../src/config.ts";
 import { createKitServices } from "../src/services/index.ts";

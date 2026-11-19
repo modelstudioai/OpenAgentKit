@@ -32,7 +32,7 @@ import { Showcase } from "../components/showcase.tsx";
 import { SiteHeader } from "../components/site-header.tsx";
 
 export const metadata: Metadata = {
-	title: "OpenAgentPack Kit — 为百炼 Managed Agent 打造体验页的开发套件",
+	title: "OpenAgentKit — 为百炼 Managed Agent 打造体验页的开发套件",
 	description:
 		"自研协议 + headless hooks + copy-in 组件 + 可部署 Node server + 管理端 IaC 闸门：几条命令搭出一个 managed-agent 体验页，支持浏览器与 H5。",
 };
@@ -54,7 +54,7 @@ const FEATURES = [
 		icon: <Layers />,
 		tone: "blue",
 		title: "自研协议，事件契约与 SDK 同源",
-		body: "SSE 帧、游标与重连、event_id 去重、乐观消息与 turn 边界由 kit-sdk 承担；事件模型直接复用 @openagentpack/sdk 的 SessionEvent，不私造第二套。",
+		body: "SSE 帧、游标与重连、event_id 去重、乐观消息与 turn 边界由 @openagentkit/sdk 承担；事件模型直接复用 @openagentpack/sdk 的 SessionEvent，不私造第二套。",
 		href: "/docs/sdk/client/#快照与游标",
 	},
 	{
@@ -95,9 +95,9 @@ const FEATURES = [
 ] as const;
 
 const FLOW = [
-	{ icon: <Braces />, name: "kit-sdk/protocol", desc: "事件契约 / SSE 帧 / 错误模型" },
-	{ icon: <Zap />, name: "kit-sdk", desc: "去重 / 重连 / turn / artifact 归并" },
-	{ icon: <MessageSquare />, name: "kit-sdk/chat/hooks", desc: "useChat 等 headless hooks" },
+	{ icon: <Braces />, name: "@openagentkit/sdk/protocol", desc: "事件契约 / SSE 帧 / 错误模型" },
+	{ icon: <Zap />, name: "@openagentkit/sdk", desc: "去重 / 重连 / turn / artifact 归并" },
+	{ icon: <MessageSquare />, name: "@openagentkit/sdk/chat/hooks", desc: "useChat 等 headless hooks" },
 	{ icon: <Boxes />, name: "kit-chat-ui", desc: "copy-in 对话组件（Radix + Tailwind）" },
 ];
 
@@ -376,7 +376,7 @@ export default function Home() {
 							<span className="kit-brand-mark">
 								<LogoMark />
 							</span>
-							<span className="kit-brand-name">OpenAgentPack Kit</span>
+							<span className="kit-brand-name">OpenAgentKit</span>
 						</span>
 						<p className="mt-3 max-w-sm text-[13px] leading-relaxed" style={{ color: "var(--kd-muted)" }}>
 							接手这个仓库请先读 <code>AGENTS.md</code>（权威顺序、执行红线、包级不变量），使用文档从「快速开始」进入。
@@ -403,7 +403,7 @@ export default function Home() {
 						<h4>仓库</h4>
 						<ul>
 							<li>
-								<a href="https://github.com/modelstudioai/OpenAgentPack-Kit">modelstudioai/OpenAgentPack-Kit</a>
+								<a href="https://github.com/modelstudioai/OpenAgentKit">modelstudioai/OpenAgentKit</a>
 							</li>
 							<li>
 								<Link href="/docs/contributing">参与开发</Link>

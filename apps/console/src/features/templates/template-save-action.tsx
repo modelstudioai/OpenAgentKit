@@ -3,7 +3,7 @@ import type {
 	PlazaCategory,
 	TemplateCreateInput,
 	TemplateView,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import { Alert, Button } from "antd";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";

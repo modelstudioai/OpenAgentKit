@@ -1,5 +1,5 @@
 /**
- * GitHub Pages 项目站点部署在 `/OpenAgentPack-Kit` 这类子路径时，由构建环境注入。
+ * GitHub Pages 项目站点部署在 `/OpenAgentKit` 这类子路径时，由构建环境注入。
  * 本地开发与根路径部署不设置该变量，保持空串。
  */
 export const basePath = (process.env.NEXT_PUBLIC_BASE_PATH ?? "").replace(/\/+$/, "");

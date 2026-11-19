@@ -1,3 +1,4 @@
+import type { SessionSummary } from "@openagentkit/sdk/protocol";
 import {
 	ConfirmDialog,
 	Layout,
@@ -8,7 +9,6 @@ import {
 	Sender,
 	SessionSidebar,
 } from "@openagentpack/kit-chat-ui";
-import type { SessionSummary } from "@openagentpack/kit-sdk/protocol";
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import "../../src/styles.css";

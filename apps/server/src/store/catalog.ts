@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import { type CatalogAgentView, KitError } from "@openagentpack/kit-sdk/protocol";
+import { type CatalogAgentView, KitError } from "@openagentkit/sdk/protocol";
 
 export interface CatalogRow {
 	id: string;

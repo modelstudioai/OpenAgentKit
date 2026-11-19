@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type SessionEvent, type SseFrame, sessionStatusOf } from "@openagentpack/kit-sdk/protocol";
+import { type SessionEvent, type SseFrame, sessionStatusOf } from "@openagentkit/sdk/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../src/config.ts";
 import type { GatewaySessionInfo } from "../src/gateway/types.ts";

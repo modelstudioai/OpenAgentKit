@@ -1,4 +1,4 @@
-import type { ChatMessage, MessagePart } from "@openagentpack/kit-sdk/messages";
+import type { ChatMessage, MessagePart } from "@openagentkit/sdk/messages";
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { format, resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
 import { Tooltip } from "../tooltip/index.tsx";

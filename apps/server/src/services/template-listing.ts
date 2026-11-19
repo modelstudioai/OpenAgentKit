@@ -9,7 +9,7 @@ import {
 	TemplateListingInputSchema,
 	type TemplateListingRequest,
 	type TemplateView,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import { redactSecrets } from "../config.ts";
 import type { ProviderGateway } from "../gateway/types.ts";
 import type { AuditLog } from "../store/audit.ts";

@@ -1,4 +1,4 @@
-import type { MemberSessionUsage, MemberUsageSummary } from "@openagentpack/kit-sdk/protocol";
+import type { MemberSessionUsage, MemberUsageSummary } from "@openagentkit/sdk/protocol";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 

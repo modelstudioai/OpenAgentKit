@@ -1,6 +1,6 @@
+import { usePlaza } from "@openagentkit/sdk/agents/hooks";
+import type { PlazaCategory, PlazaEntry, PlazaView as PlazaSnapshot } from "@openagentkit/sdk/protocol";
 import { CategoryTabs, EmptyState, ErrorState, PlazaCard, type PlazaTabId } from "@openagentpack/kit-chat-ui";
-import { usePlaza } from "@openagentpack/kit-sdk/agents/hooks";
-import type { PlazaCategory, PlazaEntry, PlazaView as PlazaSnapshot } from "@openagentpack/kit-sdk/protocol";
 import type { TFunction } from "i18next";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";

@@ -1,4 +1,4 @@
-import type { PlazaCategory } from "@openagentpack/kit-sdk/protocol";
+import type { PlazaCategory } from "@openagentkit/sdk/protocol";
 import type { TFunction } from "i18next";
 
 /** 分类枚举顺序固定；展示名称由 UI 词表提供，不依赖 SDK 的中文兜底名。 */

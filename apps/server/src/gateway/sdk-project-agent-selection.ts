@@ -1,4 +1,4 @@
-import { KitError, type ProjectAgentCreateInput } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type ProjectAgentCreateInput } from "@openagentkit/sdk/protocol";
 import { buildAgentDecl } from "@openagentpack/sdk";
 
 type AgentSelection = {

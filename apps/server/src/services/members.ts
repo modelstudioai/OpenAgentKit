@@ -6,7 +6,7 @@ import {
 	KitError,
 	type MembersQuery,
 	MembersQuerySchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { AuditLog } from "../store/audit.ts";
 import type { MemberStore } from "../store/members.ts";
 import { hashPassword } from "./passwords.ts";

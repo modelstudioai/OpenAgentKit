@@ -1,4 +1,4 @@
-import { TemplateInputSchema } from "@openagentpack/kit-sdk/protocol";
+import { TemplateInputSchema } from "@openagentkit/sdk/protocol";
 import { Form, Input } from "antd";
 import i18n from "i18next";
 import { type RefObject, useId } from "react";

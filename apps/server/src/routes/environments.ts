@@ -1,5 +1,5 @@
 import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
-import { RemoteEnvironmentDetailSchema } from "@openagentpack/kit-sdk/protocol";
+import { RemoteEnvironmentDetailSchema } from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 import { readEnvironmentDetail } from "../services/environments.ts";
 

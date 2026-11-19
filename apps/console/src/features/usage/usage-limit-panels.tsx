@@ -1,4 +1,4 @@
-import type { UsageLimitDayState, UsageLimitMetricState } from "@openagentpack/kit-sdk/protocol";
+import type { UsageLimitDayState, UsageLimitMetricState } from "@openagentkit/sdk/protocol";
 import { Button, Result } from "antd";
 import type { TFunction } from "i18next";
 import { useMemo, useState } from "react";

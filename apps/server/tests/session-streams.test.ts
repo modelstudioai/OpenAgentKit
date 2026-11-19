@@ -1,4 +1,4 @@
-import type { SessionEvent, SseFrame } from "@openagentpack/kit-sdk/protocol";
+import type { SessionEvent, SseFrame } from "@openagentkit/sdk/protocol";
 import { describe, expect, it, vi } from "vitest";
 import { createMockGateway } from "../src/gateway/mock.ts";
 import { createEventBufferRegistry } from "../src/services/event-buffer.ts";

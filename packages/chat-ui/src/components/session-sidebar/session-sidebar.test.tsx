@@ -1,4 +1,4 @@
-import type { SessionSummary } from "@openagentpack/kit-sdk/protocol";
+import type { SessionSummary } from "@openagentkit/sdk/protocol";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { SessionSidebar } from "./index.tsx";

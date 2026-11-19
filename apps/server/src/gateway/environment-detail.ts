@@ -1,4 +1,4 @@
-import { ProjectEnvironmentNetworkingSchema, type RemoteEnvironmentDetail } from "@openagentpack/kit-sdk/protocol";
+import { ProjectEnvironmentNetworkingSchema, type RemoteEnvironmentDetail } from "@openagentkit/sdk/protocol";
 import type { CloudEnvironment } from "@openagentpack/sdk";
 import { redactRemoteDetailText } from "./remote-detail-redaction.ts";
 

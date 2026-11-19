@@ -54,7 +54,7 @@ async function buildRuntimeInput(): Promise<BackendRuntimeInput> {
 			agents: {
 				[AGENT_KEY]: {
 					model: process.env.KIT_LIVE_MODEL ?? "qwen3.8-max",
-					instructions: `你是 OpenAgentPack Kit 的 live 冒烟测试临时 Agent（前缀 ${PREFIX}）。请始终只用一句不超过 20 字的话回复用户。`,
+					instructions: `你是 OpenAgentKit 的 live 冒烟测试临时 Agent（前缀 ${PREFIX}）。请始终只用一句不超过 20 字的话回复用户。`,
 					environment: `${PREFIX}-env`,
 					metadata: { kit: "live-validation", prefix: PREFIX },
 				},

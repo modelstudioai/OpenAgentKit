@@ -7,7 +7,7 @@ import {
 	type SessionEvent,
 	type SessionThreadSummary,
 	threadIdOf,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type {
 	ModelUsageItem,
 	ModelUsagePage,

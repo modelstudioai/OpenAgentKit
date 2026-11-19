@@ -4,7 +4,7 @@ import {
 	mergeEventSnapshots,
 	type SessionEvent,
 	threadIdOf,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { ProviderGateway } from "../gateway/types.ts";
 import type { EventBufferRegistry } from "./event-buffer.ts";
 import { readSessionHistory } from "./session-streams.ts";

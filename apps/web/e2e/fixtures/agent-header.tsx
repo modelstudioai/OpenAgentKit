@@ -1,5 +1,5 @@
+import { AgentSummarySchema } from "@openagentkit/sdk/protocol";
 import { AgentHeader, StatusIndicator } from "@openagentpack/kit-chat-ui";
-import { AgentSummarySchema } from "@openagentpack/kit-sdk/protocol";
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import "../../src/styles.css";

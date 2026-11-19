@@ -1,4 +1,4 @@
-import type { TemplateView } from "@openagentpack/kit-sdk/protocol";
+import type { TemplateView } from "@openagentkit/sdk/protocol";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { plazaCategoryLabel } from "../catalog/plaza-categories.ts";

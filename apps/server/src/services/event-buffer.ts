@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mergeEventSnapshots, type SessionEvent, threadIdOf } from "@openagentpack/kit-sdk/protocol";
+import { mergeEventSnapshots, type SessionEvent, threadIdOf } from "@openagentkit/sdk/protocol";
 
 export interface EventChange {
 	event: SessionEvent;

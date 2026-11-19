@@ -1,5 +1,5 @@
+import { KitError, type TemplateVersionView, type TemplateView } from "@openagentkit/sdk/protocol";
 import { ConfirmDialog } from "@openagentpack/kit-chat-ui";
-import { KitError, type TemplateVersionView, type TemplateView } from "@openagentpack/kit-sdk/protocol";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";

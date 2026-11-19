@@ -7,15 +7,15 @@
 [源文件](../examples/agent-resources-panel.tsx)
 
 ```tsx
-import { ArtifactCard, SubAgentPanel } from "@openagentpack/kit-chat-ui";
-import type { ChatMultiAgent } from "@openagentpack/kit-sdk/chat";
+import type { ChatMultiAgent } from "@openagentkit/sdk/chat";
 import type {
 	AgentMemoryStore,
 	AgentResourceItem,
 	AgentSummary,
 	ArtifactDescriptor,
 	RemoteAgentResources,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
+import { ArtifactCard, SubAgentPanel } from "@openagentpack/kit-chat-ui";
 import type { ReactNode } from "react";
 
 function ResourceSection({ title, children }: { title: string; children: ReactNode }) {
@@ -117,8 +117,8 @@ export function AgentResourcesPanel({
 [源文件](../examples/approval-list.tsx)
 
 ```tsx
+import type { UseChatResult } from "@openagentkit/sdk/chat/hooks";
 import { ToolApprovalCard } from "@openagentpack/kit-chat-ui";
-import type { UseChatResult } from "@openagentpack/kit-sdk/chat/hooks";
 
 export function ApprovalList({ chat }: { chat: UseChatResult }) {
 	return (
@@ -141,7 +141,7 @@ export function ApprovalList({ chat }: { chat: UseChatResult }) {
 [源文件](../examples/call-state.ts)
 
 ```ts
-import { createMutation, createObservable, createQuery, type QuerySnapshot } from "@openagentpack/kit-sdk/state";
+import { createMutation, createObservable, createQuery, type QuerySnapshot } from "@openagentkit/sdk/state";
 
 interface ResourceView<T> {
 	query: QuerySnapshot<T>;
@@ -187,8 +187,8 @@ import {
 	createSessionStore,
 	type SessionSnapshot,
 	type SessionStoreOptions,
-} from "@openagentpack/kit-sdk/chat";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
+} from "@openagentkit/sdk/chat";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
 
 // 控制器可独立于 React 使用，由宿主负责销毁。
 export function observeSession(
@@ -222,10 +222,10 @@ export function createLocalStore(sessionId: string, provider: ChatProvider) {
 [源文件](../examples/custom-chat.tsx)
 
 ```tsx
+import { useChat } from "@openagentkit/sdk/chat/hooks";
+import { KitError } from "@openagentkit/sdk/protocol";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
 import { Chat, Sender } from "@openagentpack/kit-chat-ui";
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
-import { KitError } from "@openagentpack/kit-sdk/protocol";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ApprovalList } from "./approval-list.tsx";
 
@@ -320,11 +320,11 @@ export function CustomChat({
 [源文件](../examples/default-chat.tsx)
 
 ```tsx
+import { useChat } from "@openagentkit/sdk/chat/hooks";
+import { KitError } from "@openagentkit/sdk/protocol";
+import { createKitClient, type KitClient } from "@openagentkit/sdk/providers/kit";
+import { KitProvider } from "@openagentkit/sdk/providers/kit/react";
 import { Chat, Sender } from "@openagentpack/kit-chat-ui";
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
-import { KitError } from "@openagentpack/kit-sdk/protocol";
-import { createKitClient, type KitClient } from "@openagentpack/kit-sdk/providers/kit";
-import { KitProvider } from "@openagentpack/kit-sdk/providers/kit/react";
 import { useRef, useState } from "react";
 import { ApprovalList } from "./approval-list.tsx";
 
@@ -402,9 +402,9 @@ function ChatPanel({ sessionId }: { sessionId: string | null }) {
 [源文件](../examples/discovery-usage.tsx)
 
 ```tsx
-import { usePlaza } from "@openagentpack/kit-sdk/agents/hooks";
-import { useKitClient } from "@openagentpack/kit-sdk/providers/kit/react";
-import { useQuota, useQuotaRequests } from "@openagentpack/kit-sdk/usage/hooks";
+import { usePlaza } from "@openagentkit/sdk/agents/hooks";
+import { useKitClient } from "@openagentkit/sdk/providers/kit/react";
+import { useQuota, useQuotaRequests } from "@openagentkit/sdk/usage/hooks";
 import { useState } from "react";
 
 // 与默认会话页挂载在同一个 KitProvider 内。
@@ -467,23 +467,23 @@ export function DiscoveryAndUsage() {
 [源文件](../examples/experience-controller.ts)
 
 ```ts
-import { createComposer, deriveTitle } from "@openagentpack/kit-sdk/chat";
+import { createComposer, deriveTitle } from "@openagentkit/sdk/chat";
 import {
 	type ArtifactHost,
 	createArtifactActions,
 	createAttachments,
 	previewableArtifactType,
 	resolveArtifactType,
-} from "@openagentpack/kit-sdk/files";
-import type { MemberUsageLimitView } from "@openagentpack/kit-sdk/protocol";
-import type { KitClient } from "@openagentpack/kit-sdk/providers/kit";
+} from "@openagentkit/sdk/files";
+import type { MemberUsageLimitView } from "@openagentkit/sdk/protocol";
+import type { KitClient } from "@openagentkit/sdk/providers/kit";
 import {
 	createSessionActions,
 	createSessionDetails,
 	createSessionDirectory,
 	createSessionSearch,
-} from "@openagentpack/kit-sdk/sessions";
-import { createQuotaRecovery, readQuotaExceeded, usageLimitsAllowSending } from "@openagentpack/kit-sdk/usage";
+} from "@openagentkit/sdk/sessions";
+import { createQuotaRecovery, readQuotaExceeded, usageLimitsAllowSending } from "@openagentkit/sdk/usage";
 
 // 非 React 宿主管理订阅和销毁。每个控制器负责一项独立能力。
 export function createExperienceControllers(client: KitClient, host: ArtifactHost) {
@@ -527,12 +527,12 @@ export function presentationHelpers(error: unknown, limits: MemberUsageLimitView
 [源文件](../examples/experience-data.tsx)
 
 ```tsx
-import { useAgentResources } from "@openagentpack/kit-sdk/agents/hooks";
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
-import type { KitClient } from "@openagentpack/kit-sdk/providers/kit";
-import { useSessionDetails } from "@openagentpack/kit-sdk/sessions/hooks";
-import { useUsageLimits } from "@openagentpack/kit-sdk/usage/hooks";
+import { useAgentResources } from "@openagentkit/sdk/agents/hooks";
+import { useChat } from "@openagentkit/sdk/chat/hooks";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
+import type { KitClient } from "@openagentkit/sdk/providers/kit";
+import { useSessionDetails } from "@openagentkit/sdk/sessions/hooks";
+import { useUsageLimits } from "@openagentkit/sdk/usage/hooks";
 
 // 数据 Hook 支持显式 Client，也可通过 Context 兼容接入。
 export function AgentResourceSummary({ slug }: { slug: string | null }) {
@@ -584,6 +584,14 @@ export async function readUploadStatus(client: KitClient, fileId: string) {
 [源文件](../examples/experience.tsx)
 
 ```tsx
+import { useAgentCatalog, useAgentResources } from "@openagentkit/sdk/agents/hooks";
+import { useChat, useComposer } from "@openagentkit/sdk/chat/hooks";
+import type { ArtifactHost } from "@openagentkit/sdk/files";
+import { useArtifactActions, useAttachments } from "@openagentkit/sdk/files/hooks";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
+import type { KitClient } from "@openagentkit/sdk/providers/kit";
+import { useSessionDetails, useSessionDirectory, useSessionSearch } from "@openagentkit/sdk/sessions/hooks";
+import { useQuotaRecovery, useUsageLimits } from "@openagentkit/sdk/usage/hooks";
 import {
 	AgentHeader,
 	type AttachmentItem,
@@ -594,14 +602,6 @@ import {
 	SessionSidebar,
 	type SessionSidebarSection,
 } from "@openagentpack/kit-chat-ui";
-import { useAgentCatalog, useAgentResources } from "@openagentpack/kit-sdk/agents/hooks";
-import { useChat, useComposer } from "@openagentpack/kit-sdk/chat/hooks";
-import type { ArtifactHost } from "@openagentpack/kit-sdk/files";
-import { useArtifactActions, useAttachments } from "@openagentpack/kit-sdk/files/hooks";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
-import type { KitClient } from "@openagentpack/kit-sdk/providers/kit";
-import { useSessionDetails, useSessionDirectory, useSessionSearch } from "@openagentpack/kit-sdk/sessions/hooks";
-import { useQuotaRecovery, useUsageLimits } from "@openagentpack/kit-sdk/usage/hooks";
 import { useState } from "react";
 import { AgentResourcesPanel } from "./agent-resources-panel.tsx";
 import { ApprovalList } from "./approval-list.tsx";
@@ -853,13 +853,9 @@ export function Experience({
 [源文件](../examples/member-auth.tsx)
 
 ```tsx
-import {
-	createMemberAuthController,
-	type MemberAuthController,
-	type MemberAuthOptions,
-} from "@openagentpack/kit-sdk/auth";
-import { useMemberAuth } from "@openagentpack/kit-sdk/auth/hooks";
-import { KitProvider } from "@openagentpack/kit-sdk/providers/kit/react";
+import { createMemberAuthController, type MemberAuthController, type MemberAuthOptions } from "@openagentkit/sdk/auth";
+import { useMemberAuth } from "@openagentkit/sdk/auth/hooks";
+import { KitProvider } from "@openagentkit/sdk/providers/kit/react";
 import type { FormEvent, ReactNode } from "react";
 
 // 公开配置解析出最终 API URL 后调用一次。宿主存储按带路径前缀的完整 URL 隔离，

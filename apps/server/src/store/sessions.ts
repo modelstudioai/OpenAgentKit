@@ -6,7 +6,7 @@ import type {
 	MessageFileAssociation,
 	SessionPurpose,
 	SessionSummary,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import { createSessionDirectoryIndex } from "./session-directory.ts";
 
 interface Row {

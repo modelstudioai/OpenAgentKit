@@ -1,4 +1,4 @@
-import { useIsMobile } from "@openagentpack/kit-sdk/hooks";
+import { useIsMobile } from "@openagentkit/sdk/hooks";
 import * as Dialog from "@radix-ui/react-dialog";
 import { type HTMLAttributes, type ReactNode, useEffect, useState } from "react";
 import { format, resolveStrings, useKitLocale } from "../kit-i18n/index.ts";

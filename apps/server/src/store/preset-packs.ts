@@ -7,7 +7,7 @@ import {
 	type PresetPacksQuery,
 	type PresetPackView,
 	PresetPackViewSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 
 const searchWhere = `(?='' OR instr(lower(json_extract(config_json, '$.remote_agent_name')),lower(?))>0
   OR instr(lower(json_extract(config_json, '$.remote_agent_id')),lower(?))>0

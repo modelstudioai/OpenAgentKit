@@ -3,16 +3,16 @@ import {
 	createChatController,
 	createSessionStore,
 	type SessionStoreOptions,
-} from "@openagentpack/kit-sdk/chat";
-import type { UseChatOptions, UseChatResult } from "@openagentpack/kit-sdk/chat/hooks";
-import { type MessageTransformer, transformSessionEvent } from "@openagentpack/kit-sdk/messages";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
-import { streamProtocolFrames } from "@openagentpack/kit-sdk/providers/kit";
-import type { createRequest as requestEntry } from "@openagentpack/kit-sdk/request";
-import { createRequest } from "@openagentpack/kit-sdk/request";
-import { createMutation, createObservable, createQuery } from "@openagentpack/kit-sdk/state";
-import type { createSseStream as streamEntry } from "@openagentpack/kit-sdk/stream";
-import { createSseStream } from "@openagentpack/kit-sdk/stream";
+} from "@openagentkit/sdk/chat";
+import type { UseChatOptions, UseChatResult } from "@openagentkit/sdk/chat/hooks";
+import { type MessageTransformer, transformSessionEvent } from "@openagentkit/sdk/messages";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
+import { streamProtocolFrames } from "@openagentkit/sdk/providers/kit";
+import type { createRequest as requestEntry } from "@openagentkit/sdk/request";
+import { createRequest } from "@openagentkit/sdk/request";
+import { createMutation, createObservable, createQuery } from "@openagentkit/sdk/state";
+import type { createSseStream as streamEntry } from "@openagentkit/sdk/stream";
+import { createSseStream } from "@openagentkit/sdk/stream";
 
 const localState = createObservable({ editing: false });
 const query = createQuery(async () => "value");

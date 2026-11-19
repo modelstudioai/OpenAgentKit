@@ -27,7 +27,7 @@ import type {
 	SessionStats,
 	SessionThreadsResponse,
 	SessionUsage,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { ModelUsagePage, ModelUsageRequest, ToolUsagePage, ToolUsageRequest } from "@openagentpack/sdk";
 import type { YamlDraftStorage } from "./yaml-draft-document.ts";
 
@@ -96,7 +96,7 @@ import type {
 	ProjectSkillUploadInput,
 	ProjectSkillUploadPreview,
 	ProjectVaultCreateInput,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 export type ProjectOverviewInfo = ProjectOverview;
 export type DeclarationRef = ProjectDeclaration;
 /** 本地项目上传暂存内容，仅在服务端保存声明时交给 gateway。 */

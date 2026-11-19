@@ -1,4 +1,4 @@
-import type { ResourceDraftDeclaration } from "@openagentpack/kit-sdk/protocol";
+import type { ResourceDraftDeclaration } from "@openagentkit/sdk/protocol";
 import { expect, it } from "vitest";
 import { parse, stringify } from "yaml";
 import { fixture } from "./helpers/yaml-draft.ts";

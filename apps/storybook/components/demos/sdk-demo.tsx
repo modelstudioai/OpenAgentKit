@@ -1,8 +1,7 @@
 "use client";
 
-import { EmptyState, MessageList, Sender, ToolApprovalCard } from "@openagentpack/kit-chat-ui";
-import { type ChatController, createChatController } from "@openagentpack/kit-sdk/chat";
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
+import { type ChatController, createChatController } from "@openagentkit/sdk/chat";
+import { useChat } from "@openagentkit/sdk/chat/hooks";
 import {
 	createSseParser,
 	decodeFrame,
@@ -10,13 +9,14 @@ import {
 	type SessionEvent,
 	type SessionSummary,
 	type SseFrame,
-} from "@openagentpack/kit-sdk/protocol";
-import type { ChatProvider, StreamSessionOptions } from "@openagentpack/kit-sdk/providers";
-import { createKitClient } from "@openagentpack/kit-sdk/providers/kit";
-import { KitProvider, useKitClient } from "@openagentpack/kit-sdk/providers/kit/react";
-import { createRequest, type RequestClient } from "@openagentpack/kit-sdk/request";
-import { useSessions } from "@openagentpack/kit-sdk/sessions/hooks";
-import { createSseStream } from "@openagentpack/kit-sdk/stream";
+} from "@openagentkit/sdk/protocol";
+import type { ChatProvider, StreamSessionOptions } from "@openagentkit/sdk/providers";
+import { createKitClient } from "@openagentkit/sdk/providers/kit";
+import { KitProvider, useKitClient } from "@openagentkit/sdk/providers/kit/react";
+import { createRequest, type RequestClient } from "@openagentkit/sdk/request";
+import { useSessions } from "@openagentkit/sdk/sessions/hooks";
+import { createSseStream } from "@openagentkit/sdk/stream";
+import { EmptyState, MessageList, Sender, ToolApprovalCard } from "@openagentpack/kit-chat-ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type LineEnding = "\n" | "\r\n";

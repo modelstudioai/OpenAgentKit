@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { RemoteVaultDetailSchema } from "@openagentpack/kit-sdk/protocol";
+import { RemoteVaultDetailSchema } from "@openagentkit/sdk/protocol";
 import { setDefaultFetch } from "@openagentpack/sdk";
 import { afterEach, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.ts";

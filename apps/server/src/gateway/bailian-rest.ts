@@ -1,4 +1,4 @@
-import { KitError } from "@openagentpack/kit-sdk/protocol";
+import { KitError } from "@openagentkit/sdk/protocol";
 import type { SessionMemoryStoreResource } from "@openagentpack/sdk";
 import { type BailianCredentials, redactSecrets } from "../config.ts";
 

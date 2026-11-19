@@ -1,4 +1,4 @@
-import { type SessionEvent, sessionStatusOf, stopReasonOf } from "@openagentpack/kit-sdk/protocol";
+import { type SessionEvent, sessionStatusOf, stopReasonOf } from "@openagentkit/sdk/protocol";
 import type { UsageLimitRequest } from "../store/usage-limits.ts";
 import type { EventBuffer } from "./event-buffer.ts";
 

@@ -648,6 +648,12 @@ INSERT OR IGNORE INTO kit_branding (id, product_name, updated_at) VALUES (1, 'Op
   updated_at TEXT NOT NULL
 );`,
 	},
+	{
+		// 管理端保存品牌时会记录操作者，升级仅切换系统写入的旧默认名称。
+		id: "033_openagentkit_default_branding",
+		sql: `UPDATE kit_branding SET product_name = 'OpenAgentKit'
+WHERE id = 1 AND product_name = 'OpenAgentPack Kit' AND updated_by IS NULL;`,
+	},
 ];
 
 /**

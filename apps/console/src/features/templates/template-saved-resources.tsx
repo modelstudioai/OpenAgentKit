@@ -1,5 +1,5 @@
+import type { TemplateVersionView } from "@openagentkit/sdk/protocol";
 import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui";
-import type { TemplateVersionView } from "@openagentpack/kit-sdk/protocol";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";

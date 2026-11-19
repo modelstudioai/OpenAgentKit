@@ -7,7 +7,7 @@ import {
 	PresetPacksPageSchema,
 	PresetPacksQuerySchema,
 	PresetPackViewSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 
 /** 发现与保存资源引用，不提供会话事件或资源内容，也不发布 Provider 资源。 */

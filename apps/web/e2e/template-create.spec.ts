@@ -1,4 +1,4 @@
-import { PROTOCOL_VERSION } from "@openagentpack/kit-sdk/protocol";
+import { PROTOCOL_VERSION } from "@openagentkit/sdk/protocol";
 import type { Locator, Page, Request, Route } from "@playwright/test";
 import { expect, test } from "./fixtures.ts";
 import { ADMIN_TOKEN, openConsoleNavigation } from "./helpers.ts";

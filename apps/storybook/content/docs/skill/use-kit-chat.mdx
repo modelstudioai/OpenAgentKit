@@ -3,7 +3,7 @@ title: use-kit-chat
 description: 使用中文 Skill 接入 useChat，管理发送、停止、会话切换和工具审批
 ---
 
-`use-kit-chat` 指导 coding agent 把 `@openagentpack/kit-sdk/chat/hooks` 的聊天状态接入页面，
+`use-kit-chat` 指导 coding agent 把 `@openagentkit/sdk/chat/hooks` 的聊天状态接入页面，
 覆盖默认 Kit Server 和显式 `ChatProvider` 两种入口。它消费已有 Provider，不重新实现
 底层 SSE 转换。Provider 定义消息转换策略，Chat 持有事件快照并调用策略，hook 绑定状态与
 React 生命周期；页面直接消费返回的 `ChatMessage`。
@@ -44,8 +44,8 @@ React 生命周期；页面直接消费返回的 `ChatMessage`。
 {/* skill-example: use-kit-chat/examples/approval-list.tsx */}
 
 ```tsx
+import type { UseChatResult } from "@openagentkit/sdk/chat/hooks";
 import { ToolApprovalCard } from "@openagentpack/kit-chat-ui";
-import type { UseChatResult } from "@openagentpack/kit-sdk/chat/hooks";
 
 export function ApprovalList({ chat }: { chat: UseChatResult }) {
 	return (
@@ -70,11 +70,11 @@ export function ApprovalList({ chat }: { chat: UseChatResult }) {
 {/* skill-example: use-kit-chat/examples/default-chat.tsx */}
 
 ```tsx
+import { useChat } from "@openagentkit/sdk/chat/hooks";
+import { KitError } from "@openagentkit/sdk/protocol";
+import { createKitClient, type KitClient } from "@openagentkit/sdk/providers/kit";
+import { KitProvider } from "@openagentkit/sdk/providers/kit/react";
 import { Chat, Sender } from "@openagentpack/kit-chat-ui";
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
-import { KitError } from "@openagentpack/kit-sdk/protocol";
-import { createKitClient, type KitClient } from "@openagentpack/kit-sdk/providers/kit";
-import { KitProvider } from "@openagentpack/kit-sdk/providers/kit/react";
 import { useRef, useState } from "react";
 import { ApprovalList } from "./approval-list.tsx";
 
@@ -167,8 +167,8 @@ import {
 	createSessionStore,
 	type SessionSnapshot,
 	type SessionStoreOptions,
-} from "@openagentpack/kit-sdk/chat";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
+} from "@openagentkit/sdk/chat";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
 
 // 控制器可独立于 React 使用，由宿主负责销毁。
 export function observeSession(

@@ -20,7 +20,7 @@ export default {
 		en: "English",
 		switchTo: "Switch to {{language}}",
 	},
-	appTitle: "OpenAgentPack Kit Workspace",
+	appTitle: "OpenAgentKit Workspace",
 	bootstrapFailed: "Unable to load the service configuration",
 	loading: "Loading…",
 };

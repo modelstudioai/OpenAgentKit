@@ -3,7 +3,7 @@ import {
 	type CatalogAgentInput,
 	type CatalogMemoryStore,
 	KitError,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { ProviderGateway } from "../gateway/types.ts";
 import type { CatalogStore } from "../store/catalog.ts";
 import { requireAgentVersion } from "./agent-versions.ts";

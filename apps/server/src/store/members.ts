@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import { KitError, type MembersPage, type MembersQuery, type MemberView } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type MembersPage, type MembersQuery, type MemberView } from "@openagentkit/sdk/protocol";
 
 type MemberRow = Omit<MemberView, "email"> & { email: string | null };
 interface Cursor {
