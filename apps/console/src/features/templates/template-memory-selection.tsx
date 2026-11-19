@@ -1,6 +1,7 @@
 import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui";
 import type { RemoteMemoryStore } from "@openagentpack/kit-sdk/protocol";
 import { Input } from "antd";
+import { useTranslation } from "react-i18next";
 import { useRemoteMemoryStores } from "../catalog/use-remote-memory-stores.ts";
 import styles from "./template-forms.module.less";
 import listStyles from "./template-lists.module.less";
@@ -25,14 +26,15 @@ function MemoryList({
 	remoteIds: Set<string>;
 	onToggle: (memory: RemoteMemoryStore & TemplateLocalResource) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const selectedIds = new Set(value.map((memory) => memory.memory_store_id));
 	return (
 		<div className={listStyles.tableWrap}>
 			<div aria-hidden="true" className={listStyles.tableHead2}>
-				<span>记忆库名称</span>
-				<span>记忆库 ID</span>
+				<span>{t("memory.selection.name")}</span>
+				<span>{t("memory.selection.id")}</span>
 			</div>
-			<ul aria-label="记忆库列表" className={listStyles.rowList}>
+			<ul aria-label={t("memory.selection.listAria")} className={listStyles.rowList}>
 				{rows.map((memory) => {
 					const id = memory.memory_store_id;
 					const name = memory.name || id;
@@ -42,7 +44,7 @@ function MemoryList({
 						<li key={id}>
 							<button
 								type="button"
-								aria-label={`选择记忆库 ${name}（${id}）`}
+								aria-label={t("memory.selection.selectAria", { name, id })}
 								aria-pressed={selected}
 								disabled={!selected && (missing || value.length >= maxMemories)}
 								onClick={() => onToggle(memory)}
@@ -56,8 +58,8 @@ function MemoryList({
 								</span>
 								<span className={listStyles.metaCell}>
 									<span className={listStyles.monoBlock}>{memory.local?.id ?? id}</span>
-									{memory.local ? <span className="block">待发布</span> : null}
-									{missing ? <span className="block">当前列表未找到此记忆库</span> : null}
+									{memory.local ? <span className="block">{t("memory.selection.pendingPublish")}</span> : null}
+									{missing ? <span className="block">{t("memory.selection.missing")}</span> : null}
 								</span>
 							</button>
 						</li>
@@ -69,10 +71,11 @@ function MemoryList({
 }
 
 function MemoryEmptyState({ searching }: { searching: boolean }) {
+	const { t } = useTranslation("templates");
 	return (
 		<EmptyState
-			title={searching ? "未找到匹配的记忆库" : "暂无可选记忆库"}
-			hint={searching ? "请尝试其他名称或 ID。" : "当前服务没有可选记忆库。"}
+			title={searching ? t("memory.selection.noMatch") : t("memory.selection.empty")}
+			hint={searching ? t("memory.selection.noMatchHint") : t("memory.selection.emptyHint")}
 		/>
 	);
 }
@@ -91,6 +94,7 @@ export function TemplateMemorySelection({
 	onSearchChange: (search: string) => void;
 	maxMemories?: number;
 }) {
+	const { t } = useTranslation("templates");
 	const remote = useRemoteMemoryStores();
 	const local = useTemplateLocalResources();
 	const query = search.trim().toLowerCase();
@@ -124,39 +128,54 @@ export function TemplateMemorySelection({
 		}
 	};
 	return (
-		<section aria-label="记忆库列表配置" className={listStyles.listRoot}>
+		<section aria-label={t("memory.selection.aria")} className={listStyles.listRoot}>
 			<Input
 				type="search"
-				aria-label="搜索记忆库"
-				placeholder="搜索名称或 ID"
+				aria-label={t("memory.selection.searchAria")}
+				placeholder={t("memory.selection.searchPlaceholder")}
 				value={search}
 				onChange={(event) => onSearchChange(event.target.value)}
 				className={listStyles.searchInputSm}
 			/>
-			{loading ? <EmptyState loading title="正在加载记忆库…" /> : null}
+			{loading ? <EmptyState loading title={t("memory.selection.loading")} /> : null}
 			{remote.error ? <ErrorState message={remote.error} onRetry={() => void remote.refresh()} /> : null}
 			{ready && rows.length === 0 ? <MemoryEmptyState searching={query.length > 0} /> : null}
 			{ready && rows.length > 0 ? (
 				<MemoryList maxMemories={maxMemories} rows={rows} value={value} remoteIds={remoteIds} onToggle={toggle} />
 			) : null}
 			<p aria-live="polite" className={styles.formNote}>
-				已选择 {value.length} / {maxMemories} 个记忆库
-				{ready ? <span className={listStyles.noteCount}>（共 {rows.length} 个记忆库）</span> : null}
+				{t("memory.selection.selectedCount", { count: value.length, max: maxMemories })}
+				{ready ? (
+					<span className={listStyles.noteCount}>{t("memory.selection.count", { count: rows.length })}</span>
+				) : null}
 			</p>
 		</section>
 	);
 }
 
 export function TemplateSelectedMemories({ memories }: { memories: TemplateMemoryDraft[] }) {
-	if (!memories.length) return <p className={styles.formNote}>未选择记忆库</p>;
+	const { t } = useTranslation("templates");
+	if (!memories.length) return <p className={styles.formNote}>{t("memory.selection.notSelected")}</p>;
 	return (
-		<ul aria-label="已选记忆库" className={listStyles.selectedList}>
+		<ul aria-label={t("memory.selection.selectedAria")} className={listStyles.selectedList}>
 			{memories.map((memory) => (
 				<li key={memory.key} className={listStyles.selectedItem}>
-					<p className={styles.nameAny}>{memory.name || (memory.creation ? "待填写记忆库" : memory.memory_store_id)}</p>
-					<p className={listStyles.envRowId}>{memory.creation ? "待保存" : memory.memory_store_id}</p>
-					<p className={styles.body13}>权限：{memory.access === "read_only" ? "只读" : "读写"}</p>
-					{memory.instructions ? <p className={styles.noteAny}>说明：{memory.instructions}</p> : null}
+					<p className={styles.nameAny}>
+						{memory.name || (memory.creation ? t("memory.selection.creationPending") : memory.memory_store_id)}
+					</p>
+					<p className={listStyles.envRowId}>
+						{memory.creation ? t("memory.selection.pendingSave") : memory.memory_store_id}
+					</p>
+					<p className={styles.body13}>
+						{t("memory.selection.access", {
+							access: memory.access === "read_only" ? t("memory.fields.readOnly") : t("memory.fields.readWrite"),
+						})}
+					</p>
+					{memory.instructions ? (
+						<p className={styles.noteAny}>
+							{t("memory.selection.instructions", { instructions: memory.instructions })}
+						</p>
+					) : null}
 				</li>
 			))}
 		</ul>

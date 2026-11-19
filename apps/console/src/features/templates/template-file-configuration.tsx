@@ -1,6 +1,7 @@
 import { ErrorState, FileCard } from "@openagentpack/kit-chat-ui";
 import { Button } from "antd";
 import type { Ref } from "react";
+import { useTranslation } from "react-i18next";
 import {
 	MAX_TEMPLATE_FILES,
 	pendingTemplateFile,
@@ -24,22 +25,25 @@ function FileFields({
 	onRemove: () => void;
 	disabled: boolean;
 }) {
+	const { t } = useTranslation("templates");
 	return (
 		<li className={styles.fileItem}>
 			<FileCard
 				name={file.filename || file.file_id}
 				type={file.pending?.file.type}
 				className={styles.fileCard}
-				description={file.pending ? "待保存" : file.local ? "待发布" : "云端文件"}
+				description={
+					file.pending ? t("file.card.pending") : file.local ? t("file.card.pendingPublish") : t("file.card.cloud")
+				}
 			/>
 			<div className={styles.fileActions}>
 				{file.pending?.original ? (
 					<Button disabled={disabled} onClick={() => onChange(file.pending!.original!)}>
-						恢复原文件
+						{t("file.actions.restore")}
 					</Button>
 				) : null}
 				<Button disabled={disabled} onClick={onRemove}>
-					移除
+					{t("file.actions.remove")}
 				</Button>
 			</div>
 		</li>
@@ -57,20 +61,21 @@ export function TemplateFileConfiguration({
 	formRef: Ref<FileFormHandle>;
 	onPendingChange?: (pending: boolean) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const model = useTemplateFileForm(value, formRef, onPendingChange);
 	const editable = model.identity.data?.role === "admin" && !model.busy;
 	const error = validateTemplateFiles(value);
 	return (
-		<section aria-label="文件" className={styles.configRoot}>
+		<section aria-label={t("file.config.title")} className={styles.configRoot}>
 			<header className={styles.configHeader}>
-				<h3 className={styles.sectionTitle}>文件</h3>
-				<p className={styles.configHint}>可选，最多配置 {MAX_TEMPLATE_FILES} 个文件。</p>
+				<h3 className={styles.sectionTitle}>{t("file.config.title")}</h3>
+				<p className={styles.configHint}>{t("file.config.hint", { max: MAX_TEMPLATE_FILES })}</p>
 			</header>
 			<div className={styles.configBody}>
 				<div className={styles.rowStart}>
 					<TemplateFilePicker value={value} onChange={onChange} />
 					<Button disabled={model.busy || !value.length} onClick={() => onChange([])}>
-						清空
+						{t("file.config.clear")}
 					</Button>
 				</div>
 				{model.identity.error ? (
@@ -83,7 +88,7 @@ export function TemplateFileConfiguration({
 							onChange(withFileMountPaths([...value, pendingTemplateFile(file)]));
 					}}
 				/>
-				<ul aria-label="文件配置" className={styles.fileList}>
+				<ul aria-label={t("file.config.listAria")} className={styles.fileList}>
 					{value.map((file) => (
 						<FileFields
 							key={file.file_id}
@@ -94,7 +99,7 @@ export function TemplateFileConfiguration({
 						/>
 					))}
 				</ul>
-				{error || model.error ? <ErrorState message={error || model.error || "文件保存失败"} /> : null}
+				{error || model.error ? <ErrorState message={error || model.error || t("file.config.saveFailed")} /> : null}
 			</div>
 		</section>
 	);

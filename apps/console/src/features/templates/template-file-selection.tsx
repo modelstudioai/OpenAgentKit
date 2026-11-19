@@ -1,5 +1,6 @@
 import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui";
 import { Input } from "antd";
+import { useTranslation } from "react-i18next";
 import { useRemoteFiles } from "../catalog/use-remote-files.ts";
 import { MAX_TEMPLATE_FILES, type TemplateFileDraft, withFileMountPaths } from "./template-file-draft.ts";
 import styles from "./template-forms.module.less";
@@ -39,12 +40,13 @@ function FileRow({
 	limitReached: boolean;
 	onToggle: () => void;
 }) {
+	const { t } = useTranslation("templates");
 	const name = file.filename || file.file_id;
 	return (
 		<li>
 			<button
 				type="button"
-				aria-label={`选择文件 ${name}（${file.file_id}）`}
+				aria-label={t("file.selection.selectAria", { name, id: file.file_id })}
 				aria-pressed={selected}
 				disabled={!selected && (missing || !file.available || limitReached)}
 				onClick={onToggle}
@@ -58,7 +60,13 @@ function FileRow({
 				</span>
 				<span className={`${listStyles.envRowId} ${listStyles.cellSpan2}`}>{file.local?.id ?? file.file_id}</span>
 				<span className={styles.metaAny}>
-					{file.local ? "待发布" : missing ? "当前列表未找到此文件" : file.available ? "可用" : "暂不可用"}
+					{file.local
+						? t("file.selection.pendingPublish")
+						: missing
+							? t("file.selection.missing")
+							: file.available
+								? t("file.selection.available")
+								: t("file.selection.unavailable")}
 				</span>
 			</button>
 		</li>
@@ -80,14 +88,15 @@ function FileList({
 	onSelect: (id: string) => void;
 	onRemove: (id: string) => void;
 }) {
+	const { t } = useTranslation("templates");
 	return (
 		<div className={listStyles.tableWrap}>
 			<div aria-hidden="true" className={listStyles.tableHead5}>
-				<span className={listStyles.headCol2}>文件名称</span>
-				<span className={listStyles.headCol2}>文件 ID</span>
-				<span>状态</span>
+				<span className={listStyles.headCol2}>{t("file.selection.name")}</span>
+				<span className={listStyles.headCol2}>{t("file.selection.id")}</span>
+				<span>{t("file.selection.status")}</span>
 			</div>
-			<ul aria-label="文件列表" className={listStyles.rowList}>
+			<ul aria-label={t("file.selection.listAria")} className={listStyles.rowList}>
 				{rows.map((file) => {
 					const selected = value.some((item) => item.file_id === file.file_id);
 					return (
@@ -107,10 +116,11 @@ function FileList({
 }
 
 function FileEmptyState({ searching }: { searching: boolean }) {
+	const { t } = useTranslation("templates");
 	return (
 		<EmptyState
-			title={searching ? "未找到匹配的文件" : "暂无可选文件"}
-			hint={searching ? "请尝试其他名称或 ID。" : "当前服务没有可选文件。"}
+			title={searching ? t("file.selection.noMatch") : t("file.selection.empty")}
+			hint={searching ? t("file.selection.noMatchHint") : t("file.selection.emptyHint")}
 		/>
 	);
 }
@@ -129,6 +139,7 @@ export function TemplateFileSelection({
 	onSearchChange: (search: string) => void;
 	maxFiles?: number;
 }) {
+	const { t } = useTranslation("templates");
 	const remote = useRemoteFiles();
 	const local = useTemplateLocalResources();
 	const query = search.trim().toLowerCase();
@@ -143,16 +154,16 @@ export function TemplateFileSelection({
 	const select = (ids: string[]) => onChange(selectedFiles(ids, value, availableFiles));
 	const remove = (id: string) => onChange(value.filter((file) => file.file_id !== id));
 	return (
-		<section aria-label="文件列表配置" className={listStyles.listRoot}>
+		<section aria-label={t("file.selection.aria")} className={listStyles.listRoot}>
 			<Input
 				type="search"
-				aria-label="搜索文件"
-				placeholder="搜索名称或 ID"
+				aria-label={t("file.selection.searchAria")}
+				placeholder={t("file.selection.searchPlaceholder")}
 				value={search}
 				onChange={(event) => onSearchChange(event.target.value)}
 				className={listStyles.searchInputSm}
 			/>
-			{loading ? <EmptyState loading title="正在加载文件…" /> : null}
+			{loading ? <EmptyState loading title={t("file.selection.loading")} /> : null}
 			{remote.error ? <ErrorState message={remote.error} onRetry={() => void remote.refresh()} /> : null}
 			{ready && rows.length === 0 ? <FileEmptyState searching={query.length > 0} /> : null}
 			{ready && rows.length > 0 ? (
@@ -168,23 +179,30 @@ export function TemplateFileSelection({
 				/>
 			) : null}
 			<p aria-live="polite" className={styles.formNote}>
-				已选择 {value.length} / {maxFiles} 个文件
-				{ready ? <span className={listStyles.noteCount}>（共 {rows.length} 个文件）</span> : null}
+				{t("file.selection.selectedCount", { count: value.length, max: maxFiles })}
+				{ready ? (
+					<span className={listStyles.noteCount}>{t("file.selection.count", { count: rows.length })}</span>
+				) : null}
 			</p>
 		</section>
 	);
 }
 
 export function TemplateSelectedFiles({ files }: { files: TemplateFileDraft[] }) {
-	if (!files.length) return <p className={styles.formNote}>未选择文件</p>;
+	const { t } = useTranslation("templates");
+	if (!files.length) return <p className={styles.formNote}>{t("file.selection.notSelected")}</p>;
 	return (
-		<ul aria-label="已选文件" className={listStyles.selectedList}>
+		<ul aria-label={t("file.selection.selectedAria")} className={listStyles.selectedList}>
 			{files.map((file) => (
 				<li key={file.file_id} className={listStyles.selectedItemRow}>
 					<div className={`${listStyles.shrinkRoot} ${styles.fieldStack}`}>
 						<p className={styles.nameAny}>{file.filename || file.file_id}</p>
-						<p className={listStyles.envRowId}>{file.pending ? "待保存" : (file.local?.id ?? file.file_id)}</p>
-						{file.mount_path ? <p className={styles.metaAny}>挂载路径：{file.mount_path}</p> : null}
+						<p className={listStyles.envRowId}>
+							{file.pending ? t("file.selection.pendingSave") : (file.local?.id ?? file.file_id)}
+						</p>
+						{file.mount_path ? (
+							<p className={styles.metaAny}>{t("file.selection.mountPath", { path: file.mount_path })}</p>
+						) : null}
 					</div>
 				</li>
 			))}

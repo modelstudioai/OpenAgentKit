@@ -3,6 +3,7 @@ import {
 	type MemoryStoreConfiguration,
 	ProjectMemoryStoreCreateInputSchema,
 } from "@openagentpack/kit-sdk/protocol";
+import i18n from "i18next";
 import { type CatalogMemoryDraft, validateCatalogMemories } from "../catalog/catalog-memory-fields.tsx";
 import type { TemplateLocalResource } from "./template-local-resources.tsx";
 
@@ -76,27 +77,31 @@ export function emptyTemplateMemory(): TemplateMemoryDraft {
 export const hasPendingMemories = (rows: TemplateMemoryDraft[]) => rows.some(memoryNeedsCreation);
 
 export function memoryCreateInput(row: TemplateMemoryDraft, revision: string) {
-	if (row.configuration?.restricted.length)
-		throw new Error("记忆库含有无法完整复制的配置，请使用原库或清空后重新填写。");
+	const t = i18n.getFixedT(null, "templates");
+	if (row.configuration?.restricted.length) throw new Error(t("memory.errors.restricted"));
 	const configuration = row.creation ?? row.configuration;
 	const entries = configuration?.entries ?? [];
+	if (!(row.name ?? "").trim()) throw new Error(t("memory.errors.nameRequired"));
+	const keys = entries.map((entry) => entry.key.trim());
+	if (new Set(keys).size !== keys.length) throw new Error(t("memory.errors.duplicateEntry"));
 	const parsed = ProjectMemoryStoreCreateInputSchema.safeParse({
 		base_revision: revision,
 		name: row.name ?? "",
 		...(configuration?.description.trim() ? { description: configuration.description.trim() } : {}),
 		...(entries.length ? { entries: entries.map(({ key, content }) => ({ key, content })) } : {}),
 	});
-	if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "请检查记忆库配置");
+	if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? t("memory.errors.check"));
 	return parsed.data;
 }
 
 export function validateTemplateMemories(rows: TemplateMemoryDraft[]): string | null {
+	const t = i18n.getFixedT(null, "templates");
 	const bindingError = validateCatalogMemories(rows);
 	if (bindingError) return bindingError;
 	try {
 		for (const row of rows) if (memoryNeedsCreation(row)) memoryCreateInput(row, "draft");
 	} catch (error) {
-		return error instanceof Error ? error.message : "请检查记忆库配置";
+		return error instanceof Error ? error.message : t("memory.errors.check");
 	}
 	return null;
 }

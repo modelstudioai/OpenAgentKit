@@ -208,7 +208,7 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
 
 | feature | 引号内串数 | 状态 |
 | --- | --- | --- |
-| templates | 661 | 迁移中（批次 1–3a：列表/创建外壳/Agent 配置/环境子编辑器；其余分批） |
+| templates | 661 | 迁移中（批次 1–3b：列表/创建外壳/Agent 配置/环境/文件/记忆库/密钥库；其余分批） |
 | usage | 138 | ✅ 全部（限额链路、Session 用量页、趋势卡、模版用量详情与 Provider 遥测表；聚合行名称参数化） |
 | members | 88 | ✅ 全部（列表/用量页/遥测表/创建页/hook 错误兜底；共享指标与采集状态词表入 common） |
 | preset-packs | 83 | ✅ 全部（选择/资源详情抽屉/会话资源；纯函数消息以缺省参数保持兼容） |
@@ -261,3 +261,12 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
   `use-template-environment-detail`；词表归入 `templates.agent.environment.*`。
 - 相对时间按 `i18n.language` 使用 `Intl.RelativeTimeFormat`；复制受限字段的标签映射为词表键。
 - 仍待迁：文件、记忆库、密钥库子编辑器（批次 3b）。
+
+#### templates 批次 3b：文件 / 记忆库 / 密钥库子编辑器（2026-11-19）
+
+- 文件：配置外壳、上传区、导入选择、已选摘要、上传 owner 校验与不确定结果提示。
+- 记忆库：库级表单、权限/说明、条目弹窗与列表、导入抽屉、逐项回填与错误兜底；
+  新增本地化的名称必填与条目路径重复校验，避免依赖 SDK zod 中文提示。
+- 密钥库：库级表单、密钥列表、添加/编辑密钥弹窗、导入选择、详情抽屉；密钥值仍不进入引用，
+  修改后重新填写变量值与共享确认文案全部入词表。
+- 纯函数（文件校验、记忆/密钥创建校验）经 `i18n.getFixedT` 取词，默认中文输出与既有测试断言一致。

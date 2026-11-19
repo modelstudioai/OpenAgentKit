@@ -1,6 +1,7 @@
 import { ErrorState } from "@openagentpack/kit-chat-ui";
 import { Button, Drawer } from "antd";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import styles from "./template-forms.module.less";
@@ -21,6 +22,7 @@ export function TemplateMemoryPicker({
 	onChange: (value: TemplateMemoryDraft[]) => void;
 	onPendingChange: (pending: boolean) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const client = useMemo(getAdminClient, []);
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
@@ -66,20 +68,20 @@ export function TemplateMemoryPicker({
 					setOpen(true);
 				}}
 			>
-				导入现有配置
+				{t("memory.config.importExisting")}
 			</Button>
 			<Drawer
 				open={open}
 				onClose={close}
 				destroyOnHidden
 				width={768}
-				title={<div className={styles.drawerTitle}>选择配置</div>}
+				title={<div className={styles.drawerTitle}>{t("memory.config.choose")}</div>}
 				footer={
 					<div className={styles.drawerFooterStack}>
 						{importing.error ? <ErrorState message={importing.error} /> : null}
 						<div className={styles.drawerFooter}>
 							<Button disabled={importing.pending} onClick={close}>
-								取消
+								{t("cancel")}
 							</Button>
 							<Button
 								disabled={importing.pending || selection.length + pending > MAX_TEMPLATE_MEMORIES}
@@ -92,14 +94,14 @@ export function TemplateMemoryPicker({
 									setOpen(false);
 								}}
 							>
-								仅复用原库
+								{t("memory.config.reuseOnly")}
 							</Button>
 							<Button
 								type="primary"
 								disabled={importing.pending || selection.length + pending > MAX_TEMPLATE_MEMORIES}
 								onClick={() => void importing.run().catch(() => {})}
 							>
-								{importing.pending ? "正在导入条目…" : "确认选择"}
+								{importing.pending ? t("memory.config.importing") : t("memory.config.confirm")}
 							</Button>
 						</div>
 					</div>

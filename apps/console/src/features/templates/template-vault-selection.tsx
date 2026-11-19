@@ -1,6 +1,7 @@
 import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui";
 import { Button, Input } from "antd";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useRemoteVaults } from "../catalog/use-remote-vaults.ts";
 import styles from "./template-forms.module.less";
 import listStyles from "./template-lists.module.less";
@@ -25,13 +26,14 @@ function VaultRow({
 	maxReached: boolean;
 	onToggle: (id: string) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const [open, setOpen] = useState(false);
 	const id = vault.vault_id;
 	return (
 		<li className={`${listStyles.selectRow5} ${selected ? listStyles.selectRowSelected : listStyles.selectRowIdle}`}>
 			<button
 				type="button"
-				aria-label={`选择密钥库 ${vault.name || id}（${id}）`}
+				aria-label={t("vault.list.selectAria", { name: vault.name || id, id })}
 				aria-pressed={selected}
 				disabled={!selected && (missing || maxReached)}
 				onClick={() => onToggle(id)}
@@ -45,13 +47,13 @@ function VaultRow({
 				</span>
 				<span className={listStyles.metaCell}>
 					<span className={listStyles.monoBlock}>{vault.local?.id ?? id}</span>
-					{vault.local ? <span className="block">待发布</span> : null}
-					{missing ? <span className="block">当前列表未找到此密钥库</span> : null}
+					{vault.local ? <span className="block">{t("vault.list.pendingPublish")}</span> : null}
+					{missing ? <span className="block">{t("vault.list.missing")}</span> : null}
 				</span>
 			</button>
 			<div className={listStyles.actionCell}>
 				<Button type="link" size="small" className={listStyles.linkFlush} onClick={() => setOpen(true)}>
-					查看详情
+					{t("vault.list.view")}
 				</Button>
 			</div>
 			<TemplateVaultDetailDrawer vault={vault} open={open} onClose={() => setOpen(false)} />
@@ -72,14 +74,15 @@ function VaultList({
 	onToggle: (id: string) => void;
 	maxVaults: number;
 }) {
+	const { t } = useTranslation("templates");
 	return (
 		<div className={listStyles.tableWrap}>
 			<div aria-hidden="true" className={listStyles.tableHead5}>
-				<span className={listStyles.headCol2}>密钥库名称</span>
-				<span className={listStyles.headCol2}>密钥库 ID</span>
-				<span>操作</span>
+				<span className={listStyles.headCol2}>{t("vault.list.name")}</span>
+				<span className={listStyles.headCol2}>{t("vault.list.id")}</span>
+				<span>{t("vault.list.actions")}</span>
 			</div>
-			<ul aria-label="密钥库列表" className={listStyles.rowList}>
+			<ul aria-label={t("vault.list.aria")} className={listStyles.rowList}>
 				{rows.map((vault) => (
 					<VaultRow
 						key={vault.vault_id}
@@ -96,10 +99,11 @@ function VaultList({
 }
 
 function VaultEmptyState({ searching }: { searching: boolean }) {
+	const { t } = useTranslation("templates");
 	return (
 		<EmptyState
-			title={searching ? "未找到匹配的密钥库" : "暂无可选密钥库"}
-			hint={searching ? "请尝试其他名称或 ID。" : "当前服务没有可选密钥库。"}
+			title={searching ? t("vault.list.noMatch") : t("vault.list.empty")}
+			hint={searching ? t("vault.list.noMatchHint") : t("vault.list.emptyHint")}
 		/>
 	);
 }
@@ -118,6 +122,7 @@ export function TemplateVaultSelection({
 	onSearchChange: (value: string) => void;
 	maxVaults?: number;
 }) {
+	const { t } = useTranslation("templates");
 	const remote = useRemoteVaults();
 	const local = useTemplateLocalResources();
 	const query = search.trim().toLowerCase();
@@ -142,19 +147,19 @@ export function TemplateVaultSelection({
 		<div className={listStyles.listRoot}>
 			<Input
 				type="search"
-				aria-label="搜索密钥库"
-				placeholder="搜索名称或 ID"
+				aria-label={t("vault.list.searchAria")}
+				placeholder={t("vault.list.searchPlaceholder")}
 				value={search}
 				onChange={(event) => onSearchChange(event.target.value)}
 			/>
-			{loading ? <EmptyState loading title="正在加载密钥库…" /> : null}
+			{loading ? <EmptyState loading title={t("vault.list.loading")} /> : null}
 			{remote.error ? <ErrorState message={remote.error} onRetry={() => void remote.refresh()} /> : null}
 			{ready && !rows.length ? <VaultEmptyState searching={Boolean(query)} /> : null}
 			{ready && rows.length ? (
 				<VaultList rows={rows} selectedIds={ids} remoteIds={remoteIds} onToggle={toggle} maxVaults={maxVaults} />
 			) : null}
 			<p aria-live="polite" className={styles.formNote}>
-				已选择 {value.length} / {maxVaults} 个密钥库
+				{t("vault.list.selectedCount", { count: value.length, max: maxVaults })}
 			</p>
 			{error ? (
 				<p role="alert" className={styles.errorText}>
@@ -166,14 +171,17 @@ export function TemplateVaultSelection({
 }
 
 export function TemplateSelectedVaults({ vaults }: { vaults: TemplateVaultDraft[] }) {
-	if (!vaults.length) return <p className={styles.formNote}>未选择密钥库</p>;
+	const { t } = useTranslation("templates");
+	if (!vaults.length) return <p className={styles.formNote}>{t("vault.list.notSelected")}</p>;
 	return (
-		<ul aria-label="已选密钥库" className={listStyles.selectedList}>
+		<ul aria-label={t("vault.list.selectedAria")} className={listStyles.selectedList}>
 			{vaults.map((vault) => (
 				<li key={vault.vault_id} className={listStyles.selectedItemRow}>
 					<div className={`${listStyles.shrinkRoot} ${styles.stack2}`}>
-						<p className={styles.nameAny}>{vault.name || (vault.creation ? "待填写密钥库" : vault.vault_id)}</p>
-						<p className={listStyles.envRowId}>{vault.creation ? "待保存" : vault.vault_id}</p>
+						<p className={styles.nameAny}>
+							{vault.name || (vault.creation ? t("vault.list.creationPending") : vault.vault_id)}
+						</p>
+						<p className={listStyles.envRowId}>{vault.creation ? t("vault.list.pendingSave") : vault.vault_id}</p>
 					</div>
 				</li>
 			))}

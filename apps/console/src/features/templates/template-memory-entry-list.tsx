@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import type { TemplateMemoryEntry } from "./template-memory-draft.ts";
 import styles from "./template-resources.module.less";
 
@@ -10,16 +11,17 @@ export function TemplateMemoryEntryList({
 	value: TemplateMemoryEntry[];
 	actions?: (entry: TemplateMemoryEntry) => ReactNode;
 }) {
-	if (!value.length) return <p className={styles.mutedOnly}>暂无记忆条目</p>;
+	const { t } = useTranslation("templates");
+	if (!value.length) return <p className={styles.mutedOnly}>{t("memory.entries.empty")}</p>;
 	return (
-		<ul aria-label="记忆条目列表" className={styles.entryList}>
+		<ul aria-label={t("memory.entries.listAria")} className={styles.entryList}>
 			{value.map((entry) => (
 				<li key={entry.id} className={styles.entryItem}>
 					<div className={styles.entryHead}>
 						<span className={styles.entryKey}>{entry.key}</span>
 						{actions ? <div className={styles.entryActions}>{actions(entry)}</div> : null}
 					</div>
-					<pre className={styles.entryBody}>{entry.content || "（空正文）"}</pre>
+					<pre className={styles.entryBody}>{entry.content || t("memory.entries.emptyContent")}</pre>
 				</li>
 			))}
 		</ul>

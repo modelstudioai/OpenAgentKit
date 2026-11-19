@@ -1,4 +1,5 @@
 import type { RemoteFile } from "@openagentpack/kit-sdk/protocol";
+import i18n from "i18next";
 import { defaultMountPath, normalizedMountPath } from "../catalog/file-mounts.ts";
 import type { TemplateLocalResource } from "./template-local-resources.tsx";
 
@@ -43,10 +44,11 @@ export function mergeImportedFiles(current: TemplateFileDraft[], imported: Templ
 export const hasPendingFiles = (files: TemplateFileDraft[]) => files.some((file) => Boolean(file.pending));
 
 export function validateTemplateFiles(files: TemplateFileDraft[]): string | null {
-	if (files.length > MAX_TEMPLATE_FILES) return `最多选择 ${MAX_TEMPLATE_FILES} 个文件`;
-	if (new Set(files.map((file) => file.file_id)).size !== files.length) return "同一个文件只能选择一次";
+	const t = i18n.getFixedT(null, "templates");
+	if (files.length > MAX_TEMPLATE_FILES) return t("file.errors.max", { max: MAX_TEMPLATE_FILES });
+	if (new Set(files.map((file) => file.file_id)).size !== files.length) return t("file.errors.duplicate");
 	const paths = files.flatMap((file) => (file.mount_path ? [normalizedMountPath(file.mount_path)] : []));
-	if (new Set(paths).size !== paths.length) return "文件挂载路径不能重复";
-	if (files.some((file) => file.pending && !file.pending.file.size)) return "不能上传空文件，请选择有内容的文件";
+	if (new Set(paths).size !== paths.length) return t("file.errors.mountDuplicate");
+	if (files.some((file) => file.pending && !file.pending.file.size)) return t("file.errors.empty");
 	return null;
 }
