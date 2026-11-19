@@ -2,6 +2,7 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import enAuth from "./locales/en/auth.ts";
 import enBranding from "./locales/en/branding.ts";
+import enCatalog from "./locales/en/catalog.ts";
 import enCommon from "./locales/en/common.ts";
 import enMembers from "./locales/en/members.ts";
 import enNavigation from "./locales/en/navigation.ts";
@@ -10,6 +11,7 @@ import enPresetPacks from "./locales/en/presetPacks.ts";
 import enUsage from "./locales/en/usage.ts";
 import zhAuth from "./locales/zh-CN/auth.ts";
 import zhBranding from "./locales/zh-CN/branding.ts";
+import zhCatalog from "./locales/zh-CN/catalog.ts";
 import zhCommon from "./locales/zh-CN/common.ts";
 import zhMembers from "./locales/zh-CN/members.ts";
 import zhNavigation from "./locales/zh-CN/navigation.ts";
@@ -63,6 +65,7 @@ export interface I18nResources {
 		operations: typeof zhOperations;
 		branding: typeof zhBranding;
 		presetPacks: typeof zhPresetPacks;
+		catalog: typeof zhCatalog;
 	};
 	en: {
 		common: typeof enCommon;
@@ -73,6 +76,7 @@ export interface I18nResources {
 		operations: typeof enOperations;
 		branding: typeof enBranding;
 		presetPacks: typeof enPresetPacks;
+		catalog: typeof enCatalog;
 	};
 }
 
@@ -84,7 +88,7 @@ export async function initI18n() {
 		fallbackLng: "zh-CN",
 		supportedLngs: [...SUPPORTED_LOCALES],
 		defaultNS: "common",
-		ns: ["common", "auth", "navigation", "members", "usage", "operations", "branding", "presetPacks"],
+		ns: ["common", "auth", "navigation", "members", "usage", "operations", "branding", "presetPacks", "catalog"],
 		resources: {
 			"zh-CN": {
 				common: zhCommon,
@@ -95,6 +99,7 @@ export async function initI18n() {
 				operations: zhOperations,
 				branding: zhBranding,
 				presetPacks: zhPresetPacks,
+				catalog: zhCatalog,
 			},
 			en: {
 				common: enCommon,
@@ -105,6 +110,7 @@ export async function initI18n() {
 				operations: enOperations,
 				branding: enBranding,
 				presetPacks: enPresetPacks,
+				catalog: enCatalog,
 			},
 		},
 	});

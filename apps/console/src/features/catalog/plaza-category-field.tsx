@@ -1,5 +1,6 @@
 import { PLAZA_CATEGORY_LABELS, type PlazaCategory } from "@openagentpack/kit-sdk/protocol";
 import { Form, Select } from "antd";
+import { useTranslation } from "react-i18next";
 import { formRowClass, formRowLabelClass } from "../../lib/form-row.ts";
 import styles from "./catalog.module.less";
 
@@ -12,7 +13,7 @@ const CATEGORY_OPTIONS = (Object.keys(PLAZA_CATEGORY_LABELS) as PlazaCategory[])
 export function PlazaCategoryField({
 	value,
 	onChange,
-	label = "广场分类",
+	label,
 	required = false,
 	horizontal = false,
 }: {
@@ -22,11 +23,13 @@ export function PlazaCategoryField({
 	required?: boolean;
 	horizontal?: boolean;
 }) {
+	const { t } = useTranslation("catalog");
+	const labelText = label ?? t("plazaCategory");
 	if (horizontal) {
 		return (
 			<div className={formRowClass}>
 				<span className={formRowLabelClass}>
-					{label}
+					{labelText}
 					{required ? (
 						<span aria-hidden="true" className={styles.requiredStar}>
 							*
@@ -34,7 +37,7 @@ export function PlazaCategoryField({
 					) : null}
 				</span>
 				<Select
-					aria-label={label}
+					aria-label={labelText}
 					className={styles.fullControl}
 					value={value}
 					options={CATEGORY_OPTIONS}
@@ -48,7 +51,7 @@ export function PlazaCategoryField({
 			<Form.Item
 				label={
 					<>
-						{label}
+						{labelText}
 						{required ? (
 							<span aria-hidden="true" className={styles.requiredStar}>
 								*
@@ -58,7 +61,7 @@ export function PlazaCategoryField({
 				}
 			>
 				<Select
-					aria-label={label}
+					aria-label={labelText}
 					className={styles.fullControl}
 					value={value}
 					options={CATEGORY_OPTIONS}

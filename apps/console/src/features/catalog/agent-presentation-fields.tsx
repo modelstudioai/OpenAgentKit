@@ -1,7 +1,9 @@
 import { DeleteOutlined } from "@ant-design/icons";
 import { type AgentSummary, CatalogAgentInputSchema } from "@openagentpack/kit-sdk/protocol";
 import { Button, Form, Input, Modal, Tooltip } from "antd";
+import i18n from "i18next";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import styles from "./catalog.module.less";
 
 export interface AgentPresentationDraft {
@@ -37,12 +39,13 @@ export function toAgentPresentation(draft: AgentPresentationDraft): AgentPresent
 }
 
 export function validateAgentPresentation(draft: AgentPresentationDraft): string | null {
+	const t = i18n.getFixedT(null, "catalog");
 	const result = presentationSchema.safeParse(toAgentPresentation(draft));
 	if (result.success) return null;
 	const path = result.error.issues[0]?.path;
-	if (path?.[0] === "description") return "描述最多 400 个字符";
-	if (path?.[0] === "opening_remarks") return "开场白最多 2000 个字符";
-	return path?.length === 1 ? "示例问题最多 8 条" : "每条示例问题最多 200 个字符";
+	if (path?.[0] === "description") return t("agentPresentation.descriptionMax");
+	if (path?.[0] === "opening_remarks") return t("agentPresentation.openingMax");
+	return path?.length === 1 ? t("agentPresentation.promptsMax") : t("agentPresentation.promptMax");
 }
 
 const MAX_PROMPTS = 8;
@@ -68,6 +71,7 @@ export function AgentPresentationFields({
 	value: AgentPresentationDraft;
 	onChange: (next: AgentPresentationDraft) => void;
 }) {
+	const { t } = useTranslation("catalog");
 	const [editorOpen, setEditorOpen] = useState(false);
 	const [rows, setRows] = useState<PromptRow[]>([]);
 	const error = validateAgentPresentation(value);
@@ -92,36 +96,36 @@ export function AgentPresentationFields({
 	};
 	return (
 		<Form component={false} layout="vertical" requiredMark={false}>
-			<Form.Item label="描述">
+			<Form.Item label={t("agentPresentation.description")}>
 				<Input
 					value={value.description}
 					maxLength={400}
 					onChange={(event) => set({ description: event.target.value })}
-					aria-label="描述"
+					aria-label={t("agentPresentation.description")}
 				/>
 			</Form.Item>
-			<Form.Item label="开场白">
+			<Form.Item label={t("agentPresentation.opening")}>
 				<Input.TextArea
 					rows={2}
 					value={value.opening_remarks}
 					maxLength={2000}
 					onChange={(event) => set({ opening_remarks: event.target.value })}
-					aria-label="开场白"
+					aria-label={t("agentPresentation.opening")}
 				/>
 			</Form.Item>
 			<div className="relative">
 				<Form.Item
 					label={
 						<div>
-							示例问题
+							{t("agentPresentation.prompts")}
 							<Button
 								type="link"
 								size="small"
-								aria-label="添加示例问题"
+								aria-label={t("agentPresentation.addPrompt")}
 								onClick={openEditor}
 								className="absolute top-0 right-0"
 							>
-								<span aria-hidden="true">+</span> 添加
+								<span aria-hidden="true">+</span> {t("agentPresentation.add")}
 							</Button>
 						</div>
 					}
@@ -142,22 +146,22 @@ export function AgentPresentationFields({
 				</Form.Item>
 			</div>
 			<Modal
-				title="示例问题"
+				title={t("agentPresentation.prompts")}
 				open={editorOpen}
 				onCancel={() => setEditorOpen(false)}
 				onOk={confirmEditor}
-				okText="确定"
-				cancelText="取消"
+				okText={t("agentPresentation.ok")}
+				cancelText={t("agentPresentation.cancel")}
 				width={560}
 				destroyOnHidden
 			>
-				<p className={styles.hintText}>最多 {MAX_PROMPTS} 条，每条最多 200 个字符。</p>
+				<p className={styles.hintText}>{t("agentPresentation.hint", { max: MAX_PROMPTS })}</p>
 				<div className="mt-2 flex flex-col gap-2">
 					{rows.map((row, index) => (
 						<div key={row.id} className="flex items-center gap-2">
 							<Input
-								aria-label={`示例问题 ${index + 1}`}
-								placeholder="输入示例问题"
+								aria-label={t("agentPresentation.promptAria", { index: index + 1 })}
+								placeholder={t("agentPresentation.promptPlaceholder")}
 								maxLength={200}
 								value={row.text}
 								onChange={(event) =>
@@ -169,8 +173,8 @@ export function AgentPresentationFields({
 							<Button
 								type="text"
 								size="small"
-								aria-label={`移除示例问题 ${index + 1}`}
-								title={`移除示例问题 ${index + 1}`}
+								aria-label={t("agentPresentation.removePrompt", { index: index + 1 })}
+								title={t("agentPresentation.removePrompt", { index: index + 1 })}
 								icon={<DeleteOutlined />}
 								onClick={() => setRows((current) => current.filter((item) => item.id !== row.id))}
 							/>
@@ -180,11 +184,11 @@ export function AgentPresentationFields({
 						<Button
 							type="link"
 							size="small"
-							aria-label="添加示例问题"
+							aria-label={t("agentPresentation.addPrompt")}
 							disabled={rows.length >= MAX_PROMPTS}
 							onClick={() => setRows((current) => [...current, newPromptRow()])}
 						>
-							<span aria-hidden="true">+</span> 添加
+							<span aria-hidden="true">+</span> {t("agentPresentation.add")}
 						</Button>
 					</div>
 				</div>
