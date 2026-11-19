@@ -163,7 +163,12 @@ apps/<web|console>/src/i18n/
 | 批次 1 | actions、message、message-list、processing-indicator、status-indicator | 约 25 |
 | 批次 2a | error-state、message-skeleton、confirm-dialog、meter-bar、category-tabs、markdown、activity-heatmap | 约 20 |
 | 批次 2b | file-card、session-list、plaza-card | 约 27 |
-| 待迁 | session-sidebar、tool-approval-card/group、sub-agent-card/panel、attachments、tool-call-card、tool-summary、reasoning-block、execution-group、step、mermaid、code-highlighter、layout、chat、suggestion、message-anchor-rail、agent-header、thread-panel | 约 90 |
+| 批次 3 | session-sidebar、sub-agent-card、sub-agent-panel、tool-approval-card、tool-approval-group | 约 70 |
+| 待迁 | attachments、mermaid、code-highlighter、tool-call-card、tool-summary、reasoning-block、execution-group、step、layout、chat、suggestion、message-anchor-rail、agent-header、thread-panel | 约 45 |
+
+批次 3 补充形态：深层子树组件（session-sidebar）用内部 context 下传解析结果；
+sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面板复用，locale 经全局 Provider 生效）。
+教训：registry.json 尾逗号只有 `scripts/kit` 测试会抓——改 registry 后必须跑 `node --test scripts/kit`。
 
 批次 2 附带：`kit-i18n` 新增 `format(template, values)` 轻量插值（公开名 `formatKitStrings`，已登记 Skill 目录）；
 `relativeUsedLabel(iso, strings, now?)` 公开签名加入词典参数（非根入口导出，无 Skill 目录影响）。

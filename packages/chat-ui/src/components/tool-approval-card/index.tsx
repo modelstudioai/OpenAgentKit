@@ -1,12 +1,16 @@
 import type { ChatToolApproval } from "@openagentpack/kit-sdk/chat";
 import type { ToolApprovalDecision } from "@openagentpack/kit-sdk/protocol";
 import { useState } from "react";
+import { format, resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
+import toolApprovalCardStrings, { type ToolApprovalCardStrings } from "./strings.ts";
 
 export interface ToolApprovalCardProps {
 	approval: ChatToolApproval;
 	onDecision: (decision: ToolApprovalDecision) => Promise<void>;
 	onRefresh: () => Promise<void>;
 	onStop?: () => void;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<ToolApprovalCardStrings>;
 }
 
 const BUTTON =
@@ -16,11 +20,11 @@ const ACCENT_BUTTON =
 const QUIET_BUTTON =
 	"rounded-[var(--kit-radius-sm)] px-2 py-1 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)] transition-colors hover:text-[var(--kit-fg)] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]";
 
-function serialize(value: unknown): string {
+function serialize(value: unknown, strings: ToolApprovalCardStrings): string {
 	try {
-		return JSON.stringify(value, null, 2) ?? "未提供参数";
+		return JSON.stringify(value, null, 2) ?? strings.noParams;
 	} catch {
-		return "参数无法显示";
+		return strings.paramError;
 	}
 }
 
@@ -38,14 +42,6 @@ function paramSummary(args: unknown): string | undefined {
 	return undefined;
 }
 
-const LABELS: Record<ChatToolApproval["status"], string> = {
-	pending: "等待审批",
-	submitting: "正在提交…",
-	submitted: "已提交，等待执行状态",
-	uncertain: "提交结果不明，请先刷新确认",
-	stale: "审批已失效或已处理",
-};
-
 /** 主操作只保留允许和拒绝，均为一步直提；不可恢复状态（submitting/submitted）不出任何按钮。 */
 function CardActions({
 	approval,
@@ -55,6 +51,7 @@ function CardActions({
 	onDeny,
 	onRefresh,
 	onStop,
+	strings,
 }: {
 	approval: ChatToolApproval;
 	actionable: boolean;
@@ -63,15 +60,16 @@ function CardActions({
 	onDeny: () => void;
 	onRefresh: () => Promise<void>;
 	onStop?: () => void;
+	strings: ToolApprovalCardStrings;
 }) {
 	if (actionable) {
 		return (
 			<div className="mt-3 flex items-center justify-end gap-2">
 				<button type="button" className={BUTTON} onClick={onDeny} disabled={busy}>
-					拒绝
+					{strings.deny}
 				</button>
 				<button type="button" className={ACCENT_BUTTON} onClick={onAllow} disabled={busy}>
-					{busy ? "正在提交…" : "允许"}
+					{busy ? strings.submitting : strings.allow}
 				</button>
 			</div>
 		);
@@ -80,12 +78,12 @@ function CardActions({
 		<div className="mt-3 flex items-center justify-end gap-2">
 			{!approval.actionable && onStop ? (
 				<button type="button" className={QUIET_BUTTON} onClick={onStop}>
-					停止执行
+					{strings.stop}
 				</button>
 			) : null}
 			{approval.status === "uncertain" || approval.status === "stale" ? (
 				<button type="button" className={QUIET_BUTTON} onClick={() => void onRefresh()} disabled={busy}>
-					{busy ? "正在刷新…" : "刷新审批状态"}
+					{busy ? strings.refreshing : strings.refresh}
 				</button>
 			) : null}
 		</div>
@@ -93,7 +91,15 @@ function CardActions({
 }
 
 /** 参数摘要与「查看参数」同行：摘要占左侧，右侧切换展开完整 JSON 原文（等宽、不按 HTML 执行）。 */
-function ParameterPreview({ summary, parameters }: { summary?: string; parameters: string }) {
+function ParameterPreview({
+	summary,
+	parameters,
+	strings,
+}: {
+	summary?: string;
+	parameters: string;
+	strings: ToolApprovalCardStrings;
+}) {
 	return (
 		<details className="kit-collapse group mt-3 min-w-0 rounded-[var(--kit-radius-sm)] bg-[var(--kit-bg-subtle)]">
 			<summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 select-none [&::-webkit-details-marker]:hidden">
@@ -101,7 +107,7 @@ function ParameterPreview({ summary, parameters }: { summary?: string; parameter
 					{summary}
 				</span>
 				<span className="flex shrink-0 items-center gap-1 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)] transition-colors group-hover:text-[var(--kit-fg)]">
-					查看参数
+					{strings.viewParams}
 					<svg
 						viewBox="0 0 24 24"
 						fill="none"
@@ -126,10 +132,17 @@ function ParameterPreview({ summary, parameters }: { summary?: string; parameter
  * 提交后由服务端按 Provider 最新状态再次校验。只展示调用方提供的审批状态，不自动重发；
  * 结果不明或过期时用安静的恢复入口刷新。
  */
-export function ToolApprovalCard({ approval, onDecision, onRefresh, onStop }: ToolApprovalCardProps) {
+export function ToolApprovalCard({
+	approval,
+	onDecision,
+	onRefresh,
+	onStop,
+	strings: stringsOverride,
+}: ToolApprovalCardProps) {
+	const strings = resolveStrings(toolApprovalCardStrings, useKitLocale(), stringsOverride);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const parameters = serialize(approval.arguments);
+	const parameters = serialize(approval.arguments, strings);
 	const actionable = approval.actionable && approval.status === "pending";
 	const summary = paramSummary(approval.arguments);
 	const decide = async (result: "allow" | "deny") => {
@@ -139,7 +152,7 @@ export function ToolApprovalCard({ approval, onDecision, onRefresh, onStop }: To
 		try {
 			await onDecision({ batch_id: approval.batch_id, call_id: approval.call_id, result });
 		} catch (cause) {
-			setError(cause instanceof Error ? cause.message : "审批提交失败，请刷新状态");
+			setError(cause instanceof Error ? cause.message : strings.submitFailed);
 		} finally {
 			setBusy(false);
 		}
@@ -150,14 +163,14 @@ export function ToolApprovalCard({ approval, onDecision, onRefresh, onStop }: To
 		try {
 			await onRefresh();
 		} catch (cause) {
-			setError(cause instanceof Error ? cause.message : "刷新失败，请重试");
+			setError(cause instanceof Error ? cause.message : strings.refreshFailed);
 		} finally {
 			setBusy(false);
 		}
 	};
 	return (
 		<section
-			aria-label={`工具审批 ${approval.name}`}
+			aria-label={format(strings.aria, { name: approval.name })}
 			className="my-2 min-w-0 rounded-[var(--kit-radius)] border border-[var(--kit-border)] bg-[var(--kit-surface)] p-4 text-[length:var(--kit-text-label)] animate-[var(--kit-animate-in)]"
 		>
 			<div className="flex min-w-0 items-center gap-2">
@@ -176,23 +189,21 @@ export function ToolApprovalCard({ approval, onDecision, onRefresh, onStop }: To
 					/>
 				</svg>
 				<p className="min-w-0 flex-1 font-semibold text-[var(--kit-fg)] [overflow-wrap:anywhere]">
-					Agent 请求执行工具 {approval.name || "未知工具"}
+					{format(strings.request, { name: approval.name || strings.unknownTool })}
 				</p>
 				<span className="shrink-0 rounded-[var(--kit-radius-sm)] border border-[var(--kit-border)] px-1.5 py-0.5 font-mono text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
-					{approval.tool_type || "未知类型"}
+					{approval.tool_type || strings.unknownType}
 				</span>
 				<span
 					role="status"
 					className="ml-auto shrink-0 text-[length:var(--kit-text-caption)] font-normal text-[var(--kit-fg-muted)]"
 				>
-					{LABELS[approval.status]}
+					{strings.status[approval.status]}
 				</span>
 			</div>
-			<ParameterPreview summary={summary} parameters={parameters} />
+			<ParameterPreview summary={summary} parameters={parameters} strings={strings} />
 			{!approval.actionable ? (
-				<p className="mt-2 text-[length:var(--kit-text-label)] text-[var(--kit-fg-muted)]">
-					审批请求信息不完整或类型不受支持，仅供查看。请刷新状态或停止执行。
-				</p>
+				<p className="mt-2 text-[length:var(--kit-text-label)] text-[var(--kit-fg-muted)]">{strings.notActionable}</p>
 			) : null}
 			<CardActions
 				approval={approval}
@@ -202,6 +213,7 @@ export function ToolApprovalCard({ approval, onDecision, onRefresh, onStop }: To
 				onDeny={() => void decide("deny")}
 				onRefresh={refresh}
 				onStop={onStop}
+				strings={strings}
 			/>
 			{error ? (
 				<p role="alert" className="mt-2 text-[length:var(--kit-text-label)] text-[var(--kit-danger)]">

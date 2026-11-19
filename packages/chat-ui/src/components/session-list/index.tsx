@@ -173,6 +173,7 @@ function SessionItem({
 	const classes = sessionItemClasses(workspace, active);
 	const markKey = rowMark(active, activeStatus, session.status);
 	const mark = markKey ? STATUS_MARKS[markKey] : undefined;
+	const markLabel = markKey ? strings.status[markKey] : undefined;
 	/** 提交与 Escape 都算退出；next 为 null 表示取消。 */
 	const finishEditing = (next: string | null) => {
 		if (next !== null) {
@@ -200,12 +201,7 @@ function SessionItem({
 				</button>
 			)}
 			{mark ? (
-				<span
-					role="img"
-					aria-label={markKey ? strings.status[markKey] : undefined}
-					title={markKey ? strings.status[markKey] : undefined}
-					className="mr-1.5 flex shrink-0 self-center"
-				>
+				<span role="img" aria-label={markLabel} title={markLabel} className="mr-1.5 flex shrink-0 self-center">
 					{mark.spinner ? (
 						<ProcessSpinner className="size-3.5 text-[var(--kit-accent)]" />
 					) : (

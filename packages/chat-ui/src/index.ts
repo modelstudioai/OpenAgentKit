@@ -76,7 +76,15 @@ export { type MeterBarStrings, meterBarStrings } from "./components/meter-bar/st
 export { ActivityHeatmap, CategoryTabs, MeterBar, PlazaCard, type PlazaTabId } from "./components/plaza/index.ts";
 export { type PlazaCardStrings, plazaCardStrings } from "./components/plaza-card/strings.ts";
 export { ReasoningBlock } from "./components/process/reasoning-block/index.tsx";
+export {
+	type SubAgentCardStrings,
+	subAgentCardStrings,
+} from "./components/process/sub-agent-card/strings.ts";
 export { SubAgentPanel } from "./components/process/sub-agent-panel/index.tsx";
+export {
+	type SubAgentPanelStrings,
+	subAgentPanelStrings,
+} from "./components/process/sub-agent-panel/strings.ts";
 export { ToolCallCard } from "./components/process/tool-call-card/index.tsx";
 export {
 	type ProcessingIndicatorStrings,
@@ -117,6 +125,10 @@ export {
 	type SessionSidebarProps,
 	type SessionSidebarSection,
 } from "./components/session-sidebar/index.tsx";
+export {
+	type SessionSidebarStrings,
+	sessionSidebarStrings,
+} from "./components/session-sidebar/strings.ts";
 export { EmptyState, ErrorState } from "./components/states/index.ts";
 export { type StatusIndicatorStrings, statusIndicatorStrings } from "./components/status-indicator/strings.ts";
 export {
@@ -128,4 +140,12 @@ export {
 	type SuggestionSemantic,
 } from "./components/suggestion/index.tsx";
 export { ToolApprovalCard, type ToolApprovalCardProps, ToolApprovalGroup } from "./components/tool-approval/index.ts";
+export {
+	type ToolApprovalCardStrings,
+	toolApprovalCardStrings,
+} from "./components/tool-approval-card/strings.ts";
+export {
+	type ToolApprovalGroupStrings,
+	toolApprovalGroupStrings,
+} from "./components/tool-approval-group/strings.ts";
 export { Tooltip, type TooltipSide } from "./components/tooltip/index.tsx";

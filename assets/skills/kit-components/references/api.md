@@ -621,7 +621,7 @@ export function ErrorState({ message, onRetry, strings: stringsOverride, }: { me
 - 归档和删除回调须经过应用确认。
 
 ```ts
-export function SessionSidebar({ groups, recent, loading, error, onReload, activeId, activeSection, activeStatus, activeGroupId, onSelect, onNewChat, menu, editing, onEdited, onEditEnd, actionError, onDismissError, searchInput, onSearchInput, search, agentName, className, }: SessionSidebarProps): JSX.Element;
+export function SessionSidebar({ groups, recent, loading, error, onReload, activeId, activeSection, activeStatus, activeGroupId, onSelect, onNewChat, menu, editing, onEdited, onEditEnd, actionError, onDismissError, searchInput, onSearchInput, search, agentName, className, strings: stringsOverride, }: SessionSidebarProps): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -648,8 +648,9 @@ export function SessionSidebar({ groups, recent, loading, error, onReload, activ
 | `search` | 否 | `SessionSidebarPage \| undefined` |
 | `agentName` | 否 | `((slug: string) => string) \| undefined` |
 | `className` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<SessionSidebarStrings> \| undefined` |
 
-<!-- source-sha256: 16284a43ea76b2e347cd57e8c5148e3fe3a05d80c6a87f2e7212d9bc18dd3ec1; doc-sha256: 904edfbb286fa103468775f1822e1bebd0bb00b84c28d3b84512a51ccbc7c178 -->
+<!-- source-sha256: 4e1816bc4f712bcba2b8c946305e71fe3383d5ea6dcc55fe7290dafa07f86cb5; doc-sha256: 904edfbb286fa103468775f1822e1bebd0bb00b84c28d3b84512a51ccbc7c178 -->
 
 ## StatusIndicator
 
@@ -692,15 +693,16 @@ export function StatusIndicator({ connected, turnRunning, phase, connection, err
 - 弹窗加载子线程自己的事件历史，独立于主消息流的分页。
 
 ```ts
-export function SubAgentPanel({ multiAgent, className }: { multiAgent?: ChatMultiAgent; className?: string; }): JSX.Element;
+export function SubAgentPanel({ multiAgent, className, strings: stringsOverride, }: { multiAgent?: ChatMultiAgent; className?: string; strings?: Partial<SubAgentPanelStrings>; }): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
 | --- | --- | --- |
 | `multiAgent` | 否 | `ChatMultiAgent \| undefined` |
 | `className` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<SubAgentPanelStrings> \| undefined` |
 
-<!-- source-sha256: 05e476855f4737870a65b2096627b794b15f77e3d48b9c0c3f6c9e22ba9de3f6; doc-sha256: 5b2ac21e1241dee856fcaef406c0c5904e3fde3e694fd6b0bba3815d24ac00e1 -->
+<!-- source-sha256: a69dfbd7f3f8d57d1d43f28369f3d7c77ea574babdf5a871ea06550ccce49d48; doc-sha256: 5b2ac21e1241dee856fcaef406c0c5904e3fde3e694fd6b0bba3815d24ac00e1 -->
 
 ## ThreadPanel
 
@@ -1352,7 +1354,7 @@ export function Suggestion<T = unknown>({ items, value, caret, trigger, filter, 
 - 调用方提供 submitApproval、refreshApprovals，以及可选的 stop。
 
 ```ts
-export function ToolApprovalCard({ approval, onDecision, onRefresh, onStop }: ToolApprovalCardProps): JSX.Element;
+export function ToolApprovalCard({ approval, onDecision, onRefresh, onStop, strings: stringsOverride, }: ToolApprovalCardProps): JSX.Element;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1361,8 +1363,9 @@ export function ToolApprovalCard({ approval, onDecision, onRefresh, onStop }: To
 | `onDecision` | 是 | `(decision: ToolApprovalDecision) => Promise<void>` |
 | `onRefresh` | 是 | `() => Promise<void>` |
 | `onStop` | 否 | `(() => void) \| undefined` |
+| `strings` | 否 | `Partial<ToolApprovalCardStrings> \| undefined` |
 
-<!-- source-sha256: 654d144ecc4a6fa129edb5f860c4d70e281c55570fad3a207ccc3432824f010c; doc-sha256: 570a32709e28feb4df50231c9f763a09fbc5e19d02b2599f12f1c7b496052cd9 -->
+<!-- source-sha256: ebbf7562a8bd62f8ee353d43ad0ac1335d879f8588540fab35b7d4758c897235; doc-sha256: 570a32709e28feb4df50231c9f763a09fbc5e19d02b2599f12f1c7b496052cd9 -->
 
 ## ToolApprovalGroup
 
@@ -1378,7 +1381,7 @@ export function ToolApprovalCard({ approval, onDecision, onRefresh, onStop }: To
 - approvals 为空时不渲染，回调与 ToolApprovalCard 相同。
 
 ```ts
-export function ToolApprovalGroup({ approvals, onDecision, onRefresh, onStop, }: { approvals: ChatToolApproval[]; onDecision: (decision: ToolApprovalDecision) => Promise<void>; onRefresh: () => Promise<void>; onStop?: () => void; }): JSX.Element | null;
+export function ToolApprovalGroup({ approvals, onDecision, onRefresh, onStop, strings: stringsOverride, }: { approvals: ChatToolApproval[]; onDecision: (decision: ToolApprovalDecision) => Promise<void>; onRefresh: () => Promise<void>; onStop?: () => void; strings?: Partial<ToolApprovalGroupStrings>; }): JSX.Element | null;
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1387,8 +1390,9 @@ export function ToolApprovalGroup({ approvals, onDecision, onRefresh, onStop, }:
 | `onDecision` | 是 | `(decision: ToolApprovalDecision) => Promise<void>` |
 | `onRefresh` | 是 | `() => Promise<void>` |
 | `onStop` | 否 | `(() => void) \| undefined` |
+| `strings` | 否 | `Partial<ToolApprovalGroupStrings> \| undefined` |
 
-<!-- source-sha256: 04ace034f40abdf07fb5b6da5c32176e85d2a6efb0a6aa1b8a79b76be50fa466; doc-sha256: 570a32709e28feb4df50231c9f763a09fbc5e19d02b2599f12f1c7b496052cd9 -->
+<!-- source-sha256: 840162f864151fc66008bdfc3c430994b7919b81c1e04e4289e345b0463eca55; doc-sha256: 570a32709e28feb4df50231c9f763a09fbc5e19d02b2599f12f1c7b496052cd9 -->
 
 ## PlazaCard
 
@@ -2653,6 +2657,7 @@ import type { SessionSidebarProps } from "@openagentpack/kit-chat-ui";
 | `search` | 否 | `SessionSidebarPage \| undefined` |
 | `agentName` | 否 | `((slug: string) => string) \| undefined` |
 | `className` | 否 | `string \| undefined` |
+| `strings` | 否 | `Partial<SessionSidebarStrings> \| undefined` |
 
 
 ### SessionSidebarSection
@@ -2663,6 +2668,39 @@ import type { SessionSidebarProps } from "@openagentpack/kit-chat-ui";
 export type SessionSidebarSection = "groups" | "recent";
 ```
 
+
+
+### SessionSidebarStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { SessionSidebarStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `searchPlaceholder` | 是 | `string` |
+| `closeError` | 是 | `string` |
+| `agents` | 是 | `string` |
+| `recent` | 是 | `string` |
+| `recentSessions` | 是 | `string` |
+| `allSessions` | 是 | `string` |
+| `sessionsTitle` | 是 | `string` |
+| `listAria` | 是 | `string` |
+| `searchResultsAria` | 是 | `string` |
+| `loadMore` | 是 | `string` |
+| `loadingMore` | 是 | `string` |
+| `loadingSessions` | 是 | `string` |
+| `loadingTitle` | 是 | `string` |
+| `emptyTitle` | 是 | `string` |
+| `noMatchLoaded` | 是 | `string` |
+| `noMatch` | 是 | `string` |
+| `noMatchShort` | 是 | `string` |
+| `firstUse` | 是 | `string` |
+| `firstUseHint` | 是 | `string` |
+| `loadedCount` | 是 | `string` |
+| `newInGroup` | 是 | `string` |
 
 
 ### SessionSummary
@@ -2703,6 +2741,58 @@ import type { StatusIndicatorStrings } from "@openagentpack/kit-chat-ui";
 | `reconnecting` | 是 | `string` |
 | `error` | 是 | `string` |
 | `errorPrefix` | 是 | `string` |
+
+
+### SubAgentCardStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { SubAgentCardStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `failed` | 是 | `string` |
+| `completed` | 是 | `string` |
+| `completedWithDuration` | 是 | `string` |
+| `running` | 是 | `string` |
+| `runningElapsed` | 是 | `string` |
+| `dotPrefix` | 是 | `string` |
+| `loadFailed` | 是 | `string` |
+| `retry` | 是 | `string` |
+| `loadingMessages` | 是 | `string` |
+| `noMessages` | 是 | `string` |
+| `currentConnectionOnly` | 是 | `string` |
+| `loadEarlier` | 是 | `string` |
+| `mainTaskPrefix` | 是 | `string` |
+| `aria` | 是 | `string` |
+| `label` | 是 | `string` |
+| `taskSuffix` | 是 | `string` |
+
+
+### SubAgentPanelStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { SubAgentPanelStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `label` | 是 | `string` |
+| `dotCount` | 是 | `string` |
+| `statusRunning` | 是 | `string` |
+| `statusError` | 是 | `string` |
+| `failed` | 是 | `string` |
+| `running` | 是 | `string` |
+| `runningElapsed` | 是 | `string` |
+| `completed` | 是 | `string` |
+| `completedWithDuration` | 是 | `string` |
+| `close` | 是 | `string` |
+| `mainTaskPrefix` | 是 | `string` |
+| `noTask` | 是 | `string` |
 
 
 ### SuggestionItem
@@ -2805,6 +2895,36 @@ import type { ToolApprovalCardProps } from "@openagentpack/kit-chat-ui";
 | `onDecision` | 是 | `(decision: ToolApprovalDecision) => Promise<void>` |
 | `onRefresh` | 是 | `() => Promise<void>` |
 | `onStop` | 否 | `(() => void) \| undefined` |
+| `strings` | 否 | `Partial<ToolApprovalCardStrings> \| undefined` |
+
+
+### ToolApprovalCardStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { ToolApprovalCardStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `noParams` | 是 | `string` |
+| `paramError` | 是 | `string` |
+| `status` | 是 | `{ pending: string; submitting: string; submitted: string; uncertain: string; stale: string; }` |
+| `deny` | 是 | `string` |
+| `allow` | 是 | `string` |
+| `submitting` | 是 | `string` |
+| `stop` | 是 | `string` |
+| `refreshing` | 是 | `string` |
+| `refresh` | 是 | `string` |
+| `viewParams` | 是 | `string` |
+| `submitFailed` | 是 | `string` |
+| `refreshFailed` | 是 | `string` |
+| `aria` | 是 | `string` |
+| `request` | 是 | `string` |
+| `unknownTool` | 是 | `string` |
+| `unknownType` | 是 | `string` |
+| `notActionable` | 是 | `string` |
 
 
 ### ToolApprovalDecision
@@ -2821,6 +2941,20 @@ export type ToolApprovalDecision = { batch_id: string; call_id: string; result: 
 | `call_id` | 是 | `string` |
 | `result` | 是 | `"allow" \| "deny"` |
 | `deny_message` | 否 | `string \| undefined` |
+
+
+### ToolApprovalGroupStrings
+
+来自 `@openagentpack/kit-chat-ui`。
+
+```ts
+import type { ToolApprovalGroupStrings } from "@openagentpack/kit-chat-ui";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `previous` | 是 | `string` |
+| `next` | 是 | `string` |
 
 
 ### TooltipSide

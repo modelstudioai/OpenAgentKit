@@ -1,7 +1,9 @@
 import type { ChatToolApproval } from "@openagentpack/kit-sdk/chat";
 import type { ToolApprovalDecision } from "@openagentpack/kit-sdk/protocol";
 import { useState } from "react";
+import { resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
 import { ToolApprovalCard } from "../tool-approval-card/index.tsx";
+import toolApprovalGroupStrings, { type ToolApprovalGroupStrings } from "./strings.ts";
 
 const PAGER_BUTTON =
 	"grid size-6 place-items-center rounded-[var(--kit-radius-sm)] text-[var(--kit-fg-muted)] transition-colors hover:bg-[var(--kit-bg-subtle)] hover:text-[var(--kit-fg)] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]";
@@ -15,12 +17,16 @@ export function ToolApprovalGroup({
 	onDecision,
 	onRefresh,
 	onStop,
+	strings: stringsOverride,
 }: {
 	approvals: ChatToolApproval[];
 	onDecision: (decision: ToolApprovalDecision) => Promise<void>;
 	onRefresh: () => Promise<void>;
 	onStop?: () => void;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<ToolApprovalGroupStrings>;
 }) {
+	const strings = resolveStrings(toolApprovalGroupStrings, useKitLocale(), stringsOverride);
 	const [selected, setSelected] = useState<string | null>(null);
 	const keyOf = (approval: ChatToolApproval) => `${approval.batch_id}:${approval.call_id}`;
 	const keys = approvals.map(keyOf);
@@ -36,7 +42,7 @@ export function ToolApprovalGroup({
 				<div className="flex items-center justify-end gap-1 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
 					<button
 						type="button"
-						aria-label="上一个审批"
+						aria-label={strings.previous}
 						className={PAGER_BUTTON}
 						disabled={index <= 0}
 						onClick={() => setSelected(keyOf(approvals[index - 1]!))}
@@ -57,7 +63,7 @@ export function ToolApprovalGroup({
 					</span>
 					<button
 						type="button"
-						aria-label="下一个审批"
+						aria-label={strings.next}
 						className={PAGER_BUTTON}
 						disabled={index >= approvals.length - 1}
 						onClick={() => setSelected(keyOf(approvals[index + 1]!))}

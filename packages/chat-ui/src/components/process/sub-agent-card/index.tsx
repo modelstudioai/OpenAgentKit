@@ -2,9 +2,11 @@ import type { ChatAgentThread, ChatMultiAgent } from "@openagentpack/kit-sdk/cha
 import type { ChatMessage, MessagePart } from "@openagentpack/kit-sdk/messages";
 import { useEffect, useState } from "react";
 import { FileCard } from "../../file-card/index.tsx";
+import { format, resolveStrings, useKitLocale } from "../../kit-i18n/index.ts";
 import { Markdown } from "../../markdown/index.tsx";
 import { ReasoningBlock } from "../reasoning-block/index.tsx";
 import { ToolCallCard } from "../tool-call-card/index.tsx";
+import subAgentCardStrings, { type SubAgentCardStrings } from "./strings.ts";
 
 export function formatDuration(ms: number): string {
 	const total = Math.max(0, Math.floor(ms / 1000));
@@ -100,27 +102,29 @@ function HeadStatus({
 	status,
 	elapsed,
 	duration,
+	strings,
 }: {
 	status: string | null;
 	elapsed: string | null;
 	duration: string | null;
+	strings: SubAgentCardStrings;
 }) {
 	const failed = status === "failed";
 	const done = !failed && TERMINAL.has(status ?? "");
 	const label = failed
-		? "执行出错"
+		? strings.failed
 		: done
 			? duration
-				? `已完成 · ${duration}`
-				: "已完成"
+				? format(strings.completedWithDuration, { duration })
+				: strings.completed
 			: elapsed
-				? `正在执行 ${elapsed}`
-				: "正在执行";
+				? format(strings.runningElapsed, { elapsed })
+				: strings.running;
 	return (
 		<span
 			className={`shrink-0 text-[length:var(--kit-text-caption)] ${failed ? "text-[var(--kit-danger)]" : "text-[var(--kit-fg-muted)]"}`}
 		>
-			{`· ${label}`}
+			{format(strings.dotPrefix, { label })}
 		</span>
 	);
 }
@@ -130,11 +134,15 @@ export function ThreadEventStates({
 	thread,
 	threadId,
 	multiAgent,
+	strings: stringsOverride,
 }: {
 	thread: ChatAgentThread;
 	threadId: string;
 	multiAgent: ChatMultiAgent;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<SubAgentCardStrings>;
 }) {
+	const strings = resolveStrings(subAgentCardStrings, useKitLocale(), stringsOverride);
 	return (
 		<>
 			{thread.error ? (
@@ -142,25 +150,25 @@ export function ThreadEventStates({
 					role="alert"
 					className="flex flex-wrap items-center gap-2 px-2 py-1.5 text-[length:var(--kit-text-label)] text-[var(--kit-danger)]"
 				>
-					消息加载失败：{thread.error}
+					{format(strings.loadFailed, { message: thread.error })}
 					<button
 						type="button"
 						className={loadMoreClass}
 						disabled={thread.loading}
 						onClick={() => void multiAgent.loadThreadEvents(threadId, { retry: true })}
 					>
-						重试
+						{strings.retry}
 					</button>
 				</p>
 			) : null}
 			{!thread.loaded && thread.loading ? (
 				<p role="status" className="px-2 py-1.5 text-[length:var(--kit-text-label)] text-[var(--kit-fg-muted)]">
-					正在加载 Agent 消息…
+					{strings.loadingMessages}
 				</p>
 			) : null}
 			{thread.loaded && thread.messages.length === 0 ? (
 				<p className="px-2 py-1.5 text-[length:var(--kit-text-label)] text-[var(--kit-fg-muted)]">
-					{thread.historyAvailable ? "此 Agent 暂无消息" : "仅显示本次连接收到的消息"}
+					{thread.historyAvailable ? strings.noMessages : strings.currentConnectionOnly}
 				</p>
 			) : null}
 			{thread.nextPageToken ? (
@@ -170,7 +178,7 @@ export function ThreadEventStates({
 					disabled={thread.loading}
 					onClick={() => void multiAgent.loadThreadEvents(threadId, { more: true })}
 				>
-					{thread.loading ? "正在加载 Agent 消息…" : "加载更早消息"}
+					{thread.loading ? strings.loadingMessages : strings.loadEarlier}
 				</button>
 			) : null}
 		</>
@@ -184,23 +192,25 @@ function CardBody({
 	multiAgent,
 	onArtifactDownload,
 	onArtifactOpen,
+	strings,
 }: {
 	thread: ChatAgentThread;
 	threadId: string;
 	multiAgent: ChatMultiAgent;
 	onArtifactDownload?: (fileId: string) => void;
 	onArtifactOpen?: (fileId: string, contentType?: string) => void;
+	strings: SubAgentCardStrings;
 }) {
 	return (
 		<div className="mt-0.5 mb-1 ml-5 max-h-[var(--kit-sub-agent-body-height)] min-w-0 overflow-y-auto pl-3">
 			{thread.task ? (
 				<p className="px-2 py-1.5 text-[length:var(--kit-text-label)] leading-[var(--kit-leading-body)] whitespace-pre-wrap [overflow-wrap:anywhere]">
-					<span className="text-[var(--kit-fg-muted)]">主 Agent 指令：</span>
+					<span className="text-[var(--kit-fg-muted)]">{strings.mainTaskPrefix}</span>
 					{thread.task}
 				</p>
 			) : null}
 			<StepRows messages={thread.messages} onArtifactDownload={onArtifactDownload} onArtifactOpen={onArtifactOpen} />
-			<ThreadEventStates thread={thread} threadId={threadId} multiAgent={multiAgent} />
+			<ThreadEventStates thread={thread} threadId={threadId} multiAgent={multiAgent} strings={strings} />
 		</div>
 	);
 }
@@ -214,12 +224,16 @@ export function SubAgentCard({
 	multiAgent,
 	onArtifactDownload,
 	onArtifactOpen,
+	strings: stringsOverride,
 }: {
 	threadId: string;
 	multiAgent?: ChatMultiAgent;
 	onArtifactDownload?: (fileId: string) => void;
 	onArtifactOpen?: (fileId: string, contentType?: string) => void;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<SubAgentCardStrings>;
 }) {
+	const strings = resolveStrings(subAgentCardStrings, useKitLocale(), stringsOverride);
 	const thread = multiAgent?.threads.find((item) => item.id === threadId);
 	const running = !!thread && isThreadRunning(thread.status);
 	// 运行中逐秒推进，驱动「正在执行 Ns」实时计时。
@@ -250,7 +264,7 @@ export function SubAgentCard({
 				if (!thread.historyAvailable || thread.loaded || thread.loading || thread.error) return;
 				void multiAgent.loadThreadEvents(threadId);
 			}}
-			aria-label={`子 Agent ${thread.name}`}
+			aria-label={format(strings.aria, { name: thread.name })}
 			className="kit-collapse group/sub my-1 min-w-0 text-[length:var(--kit-text-label)] animate-[var(--kit-animate-in)]"
 		>
 			<summary className="flex min-w-0 cursor-pointer list-none items-center gap-5 rounded-[var(--kit-radius-sm)] px-2 py-1.5 text-[var(--kit-fg-muted)] transition-colors select-none hover:bg-[var(--kit-bg-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] [&::-webkit-details-marker]:hidden">
@@ -267,13 +281,15 @@ export function SubAgentCard({
 					<path strokeLinecap="round" strokeLinejoin="round" d="M2 14h2M20 14h2M15 13v2M9 13v2" />
 				</svg>
 				<span className="shrink-0 rounded-[var(--kit-radius-xs)] border border-[var(--kit-border)] px-1.5 py-px text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
-					子 Agent
+					{strings.label}
 				</span>
 				<span className="min-w-0 truncate text-[var(--kit-fg)]">
 					{thread.name}
-					{thread.task ? <span className="text-[var(--kit-fg-muted)]">{` · ${thread.task}`}</span> : null}
+					{thread.task ? (
+						<span className="text-[var(--kit-fg-muted)]">{format(strings.taskSuffix, { task: thread.task })}</span>
+					) : null}
 				</span>
-				<HeadStatus status={thread.status} elapsed={elapsed} duration={duration} />
+				<HeadStatus status={thread.status} elapsed={elapsed} duration={duration} strings={strings} />
 				<svg
 					viewBox="0 0 24 24"
 					fill="none"
@@ -291,6 +307,7 @@ export function SubAgentCard({
 				multiAgent={multiAgent}
 				onArtifactDownload={onArtifactDownload}
 				onArtifactOpen={onArtifactOpen}
+				strings={strings}
 			/>
 		</details>
 	);

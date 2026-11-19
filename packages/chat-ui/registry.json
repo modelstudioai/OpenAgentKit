@@ -28,8 +28,17 @@
       "extraFiles": ["src/components/message-skeleton/strings.ts"]
     },
     "execution-group": { "file": "src/components/process/execution-group/index.tsx", "deps": ["reasoning-block", "tool-call-card"] },
-    "sub-agent-card": { "file": "src/components/process/sub-agent-card/index.tsx", "deps": ["reasoning-block", "tool-call-card", "file-card"] },
-    "sub-agent-panel": { "file": "src/components/process/sub-agent-panel/index.tsx", "deps": ["sub-agent-card"], "npmDependencies": ["@radix-ui/react-dialog"] },
+    "sub-agent-card": {
+      "file": "src/components/process/sub-agent-card/index.tsx",
+      "deps": ["kit-i18n", "reasoning-block", "tool-call-card", "file-card"],
+      "extraFiles": ["src/components/process/sub-agent-card/strings.ts"]
+    },
+    "sub-agent-panel": {
+      "file": "src/components/process/sub-agent-panel/index.tsx",
+      "deps": ["kit-i18n", "sub-agent-card"],
+      "extraFiles": ["src/components/process/sub-agent-panel/strings.ts"],
+      "npmDependencies": ["@radix-ui/react-dialog"]
+    },
     "process-step": { "file": "src/components/process/step/index.tsx", "deps": [] },
     "tool-call-card": { "file": "src/components/process/tool-call-card/index.tsx", "deps": ["process-step", "tool-summary", "markdown", "code-highlighter"] },
     "reasoning-block": { "file": "src/components/process/reasoning-block/index.tsx", "deps": ["process-step"] },
@@ -57,7 +66,11 @@
       "deps": ["kit-i18n", "tooltip", "process-step"],
       "extraFiles": ["src/components/session-list/strings.ts"]
     },
-    "session-sidebar": { "file": "src/components/session-sidebar/index.tsx", "deps": ["session-list", "states"] },
+    "session-sidebar": {
+      "file": "src/components/session-sidebar/index.tsx",
+      "deps": ["kit-i18n", "session-list", "states"],
+      "extraFiles": ["src/components/session-sidebar/strings.ts"]
+    },
     "states": { "file": "src/components/states/index.ts", "deps": ["empty-state", "error-state"] },
     "prompts": { "file": "src/components/prompts/index.tsx", "deps": [] },
     "plaza": { "file": "src/components/plaza/index.ts", "deps": ["activity-heatmap", "category-tabs", "meter-bar", "plaza-card"] },
@@ -112,8 +125,16 @@
       "deps": ["kit-i18n", "agent-header"],
       "extraFiles": ["src/components/plaza-card/strings.ts"]
     },
-    "tool-approval-card": { "file": "src/components/tool-approval-card/index.tsx", "deps": [] },
-    "tool-approval-group": { "file": "src/components/tool-approval-group/index.tsx", "deps": ["tool-approval-card"] }
+    "tool-approval-card": {
+      "file": "src/components/tool-approval-card/index.tsx",
+      "deps": ["kit-i18n"],
+      "extraFiles": ["src/components/tool-approval-card/strings.ts"]
+    },
+    "tool-approval-group": {
+      "file": "src/components/tool-approval-group/index.tsx",
+      "deps": ["kit-i18n", "tool-approval-card"],
+      "extraFiles": ["src/components/tool-approval-group/strings.ts"]
+    }
   },
   "theme": "src/theme.css"
 }
