@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { encodeFrame, type SessionEvent, type SseFrame } from "@openagentpack/kit-sdk/protocol";
+import { encodeFrame, type SessionEvent, type SseFrame } from "@openagentkit/sdk/protocol";
 import { expect, test } from "./fixtures.ts";
 
 // 保护公开接入示例：独立 HTTP 后端采用不同路径/方法/JSON 包装，前端无需 Kit Context。

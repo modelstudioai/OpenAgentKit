@@ -3,7 +3,7 @@ import {
 	type SkillInputMarker,
 	skillInputMarkerRanges,
 	skillInputTokens,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import {
 	type AriaAttributes,
 	type AriaRole,

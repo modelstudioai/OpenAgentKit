@@ -1,4 +1,4 @@
-import { KitError, type TemplateCreateInput, type TemplateView } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type TemplateCreateInput, type TemplateView } from "@openagentkit/sdk/protocol";
 import { Alert, Button, Modal } from "antd";
 import { useEffect, useId, useMemo, useState } from "react";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";

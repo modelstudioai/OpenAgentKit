@@ -1,4 +1,4 @@
-import { PLAZA_CATEGORY_LABELS, type TemplateCreateInput, type TemplateView } from "@openagentpack/kit-sdk/protocol";
+import { PLAZA_CATEGORY_LABELS, type TemplateCreateInput, type TemplateView } from "@openagentkit/sdk/protocol";
 import type { APIRequestContext, Locator, Page, Request } from "@playwright/test";
 import { expect, test } from "./fixtures.ts";
 import { ADMIN_TOKEN, openConsoleNavigation } from "./helpers.ts";

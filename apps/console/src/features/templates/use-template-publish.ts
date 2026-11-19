@@ -1,4 +1,4 @@
-import { KitError, type OperationView, type ProjectPlan } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type OperationView, type ProjectPlan } from "@openagentkit/sdk/protocol";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";
 import { useAdminOperation } from "../../lib/admin/use-admin-operation.ts";

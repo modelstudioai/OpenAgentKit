@@ -1,5 +1,5 @@
-import type { MemberSessionUsage, MemberUsageSummary } from "@openagentpack/kit-sdk/protocol";
-import { createObservable } from "@openagentpack/kit-sdk/state";
+import type { MemberSessionUsage, MemberUsageSummary } from "@openagentkit/sdk/protocol";
+import { createObservable } from "@openagentkit/sdk/state";
 import type { AdminClient } from "./client.ts";
 
 export interface MemberUsageSnapshot {

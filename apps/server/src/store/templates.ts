@@ -12,7 +12,7 @@ import {
 	TemplateVersionViewSchema,
 	type TemplateView,
 	TemplateViewSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 
 export type TemplateRecord = Omit<TemplateView, "template_id" | "created_at" | "updated_at" | "version" | "listing">;
 interface TemplateRow {

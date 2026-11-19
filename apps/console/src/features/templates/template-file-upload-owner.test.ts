@@ -1,4 +1,4 @@
-import { KitError, type ProjectFileUpload, type ProjectFileUploadInput } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type ProjectFileUpload, type ProjectFileUploadInput } from "@openagentkit/sdk/protocol";
 import { describe, expect, it, vi } from "vitest";
 import {
 	mergeImportedFiles,

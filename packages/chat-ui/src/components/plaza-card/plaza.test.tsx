@@ -1,4 +1,4 @@
-import type { PlazaEntry } from "@openagentpack/kit-sdk/protocol";
+import type { PlazaEntry } from "@openagentkit/sdk/protocol";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { PlazaCard, relativeUsedLabel } from "../plaza/index.ts";

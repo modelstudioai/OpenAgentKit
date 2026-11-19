@@ -2,7 +2,7 @@
   "name": "console",
   "version": "1.0.0",
   "private": true,
-  "description": "OpenAgentPack Kit 管理端（模版配置与上下架 / 成员与用量 / Operation 观测）",
+  "description": "OpenAgentKit 管理端（模版配置与上下架 / 成员与用量 / Operation 观测）",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
@@ -16,7 +16,7 @@
   "dependencies": {
     "@ant-design/icons": "^6",
     "@openagentpack/kit-chat-ui": "workspace:*",
-    "@openagentpack/kit-sdk": "workspace:*",
+    "@openagentkit/sdk": "workspace:*",
     "@radix-ui/react-dialog": "^1.3.1",
     "@radix-ui/react-popover": "1.3.1",
     "@radix-ui/react-tabs": "1.2.1",

@@ -3,7 +3,7 @@ import {
 	type RemoteSkillReference,
 	RemoteSkillReferenceSchema,
 	type RemoteSkillSource,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { ProviderGateway } from "../gateway/types.ts";
 
 export function listRemoteSkillCandidates(

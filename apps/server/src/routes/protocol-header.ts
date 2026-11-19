@@ -1,5 +1,5 @@
 import { z } from "@hono/zod-openapi";
-import { PROTOCOL_VERSION, PROTOCOL_VERSION_HEADER } from "@openagentpack/kit-sdk/protocol";
+import { PROTOCOL_VERSION, PROTOCOL_VERSION_HEADER } from "@openagentkit/sdk/protocol";
 
 /** 与 app.ts 的运行时版本闸门一致，供 OpenAPI 示例和调用方生成请求。 */
 export const ProtocolVersionHeadersSchema = z.object({

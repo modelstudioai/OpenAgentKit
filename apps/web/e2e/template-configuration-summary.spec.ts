@@ -1,4 +1,4 @@
-import { PROTOCOL_VERSION, type TemplateView } from "@openagentpack/kit-sdk/protocol";
+import { PROTOCOL_VERSION, type TemplateView } from "@openagentkit/sdk/protocol";
 import type { Locator, Page } from "@playwright/test";
 import { selectConsoleOption } from "./console-select-helpers.ts";
 import { expect, test } from "./fixtures.ts";

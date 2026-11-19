@@ -1,3 +1,13 @@
+import { useAgentCatalog, useAgentResources } from "@openagentkit/sdk/agents/hooks";
+import type { MemberAuthController } from "@openagentkit/sdk/auth";
+import { useChat, useComposer } from "@openagentkit/sdk/chat/hooks";
+import { useArtifactActions, useAttachments } from "@openagentkit/sdk/files/hooks";
+import { useIsMobile } from "@openagentkit/sdk/hooks";
+import type { AgentSummary, SessionDetail, SessionSummary } from "@openagentkit/sdk/protocol";
+import { useKitClient } from "@openagentkit/sdk/providers/kit/react";
+import type { PendingSessionAction } from "@openagentkit/sdk/sessions";
+import { useSessionDetails } from "@openagentkit/sdk/sessions/hooks";
+import { type QuotaExceededDetails, readQuotaExceeded } from "@openagentkit/sdk/usage";
 import {
 	type AttachmentItem,
 	Chat,
@@ -10,16 +20,6 @@ import {
 	ToolApprovalGroup,
 	Tooltip,
 } from "@openagentpack/kit-chat-ui";
-import { useAgentCatalog, useAgentResources } from "@openagentpack/kit-sdk/agents/hooks";
-import type { MemberAuthController } from "@openagentpack/kit-sdk/auth";
-import { useChat, useComposer } from "@openagentpack/kit-sdk/chat/hooks";
-import { useArtifactActions, useAttachments } from "@openagentpack/kit-sdk/files/hooks";
-import { useIsMobile } from "@openagentpack/kit-sdk/hooks";
-import type { AgentSummary, SessionDetail, SessionSummary } from "@openagentpack/kit-sdk/protocol";
-import { useKitClient } from "@openagentpack/kit-sdk/providers/kit/react";
-import type { PendingSessionAction } from "@openagentpack/kit-sdk/sessions";
-import { useSessionDetails } from "@openagentpack/kit-sdk/sessions/hooks";
-import { type QuotaExceededDetails, readQuotaExceeded } from "@openagentpack/kit-sdk/usage";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MemberAuthGate, type MemberExperienceProps } from "./features/auth/member-auth-gate.tsx";
 import { AsidePanelSections } from "./features/chat/aside-panel.tsx";
@@ -29,7 +29,7 @@ import { NewChatRecent } from "./features/new-chat/new-chat-view.tsx";
 import { PlazaView } from "./features/plaza/plaza-view.tsx";
 import { QuotaBanner } from "./features/usage/quota-banner.tsx";
 import { UsageView } from "./features/usage/usage-view.tsx";
-import type { Branding } from "./lib/branding.ts";
+import { type Branding, DEFAULT_BRAND_PRODUCT_NAME } from "./lib/branding.ts";
 import { createArtifactHost, resolveHostCapabilities } from "./lib/host.ts";
 import { type NavigateFn, useRoute } from "./lib/use-route.ts";
 import { type SessionDirectory, useSessionDirectory } from "./lib/use-session-directory.ts";
@@ -648,7 +648,7 @@ function Shell({ branding, ...account }: MemberExperienceProps & { branding: Bra
 
 export function App({ controller, branding }: { controller: MemberAuthController; branding: Branding }) {
 	useEffect(() => {
-		document.title = branding.productName.trim() || "OpenAgentPack Kit";
+		document.title = branding.productName.trim() || DEFAULT_BRAND_PRODUCT_NAME;
 		const scheme = resolveHostCapabilities().preferredColorScheme?.();
 		if (scheme === "dark") document.documentElement.dataset.kitTheme = scheme;
 	}, [branding.productName]);

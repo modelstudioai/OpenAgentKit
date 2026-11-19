@@ -12,7 +12,7 @@ import {
 	MemberGroupsPageSchema,
 	MemberGroupsPatchSchema,
 	PlanResponseSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 import { requireAdmin } from "../services/identity.ts";
 

@@ -1,6 +1,6 @@
-import { KitError, SendMessageResponseSchema, ToolApprovalsResponseSchema } from "@openagentpack/kit-sdk/protocol";
-import type { SessionEventChatProviderOptions } from "@openagentpack/kit-sdk/providers/session-events";
-import { createRequest } from "@openagentpack/kit-sdk/request";
+import { KitError, SendMessageResponseSchema, ToolApprovalsResponseSchema } from "@openagentkit/sdk/protocol";
+import type { SessionEventChatProviderOptions } from "@openagentkit/sdk/providers/session-events";
+import { createRequest } from "@openagentkit/sdk/request";
 
 export interface BackendConfig {
 	// 显式传入运行时配置，后端可以与页面不同源。

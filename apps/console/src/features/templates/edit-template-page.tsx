@@ -1,5 +1,5 @@
+import type { TemplateView } from "@openagentkit/sdk/protocol";
 import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui";
-import type { TemplateView } from "@openagentpack/kit-sdk/protocol";
 import { Button } from "antd";
 import { useMemo } from "react";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";

@@ -1,4 +1,4 @@
-import { PLAZA_CATEGORY_LABELS, type TemplateView } from "@openagentpack/kit-sdk/protocol";
+import { PLAZA_CATEGORY_LABELS, type TemplateView } from "@openagentkit/sdk/protocol";
 import type { ReactNode } from "react";
 import styles from "./template-resources.module.less";
 import {

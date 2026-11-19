@@ -1,4 +1,4 @@
-import type { EvalRunDetail, EvalRunSummary, EvalWorkspaceView } from "@openagentpack/kit-sdk/protocol";
+import type { EvalRunDetail, EvalRunSummary, EvalWorkspaceView } from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Alert, Button, Select, Table } from "antd";
 import { useEffect, useState } from "react";

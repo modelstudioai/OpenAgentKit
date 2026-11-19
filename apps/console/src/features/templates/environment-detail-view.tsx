@@ -1,4 +1,4 @@
-import type { RemoteEnvironmentDetail } from "@openagentpack/kit-sdk/protocol";
+import type { RemoteEnvironmentDetail } from "@openagentkit/sdk/protocol";
 import type { ReactNode } from "react";
 
 import styles from "./template-resources.module.less";

@@ -5,7 +5,7 @@ import type {
 	UsageModelRow,
 	UsageSummary,
 	UsageToolRow,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Button, Empty, Popover, Result, Spin, Table, Tabs, Tag } from "antd";
 import { useEffect, useMemo, useState } from "react";

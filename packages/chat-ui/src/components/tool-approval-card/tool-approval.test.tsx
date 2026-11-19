@@ -1,4 +1,4 @@
-import type { ChatToolApproval } from "@openagentpack/kit-sdk/chat";
+import type { ChatToolApproval } from "@openagentkit/sdk/chat";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ToolApprovalCard, ToolApprovalGroup } from "../tool-approval/index.ts";

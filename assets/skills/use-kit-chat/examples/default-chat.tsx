@@ -1,8 +1,8 @@
+import { useChat } from "@openagentkit/sdk/chat/hooks";
+import { KitError } from "@openagentkit/sdk/protocol";
+import { createKitClient, type KitClient } from "@openagentkit/sdk/providers/kit";
+import { KitProvider } from "@openagentkit/sdk/providers/kit/react";
 import { Chat, Sender } from "@openagentpack/kit-chat-ui";
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
-import { KitError } from "@openagentpack/kit-sdk/protocol";
-import { createKitClient, type KitClient } from "@openagentpack/kit-sdk/providers/kit";
-import { KitProvider } from "@openagentpack/kit-sdk/providers/kit/react";
 import { useRef, useState } from "react";
 import { ApprovalList } from "./approval-list.tsx";
 

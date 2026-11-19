@@ -7,7 +7,7 @@ import {
 	type PlanResponse,
 	type SendMessageRequest,
 	type ToolApprovalDecision,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { ProviderGateway } from "../gateway/types.ts";
 import type { AuditLog } from "../store/audit.ts";
 import type { SessionIndex } from "../store/sessions.ts";

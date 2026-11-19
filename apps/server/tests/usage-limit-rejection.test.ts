@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { SessionEvent } from "@openagentpack/kit-sdk/protocol";
+import type { SessionEvent } from "@openagentkit/sdk/protocol";
 import { setDefaultFetch } from "@openagentpack/sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createSdkGateway } from "../src/gateway/sdk.ts";

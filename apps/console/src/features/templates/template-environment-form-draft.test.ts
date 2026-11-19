@@ -1,4 +1,4 @@
-import type { RemoteEnvironmentDetail } from "@openagentpack/kit-sdk/protocol";
+import type { RemoteEnvironmentDetail } from "@openagentkit/sdk/protocol";
 import { describe, expect, it } from "vitest";
 import {
 	createEnvironmentDraft,

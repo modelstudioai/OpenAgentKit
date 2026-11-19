@@ -1,4 +1,4 @@
-import { KitError } from "@openagentpack/kit-sdk/protocol";
+import { KitError } from "@openagentkit/sdk/protocol";
 import { type ResourceExecutionResult, ResourceRuntimeError } from "@openagentpack/sdk";
 import { PublicationError } from "../publication-error.ts";
 import { publicationErrorDetails, publicationReport, sdkPublicationFailure } from "./sdk-publication.ts";

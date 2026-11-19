@@ -1,4 +1,4 @@
-import type { AuditLogView } from "@openagentpack/kit-sdk/protocol";
+import type { AuditLogView } from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Button, Empty, Result, Table } from "antd";
 import { useState } from "react";

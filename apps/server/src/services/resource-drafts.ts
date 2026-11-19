@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { KitError, type ResourceDraftDiscardResult, type ResourceDraftView } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type ResourceDraftDiscardResult, type ResourceDraftView } from "@openagentkit/sdk/protocol";
 import type { ServerConfig } from "../config.ts";
 import { type ResourceDraftProof, ResourceDraftProofSchema } from "../gateway/resource-draft-proof.ts";
 import { createResourceDraftYamlFiles } from "../gateway/resource-draft-yaml-files.ts";

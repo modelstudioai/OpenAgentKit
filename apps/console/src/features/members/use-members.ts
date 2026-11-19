@@ -1,5 +1,5 @@
-import type { AdminMembersPage, CreateMemberRequest, CreateMemberResponse } from "@openagentpack/kit-sdk/protocol";
-import { KitError } from "@openagentpack/kit-sdk/protocol";
+import type { AdminMembersPage, CreateMemberRequest, CreateMemberResponse } from "@openagentkit/sdk/protocol";
+import { KitError } from "@openagentkit/sdk/protocol";
 import { useEffect, useRef, useState } from "react";
 import { adminApi } from "../../lib/api.ts";
 

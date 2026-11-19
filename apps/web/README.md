@@ -21,7 +21,7 @@
 侧栏顶部的产品名和 Logo 由管理端「系统 → 配置」的品牌配置页维护，支持上传图片或填写 URL。
 Web 启动时读取 `GET /api/config` 的 `branding` 字段，不再读取 `.env` 或构建时注入。
 
-- `productName`：产品名称，未配置时使用 `OpenAgentPack Kit`
+- `productName`：产品名称，默认使用 `OpenAgentKit`。升级时，服务端仅更新未经管理员保存的旧默认名称。
 - `logoUrl`：可选 Logo；上传图片时指向 `/api/branding/logo?v=<hash>`，也可填写员工端本地路径
   （如 `/brand/kit-logo.svg`）或在线 `http(s)` URL
 
@@ -80,7 +80,7 @@ src/lib/use-route.ts     查询参数路由
 e2e/                     Playwright 全栈与专项用例
 ```
 
-Agent 资源查询及目录、附件、发送等调用流程复用 `kit-sdk/agents/hooks`、`kit-sdk/sessions/hooks`、`kit-sdk/files/hooks` 与 `kit-sdk/chat/hooks` 的公开 Hooks；
+Agent 资源查询及目录、附件、发送等调用流程复用 `@openagentkit/sdk/agents/hooks`、`@openagentkit/sdk/sessions/hooks`、`@openagentkit/sdk/files/hooks` 与 `@openagentkit/sdk/chat/hooks` 的公开 Hooks；
 Web 负责后端配置、组件绑定、路由和纯 UI 状态。
 
 ## 验证

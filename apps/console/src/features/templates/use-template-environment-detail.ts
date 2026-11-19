@@ -1,4 +1,4 @@
-import { ProjectEnvironmentNetworkingSchema, type RemoteEnvironmentDetail } from "@openagentpack/kit-sdk/protocol";
+import { ProjectEnvironmentNetworkingSchema, type RemoteEnvironmentDetail } from "@openagentkit/sdk/protocol";
 import { useMemo } from "react";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";

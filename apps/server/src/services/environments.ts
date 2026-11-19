@@ -1,4 +1,4 @@
-import { KitError } from "@openagentpack/kit-sdk/protocol";
+import { KitError } from "@openagentkit/sdk/protocol";
 import type { ProviderGateway } from "../gateway/types.ts";
 
 /** 查看环境不改变向导选择，也不创建 Session 或修改 Provider 资源。 */

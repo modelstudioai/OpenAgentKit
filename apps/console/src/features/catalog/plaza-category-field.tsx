@@ -1,4 +1,4 @@
-import { PLAZA_CATEGORY_LABELS, type PlazaCategory } from "@openagentpack/kit-sdk/protocol";
+import { PLAZA_CATEGORY_LABELS, type PlazaCategory } from "@openagentkit/sdk/protocol";
 import { Form, Select } from "antd";
 import { formRowClass, formRowLabelClass } from "../../lib/form-row.ts";
 import styles from "./catalog.module.less";

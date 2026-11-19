@@ -1,4 +1,4 @@
-import { ProjectAgentMultiagentSchema, RemoteAgentVersionDetailSchema } from "@openagentpack/kit-sdk/protocol";
+import { ProjectAgentMultiagentSchema, RemoteAgentVersionDetailSchema } from "@openagentkit/sdk/protocol";
 import { setDefaultFetch } from "@openagentpack/sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createSdkGateway } from "../src/gateway/sdk.ts";

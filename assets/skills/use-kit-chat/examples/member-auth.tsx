@@ -1,10 +1,6 @@
-import {
-	createMemberAuthController,
-	type MemberAuthController,
-	type MemberAuthOptions,
-} from "@openagentpack/kit-sdk/auth";
-import { useMemberAuth } from "@openagentpack/kit-sdk/auth/hooks";
-import { KitProvider } from "@openagentpack/kit-sdk/providers/kit/react";
+import { createMemberAuthController, type MemberAuthController, type MemberAuthOptions } from "@openagentkit/sdk/auth";
+import { useMemberAuth } from "@openagentkit/sdk/auth/hooks";
+import { KitProvider } from "@openagentkit/sdk/providers/kit/react";
 import type { FormEvent, ReactNode } from "react";
 
 // 公开配置解析出最终 API URL 后调用一次。宿主存储按带路径前缀的完整 URL 隔离，

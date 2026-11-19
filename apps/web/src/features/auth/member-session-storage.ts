@@ -1,4 +1,4 @@
-import { createMemberSessionStorage as createStorage, normalizeMemberApiBaseUrl } from "@openagentpack/kit-sdk/auth";
+import { createMemberSessionStorage as createStorage, normalizeMemberApiBaseUrl } from "@openagentkit/sdk/auth";
 
 export { normalizeMemberApiBaseUrl };
 export function createMemberSessionStorage(

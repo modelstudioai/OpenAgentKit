@@ -1,4 +1,4 @@
-import { encodeFrame, KitError, type SseFrame } from "@openagentpack/kit-sdk/protocol";
+import { encodeFrame, KitError, type SseFrame } from "@openagentkit/sdk/protocol";
 import type { Context } from "hono";
 import { type SSEStreamingApi, streamSSE } from "hono/streaming";
 import type { AppEnv } from "../app-env.ts";

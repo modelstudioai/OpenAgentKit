@@ -1,4 +1,4 @@
-import { type DeclarationType, KitError } from "@openagentpack/kit-sdk/protocol";
+import { type DeclarationType, KitError } from "@openagentkit/sdk/protocol";
 import {
 	executePlannedProject,
 	type ProjectRuntimeContext,

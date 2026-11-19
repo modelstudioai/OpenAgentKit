@@ -1,4 +1,4 @@
-import type { ChatMessage } from "@openagentpack/kit-sdk/messages";
+import type { ChatMessage } from "@openagentkit/sdk/messages";
 import { Message } from "../message/index.tsx";
 
 export function ThreadPanel({

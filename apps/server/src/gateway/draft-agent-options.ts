@@ -1,4 +1,4 @@
-import { ProjectAgentCreateInputSchema, ProjectAgentMcpNameSchema } from "@openagentpack/kit-sdk/protocol";
+import { ProjectAgentCreateInputSchema, ProjectAgentMcpNameSchema } from "@openagentkit/sdk/protocol";
 
 function mcpDefinition(value: unknown) {
 	if (!value || typeof value !== "object") return;

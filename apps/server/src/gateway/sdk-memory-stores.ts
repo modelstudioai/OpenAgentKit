@@ -4,7 +4,7 @@ import {
 	KitError,
 	type RemoteMemoryStore,
 	redactMemoryConfigurationText,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import {
 	ApiError,
 	getMemoryStore,

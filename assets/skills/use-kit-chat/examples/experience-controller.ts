@@ -1,20 +1,20 @@
-import { createComposer, deriveTitle } from "@openagentpack/kit-sdk/chat";
+import { createComposer, deriveTitle } from "@openagentkit/sdk/chat";
 import {
 	type ArtifactHost,
 	createArtifactActions,
 	createAttachments,
 	previewableArtifactType,
 	resolveArtifactType,
-} from "@openagentpack/kit-sdk/files";
-import type { MemberUsageLimitView } from "@openagentpack/kit-sdk/protocol";
-import type { KitClient } from "@openagentpack/kit-sdk/providers/kit";
+} from "@openagentkit/sdk/files";
+import type { MemberUsageLimitView } from "@openagentkit/sdk/protocol";
+import type { KitClient } from "@openagentkit/sdk/providers/kit";
 import {
 	createSessionActions,
 	createSessionDetails,
 	createSessionDirectory,
 	createSessionSearch,
-} from "@openagentpack/kit-sdk/sessions";
-import { createQuotaRecovery, readQuotaExceeded, usageLimitsAllowSending } from "@openagentpack/kit-sdk/usage";
+} from "@openagentkit/sdk/sessions";
+import { createQuotaRecovery, readQuotaExceeded, usageLimitsAllowSending } from "@openagentkit/sdk/usage";
 
 // 非 React 宿主管理订阅和销毁。每个控制器负责一项独立能力。
 export function createExperienceControllers(client: KitClient, host: ArtifactHost) {

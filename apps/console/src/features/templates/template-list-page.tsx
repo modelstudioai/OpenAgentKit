@@ -1,10 +1,10 @@
-import { useIsMobile } from "@openagentpack/kit-sdk/hooks";
+import { useIsMobile } from "@openagentkit/sdk/hooks";
 import {
 	PLAZA_CATEGORY_LABELS,
 	type PlazaCategory,
 	type TemplatesQuery,
 	type TemplateView,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Button, Empty, Input, Result, Select, Table } from "antd";
 import { useEffect, useMemo, useState } from "react";

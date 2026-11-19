@@ -59,7 +59,7 @@ test("后台品牌配置：默认上传 Logo，可切换为 URL，员工端从 /
 	} finally {
 		await request.put("/api/admin/branding", {
 			headers,
-			data: { productName: "OpenAgentPack Kit", logoUrl: null },
+			data: { productName: "OpenAgentKit", logoUrl: null },
 		});
 	}
 });
@@ -101,7 +101,7 @@ test("上传 SVG 仍可显示，直接打开时禁止脚本与同源存储访问
 		await page.evaluate(() => localStorage.removeItem("kit-branding-security-test"));
 		await request.put(`${api}/api/admin/branding`, {
 			headers,
-			data: { productName: "OpenAgentPack Kit", logoUrl: null },
+			data: { productName: "OpenAgentKit", logoUrl: null },
 		});
 	}
 });

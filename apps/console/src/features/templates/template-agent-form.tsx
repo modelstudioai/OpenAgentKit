@@ -1,4 +1,4 @@
-import { type ProjectAgentCreateInput, ProjectAgentCreateInputSchema } from "@openagentpack/kit-sdk/protocol";
+import { type ProjectAgentCreateInput, ProjectAgentCreateInputSchema } from "@openagentkit/sdk/protocol";
 import { Alert, Button, Form, Input } from "antd";
 import { type ReactNode, type Ref, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";

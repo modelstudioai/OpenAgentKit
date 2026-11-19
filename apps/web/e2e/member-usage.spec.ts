@@ -7,7 +7,7 @@ import {
 	PROTOCOL_VERSION,
 	SESSION_USAGE_METRICS,
 	type UsageSummary,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures.ts";
 import { openConsoleNavigation } from "./helpers.ts";

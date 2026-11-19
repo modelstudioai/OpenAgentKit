@@ -1,5 +1,7 @@
 # ADR-0020：取消独立 protocol 包，契约进入 SDK `/protocol`
 
+> 当前协议子入口为 `@openagentkit/sdk/protocol`。下文记录合并时使用的包名。
+
 ## 背景
 
 `@openagentpack/kit-protocol` 同时承载同构 DTO、zod schema、SSE 帧、错误模型、事件投影、

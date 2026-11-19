@@ -1,11 +1,11 @@
+import { useChat, useComposer } from "@openagentkit/sdk/chat/hooks";
+import type { ArtifactHost } from "@openagentkit/sdk/files";
+import { useArtifactActions, useAttachments } from "@openagentkit/sdk/files/hooks";
+import { createKitClient } from "@openagentkit/sdk/providers/kit";
+import { createSessionEventChatProvider } from "@openagentkit/sdk/providers/session-events";
+import { createRequest } from "@openagentkit/sdk/request";
+import { useSessionDetails, useSessionDirectory } from "@openagentkit/sdk/sessions/hooks";
 import { Attachments, Chat, ConfirmDialog } from "@openagentpack/kit-chat-ui";
-import { useChat, useComposer } from "@openagentpack/kit-sdk/chat/hooks";
-import type { ArtifactHost } from "@openagentpack/kit-sdk/files";
-import { useArtifactActions, useAttachments } from "@openagentpack/kit-sdk/files/hooks";
-import { createKitClient } from "@openagentpack/kit-sdk/providers/kit";
-import { createSessionEventChatProvider } from "@openagentpack/kit-sdk/providers/session-events";
-import { createRequest } from "@openagentpack/kit-sdk/request";
-import { useSessionDetails, useSessionDirectory } from "@openagentpack/kit-sdk/sessions/hooks";
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import "../../src/styles.css";

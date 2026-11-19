@@ -1,4 +1,4 @@
-import { KitError, type ResourceDraftView } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type ResourceDraftView } from "@openagentkit/sdk/protocol";
 import { describe, expect, it, vi } from "vitest";
 import {
 	createTemplateResourceDraftOwner,

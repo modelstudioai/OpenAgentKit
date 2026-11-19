@@ -10,7 +10,7 @@ import {
 	type QuotaRequestView,
 	type QuotaUsageRow,
 	type QuotaView,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { AuditLog } from "../store/audit.ts";
 import type { CatalogStore } from "../store/catalog.ts";
 import type { QuotaStore } from "../store/quota.ts";

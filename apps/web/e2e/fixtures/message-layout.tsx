@@ -1,6 +1,6 @@
+import type { ChatToolApproval } from "@openagentkit/sdk/chat";
+import type { ChatMessage } from "@openagentkit/sdk/messages";
 import { Chat, ToolApprovalCard } from "@openagentpack/kit-chat-ui";
-import type { ChatToolApproval } from "@openagentpack/kit-sdk/chat";
-import type { ChatMessage } from "@openagentpack/kit-sdk/messages";
 import { createRoot } from "react-dom/client";
 import "../../src/styles.css";
 

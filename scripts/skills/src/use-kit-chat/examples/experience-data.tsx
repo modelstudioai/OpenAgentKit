@@ -1,9 +1,9 @@
-import { useAgentResources } from "@openagentpack/kit-sdk/agents/hooks";
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
-import type { KitClient } from "@openagentpack/kit-sdk/providers/kit";
-import { useSessionDetails } from "@openagentpack/kit-sdk/sessions/hooks";
-import { useUsageLimits } from "@openagentpack/kit-sdk/usage/hooks";
+import { useAgentResources } from "@openagentkit/sdk/agents/hooks";
+import { useChat } from "@openagentkit/sdk/chat/hooks";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
+import type { KitClient } from "@openagentkit/sdk/providers/kit";
+import { useSessionDetails } from "@openagentkit/sdk/sessions/hooks";
+import { useUsageLimits } from "@openagentkit/sdk/usage/hooks";
 
 // 数据 Hook 支持显式 Client，也可通过 Context 兼容接入。
 export function AgentResourceSummary({ slug }: { slug: string | null }) {

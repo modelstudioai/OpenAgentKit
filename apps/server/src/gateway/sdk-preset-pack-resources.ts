@@ -3,7 +3,7 @@ import {
 	type PresetPackAgentResources,
 	type PresetPackResource,
 	type PresetPackSession,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import {
 	ApiError,
 	getRemoteAgent,

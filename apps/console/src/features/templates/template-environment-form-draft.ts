@@ -3,7 +3,7 @@ import {
 	ProjectEnvironmentCreateInputSchema,
 	ProjectEnvironmentNetworkingSchema,
 	type RemoteEnvironmentDetail,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 
 export const ENVIRONMENT_PACKAGE_MANAGERS = ["apt", "npm", "pip", "go", "cargo", "gem"] as const;
 export interface EnvironmentCreateDraft {

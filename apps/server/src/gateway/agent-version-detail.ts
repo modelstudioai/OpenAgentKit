@@ -1,4 +1,4 @@
-import type { RemoteAgentVersionDetail } from "@openagentpack/kit-sdk/protocol";
+import type { RemoteAgentVersionDetail } from "@openagentkit/sdk/protocol";
 import type { CloudAgent } from "@openagentpack/sdk";
 import { projectMultiagentConfiguration, remoteAgentMultiagent } from "./agent-multiagent.ts";
 import { redactRemoteDetailText as safeText } from "./remote-detail-redaction.ts";

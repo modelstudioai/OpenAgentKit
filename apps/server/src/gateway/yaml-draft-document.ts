@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { type DeclarationType, KitError, type ResourceDraftDeclaration } from "@openagentpack/kit-sdk/protocol";
+import { type DeclarationType, KitError, type ResourceDraftDeclaration } from "@openagentkit/sdk/protocol";
 import {
 	type BackendRuntimeInput,
 	InMemoryStateManager,

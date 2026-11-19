@@ -24,12 +24,12 @@ API Key 输入隐藏回显，凭据和管理员令牌不写启动日志。已有
 
 ```text
 apps/server ──► @openagentpack/sdk（上游主入口，仅服务端 runtime import）
-     └───────► kit-sdk/protocol 与 SDK 功能数据入口
+     └───────► @openagentkit/sdk/protocol 与 SDK 功能数据入口
 apps/web / apps/console / packages/chat-ui
-     ├───────► kit-sdk/<功能>/hooks 与 kit-sdk/providers/kit/react
+     ├───────► @openagentkit/sdk/<功能>/hooks 与 @openagentkit/sdk/providers/kit/react
      │                    └──────► SDK 功能数据入口
-     ├───────► kit-sdk/hooks（屏幕判断）
-     └───────► SDK 功能数据入口与 kit-sdk/protocol
+     ├───────► @openagentkit/sdk/hooks（屏幕判断）
+     └───────► SDK 功能数据入口与 @openagentkit/sdk/protocol
 ```
 
 自定义宿主注入的能力由体验页本地适配，不经过 SDK：
@@ -47,10 +47,10 @@ apps/web / apps/console / packages/chat-ui
   `state.ts`、`protocol/` 与 `internal/`，禁止带入 KitClient、Context 或业务模块；
   `sdk-kit-react-boundary` 将 Kit React 接入的仓库内依赖限制为 Kit 自身，不得引入其他
   Provider 或功能流程。生命周期、订阅、查询与 Kit Client 解析工具保持内部使用。
-- 数据处理继续遵守 Stream → Request → Provider → Chat：`kit-sdk/stream` 负责
-  字节解码和原始 SSE 分帧；`kit-sdk/request` 负责 HTTP；Provider 定义后端接口、事件合同
+- 数据处理继续遵守 Stream → Request → Provider → Chat：`@openagentkit/sdk/stream` 负责
+  字节解码和原始 SSE 分帧；`@openagentkit/sdk/request` 负责 HTTP；Provider 定义后端接口、事件合同
   与消息转换策略；Chat 持有快照和消息，并负责连接、重连、发送、停止与审批。
-  纯消息转换独立在 `messages/`；`kit-sdk/providers/bailian` 提供原始百炼 SSE 接入，
+  纯消息转换独立在 `messages/`；`@openagentkit/sdk/providers/bailian` 提供原始百炼 SSE 接入，
   仅使用上游 SDK 的浏览器安全 `session-events` 子路径。数据入口**禁 React、禁 Node-only API**。
 - 组件调用流程按功能归入 `sessions`、`files`、`chat/composer` 与 `usage`，复用已有
   Request、Chat 和 `state.ts`，React hooks 只管理订阅与生命周期。
@@ -58,7 +58,7 @@ apps/web / apps/console / packages/chat-ui
   `supports(operation)` 用于隐藏入口。Web 仅在 `backend.ts` / `chat-backend.ts` 填写示例协议。
   ArtifactHost 是注入接口，实际开窗、文件选择、保存和 object URL 仍在 Web 本地 host。
 - Console 的 `src/lib/admin/` 管理固定控制面请求、成员用量与 Operation 观察/恢复；
-  查询与提交状态复用 `kit-sdk/state`，协议帧读取复用 `kit-sdk/providers/kit`。
+  查询与提交状态复用 `@openagentkit/sdk/state`，协议帧读取复用 `@openagentkit/sdk/providers/kit`。
   SDK 不提供 `/admin` 子入口，协议 DTO 仍在 `/protocol`，管理业务归属见 ADR-0025。
 - `chat-ui`：视觉组件，只依赖 SDK 功能 hooks、消息类型与共享协议，**禁依赖 server**。
 - 公共 `Layout` 统一桌面侧栏、移动抽屉、页头与内容区。`sidebar` 插槽接收关闭动作与
@@ -143,7 +143,7 @@ API 参考和文档站示例。这些示例只引用公开包入口，按文档�
 ### SDK 数据四层职责
 
 Stream 源码位于 `packages/sdk/src/stream/`，与 HTTP 的 `request/` 目录并列；
-分别从 `kit-sdk/stream` 与 `kit-sdk/request` 导入。Request 复用 Stream，Stream 不反向依赖
+分别从 `@openagentkit/sdk/stream` 与 `@openagentkit/sdk/request` 导入。Request 复用 Stream，Stream 不反向依赖
 Request；沿用下表中的职责与原有实现。
 
 | 层 | 输入与输出 | 边界 |
@@ -155,7 +155,7 @@ Request；沿用下表中的职责与原有实现。
 
 `createTransport` 是现有 Kit 协议传输入口，组合 Request 与 Kit 帧消费，保留协议头和
 45 秒有效帧超时。`KitClient` 是 Kit Server 的业务 API 门面，仍支持目录、会话与文件。
-`createChatController` 从 `kit-sdk/chat` 提供，`useChat` 从 `kit-sdk/chat/hooks` 提供；
+`createChatController` 从 `@openagentkit/sdk/chat` 提供，`useChat` 从 `@openagentkit/sdk/chat/hooks` 提供；
 React hooks 只管理订阅与组件生命周期。
 标准事件后端通过公开 `createSessionEventChatProvider` 配置 Request、订阅请求及四个业务操作，
 可选配置线程查询；JSON 包装和路径归调用方。它复用现有标准事件控制帧处理，不加载原始 SDK 转换器。
@@ -181,7 +181,7 @@ Web 的 `lib/chat-backend.ts` 是实际运行的示例配置，明确填写 Kit 
 `sessions/load-directory.ts` 是 Client 可复用的独立读取叶子，不能引用 Client 或会话工作流；
 Provider 不能经功能聚合入口间接载入高层流程，Chat 核心不能反向引用 Composer。
 功能入口隔离规则禁止通用功能引入原始百炼转换器；只有显式使用
-`kit-sdk/providers/bailian` 时才加载 SDK 的浏览器转换依赖。默认消息转换同样受此隔离约束。
+`@openagentkit/sdk/providers/bailian` 时才加载 SDK 的浏览器转换依赖。默认消息转换同样受此隔离约束。
 
 ## UI 主题与确认交互
 
@@ -473,7 +473,7 @@ StateBackend 边界失败也保留已取得结果。服务与 UI 不识别 SDK �
 ```text
 Kit Server → KitClient → createKitChatProvider ──────────────────────┐
                                                                   │
-自建后端 → 原始 SSE → kit-sdk/providers/bailian → SDK session-events 转换 ─────┤
+自建后端 → 原始 SSE → @openagentkit/sdk/providers/bailian → SDK session-events 转换 ─────┤
                                                                   ↓
                             ChatProvider → Controller/Store → useChat → UI
                               转换策略        调用并持有消息     ChatMessage

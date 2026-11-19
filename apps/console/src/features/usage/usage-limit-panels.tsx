@@ -1,5 +1,5 @@
 import { ReloadOutlined } from "@ant-design/icons";
-import type { UsageLimitDayState, UsageLimitMetricState } from "@openagentpack/kit-sdk/protocol";
+import type { UsageLimitDayState, UsageLimitMetricState } from "@openagentkit/sdk/protocol";
 import { Button, Popover, Progress, Result, Tag, Tooltip } from "antd";
 import { useMemo, useState } from "react";
 import { type AdminClient, createAdminClient } from "../../lib/admin/index.ts";

@@ -1,5 +1,5 @@
 import { posix } from "node:path";
-import { type AttachmentRef, KitError } from "@openagentpack/kit-sdk/protocol";
+import { type AttachmentRef, KitError } from "@openagentkit/sdk/protocol";
 import type { ProviderGateway } from "../gateway/types.ts";
 import { resolveMounts } from "./attachments.ts";
 

@@ -1,8 +1,8 @@
 "use client";
 
+import type { ChatAgentThread, ChatMultiAgent } from "@openagentkit/sdk/chat";
+import type { ChatMessage } from "@openagentkit/sdk/messages";
 import { Chat } from "@openagentpack/kit-chat-ui";
-import type { ChatAgentThread, ChatMultiAgent } from "@openagentpack/kit-sdk/chat";
-import type { ChatMessage } from "@openagentpack/kit-sdk/messages";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const RESEARCH = "sthr_demo_research";

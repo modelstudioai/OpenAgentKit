@@ -3,7 +3,7 @@ title: 组件交互与后端调用
 description: 公开 SDK 统一目录、上传、发送、产物与用量恢复，体验页和自建后端共用接入方式
 ---
 
-Web 的组件交互统一消费 `@openagentpack/kit-sdk` 各功能的数据入口和 `/hooks`，
+Web 的组件交互统一消费 `@openagentkit/sdk` 各功能的数据入口和 `/hooks`，
 例如 `/sessions/hooks`、`/files/hooks`、`/chat/hooks` 和 `/usage/hooks`。
 数据 Client 配置在 `apps/web/src/lib/backend.ts`，聊天 Provider 配置在 `chat-backend.ts`；
 Kit Server 是示例后端。外部纯前端项目替换请求与响应映射后使用相同 hooks，无需依赖 Web 源码或部署 Kit Server。
@@ -47,6 +47,14 @@ HTTP 错误映射配置在 `createRequest({ mapHttpError })`，不会新增另�
 {/* skill-example: use-kit-chat/examples/experience.tsx */}
 
 ```tsx
+import { useAgentCatalog, useAgentResources } from "@openagentkit/sdk/agents/hooks";
+import { useChat, useComposer } from "@openagentkit/sdk/chat/hooks";
+import type { ArtifactHost } from "@openagentkit/sdk/files";
+import { useArtifactActions, useAttachments } from "@openagentkit/sdk/files/hooks";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
+import type { KitClient } from "@openagentkit/sdk/providers/kit";
+import { useSessionDetails, useSessionDirectory, useSessionSearch } from "@openagentkit/sdk/sessions/hooks";
+import { useQuotaRecovery, useUsageLimits } from "@openagentkit/sdk/usage/hooks";
 import {
 	AgentHeader,
 	type AttachmentItem,
@@ -57,14 +65,6 @@ import {
 	SessionSidebar,
 	type SessionSidebarSection,
 } from "@openagentpack/kit-chat-ui";
-import { useAgentCatalog, useAgentResources } from "@openagentpack/kit-sdk/agents/hooks";
-import { useChat, useComposer } from "@openagentpack/kit-sdk/chat/hooks";
-import type { ArtifactHost } from "@openagentpack/kit-sdk/files";
-import { useArtifactActions, useAttachments } from "@openagentpack/kit-sdk/files/hooks";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
-import type { KitClient } from "@openagentpack/kit-sdk/providers/kit";
-import { useSessionDetails, useSessionDirectory, useSessionSearch } from "@openagentpack/kit-sdk/sessions/hooks";
-import { useQuotaRecovery, useUsageLimits } from "@openagentpack/kit-sdk/usage/hooks";
 import { useState } from "react";
 import { AgentResourcesPanel } from "./agent-resources-panel.tsx";
 import { ApprovalList } from "./approval-list.tsx";
@@ -339,6 +339,6 @@ Host 只包含文件与剪贴板等交互能力，不保存 token、身份或服
 
 `createSessionDirectory`、`createSessionDetails` 从 `/sessions` 导入；`createAttachments`、
 `createArtifactActions` 从 `/files` 导入；`createComposer` 从 `/chat` 导入；`createQuotaRecovery`
-从 `/usage` 导入。上述路径均以 `@openagentpack/kit-sdk` 为前缀，可供非 React 项目使用；
+从 `/usage` 导入。上述路径均以 `@openagentkit/sdk` 为前缀，可供非 React 项目使用；
 订阅快照并在卸载时 `dispose()`。对应 hooks 从各功能的 `/hooks` 子入口导入。
 这些控制器不访问 `window/document`，实际文件交互适配保留在宿主。

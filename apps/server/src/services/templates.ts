@@ -9,7 +9,7 @@ import {
 	type TemplateVersionsQuery,
 	TemplateVersionsQuerySchema,
 	TemplateVersionViewSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { z } from "zod";
 import { redactSecrets } from "../config.ts";
 import type { ProviderGateway } from "../gateway/types.ts";

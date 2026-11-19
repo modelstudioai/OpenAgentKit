@@ -1,4 +1,4 @@
-import { KitError } from "@openagentpack/kit-sdk/protocol";
+import { KitError } from "@openagentkit/sdk/protocol";
 import type { AdminClient } from "../../lib/admin/index.ts";
 
 type CleanupClient = { debug: Pick<AdminClient["debug"], "planDelete" | "deleteSession"> };

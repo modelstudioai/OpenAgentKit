@@ -1,5 +1,5 @@
+import type { RemoteMemoryStore } from "@openagentkit/sdk/protocol";
 import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui";
-import type { RemoteMemoryStore } from "@openagentpack/kit-sdk/protocol";
 import { Input } from "antd";
 import { useRemoteMemoryStores } from "../catalog/use-remote-memory-stores.ts";
 import styles from "./template-forms.module.less";

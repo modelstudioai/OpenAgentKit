@@ -1,4 +1,4 @@
-import type { ProjectAgentCreateInput, ProjectAgentOptions, RemoteSkill } from "@openagentpack/kit-sdk/protocol";
+import type { ProjectAgentCreateInput, ProjectAgentOptions, RemoteSkill } from "@openagentkit/sdk/protocol";
 import { Alert, Button, Drawer, Empty, Input, Spin } from "antd";
 import { useMemo, useState } from "react";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";

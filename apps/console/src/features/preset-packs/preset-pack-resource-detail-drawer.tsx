@@ -3,7 +3,7 @@ import type {
 	RemoteEnvironmentDetail,
 	RemoteFile,
 	RemoteVaultDetail,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import { Alert, Button, Descriptions, Drawer, Result, Spin } from "antd";
 import { useMemo } from "react";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";

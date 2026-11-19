@@ -14,7 +14,7 @@ description: "通过公开的 Request 和 createSessionEventChatProvider 配置�
 | --- | --- |
 | 返回标准 SDK `SessionEvent` 快照和控制帧，例如 Kit Server | 配置 `createSessionEventChatProvider`，参考[标准事件接入](references/normalized-events.md) |
 | 返回标准快照，但采用其他传输方式 | 实现 `ChatProvider` 的五个方法并映射生命周期回调 |
-| 转发百炼原始 SSE | 使用 `@openagentpack/kit-sdk/providers/bailian` 的 `createBailianChatProvider`，参考[原始 SSE 接入](references/raw-sse.md) |
+| 转发百炼原始 SSE | 使用 `@openagentkit/sdk/providers/bailian` 的 `createBailianChatProvider`，参考[原始 SSE 接入](references/raw-sse.md) |
 
 Web 应用与自建后端共用同一套公开配置。已有 KitClient 的应用可以继续通过 Context 接入，
 也可以使用[兼容封装](examples/kit-client-provider.ts)。

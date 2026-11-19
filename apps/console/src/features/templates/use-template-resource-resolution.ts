@@ -1,4 +1,4 @@
-import type { ProjectResourceBindings } from "@openagentpack/kit-sdk/protocol";
+import type { ProjectResourceBindings } from "@openagentkit/sdk/protocol";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";
 import { getAdminClient } from "../../lib/api.ts";

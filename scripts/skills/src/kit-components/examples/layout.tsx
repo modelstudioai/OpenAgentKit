@@ -1,5 +1,5 @@
+import type { AgentSummary, SessionSummary } from "@openagentkit/sdk/protocol";
 import { AgentHeader, Chat, Layout, SessionSidebar } from "@openagentpack/kit-chat-ui";
-import type { AgentSummary, SessionSummary } from "@openagentpack/kit-sdk/protocol";
 import { type ComponentProps, type ReactNode, useState } from "react";
 
 export interface WorkspaceLayoutProps {

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
-import { createSessionStore } from "@openagentpack/kit-sdk/chat";
-import type { SessionEvent } from "@openagentpack/kit-sdk/protocol";
+import { createSessionStore } from "@openagentkit/sdk/chat";
+import type { SessionEvent } from "@openagentkit/sdk/protocol";
 import { setDefaultFetch } from "@openagentpack/sdk";
 import { afterEach, describe, expect, it } from "vitest";
 import { createSdkGateway } from "../src/gateway/sdk.ts";

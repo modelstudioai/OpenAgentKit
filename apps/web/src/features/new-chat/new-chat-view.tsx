@@ -1,5 +1,5 @@
+import type { AgentSummary } from "@openagentkit/sdk/protocol";
 import { isIconImageSource } from "@openagentpack/kit-chat-ui";
-import type { AgentSummary } from "@openagentpack/kit-sdk/protocol";
 import { useMemo } from "react";
 import type { NavigateFn } from "../../lib/use-route.ts";
 import type { SessionDirectory } from "../../lib/use-session-directory.ts";

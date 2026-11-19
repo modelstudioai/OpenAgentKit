@@ -1,6 +1,6 @@
-import type { ChatMultiAgent } from "@openagentpack/kit-sdk/chat";
-import type { ChatMessage, MessagePart } from "@openagentpack/kit-sdk/messages";
-import { parseSkillDirective } from "@openagentpack/kit-sdk/protocol";
+import type { ChatMultiAgent } from "@openagentkit/sdk/chat";
+import type { ChatMessage, MessagePart } from "@openagentkit/sdk/messages";
+import { parseSkillDirective } from "@openagentkit/sdk/protocol";
 import type { ReactNode } from "react";
 import { Actions } from "../actions/index.tsx";
 import { ArtifactCard } from "../artifact-card/index.tsx";

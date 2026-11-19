@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import { KitError, type ProjectResourceBinding, type ResourceDraftView } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type ProjectResourceBinding, type ResourceDraftView } from "@openagentkit/sdk/protocol";
 import type { ResourceDraftPublishedBinding } from "../resource-draft-types.ts";
 
 export interface ResourceDraftRecord {

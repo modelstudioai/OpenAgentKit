@@ -1,4 +1,4 @@
-import { PLAZA_CATEGORY_LABELS, type PlazaCategory, type TemplateView } from "@openagentpack/kit-sdk/protocol";
+import { PLAZA_CATEGORY_LABELS, type PlazaCategory, type TemplateView } from "@openagentkit/sdk/protocol";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { selectConsoleOption, selectedConsoleOption } from "./console-select-helpers.ts";
 import { expect, test } from "./fixtures.ts";

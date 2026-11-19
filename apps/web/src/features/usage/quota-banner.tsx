@@ -1,4 +1,4 @@
-import { useQuotaRecovery } from "@openagentpack/kit-sdk/usage/hooks";
+import { useQuotaRecovery } from "@openagentkit/sdk/usage/hooks";
 import { formatBeijingTime } from "../../lib/beijing-time.ts";
 import { formatExactTokenCount, formatTokenCount } from "../../lib/format-token-count.ts";
 import type { QuotaExceededDetails } from "../../lib/quota-error.ts";

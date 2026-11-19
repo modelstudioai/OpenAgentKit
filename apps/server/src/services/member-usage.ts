@@ -5,7 +5,7 @@ import {
 	SessionStatsSchema,
 	SessionUsageSchema,
 	type TemplateUsageRow,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { GatewaySessionInfo, ProviderGateway } from "../gateway/types.ts";
 import type { MemberStore } from "../store/members.ts";
 import type { SessionUsageStore } from "../store/session-usage.ts";

@@ -1,4 +1,4 @@
-import { createMutation, createObservable, createQuery, type QuerySnapshot } from "@openagentpack/kit-sdk/state";
+import { createMutation, createObservable, createQuery, type QuerySnapshot } from "@openagentkit/sdk/state";
 
 interface ResourceView<T> {
 	query: QuerySnapshot<T>;

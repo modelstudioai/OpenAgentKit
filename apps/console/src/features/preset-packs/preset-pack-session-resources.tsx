@@ -1,8 +1,4 @@
-import type {
-	PresetPackAgentResources,
-	PresetPackCreateInput,
-	PresetPackPreview,
-} from "@openagentpack/kit-sdk/protocol";
+import type { PresetPackAgentResources, PresetPackCreateInput, PresetPackPreview } from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Alert, Button, Empty, Result, Space, Spin, Table, Tag } from "antd";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";

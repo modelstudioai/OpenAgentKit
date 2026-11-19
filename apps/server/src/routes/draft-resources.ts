@@ -10,7 +10,7 @@ import {
 	ProjectPlanSchema,
 	ResourceDraftDeclarationSchema,
 	ResourceDraftOverviewSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import { streamSSE } from "hono/streaming";
 import type { AppEnv } from "../app-env.ts";
 import { requireAdmin } from "../services/identity.ts";

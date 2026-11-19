@@ -80,7 +80,7 @@ test("generated callable declarations come from the public API without inventing
 	const api = outputs.get(resolve(skillOutputRoot(repositoryRoot, "kit-chat-provider"), "references/api.md"));
 	assert.ok(api, "kit-chat-provider API reference must be generated");
 	assert.match(api, /export function createSseStream\(/);
-	assert.match(api, /import type \{ ChatProvider \} from "@openagentpack\/kit-sdk\/providers";/);
+	assert.match(api, /import type \{ ChatProvider \} from "@openagentkit\/sdk\/providers";/);
 	assert.doesNotMatch(api, /export function ChatProvider\b/);
 });
 

@@ -6,7 +6,7 @@ import {
 	SESSION_USAGE_METRICS,
 	type UsageLimitConfig,
 	UsageLimitConfigSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { APIRequestContext, Page, Route } from "@playwright/test";
 import { expect, test } from "./fixtures.ts";
 import { ADMIN_TOKEN, openConsoleNavigation, seedListedAgent } from "./helpers.ts";

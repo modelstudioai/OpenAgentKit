@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { PublicationReport } from "@openagentpack/kit-sdk/protocol";
+import type { PublicationReport } from "@openagentkit/sdk/protocol";
 import { redactSecrets } from "../config.ts";
 import { PublicationError } from "../publication-error.ts";
 import type { OperationStore } from "../store/operations.ts";

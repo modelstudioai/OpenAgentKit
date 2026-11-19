@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import { KitError, type UsageLimitConfig, type UsageLimitPolicy } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type UsageLimitConfig, type UsageLimitPolicy } from "@openagentkit/sdk/protocol";
 
 export interface UsageLimitSession {
 	session_id: string;

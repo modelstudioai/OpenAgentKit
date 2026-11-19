@@ -1,6 +1,6 @@
-import { createBackoff, sleep } from "@openagentpack/kit-sdk/chat";
-import { KitError, type OperationView } from "@openagentpack/kit-sdk/protocol";
-import { createObservable } from "@openagentpack/kit-sdk/state";
+import { createBackoff, sleep } from "@openagentkit/sdk/chat";
+import { KitError, type OperationView } from "@openagentkit/sdk/protocol";
+import { createObservable } from "@openagentkit/sdk/state";
 import type { AdminClient } from "./client.ts";
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));

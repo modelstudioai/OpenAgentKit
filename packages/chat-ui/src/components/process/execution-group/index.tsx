@@ -1,4 +1,4 @@
-import type { MessagePart } from "@openagentpack/kit-sdk/messages";
+import type { MessagePart } from "@openagentkit/sdk/messages";
 import { useEffect, useState } from "react";
 import { ReasoningBlock } from "../reasoning-block/index.tsx";
 import { ProcessDots } from "../step/index.tsx";

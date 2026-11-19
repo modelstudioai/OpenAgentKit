@@ -9,7 +9,7 @@ import {
 	type PresetPacksQuery,
 	PresetPacksQuerySchema,
 	presetPackResourceId,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { ProviderGateway } from "../gateway/types.ts";
 import type { PresetPackStore } from "../store/preset-packs.ts";
 import { prepareCatalogResources } from "./catalog-resources.ts";

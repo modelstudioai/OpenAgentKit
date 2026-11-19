@@ -1,5 +1,5 @@
-import type { ChatMultiAgent } from "@openagentpack/kit-sdk/chat";
-import type { ChatMessage } from "@openagentpack/kit-sdk/messages";
+import type { ChatMultiAgent } from "@openagentkit/sdk/chat";
+import type { ChatMessage } from "@openagentkit/sdk/messages";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { Chat } from "../chat/index.tsx";

@@ -1,3 +1,6 @@
+import type { ChatMultiAgent } from "@openagentkit/sdk/chat";
+import type { ChatMessage } from "@openagentkit/sdk/messages";
+import type { AgentSummary, SessionSummary } from "@openagentkit/sdk/protocol";
 import {
 	AgentHeader,
 	Chat,
@@ -18,9 +21,6 @@ import {
 	ThreadPanel,
 	Tooltip,
 } from "@openagentpack/kit-chat-ui";
-import type { ChatMultiAgent } from "@openagentpack/kit-sdk/chat";
-import type { ChatMessage } from "@openagentpack/kit-sdk/messages";
-import type { AgentSummary, SessionSummary } from "@openagentpack/kit-sdk/protocol";
 import { useState } from "react";
 
 export interface GeneralComponentsProps {

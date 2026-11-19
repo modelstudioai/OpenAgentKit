@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { RESOURCE_DRAFT_KEY_HEADER, type ResourceDraftView } from "@openagentpack/kit-sdk/protocol";
+import { RESOURCE_DRAFT_KEY_HEADER, type ResourceDraftView } from "@openagentkit/sdk/protocol";
 import { expect, it } from "vitest";
 import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";

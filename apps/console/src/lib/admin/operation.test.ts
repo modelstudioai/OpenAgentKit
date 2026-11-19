@@ -1,4 +1,4 @@
-import { KitError, type OperationView } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type OperationView } from "@openagentkit/sdk/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AdminClient } from "./client.ts";
 import { createAdminOperation } from "./operation.ts";

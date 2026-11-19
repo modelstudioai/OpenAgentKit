@@ -5,7 +5,7 @@ import type {
 	UsageModelRow,
 	UsageSummary,
 	UsageToolRow,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Button, DatePicker, Empty, Popover, Result, Select, Table, Tag } from "antd";
 import dayjs from "dayjs";

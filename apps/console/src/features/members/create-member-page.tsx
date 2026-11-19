@@ -1,5 +1,5 @@
 import { ArrowLeftOutlined } from "@ant-design/icons";
-import { CreateMemberRequestSchema, type CreateMemberResponse } from "@openagentpack/kit-sdk/protocol";
+import { CreateMemberRequestSchema, type CreateMemberResponse } from "@openagentkit/sdk/protocol";
 import { Alert, Button, Input, Radio, Typography } from "antd";
 import { useState } from "react";
 import styles from "./members.module.less";

@@ -5,7 +5,7 @@ import {
 	KitError,
 	type PlanResponse,
 	type TemplateView,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import { redactSecrets } from "../config.ts";
 import type { AuditLog } from "../store/audit.ts";
 import type { CatalogStore } from "../store/catalog.ts";

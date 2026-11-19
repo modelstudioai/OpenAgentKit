@@ -13,7 +13,7 @@ import type {
 	UsageToolRow,
 	UsageTotal,
 	UsageTrend,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import {
 	ApiError,
 	type UsageSummaryRequest,

@@ -1,4 +1,4 @@
-import type { PresetPackAgentResources } from "@openagentpack/kit-sdk/protocol";
+import type { PresetPackAgentResources } from "@openagentkit/sdk/protocol";
 import { Alert, Button, Empty, Input, Spin } from "antd";
 import { useState } from "react";
 import { type RemoteAgent, useRemoteAgents } from "../catalog/use-remote-agents.ts";

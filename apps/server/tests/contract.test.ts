@@ -6,8 +6,8 @@
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { createSessionStore } from "@openagentpack/kit-sdk/chat";
-import { artifactOf, bucketOf, isTurnEndEvent, type SessionEvent, threadIdOf } from "@openagentpack/kit-sdk/protocol";
+import { createSessionStore } from "@openagentkit/sdk/chat";
+import { artifactOf, bucketOf, isTurnEndEvent, type SessionEvent, threadIdOf } from "@openagentkit/sdk/protocol";
 import { toBailianSessionEvent } from "@openagentpack/sdk/session-events";
 import { describe, expect, it } from "vitest";
 import { createMockGateway } from "../src/gateway/mock.ts";

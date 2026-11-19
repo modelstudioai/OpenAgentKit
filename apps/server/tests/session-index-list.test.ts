@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CatalogAgentViewSchema } from "@openagentpack/kit-sdk/protocol";
+import { CatalogAgentViewSchema } from "@openagentkit/sdk/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";

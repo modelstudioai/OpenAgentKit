@@ -1,5 +1,6 @@
+import type { TemplateUsageTrendPoint } from "@openagentkit/sdk/protocol";
 import { ErrorState } from "@openagentpack/kit-chat-ui";
-import type { UsageGranularity, UsageTrend, UsageTrendPoint } from "@openagentpack/kit-sdk/protocol";
+import type { UsageGranularity, UsageTrend, UsageTrendPoint } from "@openagentkit/sdk/protocol";
 import { Segmented, Tooltip } from "antd";
 import { type MouseEvent, useMemo, useRef, useState } from "react";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";

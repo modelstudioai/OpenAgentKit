@@ -1,4 +1,4 @@
-import { MAX_MEMORY_ENTRIES, MemoryEntrySchema } from "@openagentpack/kit-sdk/protocol";
+import { MAX_MEMORY_ENTRIES, MemoryEntrySchema } from "@openagentkit/sdk/protocol";
 import { Button, Input, Modal } from "antd";
 import { useId, useState } from "react";
 import styles from "./template-forms.module.less";

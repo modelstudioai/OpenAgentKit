@@ -2,7 +2,7 @@
   "name": "@openagentpack/kit-server",
   "version": "1.0.0",
   "private": true,
-  "description": "OpenAgentPack Kit 服务端：数据面 /api/kit/* 与控制面 /api/admin/*（Hono + node:sqlite）",
+  "description": "OpenAgentKit 服务端：数据面 /api/kit/* 与控制面 /api/admin/*（Hono + node:sqlite）",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/app.js",
@@ -47,7 +47,7 @@
     "zod": "^4.1.12",
     "@openagentpack/kit-eval": "workspace:*",
     "yaml": "^2.9.1",
-    "@openagentpack/kit-sdk": "workspace:*"
+    "@openagentkit/sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",

@@ -1,5 +1,5 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { KitError } from "@openagentpack/kit-sdk/protocol";
+import { KitError } from "@openagentkit/sdk/protocol";
 import type { Context } from "hono";
 import type { AdminIdentity, AdminRole, AppEnv } from "../app-env.ts";
 import type { ServerConfig } from "../config.ts";

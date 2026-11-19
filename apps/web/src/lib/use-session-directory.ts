@@ -1,4 +1,4 @@
-import { useSessionDirectory as usePublicDirectory } from "@openagentpack/kit-sdk/sessions/hooks";
+import { useSessionDirectory as usePublicDirectory } from "@openagentkit/sdk/sessions/hooks";
 import { useCallback, useState } from "react";
 
 export type SessionDirectorySection = "groups" | "recent";

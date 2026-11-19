@@ -64,7 +64,7 @@
 
 通过可配置的 HTTP 操作连接返回标准 SessionEvent 快照和公开生命周期帧的后端。
 
-从 `@openagentpack/kit-sdk/providers/session-events` 导入 `createSessionEventChatProvider`。
+从 `@openagentkit/sdk/providers/session-events` 导入 `createSessionEventChatProvider`。
 公开入口为 `packages/sdk/src/providers/session-events/index.ts`，声明位于 `packages/sdk/src/providers/session-events/provider.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/normalized-provider.ts)
@@ -79,20 +79,20 @@ export function createSessionEventChatProvider(options: SessionEventChatProvider
 ```
 
 
-<!-- source-sha256: e1db0727ecdae87e12c72bf185fb6c3bc6a6ea2dfc58b5d937000c2398f57cd0; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: e1db0727ecdae87e12c72bf185fb6c3bc6a6ea2dfc58b5d937000c2398f57cd0; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## SessionEventChatProviderOptions
 
 注入 RequestClient，配置一个订阅操作、四个必需的请求操作、可选线程查询及消息转换策略。
 
-从 `@openagentpack/kit-sdk/providers/session-events` 导入 `SessionEventChatProviderOptions`。
+从 `@openagentkit/sdk/providers/session-events` 导入 `SessionEventChatProviderOptions`。
 公开入口为 `packages/sdk/src/providers/session-events/index.ts`，声明位于 `packages/sdk/src/providers/session-events/provider.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/normalized-provider.ts)
 
 
 ```ts
-import type { SessionEventChatProviderOptions } from "@openagentpack/kit-sdk/providers/session-events";
+import type { SessionEventChatProviderOptions } from "@openagentkit/sdk/providers/session-events";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -109,40 +109,40 @@ import type { SessionEventChatProviderOptions } from "@openagentpack/kit-sdk/pro
 | `connectTimeoutMs` | 否 | `number \| undefined` |
 | `idleTimeoutMs` | 否 | `number \| undefined` |
 
-<!-- source-sha256: e1db0727ecdae87e12c72bf185fb6c3bc6a6ea2dfc58b5d937000c2398f57cd0; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: e1db0727ecdae87e12c72bf185fb6c3bc6a6ea2dfc58b5d937000c2398f57cd0; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## SessionEventStreamOperation
 
 根据会话 ID 和不透明的更新游标构建订阅路径与请求。
 
-从 `@openagentpack/kit-sdk/providers/session-events` 导入 `SessionEventStreamOperation`。
+从 `@openagentkit/sdk/providers/session-events` 导入 `SessionEventStreamOperation`。
 公开入口为 `packages/sdk/src/providers/session-events/index.ts`，声明位于 `packages/sdk/src/providers/session-events/provider.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/normalized-provider.ts)
 
 
 ```ts
-import type { SessionEventStreamOperation } from "@openagentpack/kit-sdk/providers/session-events";
+import type { SessionEventStreamOperation } from "@openagentkit/sdk/providers/session-events";
 ```
 
 | 字段 | 必填 | 类型 |
 | --- | --- | --- |
 | `buildRequest` | 是 | `(input: { sessionId: string; after?: string \| null; }, context: BackendRequestContext) => BackendRequestSpec \| Promise<BackendRequestSpec>` |
 
-<!-- source-sha256: e1db0727ecdae87e12c72bf185fb6c3bc6a6ea2dfc58b5d937000c2398f57cd0; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: e1db0727ecdae87e12c72bf185fb6c3bc6a6ea2dfc58b5d937000c2398f57cd0; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## BackendOperation
 
 描述有类型的后端请求构建与响应映射，由共享 Request 层执行一次。
 
-从 `@openagentpack/kit-sdk/providers` 导入 `BackendOperation`。
+从 `@openagentkit/sdk/providers` 导入 `BackendOperation`。
 公开入口为 `packages/sdk/src/providers/index.ts`，声明位于 `packages/sdk/src/providers/http-operation.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/normalized-provider.ts)
 
 
 ```ts
-import type { BackendOperation } from "@openagentpack/kit-sdk/providers";
+import type { BackendOperation } from "@openagentkit/sdk/providers";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -150,40 +150,40 @@ import type { BackendOperation } from "@openagentpack/kit-sdk/providers";
 | `buildRequest` | 是 | `(input: Input, context: BackendRequestContext) => BackendRequestSpec \| Promise<BackendRequestSpec>` |
 | `mapResponse` | 是 | `(response: Response, context: BackendRequestContext & { input: Input; }) => Output \| Promise<Output>` |
 
-<!-- source-sha256: 95e4e1902f98e59c4d858a99fc748604ff240102a24e9ba4837041b4d7e51e7d; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: 95e4e1902f98e59c4d858a99fc748604ff240102a24e9ba4837041b4d7e51e7d; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## BackendRequestContext
 
 Provider 持有的取消上下文，随请求构建和响应映射传递。
 
-从 `@openagentpack/kit-sdk/providers` 导入 `BackendRequestContext`。
+从 `@openagentkit/sdk/providers` 导入 `BackendRequestContext`。
 公开入口为 `packages/sdk/src/providers/index.ts`，声明位于 `packages/sdk/src/providers/http-operation.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/normalized-provider.ts)
 
 
 ```ts
-import type { BackendRequestContext } from "@openagentpack/kit-sdk/providers";
+import type { BackendRequestContext } from "@openagentkit/sdk/providers";
 ```
 
 | 字段 | 必填 | 类型 |
 | --- | --- | --- |
 | `signal` | 否 | `AbortSignal \| undefined` |
 
-<!-- source-sha256: 95e4e1902f98e59c4d858a99fc748604ff240102a24e9ba4837041b4d7e51e7d; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: 95e4e1902f98e59c4d858a99fc748604ff240102a24e9ba4837041b4d7e51e7d; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## BackendRequestSpec
 
 描述后端路径和可选的 RequestInit，其 signal 由 Provider 管理。
 
-从 `@openagentpack/kit-sdk/providers` 导入 `BackendRequestSpec`。
+从 `@openagentkit/sdk/providers` 导入 `BackendRequestSpec`。
 公开入口为 `packages/sdk/src/providers/index.ts`，声明位于 `packages/sdk/src/providers/http-operation.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/normalized-provider.ts)
 
 
 ```ts
-import type { BackendRequestSpec } from "@openagentpack/kit-sdk/providers";
+import type { BackendRequestSpec } from "@openagentkit/sdk/providers";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -191,13 +191,13 @@ import type { BackendRequestSpec } from "@openagentpack/kit-sdk/providers";
 | `path` | 是 | `string` |
 | `init` | 否 | `Omit<RequestInit, "signal"> \| undefined` |
 
-<!-- source-sha256: 95e4e1902f98e59c4d858a99fc748604ff240102a24e9ba4837041b4d7e51e7d; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: 95e4e1902f98e59c4d858a99fc748604ff240102a24e9ba4837041b4d7e51e7d; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## createSseStream
 
 将现有字节流解码为原始 SSE 帧，网络请求和业务转换由上层处理。
 
-从 `@openagentpack/kit-sdk/stream` 导入 `createSseStream`。
+从 `@openagentkit/sdk/stream` 导入 `createSseStream`。
 公开入口为 `packages/sdk/src/stream/index.ts`，声明位于 `packages/sdk/src/stream/index.ts`。
 说明来自 `apps/storybook/content/docs/sdk/stream.mdx`。
 [可编译示例](../examples/sse-stream.ts)
@@ -211,20 +211,20 @@ export function createSseStream(body: ReadableStream<Uint8Array>, options?: SseS
 ```
 
 
-<!-- source-sha256: 4d5f0820913988ab5b5767da59f3eaedc9e2adc54264f6d21cad7f6a6bdc2b99; doc-sha256: 137fa2e9f947a02faa8f1aa85e85bd54538f214caa269a0a3af35bf8bdb8fa6c -->
+<!-- source-sha256: 4d5f0820913988ab5b5767da59f3eaedc9e2adc54264f6d21cad7f6a6bdc2b99; doc-sha256: 28a2b134f45aa633a78c3ea7121a45f36a7d0f24b115f5c09016b6e855f4b254 -->
 
 ## SseStreamOptions
 
 配置取消、UTF-8 严格模式、帧大小、注释通知及末尾帧交付。
 
-从 `@openagentpack/kit-sdk/stream` 导入 `SseStreamOptions`。
+从 `@openagentkit/sdk/stream` 导入 `SseStreamOptions`。
 公开入口为 `packages/sdk/src/stream/index.ts`，声明位于 `packages/sdk/src/stream/index.ts`。
 说明来自 `apps/storybook/content/docs/sdk/stream.mdx`。
 [可编译示例](../examples/sse-stream.ts)
 
 
 ```ts
-import type { SseStreamOptions } from "@openagentpack/kit-sdk/stream";
+import type { SseStreamOptions } from "@openagentkit/sdk/stream";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -235,13 +235,13 @@ import type { SseStreamOptions } from "@openagentpack/kit-sdk/stream";
 | `onComment` | 否 | `(() => void) \| undefined` |
 | `maxFrameChars` | 否 | `number \| undefined` |
 
-<!-- source-sha256: 4d5f0820913988ab5b5767da59f3eaedc9e2adc54264f6d21cad7f6a6bdc2b99; doc-sha256: 137fa2e9f947a02faa8f1aa85e85bd54538f214caa269a0a3af35bf8bdb8fa6c -->
+<!-- source-sha256: 4d5f0820913988ab5b5767da59f3eaedc9e2adc54264f6d21cad7f6a6bdc2b99; doc-sha256: 28a2b134f45aa633a78c3ea7121a45f36a7d0f24b115f5c09016b6e855f4b254 -->
 
 ## SseStreamError
 
 表示安全的解码或分帧错误，reader 的传输错误沿用原有语义。
 
-从 `@openagentpack/kit-sdk/stream` 导入 `SseStreamError`。
+从 `@openagentkit/sdk/stream` 导入 `SseStreamError`。
 公开入口为 `packages/sdk/src/stream/index.ts`，声明位于 `packages/sdk/src/stream/index.ts`。
 说明来自 `apps/storybook/content/docs/sdk/stream.mdx`。
 [可编译示例](../examples/sse-stream.ts)
@@ -261,13 +261,13 @@ declare class SseStreamError {
 | `stack` | 否 | `string \| undefined` |
 | `cause` | 否 | `unknown` |
 
-<!-- source-sha256: 4d5f0820913988ab5b5767da59f3eaedc9e2adc54264f6d21cad7f6a6bdc2b99; doc-sha256: 137fa2e9f947a02faa8f1aa85e85bd54538f214caa269a0a3af35bf8bdb8fa6c -->
+<!-- source-sha256: 4d5f0820913988ab5b5767da59f3eaedc9e2adc54264f6d21cad7f6a6bdc2b99; doc-sha256: 28a2b134f45aa633a78c3ea7121a45f36a7d0f24b115f5c09016b6e855f4b254 -->
 
 ## createRequest
 
 创建独立 HTTP 客户端，通过 createSseStream 读取 SSE。
 
-从 `@openagentpack/kit-sdk/request` 导入 `createRequest`。
+从 `@openagentkit/sdk/request` 导入 `createRequest`。
 公开入口为 `packages/sdk/src/request/index.ts`，声明位于 `packages/sdk/src/request/index.ts`。
 说明来自 `apps/storybook/content/docs/sdk/request.mdx`。
 [可编译示例](../examples/request.ts)
@@ -280,13 +280,13 @@ export function createRequest(options: RequestOptions): RequestClient;
 ```
 
 
-<!-- source-sha256: 17b8c5e483c20b8545d74481f95232b8aa44db9de577e98623d4a5610db7864d; doc-sha256: dd5c09ab5f5df7d7a8c8efd55a7cabe30bdf4ede687662d5a837b59c37052089 -->
+<!-- source-sha256: 17b8c5e483c20b8545d74481f95232b8aa44db9de577e98623d4a5610db7864d; doc-sha256: 151d442c92d80ab357db33d191291a63ee7ca7d12f6ab8fed87d3bc4bec91039 -->
 
 ## RequestClient
 
 为应用后端提供响应、JSON、原始 SSE 和 URL 方法。
 
-从 `@openagentpack/kit-sdk/request` 导入 `RequestClient`。
+从 `@openagentkit/sdk/request` 导入 `RequestClient`。
 公开入口为 `packages/sdk/src/request/index.ts`，声明位于 `packages/sdk/src/request/index.ts`。
 说明来自 `apps/storybook/content/docs/sdk/request.mdx`。
 [可编译示例](../examples/request.ts)
@@ -295,7 +295,7 @@ export function createRequest(options: RequestOptions): RequestClient;
 - json 解析 JSON，业务 Schema 另行校验。HTTP 204 返回 undefined。
 
 ```ts
-import type { RequestClient } from "@openagentpack/kit-sdk/request";
+import type { RequestClient } from "@openagentkit/sdk/request";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -305,13 +305,13 @@ import type { RequestClient } from "@openagentpack/kit-sdk/request";
 | `json` | 是 | `<T>(path: string, init?: RequestInit) => Promise<T>` |
 | `stream` | 是 | `(path: string, init?: RequestInit, options?: SseStreamOptions) => AsyncGenerator<RawSseMessage, void, unknown>` |
 
-<!-- source-sha256: 17b8c5e483c20b8545d74481f95232b8aa44db9de577e98623d4a5610db7864d; doc-sha256: dd5c09ab5f5df7d7a8c8efd55a7cabe30bdf4ede687662d5a837b59c37052089 -->
+<!-- source-sha256: 17b8c5e483c20b8545d74481f95232b8aa44db9de577e98623d4a5610db7864d; doc-sha256: 151d442c92d80ab357db33d191291a63ee7ca7d12f6ab8fed87d3bc4bec91039 -->
 
 ## RequestOptions
 
 配置显式 base URL、异步 HeadersInit、注入的 fetch 和安全的 HTTP 错误映射。
 
-从 `@openagentpack/kit-sdk/request` 导入 `RequestOptions`。
+从 `@openagentkit/sdk/request` 导入 `RequestOptions`。
 公开入口为 `packages/sdk/src/request/index.ts`，声明位于 `packages/sdk/src/request/index.ts`。
 说明来自 `apps/storybook/content/docs/sdk/request.mdx`。
 [可编译示例](../examples/request.ts)
@@ -320,7 +320,7 @@ import type { RequestClient } from "@openagentpack/kit-sdk/request";
 - mapHttpError 返回 Error，避免直接透传任意后端响应体。
 
 ```ts
-import type { RequestOptions } from "@openagentpack/kit-sdk/request";
+import type { RequestOptions } from "@openagentkit/sdk/request";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -330,13 +330,13 @@ import type { RequestOptions } from "@openagentpack/kit-sdk/request";
 | `fetchImpl` | 否 | `{ (input: RequestInfo \| URL, init?: RequestInit): Promise<Response>; (input: string \| URL \| Request, init?: RequestInit): Promise<Response>; } \| undefined` |
 | `mapHttpError` | 否 | `((response: Response) => Error \| Promise<Error>) \| undefined` |
 
-<!-- source-sha256: 17b8c5e483c20b8545d74481f95232b8aa44db9de577e98623d4a5610db7864d; doc-sha256: dd5c09ab5f5df7d7a8c8efd55a7cabe30bdf4ede687662d5a837b59c37052089 -->
+<!-- source-sha256: 17b8c5e483c20b8545d74481f95232b8aa44db9de577e98623d4a5610db7864d; doc-sha256: 151d442c92d80ab357db33d191291a63ee7ca7d12f6ab8fed87d3bc4bec91039 -->
 
 ## ChatProvider
 
 前端会话适配器，含五个必需操作、可选线程查询及消息转换。
 
-从 `@openagentpack/kit-sdk/providers` 导入 `ChatProvider`。
+从 `@openagentkit/sdk/providers` 导入 `ChatProvider`。
 公开入口为 `packages/sdk/src/providers/index.ts`，声明位于 `packages/sdk/src/providers/contract.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/normalized-provider.ts)
@@ -347,7 +347,7 @@ import type { RequestOptions } from "@openagentpack/kit-sdk/request";
 - Chat 持有事件账本及返回的消息。省略转换策略时使用 transformSessionEvent。
 
 ```ts
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -361,13 +361,13 @@ import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
 | `toolApprovals` | 是 | `(sessionId: string) => Promise<ToolApprovalsResponse>` |
 | `submitToolApproval` | 是 | `(sessionId: string, decision: ToolApprovalDecision) => Promise<SendMessageResponse>` |
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## ChatProvider.stream
 
 建立一条可取消的持久订阅，交付 SessionEvent 快照和生命周期回调。
 
-从 `@openagentpack/kit-sdk/providers` 导入 `ChatProvider`。
+从 `@openagentkit/sdk/providers` 导入 `ChatProvider`。
 公开入口为 `packages/sdk/src/providers/index.ts`，声明位于 `packages/sdk/src/providers/contract.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/normalized-provider.ts)
@@ -382,13 +382,13 @@ import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
 ```
 
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## ChatProvider.sendMessage
 
 提交一次文本及客户端标识，返回实际的受理结果。
 
-从 `@openagentpack/kit-sdk/providers` 导入 `ChatProvider`。
+从 `@openagentkit/sdk/providers` 导入 `ChatProvider`。
 公开入口为 `packages/sdk/src/providers/index.ts`，声明位于 `packages/sdk/src/providers/contract.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/backend-http.ts)
@@ -401,13 +401,13 @@ import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
 ```
 
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## ChatProvider.interrupt
 
 请求中断远端执行，取消订阅只影响本地连接。
 
-从 `@openagentpack/kit-sdk/providers` 导入 `ChatProvider`。
+从 `@openagentkit/sdk/providers` 导入 `ChatProvider`。
 公开入口为 `packages/sdk/src/providers/index.ts`，声明位于 `packages/sdk/src/providers/contract.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/backend-http.ts)
@@ -419,13 +419,13 @@ import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
 ```
 
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## ChatProvider.toolApprovals
 
 获取当前待审批批次及调用，以及完整的冻结工具参数。
 
-从 `@openagentpack/kit-sdk/providers` 导入 `ChatProvider`。
+从 `@openagentkit/sdk/providers` 导入 `ChatProvider`。
 公开入口为 `packages/sdk/src/providers/index.ts`，声明位于 `packages/sdk/src/providers/contract.ts`。
 说明来自 `apps/storybook/content/docs/sdk/tool-approvals.mdx`。
 [可编译示例](../examples/backend-http.ts)
@@ -438,13 +438,13 @@ import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
 ```
 
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 7296aafc38cf5068cf2ad94dcea22521054e632a7802b51a099b77e155acfa80 -->
+<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 03e164c0199edd9510cc7c6ebd1036abc697a376d45c2586623da56a188c80aa -->
 
 ## ChatProvider.submitToolApproval
 
 由后端校验归属及待处理状态后，提交一次允许或拒绝决定。
 
-从 `@openagentpack/kit-sdk/providers` 导入 `ChatProvider`。
+从 `@openagentkit/sdk/providers` 导入 `ChatProvider`。
 公开入口为 `packages/sdk/src/providers/index.ts`，声明位于 `packages/sdk/src/providers/contract.ts`。
 说明来自 `apps/storybook/content/docs/sdk/tool-approvals.mdx`。
 [可编译示例](../examples/backend-http.ts)
@@ -457,13 +457,13 @@ import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
 ```
 
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 7296aafc38cf5068cf2ad94dcea22521054e632a7802b51a099b77e155acfa80 -->
+<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 03e164c0199edd9510cc7c6ebd1036abc697a376d45c2586623da56a188c80aa -->
 
 ## ChatProvider.transformMessage
 
 可选的同步事件到消息转换策略，由 Chat 用最新快照重建消息时调用。
 
-从 `@openagentpack/kit-sdk/providers` 导入 `ChatProvider`。
+从 `@openagentkit/sdk/providers` 导入 `ChatProvider`。
 公开入口为 `packages/sdk/src/providers/index.ts`，声明位于 `packages/sdk/src/providers/contract.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/message-transform.ts)
@@ -477,13 +477,13 @@ MessageTransformer | undefined
 ```
 
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## transformSessionEvent
 
 Kit 与百炼原始流 Provider 共用的纯函数，将 SessionEvent 转换为 ChatMessage。
 
-从 `@openagentpack/kit-sdk/messages` 导入 `transformSessionEvent`。
+从 `@openagentkit/sdk/messages` 导入 `transformSessionEvent`。
 公开入口为 `packages/sdk/src/messages/index.ts`，声明位于 `packages/sdk/src/messages/merge.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/message-transform.ts)
@@ -497,13 +497,13 @@ export function transformSessionEvent({ messages, event, identity }: MessageTran
 ```
 
 
-<!-- source-sha256: 7d5419a70b48cb015bc5eaf95e904ba9eae9c6c440ba48fb4d0bfa3d6faef0b0; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: 7d5419a70b48cb015bc5eaf95e904ba9eae9c6c440ba48fb4d0bfa3d6faef0b0; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## MessageTransformer
 
 同步转换消息的函数，只处理本次传入的数据。
 
-从 `@openagentpack/kit-sdk/messages` 导入 `MessageTransformer`。
+从 `@openagentkit/sdk/messages` 导入 `MessageTransformer`。
 公开入口为 `packages/sdk/src/messages/index.ts`，声明位于 `packages/sdk/src/messages/types.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/message-transform.ts)
@@ -514,13 +514,13 @@ export type MessageTransformer = (input: MessageTransformInput) => MessageTransf
 ```
 
 
-<!-- source-sha256: 2f667950b58a0e64a5f120121ffccbd5dbd59b0bcb45c6c653a8c0cc6b30cfb0; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: 2f667950b58a0e64a5f120121ffccbd5dbd59b0bcb45c6c653a8c0cc6b30cfb0; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## MessageTransformInput
 
 当前线程的临时消息、一条最新 SessionEvent 快照及 Chat 为它分配的稳定标识。
 
-从 `@openagentpack/kit-sdk/messages` 导入 `MessageTransformInput`。
+从 `@openagentkit/sdk/messages` 导入 `MessageTransformInput`。
 公开入口为 `packages/sdk/src/messages/index.ts`，声明位于 `packages/sdk/src/messages/types.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/message-transform.ts)
@@ -528,7 +528,7 @@ export type MessageTransformer = (input: MessageTransformInput) => MessageTransf
 - 数组归本次重建所有，调用完成后不保留数组，也不修改原事件。
 
 ```ts
-import type { MessageTransformInput } from "@openagentpack/kit-sdk/messages";
+import type { MessageTransformInput } from "@openagentkit/sdk/messages";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -537,13 +537,13 @@ import type { MessageTransformInput } from "@openagentpack/kit-sdk/messages";
 | `event` | 是 | `{ type: string; event_id?: string \| undefined; role?: string \| undefined; created_at?: string \| undefined; content?: { [x: string]: unknown; type: string; text?: string \| undefined; data?: unknown; }[] \| undefined; metadata?: Record<string, unknown> \| undefined; is_error?: boolean \| null \| undefined; code?: string \| null \| undefined; message?: string \| null \| undefined; }` |
 | `identity` | 是 | `string` |
 
-<!-- source-sha256: 2f667950b58a0e64a5f120121ffccbd5dbd59b0bcb45c6c653a8c0cc6b30cfb0; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: 2f667950b58a0e64a5f120121ffccbd5dbd59b0bcb45c6c653a8c0cc6b30cfb0; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## MessageTransformResult
 
 更新后的或替换用的消息数组及可选产物，返回后由 Chat 持有。
 
-从 `@openagentpack/kit-sdk/messages` 导入 `MessageTransformResult`。
+从 `@openagentkit/sdk/messages` 导入 `MessageTransformResult`。
 公开入口为 `packages/sdk/src/messages/index.ts`，声明位于 `packages/sdk/src/messages/types.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/message-transform.ts)
@@ -551,7 +551,7 @@ import type { MessageTransformInput } from "@openagentpack/kit-sdk/messages";
 - 适配默认结果时保留消息 ID、分片 ID 和对账字段。
 
 ```ts
-import type { MessageTransformResult } from "@openagentpack/kit-sdk/messages";
+import type { MessageTransformResult } from "@openagentkit/sdk/messages";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -559,13 +559,13 @@ import type { MessageTransformResult } from "@openagentpack/kit-sdk/messages";
 | `messages` | 是 | `ChatMessage[]` |
 | `artifacts` | 否 | `ArtifactDescriptor[] \| undefined` |
 
-<!-- source-sha256: 2f667950b58a0e64a5f120121ffccbd5dbd59b0bcb45c6c653a8c0cc6b30cfb0; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: 2f667950b58a0e64a5f120121ffccbd5dbd59b0bcb45c6c653a8c0cc6b30cfb0; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## createKitChatProvider
 
 包装已有 KitClient 并使用默认 transformSessionEvent，沿用其请求路径、游标及重试行为。
 
-从 `@openagentpack/kit-sdk/providers/kit` 导入 `createKitChatProvider`。
+从 `@openagentkit/sdk/providers/kit` 导入 `createKitChatProvider`。
 公开入口为 `packages/sdk/src/providers/kit/index.ts`，声明位于 `packages/sdk/src/providers/kit/provider.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/kit-client-provider.ts)
@@ -576,13 +576,13 @@ export function createKitChatProvider(client: Pick<KitClient, "stream" | "sendMe
 ```
 
 
-<!-- source-sha256: e2118bcc1a6d70d16191830ade262995d56e793a429672ea8a1b6b63413d3615; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: e2118bcc1a6d70d16191830ade262995d56e793a429672ea8a1b6b63413d3615; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## StreamSessionOptions
 
 取消信号、可选不透明重放游标，以及 reset、event、ready、done、ping 回调。
 
-从 `@openagentpack/kit-sdk/providers` 导入 `StreamSessionOptions`。
+从 `@openagentkit/sdk/providers` 导入 `StreamSessionOptions`。
 公开入口为 `packages/sdk/src/providers/index.ts`，声明位于 `packages/sdk/src/providers/contract.ts`。
 说明来自 `apps/storybook/content/docs/sdk/stream.mdx`。
 [可编译示例](../examples/normalized-provider.ts)
@@ -592,7 +592,7 @@ export function createKitChatProvider(client: Pick<KitClient, "stream" | "sendMe
 - onDone 表示传输明确终止，onPing 表示传输仍活跃。
 
 ```ts
-import type { StreamSessionOptions } from "@openagentpack/kit-sdk/providers";
+import type { StreamSessionOptions } from "@openagentkit/sdk/providers";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -605,13 +605,13 @@ import type { StreamSessionOptions } from "@openagentpack/kit-sdk/providers";
 | `onDone` | 否 | `((info: { status: string; lastEventId: string \| null; }) => void) \| undefined` |
 | `onPing` | 否 | `((t: number) => void) \| undefined` |
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 137fa2e9f947a02faa8f1aa85e85bd54538f214caa269a0a3af35bf8bdb8fa6c -->
+<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 28a2b134f45aa633a78c3ea7121a45f36a7d0f24b115f5c09016b6e855f4b254 -->
 
 ## createBailianChatProvider
 
 通过 RequestClient 将六个必需操作和两个可选线程操作适配为 ChatProvider。
 
-从 `@openagentpack/kit-sdk/providers/bailian` 导入 `createBailianChatProvider`。
+从 `@openagentkit/sdk/providers/bailian` 导入 `createBailianChatProvider`。
 公开入口为 `packages/sdk/src/providers/bailian/index.ts`，声明位于 `packages/sdk/src/providers/bailian/provider.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/raw-bailian-provider.ts)
@@ -626,13 +626,13 @@ export function createBailianChatProvider(options: BailianChatProviderOptions): 
 ```
 
 
-<!-- source-sha256: fa4a77bb4e97bdb8812a1f604b3d1f74e4ec5ae37c1d8b24135f66008aee9eb9; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: fa4a77bb4e97bdb8812a1f604b3d1f74e4ec5ae37c1d8b24135f66008aee9eb9; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## BailianChatProviderOptions
 
 包括必需的 RequestClient、六个 buildRequest 和 mapResponse 操作，以及有上限的恢复配置。
 
-从 `@openagentpack/kit-sdk/providers/bailian` 导入 `BailianChatProviderOptions`。
+从 `@openagentkit/sdk/providers/bailian` 导入 `BailianChatProviderOptions`。
 公开入口为 `packages/sdk/src/providers/bailian/index.ts`，声明位于 `packages/sdk/src/providers/bailian/contract.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/raw-bailian-provider.ts)
@@ -642,7 +642,7 @@ export function createBailianChatProvider(options: BailianChatProviderOptions): 
 - 每次重连重建完整历史，Kit 的 after 游标不传给百炼原始流。
 
 ```ts
-import type { BailianChatProviderOptions } from "@openagentpack/kit-sdk/providers/bailian";
+import type { BailianChatProviderOptions } from "@openagentkit/sdk/providers/bailian";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -662,13 +662,13 @@ import type { BailianChatProviderOptions } from "@openagentpack/kit-sdk/provider
 | `listThreads` | 否 | `BailianOperation<BailianThreadQuery, { data: { id: string; session_id: string; parent_thread_id: string; agent: { id: string; version?: number \| undefined; name?: string \| undefined; }; status: string; created_at: string; updated_at: string; agent_name?: string \| undefined; archived_at?: string \| null \| undefined; }[]; next_page_token: string \| null; }> \| undefined` |
 | `listThreadEvents` | 否 | `BailianOperation<BailianThreadQuery & { threadId: string; }, BailianEventsPage> \| undefined` |
 
-<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## openStream
 
 描述原始订阅请求，映射未经消费的 Response 和真实的上游就绪 Promise。
 
-从 `@openagentpack/kit-sdk/providers/bailian` 导入 `BailianChatProviderOptions`。
+从 `@openagentkit/sdk/providers/bailian` 导入 `BailianChatProviderOptions`。
 公开入口为 `packages/sdk/src/providers/bailian/index.ts`，声明位于 `packages/sdk/src/providers/bailian/contract.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/raw-bailian-provider.ts)
@@ -688,13 +688,13 @@ BackendOperation<{ sessionId: string; }, BailianStreamResponse>
 | `buildRequest` | 是 | `(input: { sessionId: string; }, context: BackendRequestContext) => BackendRequestSpec \| Promise<BackendRequestSpec>` |
 | `mapResponse` | 是 | `(response: Response, context: BackendRequestContext & { input: { sessionId: string; }; }) => BailianStreamResponse \| Promise<BailianStreamResponse>` |
 
-<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## listEvents
 
 描述单次升序历史分页请求，将完整原始事件与不透明的下一页游标映射给 Provider。
 
-从 `@openagentpack/kit-sdk/providers/bailian` 导入 `BailianChatProviderOptions`。
+从 `@openagentkit/sdk/providers/bailian` 导入 `BailianChatProviderOptions`。
 公开入口为 `packages/sdk/src/providers/bailian/index.ts`，声明位于 `packages/sdk/src/providers/bailian/contract.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/raw-bailian-provider.ts)
@@ -713,20 +713,20 @@ BackendOperation<{ sessionId: string; pageToken?: string; }, BailianEventsPage>
 | `buildRequest` | 是 | `(input: { sessionId: string; pageToken?: string; }, context: BackendRequestContext) => BackendRequestSpec \| Promise<BackendRequestSpec>` |
 | `mapResponse` | 是 | `(response: Response, context: BackendRequestContext & { input: { sessionId: string; pageToken?: string; }; }) => BailianEventsPage \| Promise<BailianEventsPage>` |
 
-<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## BailianStreamResponse
 
 原始流式 HTTP 响应及表示上游真实就绪的 Promise。
 
-从 `@openagentpack/kit-sdk/providers/bailian` 导入 `BailianStreamResponse`。
+从 `@openagentkit/sdk/providers/bailian` 导入 `BailianStreamResponse`。
 公开入口为 `packages/sdk/src/providers/bailian/index.ts`，声明位于 `packages/sdk/src/providers/bailian/contract.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/raw-bailian-provider.ts)
 
 
 ```ts
-import type { BailianStreamResponse } from "@openagentpack/kit-sdk/providers/bailian";
+import type { BailianStreamResponse } from "@openagentkit/sdk/providers/bailian";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -734,13 +734,13 @@ import type { BailianStreamResponse } from "@openagentpack/kit-sdk/providers/bai
 | `response` | 是 | `Response` |
 | `ready` | 是 | `Promise<void>` |
 
-<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## BailianEventsPage
 
 按升序排列的完整原始历史对象及可选的下一页游标。
 
-从 `@openagentpack/kit-sdk/providers/bailian` 导入 `BailianEventsPage`。
+从 `@openagentkit/sdk/providers/bailian` 导入 `BailianEventsPage`。
 公开入口为 `packages/sdk/src/providers/bailian/index.ts`，声明位于 `packages/sdk/src/providers/bailian/contract.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/raw-bailian-provider.ts)
@@ -748,7 +748,7 @@ import type { BailianStreamResponse } from "@openagentpack/kit-sdk/providers/bai
 - 游标为 null 或缺失时结束分页。更新重放须使用独立游标。
 
 ```ts
-import type { BailianEventsPage } from "@openagentpack/kit-sdk/providers/bailian";
+import type { BailianEventsPage } from "@openagentkit/sdk/providers/bailian";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -756,13 +756,13 @@ import type { BailianEventsPage } from "@openagentpack/kit-sdk/providers/bailian
 | `events` | 是 | `Record<string, unknown>[]` |
 | `nextPageToken` | 否 | `string \| null \| undefined` |
 
-<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## SessionEvent
 
 由 SDK 定义的业务事件合同，供 Kit 的标准事件流和消息投影使用。
 
-从 `@openagentpack/kit-sdk/protocol` 导入 `SessionEvent`。
+从 `@openagentkit/sdk/protocol` 导入 `SessionEvent`。
 公开入口为 `packages/sdk/src/protocol/index.ts`，声明位于 `packages/sdk/src/protocol/index.ts`。
 说明来自 `apps/storybook/content/docs/sdk/stream.mdx`。
 [可编译示例](../examples/normalized-provider.ts)
@@ -786,13 +786,13 @@ export type SessionEvent = { type: string; event_id?: string | undefined; role?:
 | `code` | 否 | `string \| null \| undefined` |
 | `message` | 否 | `string \| null \| undefined` |
 
-<!-- source-sha256: 19898cd813f32186233349faf10be579ce2e7ab95461563eb7b354c2abd7ad1f; doc-sha256: 137fa2e9f947a02faa8f1aa85e85bd54538f214caa269a0a3af35bf8bdb8fa6c -->
+<!-- source-sha256: 19898cd813f32186233349faf10be579ce2e7ab95461563eb7b354c2abd7ad1f; doc-sha256: 28a2b134f45aa633a78c3ea7121a45f36a7d0f24b115f5c09016b6e855f4b254 -->
 
 ## SendMessageRequest
 
 提交消息文本，可携带乐观消息标识、技能名单和随消息挂载的附件引用。
 
-从 `@openagentpack/kit-sdk/protocol` 导入 `SendMessageRequest`。
+从 `@openagentkit/sdk/protocol` 导入 `SendMessageRequest`。
 公开入口为 `packages/sdk/src/protocol/index.ts`，声明位于 `packages/sdk/src/protocol/api.ts`。
 说明来自 `apps/storybook/content/docs/sdk/client.mdx`。
 [可编译示例](../examples/backend-http.ts)
@@ -809,13 +809,13 @@ export type SendMessageRequest = { text: string; skills?: string[] | undefined; 
 | `attachments` | 否 | `{ file_id: string; filename?: string \| undefined; mount_path?: string \| undefined; size?: number \| undefined; }[] \| undefined` |
 | `client_message_id` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 1dc864117b708c6a5d56599b55821494870ab35e77f8d5510c5961c99f82a4fa; doc-sha256: 998722b2b327af14ec241310f86edb8bb411fad21e30f2f42b383399504ca031 -->
+<!-- source-sha256: 1dc864117b708c6a5d56599b55821494870ab35e77f8d5510c5961c99f82a4fa; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
 
 ## SendMessageResponse
 
 写请求返回的真实会话 ID、受理标记和已提交的事件 ID。
 
-从 `@openagentpack/kit-sdk/protocol` 导入 `SendMessageResponse`。
+从 `@openagentkit/sdk/protocol` 导入 `SendMessageResponse`。
 公开入口为 `packages/sdk/src/protocol/index.ts`，声明位于 `packages/sdk/src/protocol/api.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/backend-http.ts)
@@ -831,13 +831,13 @@ export type SendMessageResponse = { session_id: string; accepted: boolean; event
 | `accepted` | 是 | `boolean` |
 | `event_ids` | 是 | `string[]` |
 
-<!-- source-sha256: 1dc864117b708c6a5d56599b55821494870ab35e77f8d5510c5961c99f82a4fa; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: 1dc864117b708c6a5d56599b55821494870ab35e77f8d5510c5961c99f82a4fa; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## ToolApprovalsResponse
 
 当前 requires_action 状态、待审批批次及调用，以及冻结的工具请求。
 
-从 `@openagentpack/kit-sdk/protocol` 导入 `ToolApprovalsResponse`。
+从 `@openagentkit/sdk/protocol` 导入 `ToolApprovalsResponse`。
 公开入口为 `packages/sdk/src/protocol/index.ts`，声明位于 `packages/sdk/src/protocol/tool-approvals.ts`。
 说明来自 `apps/storybook/content/docs/sdk/tool-approvals.mdx`。
 [可编译示例](../examples/backend-http.ts)
@@ -854,13 +854,13 @@ export type ToolApprovalsResponse = { requires_action: boolean; batch_id: string
 | `pending_call_ids` | 是 | `string[]` |
 | `requests` | 是 | `{ batch_id: string; call_id: string; request_event_id: string \| null; name: string; arguments: unknown; tool_type: string; actionable: boolean; server_label?: string \| undefined; session_thread_id?: string \| undefined; status?: "pending" \| "submitted" \| "uncertain" \| undefined; result?: "allow" \| "deny" \| undefined; }[]` |
 
-<!-- source-sha256: d2f0f317f4cf23f039f2a01196acb1a226be2fa48e2800bcf62c4021030a005d; doc-sha256: 7296aafc38cf5068cf2ad94dcea22521054e632a7802b51a099b77e155acfa80 -->
+<!-- source-sha256: d2f0f317f4cf23f039f2a01196acb1a226be2fa48e2800bcf62c4021030a005d; doc-sha256: 03e164c0199edd9510cc7c6ebd1036abc697a376d45c2586623da56a188c80aa -->
 
 ## ToolApprovalDecision
 
 由当前批次及调用唯一标识的一次显式允许或拒绝决定。
 
-从 `@openagentpack/kit-sdk/protocol` 导入 `ToolApprovalDecision`。
+从 `@openagentkit/sdk/protocol` 导入 `ToolApprovalDecision`。
 公开入口为 `packages/sdk/src/protocol/index.ts`，声明位于 `packages/sdk/src/protocol/tool-approvals.ts`。
 说明来自 `apps/storybook/content/docs/sdk/tool-approvals.mdx`。
 [可编译示例](../examples/backend-http.ts)
@@ -877,13 +877,13 @@ export type ToolApprovalDecision = { batch_id: string; call_id: string; result: 
 | `result` | 是 | `"allow" \| "deny"` |
 | `deny_message` | 否 | `string \| undefined` |
 
-<!-- source-sha256: d2f0f317f4cf23f039f2a01196acb1a226be2fa48e2800bcf62c4021030a005d; doc-sha256: 7296aafc38cf5068cf2ad94dcea22521054e632a7802b51a099b77e155acfa80 -->
+<!-- source-sha256: d2f0f317f4cf23f039f2a01196acb1a226be2fa48e2800bcf62c4021030a005d; doc-sha256: 03e164c0199edd9510cc7c6ebd1036abc697a376d45c2586623da56a188c80aa -->
 
 ## KitError
 
 通过安全错误码、摘要和明确的可重试标记指导控制器恢复。
 
-从 `@openagentpack/kit-sdk/protocol` 导入 `KitError`。
+从 `@openagentkit/sdk/protocol` 导入 `KitError`。
 公开入口为 `packages/sdk/src/protocol/index.ts`，声明位于 `packages/sdk/src/protocol/errors.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/backend-http.ts)
@@ -909,13 +909,13 @@ declare class KitError {
 | `stack` | 否 | `string \| undefined` |
 | `cause` | 否 | `unknown` |
 
-<!-- source-sha256: 0d3c4159a0cc3cc2979689d0c75227001ef7dd285083b525e549913cd52140f3; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: 0d3c4159a0cc3cc2979689d0c75227001ef7dd285083b525e549913cd52140f3; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## BailianOperation
 
 描述后端请求及响应转换，HTTP 请求由 Provider 与 RequestClient 执行。
 
-从 `@openagentpack/kit-sdk/providers/bailian` 导入 `BailianOperation`。
+从 `@openagentkit/sdk/providers/bailian` 导入 `BailianOperation`。
 公开入口为 `packages/sdk/src/providers/bailian/index.ts`，声明位于 `packages/sdk/src/providers/bailian/contract.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/raw-bailian-provider.ts)
@@ -930,13 +930,13 @@ export type BailianOperation = BackendOperation<Input, Output>;
 | `buildRequest` | 是 | `(input: Input, context: BackendRequestContext) => BackendRequestSpec \| Promise<BackendRequestSpec>` |
 | `mapResponse` | 是 | `(response: Response, context: BackendRequestContext & { input: Input; }) => Output \| Promise<Output>` |
 
-<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## BailianRequestSpec
 
 应用路径及不含 signal 的 RequestInit，取消由 Provider 管理。
 
-从 `@openagentpack/kit-sdk/providers/bailian` 导入 `BailianRequestSpec`。
+从 `@openagentkit/sdk/providers/bailian` 导入 `BailianRequestSpec`。
 公开入口为 `packages/sdk/src/providers/bailian/index.ts`，声明位于 `packages/sdk/src/providers/bailian/contract.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/raw-bailian-provider.ts)
@@ -951,13 +951,13 @@ export type BailianRequestSpec = BackendRequestSpec;
 | `path` | 是 | `string` |
 | `init` | 否 | `Omit<RequestInit, "signal"> \| undefined` |
 
-<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## BailianRequestContext
 
 请求构建和响应映射共用的 Provider 取消上下文。
 
-从 `@openagentpack/kit-sdk/providers/bailian` 导入 `BailianRequestContext`。
+从 `@openagentkit/sdk/providers/bailian` 导入 `BailianRequestContext`。
 公开入口为 `packages/sdk/src/providers/bailian/index.ts`，声明位于 `packages/sdk/src/providers/bailian/contract.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/raw-bailian-provider.ts)
@@ -971,13 +971,13 @@ export type BailianRequestContext = BackendRequestContext;
 | --- | --- | --- |
 | `signal` | 否 | `AbortSignal \| undefined` |
 
-<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## createBailianThreadOperations
 
 提供百炼标准线程列表和线程事件操作配置。代理可自定义 basePath 或映射。
 
-从 `@openagentpack/kit-sdk/providers/bailian` 导入 `createBailianThreadOperations`。
+从 `@openagentkit/sdk/providers/bailian` 导入 `createBailianThreadOperations`。
 公开入口为 `packages/sdk/src/providers/bailian/index.ts`，声明位于 `packages/sdk/src/providers/bailian/threads.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/multi-agent.tsx)
@@ -988,20 +988,20 @@ export function createBailianThreadOperations(options?: { basePath?: string; }):
 ```
 
 
-<!-- source-sha256: 57c980cfbad8f9874f7fea82f85630a6987db09f32cdfd876f5e6abe97bdaaee; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: 57c980cfbad8f9874f7fea82f85630a6987db09f32cdfd876f5e6abe97bdaaee; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## BailianThreadOperations
 
 百炼原始流 Provider 的可选线程查询配置。
 
-从 `@openagentpack/kit-sdk/providers/bailian` 导入 `BailianThreadOperations`。
+从 `@openagentkit/sdk/providers/bailian` 导入 `BailianThreadOperations`。
 公开入口为 `packages/sdk/src/providers/bailian/index.ts`，声明位于 `packages/sdk/src/providers/bailian/contract.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/multi-agent.tsx)
 
 
 ```ts
-import type { BailianThreadOperations } from "@openagentpack/kit-sdk/providers/bailian";
+import type { BailianThreadOperations } from "@openagentkit/sdk/providers/bailian";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1009,20 +1009,20 @@ import type { BailianThreadOperations } from "@openagentpack/kit-sdk/providers/b
 | `listThreads` | 是 | `BailianOperation<BailianThreadQuery, { data: { id: string; session_id: string; parent_thread_id: string; agent: { id: string; version?: number \| undefined; name?: string \| undefined; }; status: string; created_at: string; updated_at: string; agent_name?: string \| undefined; archived_at?: string \| null \| undefined; }[]; next_page_token: string \| null; }>` |
 | `listThreadEvents` | 是 | `BailianOperation<BailianThreadQuery & { threadId: string; }, BailianEventsPage>` |
 
-<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## BailianThreadQuery
 
 包含会话标识和不透明的线程查询分页选项。
 
-从 `@openagentpack/kit-sdk/providers/bailian` 导入 `BailianThreadQuery`。
+从 `@openagentkit/sdk/providers/bailian` 导入 `BailianThreadQuery`。
 公开入口为 `packages/sdk/src/providers/bailian/index.ts`，声明位于 `packages/sdk/src/providers/bailian/contract.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/multi-agent.tsx)
 
 
 ```ts
-import type { BailianThreadQuery } from "@openagentpack/kit-sdk/providers/bailian";
+import type { BailianThreadQuery } from "@openagentkit/sdk/providers/bailian";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1031,20 +1031,20 @@ import type { BailianThreadQuery } from "@openagentpack/kit-sdk/providers/bailia
 | `limit` | 否 | `number \| undefined` |
 | `pageToken` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## ThreadQueryOptions
 
 标准事件线程查询的可选页大小、游标和 AbortSignal。
 
-从 `@openagentpack/kit-sdk/providers` 导入 `ThreadQueryOptions`。
+从 `@openagentkit/sdk/providers` 导入 `ThreadQueryOptions`。
 公开入口为 `packages/sdk/src/providers/index.ts`，声明位于 `packages/sdk/src/providers/contract.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/multi-agent.tsx)
 
 
 ```ts
-import type { ThreadQueryOptions } from "@openagentpack/kit-sdk/providers";
+import type { ThreadQueryOptions } from "@openagentkit/sdk/providers";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1053,13 +1053,13 @@ import type { ThreadQueryOptions } from "@openagentpack/kit-sdk/providers";
 | `pageToken` | 否 | `string \| undefined` |
 | `signal` | 否 | `AbortSignal \| undefined` |
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## ChatProvider.listThreads
 
 可选的子 Agent 线程列表查询，须保留会话归属和取消信号。
 
-从 `@openagentpack/kit-sdk/providers` 导入 `ChatProvider`。
+从 `@openagentkit/sdk/providers` 导入 `ChatProvider`。
 公开入口为 `packages/sdk/src/providers/index.ts`，声明位于 `packages/sdk/src/providers/contract.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/multi-agent.tsx)
@@ -1071,13 +1071,13 @@ import type { ThreadQueryOptions } from "@openagentpack/kit-sdk/providers";
 ```
 
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## ChatProvider.listThreadEvents
 
 可选的子 Agent 线程历史查询，须保留会话归属和取消信号。
 
-从 `@openagentpack/kit-sdk/providers` 导入 `ChatProvider`。
+从 `@openagentkit/sdk/providers` 导入 `ChatProvider`。
 公开入口为 `packages/sdk/src/providers/index.ts`，声明位于 `packages/sdk/src/providers/contract.ts`。
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/multi-agent.tsx)
@@ -1089,13 +1089,13 @@ import type { ThreadQueryOptions } from "@openagentpack/kit-sdk/providers";
 ```
 
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 5495779391c4094c3e01d2024fa410033936800965185d8d2eda1976d2d81e57 -->
+<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
 
 ## ClientOperations
 
 通过 buildRequest 和 mapResponse 配置的可选类型化操作。
 
-从 `@openagentpack/kit-sdk/providers/kit` 导入 `ClientOperations`。
+从 `@openagentkit/sdk/providers/kit` 导入 `ClientOperations`。
 公开入口为 `packages/sdk/src/providers/kit/index.ts`，声明位于 `packages/sdk/src/providers/kit/client.ts`。
 说明来自 `apps/storybook/content/docs/sdk/client.mdx`。
 [可编译示例](../examples/backend-data.ts)
@@ -1137,13 +1137,13 @@ export type ClientOperations = { agent?: BackendOperation<[slug: string, signal?
 | `auth.me` | 否 | `any` |
 | `auth.logout` | 否 | `any` |
 
-<!-- source-sha256: b1d68783a14b07a56ca56019c8d30a84c70b7fc05f9e81068aabd2506493a5d8; doc-sha256: 998722b2b327af14ec241310f86edb8bb411fad21e30f2f42b383399504ca031 -->
+<!-- source-sha256: b1d68783a14b07a56ca56019c8d30a84c70b7fc05f9e81068aabd2506493a5d8; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
 
 ## ClientOperation
 
 数据 Client 支持的操作名。
 
-从 `@openagentpack/kit-sdk/providers/kit` 导入 `ClientOperation`。
+从 `@openagentkit/sdk/providers/kit` 导入 `ClientOperation`。
 公开入口为 `packages/sdk/src/providers/kit/index.ts`，声明位于 `packages/sdk/src/providers/kit/client.ts`。
 说明来自 `apps/storybook/content/docs/sdk/client.mdx`。
 [可编译示例](../examples/backend-data.ts)
@@ -1154,20 +1154,20 @@ export type ClientOperation = "agent" | "sendMessage" | "interrupt" | "toolAppro
 ```
 
 
-<!-- source-sha256: b1d68783a14b07a56ca56019c8d30a84c70b7fc05f9e81068aabd2506493a5d8; doc-sha256: 998722b2b327af14ec241310f86edb8bb411fad21e30f2f42b383399504ca031 -->
+<!-- source-sha256: b1d68783a14b07a56ca56019c8d30a84c70b7fc05f9e81068aabd2506493a5d8; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
 
 ## ExplicitKitClientOptions
 
 接收显式注入的 Request 和 operations，业务路径由调用方配置。
 
-从 `@openagentpack/kit-sdk/providers/kit` 导入 `ExplicitKitClientOptions`。
+从 `@openagentkit/sdk/providers/kit` 导入 `ExplicitKitClientOptions`。
 公开入口为 `packages/sdk/src/providers/kit/index.ts`，声明位于 `packages/sdk/src/providers/kit/client.ts`。
 说明来自 `apps/storybook/content/docs/sdk/client.mdx`。
 [可编译示例](../examples/backend-data.ts)
 
 
 ```ts
-import type { ExplicitKitClientOptions } from "@openagentpack/kit-sdk/providers/kit";
+import type { ExplicitKitClientOptions } from "@openagentkit/sdk/providers/kit";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1176,13 +1176,13 @@ import type { ExplicitKitClientOptions } from "@openagentpack/kit-sdk/providers/
 | `operations` | 是 | `ClientOperations` |
 | `chatProvider` | 否 | `ChatProvider \| undefined` |
 
-<!-- source-sha256: b1d68783a14b07a56ca56019c8d30a84c70b7fc05f9e81068aabd2506493a5d8; doc-sha256: 998722b2b327af14ec241310f86edb8bb411fad21e30f2f42b383399504ca031 -->
+<!-- source-sha256: b1d68783a14b07a56ca56019c8d30a84c70b7fc05f9e81068aabd2506493a5d8; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
 
 ## createMemberSessionStorage
 
 创建注入式身份存储，按完整后端 URL 隔离。
 
-从 `@openagentpack/kit-sdk/auth` 导入 `createMemberSessionStorage`。
+从 `@openagentkit/sdk/auth` 导入 `createMemberSessionStorage`。
 公开入口为 `packages/sdk/src/auth/index.ts`，声明位于 `packages/sdk/src/auth/member-session-storage.ts`。
 说明来自 `apps/storybook/content/docs/sdk/client.mdx`。
 [可编译示例](../examples/backend-data.ts)
@@ -1193,13 +1193,13 @@ export function createMemberSessionStorage(baseUrl: string, getStorage: () => { 
 ```
 
 
-<!-- source-sha256: a9276ea062f185c6bd12f652590c3c3f2399fc90ccb652beeec628d4de57ab0e; doc-sha256: 998722b2b327af14ec241310f86edb8bb411fad21e30f2f42b383399504ca031 -->
+<!-- source-sha256: a9276ea062f185c6bd12f652590c3c3f2399fc90ccb652beeec628d4de57ab0e; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
 
 ## normalizeMemberApiBaseUrl
 
 校验并规范化不含凭据的 HTTP 后端 URL。
 
-从 `@openagentpack/kit-sdk/auth` 导入 `normalizeMemberApiBaseUrl`。
+从 `@openagentkit/sdk/auth` 导入 `normalizeMemberApiBaseUrl`。
 公开入口为 `packages/sdk/src/auth/index.ts`，声明位于 `packages/sdk/src/auth/member-session-storage.ts`。
 说明来自 `apps/storybook/content/docs/sdk/client.mdx`。
 [可编译示例](../examples/backend-data.ts)
@@ -1210,13 +1210,13 @@ export function normalizeMemberApiBaseUrl(value: string, origin: string): string
 ```
 
 
-<!-- source-sha256: a9276ea062f185c6bd12f652590c3c3f2399fc90ccb652beeec628d4de57ab0e; doc-sha256: 998722b2b327af14ec241310f86edb8bb411fad21e30f2f42b383399504ca031 -->
+<!-- source-sha256: a9276ea062f185c6bd12f652590c3c3f2399fc90ccb652beeec628d4de57ab0e; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
 
 ## streamProtocolFrames
 
 通过注入的 RequestClient 消费公开协议帧，支持取消和基于有效帧的空闲检测。
 
-从 `@openagentpack/kit-sdk/providers/kit` 导入 `streamProtocolFrames`。
+从 `@openagentkit/sdk/providers/kit` 导入 `streamProtocolFrames`。
 公开入口为 `packages/sdk/src/providers/kit/index.ts`，声明位于 `packages/sdk/src/providers/kit/stream.ts`。
 说明来自 `apps/storybook/content/docs/sdk/stream.mdx`。
 [可编译示例](../examples/protocol-frames.ts)
@@ -1230,7 +1230,7 @@ export function streamProtocolFrames(request: RequestClient, path: string, handl
 ```
 
 
-<!-- source-sha256: dce3e18c126ae522692879f22fedfafca0dc592ba78c5908357d440e22ea5aba; doc-sha256: 137fa2e9f947a02faa8f1aa85e85bd54538f214caa269a0a3af35bf8bdb8fa6c -->
+<!-- source-sha256: dce3e18c126ae522692879f22fedfafca0dc592ba78c5908357d440e22ea5aba; doc-sha256: 28a2b134f45aa633a78c3ea7121a45f36a7d0f24b115f5c09016b6e855f4b254 -->
 
 ## 相关类型
 
@@ -1238,10 +1238,10 @@ export function streamProtocolFrames(request: RequestClient, path: string, handl
 
 ### ArtifactDescriptor
 
-来自 `@openagentpack/kit-sdk/protocol`。
+来自 `@openagentkit/sdk/protocol`。
 
 ```ts
-import type { ArtifactDescriptor } from "@openagentpack/kit-sdk/protocol";
+import type { ArtifactDescriptor } from "@openagentkit/sdk/protocol";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1254,7 +1254,7 @@ import type { ArtifactDescriptor } from "@openagentpack/kit-sdk/protocol";
 
 ### AttachmentRef
 
-来自 `@openagentpack/kit-sdk/protocol`。
+来自 `@openagentkit/sdk/protocol`。
 
 ```ts
 export type AttachmentRef = { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; };
@@ -1270,10 +1270,10 @@ export type AttachmentRef = { file_id: string; filename?: string | undefined; mo
 
 ### ChatMessage
 
-来自 `@openagentpack/kit-sdk/messages`。
+来自 `@openagentkit/sdk/messages`。
 
 ```ts
-import type { ChatMessage } from "@openagentpack/kit-sdk/messages";
+import type { ChatMessage } from "@openagentkit/sdk/messages";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1289,10 +1289,10 @@ import type { ChatMessage } from "@openagentpack/kit-sdk/messages";
 
 ### DonePayload
 
-来自 `@openagentpack/kit-sdk/protocol`。
+来自 `@openagentkit/sdk/protocol`。
 
 ```ts
-import type { DonePayload } from "@openagentpack/kit-sdk/protocol";
+import type { DonePayload } from "@openagentkit/sdk/protocol";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1306,7 +1306,7 @@ import type { DonePayload } from "@openagentpack/kit-sdk/protocol";
 
 ### ErrorCode
 
-来自 `@openagentpack/kit-sdk/protocol`。
+来自 `@openagentkit/sdk/protocol`。
 
 ```ts
 export type ErrorCode = "invalid_request" | "unauthorized" | "forbidden" | "not_found" | "conflict" | "confirmation_required" | "rate_limited" | "quota_exceeded" | "request_pending" | "provider_error" | "not_implemented" | "internal";
@@ -1316,10 +1316,10 @@ export type ErrorCode = "invalid_request" | "unauthorized" | "forbidden" | "not_
 
 ### ErrorPayload
 
-来自 `@openagentpack/kit-sdk/protocol`。
+来自 `@openagentkit/sdk/protocol`。
 
 ```ts
-import type { ErrorPayload } from "@openagentpack/kit-sdk/protocol";
+import type { ErrorPayload } from "@openagentkit/sdk/protocol";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1331,10 +1331,10 @@ import type { ErrorPayload } from "@openagentpack/kit-sdk/protocol";
 
 ### EventsPage
 
-来自 `@openagentpack/kit-sdk/protocol`。
+来自 `@openagentkit/sdk/protocol`。
 
 ```ts
-import type { EventsPage } from "@openagentpack/kit-sdk/protocol";
+import type { EventsPage } from "@openagentkit/sdk/protocol";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1345,7 +1345,7 @@ import type { EventsPage } from "@openagentpack/kit-sdk/protocol";
 
 ### KitClient
 
-来自 `@openagentpack/kit-sdk/providers/kit`。
+来自 `@openagentkit/sdk/providers/kit`。
 
 ```ts
 export type KitClient = { transport: { request: <T>(path: string, init?: RequestInit) => Promise<T>; response: (path: string, init?: RequestInit) => Promise<Response>; stream: (path: string, handlers?: StreamHandlers) => Promise<void>; url: (path: string) => string; }; auth: { login: (body: MemberLoginRequest, signal?: AbortSignal) => Promise<{ access_token: string; token_type: "Bearer"; expires_at: string; member: { member_id: string; username: string; display_name: string; auth_type: "local"; status: "active"; created_at: string; updated_at: string; usage_summary?: { session_count: number; deleted_session_count: number; metrics: { input_tokens: { value: number | null; covered_sessions: number; }; output_tokens: { value: number | null; covered_sessions: number; }; cache_read_input_tokens: { value: number | null; covered_sessions: number; }; cache_creation_input_tokens: { value: number | null; covered_sessions: number; }; active_seconds: { value: number | null; covered_sessions: number; }; duration_seconds: { value: number | null; covered_sessions: number; }; }; agents: { slug: string; display_name: string | null; deleted?: boolean | undefined; }[]; refresh_status: "idle" | "refreshing" | "partial" | "failed"; completed_sessions: number; refreshed_at?: string | undefined; } | undefined; email?: string | undefined; }; }>; me: (signal?: AbortSignal) => Promise<{ identity: { subjectId: string; displayName?: string | undefined; tier?: string | undefined; metadata?: Record<string, unknown> | undefined; }; member?: { member_id: string; username: string; display_name: string; auth_type: "local"; status: "active"; created_at: string; updated_at: string; usage_summary?: { session_count: number; deleted_session_count: number; metrics: { input_tokens: { value: number | null; covered_sessions: number; }; output_tokens: { value: number | null; covered_sessions: number; }; cache_read_input_tokens: { value: number | null; covered_sessions: number; }; cache_creation_input_tokens: { value: number | null; covered_sessions: number; }; active_seconds: { value: number | null; covered_sessions: number; }; duration_seconds: { value: number | null; covered_sessions: number; }; }; agents: { slug: string; display_name: string | null; deleted?: boolean | undefined; }[]; refresh_status: "idle" | "refreshing" | "partial" | "failed"; completed_sessions: number; refreshed_at?: string | undefined; } | undefined; email?: string | undefined; } | undefined; expires_at?: string | undefined; }>; logout: (signal?: AbortSignal) => Promise<void>; }; config: (signal?: AbortSignal) => Promise<{ apiBaseUrl: string; protocolVersion: string; gateway: "sdk" | "mock"; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; }; branding: { productName: string; logoUrl?: string | undefined; accent?: string | undefined; }; auth?: { mode: "member" | "anonymous"; passwordLogin: true; } | undefined; }>; agents: (signal?: AbortSignal) => Promise<{ slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "data" | "general" | "writing" | "coding" | "other"; featured: boolean; description?: string | undefined; icon?: string | undefined; opening_remarks?: string | undefined; theme?: { accent?: string | undefined; iconBackground?: string | undefined; } | undefined; }[]>; plaza: (query?: { category?: PlazaCategory; q?: string; }, signal?: AbortSignal) => Promise<{ agents: { slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "data" | "general" | "writing" | "coding" | "other"; featured: boolean; stats: { mine: boolean; turns_30d: number; last_used_at?: string | undefined; }; description?: string | undefined; icon?: string | undefined; opening_remarks?: string | undefined; theme?: { accent?: string | undefined; iconBackground?: string | undefined; } | undefined; }[]; featured: string[]; popular: string[]; categories: { id: "data" | "general" | "writing" | "coding" | "other"; name: string; count: number; }[]; }>; usageLimits: (query?: { days?: number; }, signal?: AbortSignal) => Promise<{ member_id: string; month: string; reset_at: string; limits: { monthly_tokens: number | null; monthly_active_seconds: number | null; daily_tokens: number | null; daily_active_seconds: number | null; }; override: { monthly_tokens: number | null; monthly_active_seconds: number | null; daily_tokens: number | null; daily_active_seconds: number | null; } | null; tokens: { limit: number | null; used: number | null; remaining: number | null; status: "ok" | "exceeded" | "unavailable"; }; active_seconds: { limit: number | null; used: number | null; remaining: number | null; status: "ok" | "exceeded" | "unavailable"; }; day_state: { day: string; reset_at: string; tokens: { limit: number | null; used: number | null; remaining: number | null; status: "ok" | "exceeded" | "unavailable"; }; active_seconds: { limit: number | null; used: number | null; remaining: number | null; status: "ok" | "exceeded" | "unavailable"; }; }; accounting_started_at: string; daily: { day: string; tokens: number; active_seconds: number; }[]; refreshed_at?: string | undefined; } | null>; quota: (query?: { days?: number; }, signal?: AbortSignal) => Promise<{ month: string; reset_at: string; unlimited: boolean; base_limit: number; override_limit: number | null; packs: { id: string; month: string; credits: number; granted_by: string; created_at: string; reason?: string | undefined; }[]; limit: number; used: number; remaining: number; per_agent: { agent_slug: string; turns: number; }[]; daily: { day: string; turns: number; }[]; pending_request: { id: string; subject_id: string; requested_credits: number; status: "pending" | "approved" | "rejected"; mode: "override" | "pack" | null; granted_credits: number | null; created_at: string; reason?: string | undefined; review_note?: string | undefined; reviewed_by?: string | undefined; reviewed_at?: string | undefined; } | null; }>; quotaRequests: (signal?: AbortSignal) => Promise<{ id: string; subject_id: string; requested_credits: number; status: "pending" | "approved" | "rejected"; mode: "override" | "pack" | null; granted_credits: number | null; created_at: string; reason?: string | undefined; review_note?: string | undefined; reviewed_by?: string | undefined; reviewed_at?: string | undefined; }[]>; createQuotaRequest: (body: { requestedCredits: number; reason?: string; }, signal?: AbortSignal) => Promise<{ id: string; subject_id: string; requested_credits: number; status: "pending" | "approved" | "rejected"; mode: "override" | "pack" | null; granted_credits: number | null; created_at: string; reason?: string | undefined; review_note?: string | undefined; reviewed_by?: string | undefined; reviewed_at?: string | undefined; }>; agent: (slug: string, signal?: AbortSignal) => Promise<{ slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "data" | "general" | "writing" | "coding" | "other"; featured: boolean; id: string; remote_agent_id: string; description?: string | undefined; icon?: string | undefined; opening_remarks?: string | undefined; theme?: { accent?: string | undefined; iconBackground?: string | undefined; } | undefined; remote_agent_version?: number | undefined; resources?: { tools: { name: string; description?: string | undefined; permission?: "allow" | "ask" | undefined; }[]; skills: { name: string; description?: string | undefined; permission?: "allow" | "ask" | undefined; }[]; mcp_servers: { name: string; description?: string | undefined; permission?: "allow" | "ask" | undefined; }[]; } | undefined; memory_stores?: { name: string; description?: string | undefined; }[] | undefined; }>; sessions: (query?: SessionListQuery, signal?: AbortSignal) => Promise<{ sessions: { session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; }[]; nextPageToken: string | null; }>; sessionAgents: (signal?: AbortSignal) => Promise<string[]>; sessionDirectory: (signal?: AbortSignal) => Promise<{ session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; }[]>; createSession: (body: { agentSlug: string; title?: string; files?: AttachmentRef[]; }, signal?: AbortSignal) => Promise<{ session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; usage?: { input_tokens?: number | undefined; output_tokens?: number | undefined; cache_read_input_tokens?: number | undefined; cache_creation_input_tokens?: number | undefined; } | undefined; stats?: { active_seconds?: number | undefined; duration_seconds?: number | undefined; } | undefined; remote_status?: string | undefined; files?: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[] | undefined; message_files?: { event_ids: string[]; files: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[]; }[] | undefined; }>; session: (id: string, signal?: AbortSignal) => Promise<{ session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; usage?: { input_tokens?: number | undefined; output_tokens?: number | undefined; cache_read_input_tokens?: number | undefined; cache_creation_input_tokens?: number | undefined; } | undefined; stats?: { active_seconds?: number | undefined; duration_seconds?: number | undefined; } | undefined; remote_status?: string | undefined; files?: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[] | undefined; message_files?: { event_ids: string[]; files: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[]; }[] | undefined; }>; renameSession: (id: string, title: string, signal?: AbortSignal) => Promise<{ session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; usage?: { input_tokens?: number | undefined; output_tokens?: number | undefined; cache_read_input_tokens?: number | undefined; cache_creation_input_tokens?: number | undefined; } | undefined; stats?: { active_seconds?: number | undefined; duration_seconds?: number | undefined; } | undefined; remote_status?: string | undefined; files?: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[] | undefined; message_files?: { event_ids: string[]; files: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[]; }[] | undefined; }>; sendMessage: (sessionId: string, body: SendMessageRequest) => Promise<{ session_id: string; accepted: boolean; event_ids: string[]; }>; toolApprovals: (sessionId: string) => Promise<{ requires_action: boolean; batch_id: string | null; pending_call_ids: string[]; requests: { batch_id: string; call_id: string; request_event_id: string | null; name: string; arguments: unknown; tool_type: string; actionable: boolean; server_label?: string | undefined; session_thread_id?: string | undefined; status?: "pending" | "submitted" | "uncertain" | undefined; result?: "allow" | "deny" | undefined; }[]; }>; submitToolApproval: (sessionId: string, decision: ToolApprovalDecision) => Promise<{ session_id: string; accepted: boolean; event_ids: string[]; }>; interrupt: (sessionId: string) => Promise<{ interrupted: boolean; }>; events: (sessionId: string, query?: { afterId?: string; limit?: number; pageToken?: string; }) => Promise<EventsPage>; listThreads: (sessionId: string, query?: ThreadQueryOptions) => Promise<SessionThreadsResponse>; listThreadEvents: (sessionId: string, threadId: string, query?: ThreadQueryOptions) => Promise<EventsPage>; stream: (sessionId: string, streamOptions?: StreamSessionOptions) => Promise<void>; sessionPlan: (sessionId: string, action: "archive" | "delete", signal?: AbortSignal) => Promise<{ plan_id: string; confirm_token: string; destructive: boolean; expires_at: number; diff: { resource: string; action: string; destructive: boolean; }[]; }>; archiveSession: (sessionId: string, confirmation: { plan_id: string; confirm_token: string; }, signal?: AbortSignal) => Promise<{ archived: boolean; }>; deleteSession: (sessionId: string, confirmation: { plan_id: string; confirm_token: string; }, signal?: AbortSignal) => Promise<{ deleted: boolean; }>; uploadFile: (file: { name: string; bytes: Uint8Array; mimeType?: string; }, signal?: AbortSignal) => Promise<{ file_id: string; filename: string; size: number; }>; fileDownloadUrl: (fileId: string) => string; fileStatus: (fileId: string, signal?: AbortSignal) => Promise<{ file_id: string; status: string | null; available: boolean; }>; downloadFile: (fileId: string, input?: { sessionId?: string; signal?: AbortSignal; }) => Promise<Response>; } & { supports(operation: ClientOperation): boolean; };
@@ -1389,10 +1389,10 @@ export type KitClient = { transport: { request: <T>(path: string, init?: Request
 
 ### KitErrorBody
 
-来自 `@openagentpack/kit-sdk/protocol`。
+来自 `@openagentkit/sdk/protocol`。
 
 ```ts
-import type { KitErrorBody } from "@openagentpack/kit-sdk/protocol";
+import type { KitErrorBody } from "@openagentkit/sdk/protocol";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1402,7 +1402,7 @@ import type { KitErrorBody } from "@openagentpack/kit-sdk/protocol";
 
 ### MemberLoginRequest
 
-来自 `@openagentpack/kit-sdk/protocol`。
+来自 `@openagentkit/sdk/protocol`。
 
 ```ts
 export type MemberLoginRequest = { username: string; password: string; };
@@ -1416,10 +1416,10 @@ export type MemberLoginRequest = { username: string; password: string; };
 
 ### MemberSessionStorage
 
-来自 `@openagentpack/kit-sdk/auth`。
+来自 `@openagentkit/sdk/auth`。
 
 ```ts
-import type { MemberSessionStorage } from "@openagentpack/kit-sdk/auth";
+import type { MemberSessionStorage } from "@openagentkit/sdk/auth";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1430,7 +1430,7 @@ import type { MemberSessionStorage } from "@openagentpack/kit-sdk/auth";
 
 ### MessagePart
 
-来自 `@openagentpack/kit-sdk/messages`。
+来自 `@openagentkit/sdk/messages`。
 
 ```ts
 export type MessagePart = ({ type: "text"; text: string; } | { type: "reasoning"; text: string; status?: "streaming" | "done" | "failed" | "interrupted"; startedAt?: string; } | { type: "tool"; toolId: string; name: string; status: "running" | "done" | "error"; input?: unknown; output?: unknown; startedAt?: string; endedAt?: string; } | { type: "artifact"; artifact: ArtifactDescriptor; } | { type: "attachment"; file: AttachmentRef; } | { type: "status"; text: string; } | { type: "sub-agent"; threadId: string; } | { type: "unknown"; label: string; value: unknown; }) & { id?: string; };
@@ -1444,7 +1444,7 @@ export type MessagePart = ({ type: "text"; text: string; } | { type: "reasoning"
 
 ### MessageStatus
 
-来自 `@openagentpack/kit-sdk/messages`。
+来自 `@openagentkit/sdk/messages`。
 
 ```ts
 export type MessageStatus = "pending" | "streaming" | "failed" | "done" | "interrupted";
@@ -1454,10 +1454,10 @@ export type MessageStatus = "pending" | "streaming" | "failed" | "done" | "inter
 
 ### OperationProgress
 
-来自 `@openagentpack/kit-sdk/protocol`。
+来自 `@openagentkit/sdk/protocol`。
 
 ```ts
-import type { OperationProgress } from "@openagentpack/kit-sdk/protocol";
+import type { OperationProgress } from "@openagentkit/sdk/protocol";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1470,10 +1470,10 @@ import type { OperationProgress } from "@openagentpack/kit-sdk/protocol";
 
 ### PingPayload
 
-来自 `@openagentpack/kit-sdk/protocol`。
+来自 `@openagentkit/sdk/protocol`。
 
 ```ts
-import type { PingPayload } from "@openagentpack/kit-sdk/protocol";
+import type { PingPayload } from "@openagentkit/sdk/protocol";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1483,7 +1483,7 @@ import type { PingPayload } from "@openagentpack/kit-sdk/protocol";
 
 ### PlazaCategory
 
-来自 `@openagentpack/kit-sdk/protocol`。
+来自 `@openagentkit/sdk/protocol`。
 
 ```ts
 export type PlazaCategory = "data" | "general" | "writing" | "coding" | "other";
@@ -1493,10 +1493,10 @@ export type PlazaCategory = "data" | "general" | "writing" | "coding" | "other";
 
 ### RawSseMessage
 
-来自 `@openagentpack/kit-sdk/stream`。
+来自 `@openagentkit/sdk/stream`。
 
 ```ts
-import type { RawSseMessage } from "@openagentpack/kit-sdk/stream";
+import type { RawSseMessage } from "@openagentkit/sdk/stream";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1508,10 +1508,10 @@ import type { RawSseMessage } from "@openagentpack/kit-sdk/stream";
 
 ### ReadyPayload
 
-来自 `@openagentpack/kit-sdk/protocol`。
+来自 `@openagentkit/sdk/protocol`。
 
 ```ts
-import type { ReadyPayload } from "@openagentpack/kit-sdk/protocol";
+import type { ReadyPayload } from "@openagentkit/sdk/protocol";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1524,10 +1524,10 @@ import type { ReadyPayload } from "@openagentpack/kit-sdk/protocol";
 
 ### SessionListQuery
 
-来自 `@openagentpack/kit-sdk/sessions`。
+来自 `@openagentkit/sdk/sessions`。
 
 ```ts
-import type { SessionListQuery } from "@openagentpack/kit-sdk/sessions";
+import type { SessionListQuery } from "@openagentkit/sdk/sessions";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1541,7 +1541,7 @@ import type { SessionListQuery } from "@openagentpack/kit-sdk/sessions";
 
 ### SessionThreadsResponse
 
-来自 `@openagentpack/kit-sdk/protocol`。
+来自 `@openagentkit/sdk/protocol`。
 
 ```ts
 export type SessionThreadsResponse = { data: { id: string; session_id: string; parent_thread_id: string; agent: { id: string; version?: number | undefined; name?: string | undefined; }; status: string; created_at: string; updated_at: string; agent_name?: string | undefined; archived_at?: string | null | undefined; }[]; next_page_token: string | null; };
@@ -1555,7 +1555,7 @@ export type SessionThreadsResponse = { data: { id: string; session_id: string; p
 
 ### SseFrame
 
-来自 `@openagentpack/kit-sdk/protocol`。
+来自 `@openagentkit/sdk/protocol`。
 
 ```ts
 export type SseFrame = { type: "reset"; data: { session_id: string; }; } | { type: "ready"; data: ReadyPayload; } | { type: "event"; data: SessionEvent; cursor?: string; } | { type: "done"; data: DonePayload; } | { type: "error"; data: ErrorPayload; } | { type: "ping"; data: PingPayload; } | { type: "operation"; data: OperationProgress; };
@@ -1569,10 +1569,10 @@ export type SseFrame = { type: "reset"; data: { session_id: string; }; } | { typ
 
 ### StoredMemberSession
 
-来自 `@openagentpack/kit-sdk/auth`。
+来自 `@openagentkit/sdk/auth`。
 
 ```ts
-import type { StoredMemberSession } from "@openagentpack/kit-sdk/auth";
+import type { StoredMemberSession } from "@openagentkit/sdk/auth";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1583,10 +1583,10 @@ import type { StoredMemberSession } from "@openagentpack/kit-sdk/auth";
 
 ### StreamHandlers
 
-来自 `@openagentpack/kit-sdk/providers/kit`。
+来自 `@openagentkit/sdk/providers/kit`。
 
 ```ts
-import type { StreamHandlers } from "@openagentpack/kit-sdk/providers/kit";
+import type { StreamHandlers } from "@openagentkit/sdk/providers/kit";
 ```
 
 | 字段 | 必填 | 类型 |

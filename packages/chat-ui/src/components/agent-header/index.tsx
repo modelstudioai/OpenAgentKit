@@ -1,4 +1,4 @@
-import type { AgentSummary } from "@openagentpack/kit-sdk/protocol";
+import type { AgentSummary } from "@openagentkit/sdk/protocol";
 import type { ReactNode } from "react";
 
 export interface AgentHeaderProps {

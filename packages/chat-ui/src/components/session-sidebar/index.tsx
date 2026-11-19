@@ -1,4 +1,4 @@
-import type { SessionSummary } from "@openagentpack/kit-sdk/protocol";
+import type { SessionSummary } from "@openagentkit/sdk/protocol";
 import { type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SessionList } from "../session-list/index.tsx";
 import { ErrorState } from "../states/index.ts";

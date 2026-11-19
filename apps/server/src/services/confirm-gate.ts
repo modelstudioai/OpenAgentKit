@@ -1,4 +1,4 @@
-import { KitError } from "@openagentpack/kit-sdk/protocol";
+import { KitError } from "@openagentkit/sdk/protocol";
 import type { ServerConfig } from "../config.ts";
 import { type ConfirmationSigner, createConfirmationSigner } from "./confirm-token.ts";
 

@@ -8,7 +8,7 @@
 
 体验页需要携带 `Authorization`（成员令牌或可信 JWT）、需要在同一连接语义下做 POST 与中断、需要
 自己控制重连节奏；`EventSource` 三者都做不到。因此统一使用 `fetch` + `ReadableStream`
-读取 SSE 文本流，由 `@openagentpack/kit-sdk/protocol` 的 `createSseParser()` 解析。
+读取 SSE 文本流，由 `@openagentkit/sdk/protocol` 的 `createSseParser()` 解析。
 
 ## 帧与连接（协议 2.0）
 

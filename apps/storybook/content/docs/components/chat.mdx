@@ -50,8 +50,8 @@ pnpm kit:add chat
 {/* skill-example: kit-components/examples/chat-runtime.tsx */}
 
 ```tsx
+import { useChat } from "@openagentkit/sdk/chat/hooks";
 import { Chat, type SenderSkill, ToolApprovalCard } from "@openagentpack/kit-chat-ui";
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
 import { useState } from "react";
 
 // 在已配置的 KitProvider 内渲染，并为 Layout 内容区设置有界高度。

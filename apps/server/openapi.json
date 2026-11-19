@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "OpenAgentPack Kit Server",
+    "title": "OpenAgentKit Server",
     "version": "2.0.0"
   },
   "tags": [

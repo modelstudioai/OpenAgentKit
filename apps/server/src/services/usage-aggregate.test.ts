@@ -5,7 +5,7 @@ import type {
 	UsageTotal,
 	UsageTrend,
 	UsageTrendPoint,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import { describe, expect, it } from "vitest";
 import { emptyUsageSummary, emptyUsageTrend, mergeTrends, mergeUsageSummaries } from "./usage-aggregate.ts";
 

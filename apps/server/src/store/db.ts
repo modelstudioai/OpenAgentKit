@@ -795,6 +795,13 @@ ALTER TABLE kit_usage_limit_agent_months_new RENAME TO kit_usage_limit_agent_mon
 DROP TABLE kit_usage_limit_agent_days;
 ALTER TABLE kit_usage_limit_agent_days_new RENAME TO kit_usage_limit_agent_days;`,
 	},
+	{
+		// main 品牌统一带来的迁移，本分支 033-035 已占用，按数组顺序排在其后执行；
+		// id 保持原名，main 侧已应用的库按 id 跳过，数字前缀重复已有 030 先例。
+		id: "033_openagentkit_default_branding",
+		sql: `UPDATE kit_branding SET product_name = 'OpenAgentKit'
+WHERE id = 1 AND product_name = 'OpenAgentPack Kit' AND updated_by IS NULL;`,
+	},
 ];
 
 /**

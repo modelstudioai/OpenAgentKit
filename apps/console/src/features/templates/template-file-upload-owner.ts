@@ -1,4 +1,4 @@
-import { KitError, type ProjectFileUpload, type ProjectFileUploadCommit } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type ProjectFileUpload, type ProjectFileUploadCommit } from "@openagentkit/sdk/protocol";
 import type { AdminClient } from "../../lib/admin/index.ts";
 import { type TemplateFileDraft, type TemplateFileReference, validateTemplateFiles } from "./template-file-draft.ts";
 

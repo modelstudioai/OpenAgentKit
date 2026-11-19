@@ -6,8 +6,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
 	title: {
-		default: "OpenAgentPack Kit",
-		template: "%s · OpenAgentPack Kit",
+		default: "OpenAgentKit",
+		template: "%s · OpenAgentKit",
 	},
 	description: "为百炼 Managed Agent 打造体验页的开发套件：协议、hooks、copy-in 组件、Node server 与管理端。",
 };

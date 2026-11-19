@@ -9,7 +9,7 @@ import type {
 	UsageTotal,
 	UsageTrend,
 	UsageTrendPoint,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 
 /** 可加指标逐项相加；任一来源未知（null）则合并结果未知，不得按 0 补齐。 */
 function addMetric(a: UsageMetric, b: UsageMetric): UsageMetric {

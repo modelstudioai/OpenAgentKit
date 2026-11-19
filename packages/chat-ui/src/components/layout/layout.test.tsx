@@ -1,9 +1,9 @@
-import { useIsMobile } from "@openagentpack/kit-sdk/hooks";
+import { useIsMobile } from "@openagentkit/sdk/hooks";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { Layout } from "./index.tsx";
 
-vi.mock("@openagentpack/kit-sdk/hooks", () => ({ useIsMobile: vi.fn(() => false) }));
+vi.mock("@openagentkit/sdk/hooks", () => ({ useIsMobile: vi.fn(() => false) }));
 const isMobileMock = vi.mocked(useIsMobile);
 
 describe("Layout aside 插槽", () => {

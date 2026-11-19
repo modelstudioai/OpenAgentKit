@@ -1,5 +1,5 @@
+import type { UseChatResult } from "@openagentkit/sdk/chat/hooks";
 import { ToolApprovalCard } from "@openagentpack/kit-chat-ui";
-import type { UseChatResult } from "@openagentpack/kit-sdk/chat/hooks";
 
 export function ApprovalList({ chat }: { chat: UseChatResult }) {
 	return (

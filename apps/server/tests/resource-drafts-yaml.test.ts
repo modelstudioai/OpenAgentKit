@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { ResourceDraftView } from "@openagentpack/kit-sdk/protocol";
+import type { ResourceDraftView } from "@openagentkit/sdk/protocol";
 import { setDefaultFetch } from "@openagentpack/sdk";
 import { expect, it, vi } from "vitest";
 

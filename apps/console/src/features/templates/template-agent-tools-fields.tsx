@@ -1,4 +1,4 @@
-import type { ProjectAgentCreateInput } from "@openagentpack/kit-sdk/protocol";
+import type { ProjectAgentCreateInput } from "@openagentkit/sdk/protocol";
 import { Checkbox, Select } from "antd";
 import { formRowClass, formRowLabelClass } from "../../lib/form-row.ts";
 import { BUILTIN_TOOLS } from "./template-agent-form-draft.ts";

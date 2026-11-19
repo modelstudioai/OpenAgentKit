@@ -1,4 +1,4 @@
-import { createSseStream, type RawSseMessage } from "@openagentpack/kit-sdk/stream";
+import { createSseStream, type RawSseMessage } from "@openagentkit/sdk/stream";
 
 // 调用方传入已持有的响应体。
 export async function consumeSse(

@@ -10,7 +10,8 @@ import {
 	SettingOutlined,
 	TeamOutlined,
 } from "@ant-design/icons";
-import { useIsMobile } from "@openagentpack/kit-sdk/hooks";
+import { useIsMobile } from "@openagentkit/sdk/hooks";
+import { DEFAULT_BRAND_PRODUCT_NAME } from "@openagentkit/sdk/protocol";
 import { Card, Drawer, Layout } from "antd";
 import { type ReactNode, useEffect, useState } from "react";
 
@@ -53,7 +54,7 @@ function Brand({ desktop = false }: { desktop?: boolean }) {
 				K
 			</span>
 			<h1 className={`${styles.brandTitle} leading-tight`}>
-				OpenAgentPack Kit
+				{DEFAULT_BRAND_PRODUCT_NAME}
 				<br />
 				管理员端
 			</h1>

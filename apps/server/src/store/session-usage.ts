@@ -9,7 +9,7 @@ import {
 	type SessionStats,
 	type SessionUsage,
 	type TemplateSessionUsage,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 
 type SnapshotValues = SessionUsage & SessionStats;
 

@@ -4,8 +4,8 @@
 
 | 层 | 公开 API | 职责 |
 | --- | --- | --- |
-| Stream | `@openagentpack/kit-sdk/stream` 的 `createSseStream` | 解码字节、输出原始 SSE 字段、取消并释放 reader |
-| Request | `@openagentpack/kit-sdk/request` 的 `createRequest` | 解析 URL 和身份头，执行 HTTP 请求并返回 Response、JSON 或原始帧 |
+| Stream | `@openagentkit/sdk/stream` 的 `createSseStream` | 解码字节、输出原始 SSE 字段、取消并释放 reader |
+| Request | `@openagentkit/sdk/request` 的 `createRequest` | 解析 URL 和身份头，执行 HTTP 请求并返回 Response、JSON 或原始帧 |
 | Provider | `ChatProvider`、`createSessionEventChatProvider`、`createKitChatProvider`、`createBailianChatProvider`、`transformSessionEvent` | 映射后端操作、历史和就绪信号，定义事件到消息的转换 |
 | Chat | 核心层的 `createChatController` 和 React 的 `useChat` | 持有事件账本和消息，调用 Provider 策略，管理乐观状态、重连及操作 |
 

@@ -1,4 +1,4 @@
-import { ProjectVaultCreateInputSchema, type RemoteVaultDetail } from "@openagentpack/kit-sdk/protocol";
+import { ProjectVaultCreateInputSchema, type RemoteVaultDetail } from "@openagentkit/sdk/protocol";
 import { validateCatalogVaults } from "../catalog/catalog-vault-field.tsx";
 import type { TemplateVaultSelectionValue } from "./template-local-resources.tsx";
 import type { VaultCredentialDraft } from "./template-vault-credential-dialog.tsx";

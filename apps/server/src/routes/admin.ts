@@ -6,7 +6,7 @@ import type {
 	UsageSummary,
 	UsageTrend,
 	UsageTrendPoint,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import {
 	CatalogAgentInputSchema,
 	CreateQuotaPackSchema,
@@ -29,7 +29,7 @@ import {
 	UsageGranularitySchema,
 	UsageSummarySchema,
 	UsageTrendSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import { ApiError, type UsageSummaryRequest, type UsageTimeRange, type UsageTrendRequest } from "@openagentpack/sdk";
 import type { AppEnv } from "../app-env.ts";
 import { redactSecrets } from "../config.ts";

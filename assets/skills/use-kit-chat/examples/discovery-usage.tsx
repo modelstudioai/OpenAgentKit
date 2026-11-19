@@ -1,6 +1,6 @@
-import { usePlaza } from "@openagentpack/kit-sdk/agents/hooks";
-import { useKitClient } from "@openagentpack/kit-sdk/providers/kit/react";
-import { useQuota, useQuotaRequests } from "@openagentpack/kit-sdk/usage/hooks";
+import { usePlaza } from "@openagentkit/sdk/agents/hooks";
+import { useKitClient } from "@openagentkit/sdk/providers/kit/react";
+import { useQuota, useQuotaRequests } from "@openagentkit/sdk/usage/hooks";
 import { useState } from "react";
 
 // 与默认会话页挂载在同一个 KitProvider 内。

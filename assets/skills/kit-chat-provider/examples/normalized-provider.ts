@@ -1,6 +1,6 @@
-import { PROTOCOL_VERSION, PROTOCOL_VERSION_HEADER } from "@openagentpack/kit-sdk/protocol";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
-import { createSessionEventChatProvider } from "@openagentpack/kit-sdk/providers/session-events";
+import { PROTOCOL_VERSION, PROTOCOL_VERSION_HEADER } from "@openagentkit/sdk/protocol";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
+import { createSessionEventChatProvider } from "@openagentkit/sdk/providers/session-events";
 import { type BackendConfig, createBackendHttp } from "./backend-http.ts";
 
 // Web 应用复用此公开工厂，配置自己的路径和 { data } 映射。

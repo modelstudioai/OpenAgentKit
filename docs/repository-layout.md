@@ -65,13 +65,13 @@ packages/<name>/
 - 需要真实凭据的脚本放 `apps/server/tests/live/`（`smoke` / `record` / `cleanup`）：
   默认跳过，`KIT_LIVE=1` 才跑；`record.ts` 只读，不创建/修改/删除远端资源。
 - `src/internal/` 表示包内私有实现，不得从 barrel 导出；跨包只能走声明的公开功能入口。
-  `@openagentpack/kit-sdk/providers/bailian` 是原始百炼后端接入入口，其他功能入口不导入
+  `@openagentkit/sdk/providers/bailian` 是原始百炼后端接入入口，其他功能入口不导入
   其上游 SDK 运行时转换依赖。SDK 不保留根入口、`/adapters/react`、`/react`、`/request/stream` 或 `/bailian`。
 - SDK 按下表归属功能，源码与导入入口一致（ADR-0026）。功能 hooks 位于该模块的 `hooks/`，
   通用订阅、生命周期、查询工具与屏幕判断放 `src/hooks/`；Kit Context 与 Client 解析放
   `src/providers/kit/react/`。不保留顶层 `src/react/`，不集中导出功能 hooks。
 
-| SDK 源码目录 | 责任 | 公开入口（省略 `@openagentpack/kit-sdk`） |
+| SDK 源码目录 | 责任 | 公开入口（省略 `@openagentkit/sdk`） |
 | --- | --- | --- |
 | `chat/` | Controller、Store、重连、子线程、首次发送 Composer | `/chat`、`/chat/hooks` |
 | `sessions/` | 会话目录、分页、搜索、详情、操作与独立目录读取 | `/sessions`、`/sessions/hooks` |
@@ -268,7 +268,7 @@ apps/web|console/
 
 本地成员管理在 `apps/console/src/features/members/`；对应 server 的 `routes/members.ts`、
 `services/members.ts` 与 `store/members.ts`。密码派生只在服务端实现，API DTO 在
-`@openagentpack/kit-sdk/protocol`，不引入 UI 组件库依赖。
+`@openagentkit/sdk/protocol`，不引入 UI 组件库依赖。
 
 成员用量 DTO 在 `packages/sdk/src/protocol/session-usage.ts`；Gateway 的 `session-usage.ts`
 只做 Provider 详情白名单映射。server 的 `services/member-usage.ts` 调度全量分批采集，

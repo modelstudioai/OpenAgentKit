@@ -1,5 +1,5 @@
 import { InfoCircleOutlined } from "@ant-design/icons";
-import type { MemberSessionUsage, MemberUsageSummary } from "@openagentpack/kit-sdk/protocol";
+import type { MemberSessionUsage, MemberUsageSummary } from "@openagentkit/sdk/protocol";
 import { Tooltip } from "antd";
 import { StatCard, StatCell } from "../../lib/stat-card.tsx";
 

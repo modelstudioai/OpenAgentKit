@@ -1,5 +1,5 @@
+import type { PresetPackPreview } from "@openagentkit/sdk/protocol";
 import { ConfirmDialog } from "@openagentpack/kit-chat-ui";
-import type { PresetPackPreview } from "@openagentpack/kit-sdk/protocol";
 import { Button, Drawer } from "antd";
 import { useEffect, useState } from "react";
 import { PresetPackSelection } from "../preset-packs/preset-pack-selection.tsx";
