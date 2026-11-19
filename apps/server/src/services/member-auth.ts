@@ -5,7 +5,7 @@ import {
 	type MemberLoginRequest,
 	MemberLoginRequestSchema,
 	type MemberLoginResult,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { AuditLog } from "../store/audit.ts";
 import type { MemberSessionRecord, MemberSessionStore } from "../store/member-sessions.ts";
 import type { MemberStore } from "../store/members.ts";

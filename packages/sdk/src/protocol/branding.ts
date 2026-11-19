@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /** 员工端默认产品名；服务端首次启动与前端兜底共用，避免两处常量漂移。 */
-export const DEFAULT_BRAND_PRODUCT_NAME = "OpenAgentPack Kit";
+export const DEFAULT_BRAND_PRODUCT_NAME = "OpenAgentKit";
 
 /** Logo 只允许 Web 本地路径（以 `/` 开头）或 http(s) 在线地址。 */
 export const BrandLogoUrlSchema = z

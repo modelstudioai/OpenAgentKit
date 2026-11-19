@@ -1,4 +1,4 @@
-import { KitError } from "@openagentpack/kit-sdk/protocol";
+import { KitError } from "@openagentkit/sdk/protocol";
 
 const malformed = () => new KitError("invalid_request", "ZIP 目录无效或格式不受支持");
 

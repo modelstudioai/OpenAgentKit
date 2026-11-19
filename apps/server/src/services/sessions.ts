@@ -8,7 +8,7 @@ import {
 	type SseFrame,
 	stableEventId,
 	type ToolApprovalDecision,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { GatewaySendInput, GatewaySessionInfo, ProviderGateway } from "../gateway/types.ts";
 import type { SessionDeletionStore } from "../store/session-deletions.ts";
 import type { SessionDirectoryQuery } from "../store/session-directory.ts";

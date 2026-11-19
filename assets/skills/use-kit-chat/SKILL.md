@@ -1,6 +1,6 @@
 ---
 name: use-kit-chat
-description: "将 React 对话页面接入 OpenAgentPack Kit 的 useChat，串起会话目录、消息与输入框、Agent 资源和产物交互。适用于 Kit Server 或已有的自定义 ChatProvider。"
+description: "将 React 对话页面接入 OpenAgentKit 的 useChat，串起会话目录、消息与输入框、Agent 资源和产物交互。适用于 Kit Server 或已有的自定义 ChatProvider。"
 ---
 
 # 接入 Kit 对话
@@ -25,7 +25,7 @@ description: "将 React 对话页面接入 OpenAgentPack Kit 的 useChat，串�
   让显式 Provider 复用相同的固定身份与取消边界，再将 `auth.chatProvider` 传给 `useChat`。
 - **已有自定义后端适配器**可直接使用 `useChat({ sessionId, provider })`，
   无需 `KitProvider`，见[自建后端示例](examples/custom-chat.tsx)。
-- **非 React 宿主**从 `@openagentpack/kit-sdk/chat` 导入 `createChatController`，
+- **非 React 宿主**从 `@openagentkit/sdk/chat` 导入 `createChatController`，
   显式订阅及销毁，见[控制器示例](examples/controller.ts)。
 - 拿到真实会话 ID 前传入 `null`。创建和列出会话通过独立接口完成。
 - **Kit Server 的发现和用量**在 `KitProvider` 中使用 `usePlaza`、`useQuota` 和 `useQuotaRequests`，

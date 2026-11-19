@@ -94,7 +94,7 @@ interface ShowcaseEntry {
 }
 
 const CHAT_CODE = `import { Chat, Prompts } from "@openagentpack/kit-chat-ui";
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
+import { useChat } from "@openagentkit/sdk/chat/hooks";
 
 const chat = useChat(sessionId);
 // 演示候选；真实应用改为当前 Agent 详情中的 resources.skills。
@@ -126,7 +126,7 @@ const skills = [
 
 const MESSAGE_CODE = `import { MessageList } from "@openagentpack/kit-chat-ui";
 
-// messages 由 kit-sdk 的 session store 归并而来：
+// messages 由 @openagentkit/sdk 的 session store 归并而来：
 // 按原始顺序渲染 text / reasoning / tool / artifact / status / unknown 分片
 <div className="flex h-dvh flex-col" data-kit-appearance="workspace">
   <MessageList variant="workspace" messages={chat.messages} scrollKey={sessionId} onArtifactDownload={download} />
@@ -402,7 +402,7 @@ const SENDER_SLOTS_CODE = `import { Sender } from "@openagentpack/kit-chat-ui";
 />`;
 
 const SENDER_SKILLS_CODE = `import { Sender, Suggestion, type SenderRef, type SenderSelection } from "@openagentpack/kit-chat-ui";
-import { skillInputTokens } from "@openagentpack/kit-sdk/protocol";
+import { skillInputTokens } from "@openagentkit/sdk/protocol";
 import { useRef, useState } from "react";
 
 const [value, setValue] = useState("");
@@ -453,7 +453,7 @@ const SENDER_ATTACHMENTS_CODE = `import {
 	SkillGlyph,
 	Suggestion,
 } from "@openagentpack/kit-chat-ui";
-import { skillInputTokens } from "@openagentpack/kit-sdk/protocol";
+import { skillInputTokens } from "@openagentkit/sdk/protocol";
 import { useEffect, useRef, useState } from "react";
 
 interface UploadedAttachment extends AttachmentItem {
@@ -784,7 +784,7 @@ const FEEDBACK_FILE_CARD_CODE = `import { FileCard } from "@openagentpack/kit-ch
   name="weekly-report.md"
   type="text/markdown"
   onClick={openPreview}
-  onDownload={() => downloadArtifact(fileId)} // 调用方接 kit-sdk client，经 server 代理下载
+  onDownload={() => downloadArtifact(fileId)} // 调用方接 @openagentkit/sdk client，经 server 代理下载
 />;`;
 
 const FEEDBACK_FILE_CARD_ENTRIES_CODE = `import { FileCard } from "@openagentpack/kit-chat-ui";
@@ -922,7 +922,7 @@ function RowMenu({ onClick }: { onClick: (action: "archive" | "delete") => void 
 // dialogs 的 pending 状态放在 Layout 外部，跨桌面/手机切换仍保留。`;
 
 const MULTI_AGENT_CODE = `import { Chat } from "@openagentpack/kit-chat-ui";
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
+import { useChat } from "@openagentkit/sdk/chat/hooks";
 
 const chat = useChat(sessionId);
 
@@ -943,7 +943,7 @@ const chat = useChat(sessionId);
 // 在线预览使用本地 ChatMultiAgent 数据；真实应用由 useChat / Provider 查询。`;
 
 const APPROVAL_CODE = `import { ToolApprovalGroup } from "@openagentpack/kit-chat-ui";
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
+import { useChat } from "@openagentkit/sdk/chat/hooks";
 
 const chat = useChat(sessionId);
 
@@ -957,7 +957,7 @@ const chat = useChat(sessionId);
 ) : null}`;
 
 const APPROVAL_RECOVERY_CODE = `import { ToolApprovalCard } from "@openagentpack/kit-chat-ui";
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
+import { useChat } from "@openagentkit/sdk/chat/hooks";
 
 const chat = useChat(sessionId);
 
@@ -971,7 +971,7 @@ const chat = useChat(sessionId);
 />`;
 
 const APPROVAL_GROUP_CODE = `import { ToolApprovalGroup } from "@openagentpack/kit-chat-ui";
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
+import { useChat } from "@openagentkit/sdk/chat/hooks";
 
 const chat = useChat(sessionId);
 
@@ -1038,7 +1038,7 @@ const STATES_CODE = `import { EmptyState, ErrorState } from "@openagentpack/kit-
 {loading ? null : error ? <ErrorState message={error} onRetry={reload} /> : null}
 {agents.length === 0 ? <EmptyState title="还没有上架的 Agent" hint="到管理端完成 publish 与上架" /> : null}`;
 
-const SSE_STREAM_CODE = `import { createSseStream, type RawSseMessage } from "@openagentpack/kit-sdk/stream";
+const SSE_STREAM_CODE = `import { createSseStream, type RawSseMessage } from "@openagentkit/sdk/stream";
 
 // mock 字节流：按所选分隔符编码，每 21 字节、140ms 分块入队
 const bytes = new TextEncoder().encode(payload);
@@ -1070,7 +1070,7 @@ for await (const frame of createSseStream(body, {
 }
 // 自然 EOF 只表示字节流读完，不代表 Agent 执行完成`;
 
-const SSE_PARSER_CODE = `import { createSseParser, decodeFrame, type SseFrame } from "@openagentpack/kit-sdk/protocol";
+const SSE_PARSER_CODE = `import { createSseParser, decodeFrame, type SseFrame } from "@openagentkit/sdk/protocol";
 
 // 可编辑的 SSE 文本：注释心跳、协议帧与未知 event
 const parser = createSseParser((raw) => {
@@ -1091,7 +1091,7 @@ for await (const chunk of pacedStream(textChunks, 70)) {
 }
 parser.end();`;
 
-const KIT_STREAM_CODE = `import { createKitClient } from "@openagentpack/kit-sdk/providers/kit";
+const KIT_STREAM_CODE = `import { createKitClient } from "@openagentkit/sdk/providers/kit";
 
 // mock fetchImpl 返回 Kit 协议流：reset → event* → ready → ping → event → done
 const client = createKitClient({
@@ -1116,8 +1116,8 @@ await client.stream("sess_demo", {
   onDone: ({ status, lastEventId }) => addLog("onDone status=" + status + " lastEventId=" + lastEventId),
 });`;
 
-const CONTROLLER_CODE = `import { createChatController } from "@openagentpack/kit-sdk/chat";
-import { type ChatProvider } from "@openagentpack/kit-sdk/providers";
+const CONTROLLER_CODE = `import { createChatController } from "@openagentkit/sdk/chat";
+import { type ChatProvider } from "@openagentkit/sdk/providers";
 
 // mock 五方法 ChatProvider：stream 保持连接，sendMessage 之后由泵推实时事件
 const provider: ChatProvider = {
@@ -1156,7 +1156,7 @@ await controller.send(text);
 controller.dispose();
 unsubscribe();`;
 
-const REQUEST_BASIC_CODE = `import { createRequest } from "@openagentpack/kit-sdk/request";
+const REQUEST_BASIC_CODE = `import { createRequest } from "@openagentkit/sdk/request";
 
 // 动态身份头：每次请求重新执行，可异步取令牌
 const request = createRequest({
@@ -1193,7 +1193,7 @@ for await (const frame of request.stream("/updates", {
 }
 // 退出循环时关闭 reader；abort() 取消贯穿 fetch 与读取`;
 
-const REQUEST_ERROR_CODE = `import { KitError } from "@openagentpack/kit-sdk/protocol";
+const REQUEST_ERROR_CODE = `import { KitError } from "@openagentkit/sdk/protocol";
 
 // 默认映射：429 → code=rate_limited、retryable=true，消息只保留 "HTTP 429"
 try {
@@ -1210,8 +1210,8 @@ const request = createRequest({
   fetchImpl: mockFetch,
 });`;
 
-const PROVIDER_CODE = `import { createBailianChatProvider } from "@openagentpack/kit-sdk/providers/bailian";
-import { createRequest } from "@openagentpack/kit-sdk/request";
+const PROVIDER_CODE = `import { createBailianChatProvider } from "@openagentkit/sdk/providers/bailian";
+import { createRequest } from "@openagentkit/sdk/request";
 
 // 六项操作各含 buildRequest / mapResponse；HTTP 统一经注入的 Request 执行
 const provider = createBailianChatProvider({
@@ -1237,7 +1237,7 @@ await provider.stream("sess-1", {
   onReady: (info) => setConnected(info.replayed),
 });`;
 
-const EVENTS_CODE = `import { type ChatProvider } from "@openagentpack/kit-sdk/providers";
+const EVENTS_CODE = `import { type ChatProvider } from "@openagentkit/sdk/providers";
 
 // 已转换事件的五方法 Provider：stream 按 onReset → 完整事件 → onReady 交付
 const provider: ChatProvider = {
@@ -1277,7 +1277,7 @@ await provider.stream("sess-1", {
   onReady: ({ replayed, cursor }) => setConnected(replayed),
 });`;
 
-const TRANSFORM_CODE = `import { type MessageTransformer, transformSessionEvent } from "@openagentpack/kit-sdk/messages";
+const TRANSFORM_CODE = `import { type MessageTransformer, transformSessionEvent } from "@openagentkit/sdk/messages";
 
 const event = { event_id: "evt-1", type: "message", role: "assistant",
   content: [{ type: "text", text: "[[agent-name]] 已收到你的请求。" }] };
@@ -1303,9 +1303,9 @@ const replaceDisplayLabel: MessageTransformer = (input) => {
 replaceDisplayLabel({ messages: [], event, identity: "evt-1" });
 // → 「Support assistant 已收到你的请求。」`;
 
-const SESSIONS_CODE = `import { createKitClient } from "@openagentpack/kit-sdk/providers/kit";
-import { KitProvider, useKitClient } from "@openagentpack/kit-sdk/providers/kit/react";
-import { useSessions } from "@openagentpack/kit-sdk/sessions/hooks";
+const SESSIONS_CODE = `import { createKitClient } from "@openagentkit/sdk/providers/kit";
+import { KitProvider, useKitClient } from "@openagentkit/sdk/providers/kit/react";
+import { useSessions } from "@openagentkit/sdk/sessions/hooks";
 import { useState } from "react";
 
 // mock KitClient：GET /api/kit/sessions 返回 { data, next_page_token }，POST 创建会话
@@ -1357,7 +1357,7 @@ function SessionPicker({ onSelect }) {
 </KitProvider>`;
 
 const USE_CHAT_CODE = `import { EmptyState, MessageList, Sender } from "@openagentpack/kit-chat-ui";
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
+import { useChat } from "@openagentkit/sdk/chat/hooks";
 import { useState } from "react";
 
 const SESSION_ID = "sess_demo";
@@ -1403,7 +1403,7 @@ function ChatPanel() {
 }`;
 
 const TOOL_APPROVALS_CODE = `import { MessageList, Sender, ToolApprovalCard } from "@openagentpack/kit-chat-ui";
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
+import { useChat } from "@openagentkit/sdk/chat/hooks";
 import { useEffect, useState } from "react";
 
 const SESSION_ID = "sess_demo";

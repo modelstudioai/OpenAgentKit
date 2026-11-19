@@ -1,8 +1,4 @@
-import {
-	type MemberSessionUsage,
-	type MemberUsageSummary,
-	SESSION_USAGE_METRICS,
-} from "@openagentpack/kit-sdk/protocol";
+import { type MemberSessionUsage, type MemberUsageSummary, SESSION_USAGE_METRICS } from "@openagentkit/sdk/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createAdminClient } from "./client.ts";
 import { createMemberUsageController } from "./member-usage.ts";

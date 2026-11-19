@@ -11,7 +11,7 @@ import {
 	KitError,
 	type MemberGroupsPage,
 	type MemberView,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 
 type GroupRow = Omit<GroupView, "description"> & { description: string | null };
 type MemberRow = Omit<MemberView, "email"> & { email: string | null; is_member: number };

@@ -1,4 +1,4 @@
-import { KitError, type RemoteAgentVersion } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type RemoteAgentVersion } from "@openagentkit/sdk/protocol";
 import {
 	type AgentPage,
 	ApiError,

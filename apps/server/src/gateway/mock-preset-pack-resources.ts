@@ -1,4 +1,4 @@
-import type { PresetPackAgentResources } from "@openagentpack/kit-sdk/protocol";
+import type { PresetPackAgentResources } from "@openagentkit/sdk/protocol";
 import { mergePresetPackResources, presetPackResource } from "./preset-pack-resources.ts";
 import type { GatewayCreateSessionInput } from "./types.ts";
 

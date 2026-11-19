@@ -1,4 +1,4 @@
-import { PROTOCOL_VERSION, type TemplateView } from "@openagentpack/kit-sdk/protocol";
+import { PROTOCOL_VERSION, type TemplateView } from "@openagentkit/sdk/protocol";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./fixtures.ts";
 import { ADMIN_TOKEN, openConsoleNavigation } from "./helpers.ts";

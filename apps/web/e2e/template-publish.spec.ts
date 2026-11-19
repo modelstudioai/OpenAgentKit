@@ -5,7 +5,7 @@ import {
 	type ProjectPlan,
 	type PublicationReport,
 	type ResourceDraftView,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { Page, Route } from "@playwright/test";
 import { expect, test } from "./fixtures.ts";
 import { ADMIN_TOKEN, openConsoleNavigation } from "./helpers.ts";

@@ -2,7 +2,7 @@
   "name": "@openagentpack/kit-eval",
   "version": "1.0.0",
   "private": true,
-  "description": "OpenAgentPack Kit Skill 效果评测：社区 evals/ 资产兼容 + 百炼 Managed Agents 远端运行 + 触发/质量双指标 + 报告",
+  "description": "OpenAgentKit Skill 效果评测：社区 evals/ 资产兼容 + 百炼 Managed Agents 远端运行 + 触发/质量双指标 + 报告",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",

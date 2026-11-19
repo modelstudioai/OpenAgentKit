@@ -1,5 +1,5 @@
+import type { TemplateVersionView } from "@openagentkit/sdk/protocol";
 import { EmptyState } from "@openagentpack/kit-chat-ui";
-import type { TemplateVersionView } from "@openagentpack/kit-sdk/protocol";
 import { useTranslation } from "react-i18next";
 import { TemplateDebugPreview } from "./template-debug-preview.tsx";
 

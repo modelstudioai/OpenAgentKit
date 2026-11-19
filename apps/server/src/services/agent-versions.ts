@@ -1,4 +1,4 @@
-import { KitError } from "@openagentpack/kit-sdk/protocol";
+import { KitError } from "@openagentkit/sdk/protocol";
 import type { ProviderGateway } from "../gateway/types.ts";
 
 /** 显式绑定必须存在且精确匹配，不能把已失效的历史版本静默降级为最新版。 */

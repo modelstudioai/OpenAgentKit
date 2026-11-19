@@ -1,6 +1,6 @@
-import type { SseFrame } from "@openagentpack/kit-sdk/protocol";
-import { streamProtocolFrames } from "@openagentpack/kit-sdk/providers/kit";
-import type { RequestClient } from "@openagentpack/kit-sdk/request";
+import type { SseFrame } from "@openagentkit/sdk/protocol";
+import { streamProtocolFrames } from "@openagentkit/sdk/providers/kit";
+import type { RequestClient } from "@openagentkit/sdk/request";
 
 /** Request 已配置后端 base URL 及所需的身份与协议版本头。 */
 export async function observeProtocolFrames(

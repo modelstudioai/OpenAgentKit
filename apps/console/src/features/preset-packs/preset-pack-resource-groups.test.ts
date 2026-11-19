@@ -1,4 +1,4 @@
-import type { PresetPackSession } from "@openagentpack/kit-sdk/protocol";
+import type { PresetPackSession } from "@openagentkit/sdk/protocol";
 import { expect, it } from "vitest";
 import { groupPresetPackResources } from "./preset-pack-resource-groups.ts";
 

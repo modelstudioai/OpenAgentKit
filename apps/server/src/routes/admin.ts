@@ -24,7 +24,7 @@ import {
 	ToolUsagePageSchema,
 	ToolUsageSortBySchema,
 	UsageToolSourceSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { ModelUsageRequest, ToolUsageRequest } from "@openagentpack/sdk";
 import type { AppEnv } from "../app-env.ts";
 import { redactSecrets, type ServerConfig } from "../config.ts";

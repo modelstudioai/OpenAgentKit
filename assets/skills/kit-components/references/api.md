@@ -330,7 +330,7 @@ export function Layout({ sidebar, header, mobileTitle, sidebarLabel, dialogs, as
 | `children` | 是 | `ReactNode` |
 | `strings` | 否 | `Partial<LayoutStrings> \| undefined` |
 
-<!-- source-sha256: 7284dd0fa0fd6ca2f72ba77ec633cb94e89531ab8477df7813861bfb213c7bce; doc-sha256: 290b1c5d205a626756eb0bbab3bc63e7bfe9399c5f6039d33061ad85a9b733c3 -->
+<!-- source-sha256: 9e6546cbe81d32103e527070ca672962ca7fc798bf82ddba5b37da5b6f6b9e57; doc-sha256: b4b2a358b40267f60e515aec2f94b74c8f2f7c4446cf7cfbf5a5b51e542fab74 -->
 
 ## Chat
 
@@ -378,7 +378,7 @@ export function Chat({ messages, variant, turnRunning, sending, canSend, compose
 | `anchorRail` | 否 | `boolean \| undefined` |
 | `virtualize` | 否 | `boolean \| undefined` |
 
-<!-- source-sha256: cd6947361bac5f96e5ae6c81c480fa20b8f5c0ed02f5a28f5ced2921de49d281; doc-sha256: 50cab69e97848f95a6d8eb01f3a21719e94659831eb149a7ecc4edee32b88a6a -->
+<!-- source-sha256: 6fa1d000a572c779c8b211fc9cdd9bae0710d4c55eba14dda40057ed41dca90b; doc-sha256: 54361a1d58d6da70dcc5e8cac4dc89a5f700a3ce669abf5caf77601287bf831b -->
 
 ## AgentHeader
 
@@ -409,7 +409,7 @@ export function AgentHeader({ agent, agents, onPickAgent, leading, compact, acti
 | `onNewSession` | 否 | `(() => void) \| undefined` |
 | `strings` | 否 | `Partial<AgentHeaderStrings> \| undefined` |
 
-<!-- source-sha256: 38de96cd9b64fed6f4d02c3d18834dc73c0d7259022e73802096d65060342fc6; doc-sha256: a4a0f172c3b58e9eb0e3fb1254d40cdc8f25bf4b1f498d111cfb7e749905e660 -->
+<!-- source-sha256: f2cdeb8f46fa6e0b5f480acf9f169c032d8f635b9dbc2722e32c4635ba9f15d1; doc-sha256: eeba17b1fd6a1c5d4f3b72aa737b0c950b6f8961539537c5b5b4e40e9ee69947 -->
 
 ## isIconImageSource
 
@@ -429,7 +429,7 @@ export function isIconImageSource(icon: string | undefined): boolean;
 ```
 
 
-<!-- source-sha256: 38de96cd9b64fed6f4d02c3d18834dc73c0d7259022e73802096d65060342fc6; doc-sha256: a4a0f172c3b58e9eb0e3fb1254d40cdc8f25bf4b1f498d111cfb7e749905e660 -->
+<!-- source-sha256: f2cdeb8f46fa6e0b5f480acf9f169c032d8f635b9dbc2722e32c4635ba9f15d1; doc-sha256: eeba17b1fd6a1c5d4f3b72aa737b0c950b6f8961539537c5b5b4e40e9ee69947 -->
 
 ## KitLocaleProvider
 
@@ -656,7 +656,7 @@ export function SessionSidebar({ groups, recent, loading, error, onReload, activ
 | `className` | 否 | `string \| undefined` |
 | `strings` | 否 | `Partial<SessionSidebarStrings> \| undefined` |
 
-<!-- source-sha256: 4e1816bc4f712bcba2b8c946305e71fe3383d5ea6dcc55fe7290dafa07f86cb5; doc-sha256: 904edfbb286fa103468775f1822e1bebd0bb00b84c28d3b84512a51ccbc7c178 -->
+<!-- source-sha256: 081ec7c5f40d597cb239be9f24424d24b954dde7c688dbbd54bcad09d4a6f7e1; doc-sha256: 904edfbb286fa103468775f1822e1bebd0bb00b84c28d3b84512a51ccbc7c178 -->
 
 ## StatusIndicator
 
@@ -684,7 +684,7 @@ export function StatusIndicator({ connected, turnRunning, phase, connection, err
 | `variant` | 否 | `"default" \| "badge" \| undefined` |
 | `strings` | 否 | `Partial<StatusIndicatorStrings> \| undefined` |
 
-<!-- source-sha256: 3807a4aa0c4eced6f033de23f6e953a60e1cd535117bea504fb077b4215e58cf; doc-sha256: 12ca4909d0e7c74f174e45e582ce408541fd45c81294b645364216ca42c3b8cc -->
+<!-- source-sha256: 85f99c827266d9771c957f57f258edd9a234bb550c6fa6f5ae3fa0b9330f749c; doc-sha256: 12ca4909d0e7c74f174e45e582ce408541fd45c81294b645364216ca42c3b8cc -->
 
 ## SubAgentPanel
 
@@ -708,7 +708,7 @@ export function SubAgentPanel({ multiAgent, className, strings: stringsOverride,
 | `className` | 否 | `string \| undefined` |
 | `strings` | 否 | `Partial<SubAgentPanelStrings> \| undefined` |
 
-<!-- source-sha256: 0055b028912e65756da979ff6d1e4c6f2e895637575d6e48eec5ac110af3bcd4; doc-sha256: 5b2ac21e1241dee856fcaef406c0c5904e3fde3e694fd6b0bba3815d24ac00e1 -->
+<!-- source-sha256: 43a759780762ddb4e46e1a90b7bbc17cce74b12b8de5904b096a869dec577a42; doc-sha256: eb8bc408e3da4037865ed69071731708d27744bdf5b37c273ce7ab046908c2cd -->
 
 ## ThreadPanel
 
@@ -734,7 +734,7 @@ export function ThreadPanel({ threads, onArtifactDownload, onCopy, strings: stri
 | `onCopy` | 否 | `((text: string) => void \| Promise<void>) \| undefined` |
 | `strings` | 否 | `Partial<ThreadPanelStrings> \| undefined` |
 
-<!-- source-sha256: d5267bdfbf2d31cd2489fc9d2074bb83d93b0dd062f9dc893ddd4c6ec9c906af; doc-sha256: 12ca4909d0e7c74f174e45e582ce408541fd45c81294b645364216ca42c3b8cc -->
+<!-- source-sha256: e7b9f31266f6f6065b4fbf007f50ee028a20022213c2cdf25acc3e079fe2c418; doc-sha256: 12ca4909d0e7c74f174e45e582ce408541fd45c81294b645364216ca42c3b8cc -->
 
 ## CodeHighlighter
 
@@ -795,7 +795,7 @@ export function FileCard({ name, type, src, description, loading, disabled, onCl
 | `className` | 否 | `string \| undefined` |
 | `strings` | 否 | `Partial<FileCardStrings> \| undefined` |
 
-<!-- source-sha256: 12c673e559af2e91831d0e189e302fea3e0e7c021e3a2a9bd632294200bb18e4; doc-sha256: b16407a624668cac93d0f7dff7f614fdb2c75c54c90020086a84ec6c3c77c9b9 -->
+<!-- source-sha256: 12c673e559af2e91831d0e189e302fea3e0e7c021e3a2a9bd632294200bb18e4; doc-sha256: 57e042b47663a0d1bb06eaaa2d71ef2555ae9655628992670d66fefaeca81144 -->
 
 ## Markdown
 
@@ -903,7 +903,7 @@ export function Message({ message, variant, onArtifactDownload, onArtifactOpen, 
 | `skills` | 否 | `string[] \| undefined` |
 | `strings` | 否 | `Partial<MessageStrings> \| undefined` |
 
-<!-- source-sha256: 5fc0331feb1d75ca0d749c6f4f0c72a1730d2e79f397e4e7125c365f06994ac9; doc-sha256: ac0a82cfe55b35921a4717197982241600e8f13b4212e51eef4a141058d07aee -->
+<!-- source-sha256: 8ceaa1591ac3e7dd207540c126d926d2ab7da8ffd3d3cacea2f6d0c8bfef71ef; doc-sha256: 3a329ee9c89c01a72c980dc8eb82dcc5d1de2da02c46a10c8a32bb4e2c38f575 -->
 
 ## MessageList
 
@@ -944,7 +944,7 @@ export function MessageList({ messages, variant, onArtifactDownload, onArtifactO
 | `skills` | 否 | `string[] \| undefined` |
 | `strings` | 否 | `Partial<MessageListStrings> \| undefined` |
 
-<!-- source-sha256: fa43d6ff4aae2df98b98438e7837b4ea01fdf833415feda0b51ef8b83e049dcf; doc-sha256: 8f73e7706168cde077440c1a133f7bae090ce7aef01a00c5d790c3e433a383ff -->
+<!-- source-sha256: f778d38b03f4fcc1da5cedbc5173d3da0254de3bd0a214a01cf233312d15335b; doc-sha256: 8f73e7706168cde077440c1a133f7bae090ce7aef01a00c5d790c3e433a383ff -->
 
 ## MessageAnchorRail
 
@@ -970,7 +970,7 @@ export function MessageAnchorRail({ items, activeIndex, onSelect, className, str
 | `className` | 否 | `string \| undefined` |
 | `strings` | 否 | `Partial<MessageAnchorRailStrings> \| undefined` |
 
-<!-- source-sha256: e16a270981848d2037e14c867db35c2ebde45eb60f36a79d138fd7876b01b903; doc-sha256: 8f73e7706168cde077440c1a133f7bae090ce7aef01a00c5d790c3e433a383ff -->
+<!-- source-sha256: c624f9d4eeda781f822015757ff604f3778509dc02f657e5574e564af000d3e6; doc-sha256: 8f73e7706168cde077440c1a133f7bae090ce7aef01a00c5d790c3e433a383ff -->
 
 ## MessageListSkeleton
 
@@ -1045,7 +1045,7 @@ export function ToolCallCard({ part, className, contentMaxHeight, strings: strin
 | `contentMaxHeight` | 否 | `string \| undefined` |
 | `strings` | 否 | `Partial<ToolCallCardStrings> \| undefined` |
 
-<!-- source-sha256: d0458a1ddf14f44a0ac83ce1762453da2507be7505fabefada393b44bffd8f9a; doc-sha256: 360fbe042ded35b656365fc82951419dce8eb5208186907df0e0eef9975520e5 -->
+<!-- source-sha256: ac4a4090c06d859416385c3e7c1312f033787b4a67492a89873364241b6c50d9; doc-sha256: 360fbe042ded35b656365fc82951419dce8eb5208186907df0e0eef9975520e5 -->
 
 ## Prompts
 
@@ -1126,7 +1126,7 @@ export function Sender(props: SenderProps & RefAttributes<SenderRef>): ReactNode
 | `className` | 否 | `string \| undefined` |
 | `classNames` | 否 | `Partial<Record<SenderSemantic, string>> \| undefined` |
 
-<!-- source-sha256: d9de85c8b0212497a70e076a9abef6541fab905600661840784cdf7b4b4ce7d3; doc-sha256: 2895344f2a91513a43d04e0f1764061e5deefea3435f06df64562a8a8297f35f -->
+<!-- source-sha256: 3aa36be6e37c7eafcd85d9fdf8061763804b2a5042c74ca94ea4a2e28ac8c3bf; doc-sha256: 2895344f2a91513a43d04e0f1764061e5deefea3435f06df64562a8a8297f35f -->
 
 ## SenderHeader
 
@@ -1152,7 +1152,7 @@ export function SenderHeader({ title, open, onOpenChange, closable, children, cl
 | `children` | 否 | `ReactNode` |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: d9de85c8b0212497a70e076a9abef6541fab905600661840784cdf7b4b4ce7d3; doc-sha256: 2895344f2a91513a43d04e0f1764061e5deefea3435f06df64562a8a8297f35f -->
+<!-- source-sha256: 3aa36be6e37c7eafcd85d9fdf8061763804b2a5042c74ca94ea4a2e28ac8c3bf; doc-sha256: 2895344f2a91513a43d04e0f1764061e5deefea3435f06df64562a8a8297f35f -->
 
 ## Sender.Header
 
@@ -1180,7 +1180,7 @@ export function SenderHeader({ title, open, onOpenChange, closable, children, cl
 | `children` | 否 | `ReactNode` |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: d9de85c8b0212497a70e076a9abef6541fab905600661840784cdf7b4b4ce7d3; doc-sha256: 2895344f2a91513a43d04e0f1764061e5deefea3435f06df64562a8a8297f35f -->
+<!-- source-sha256: 3aa36be6e37c7eafcd85d9fdf8061763804b2a5042c74ca94ea4a2e28ac8c3bf; doc-sha256: 2895344f2a91513a43d04e0f1764061e5deefea3435f06df64562a8a8297f35f -->
 
 ## SessionList
 
@@ -1215,7 +1215,7 @@ export function SessionList({ sessions, activeId, activeStatus, onSelect, menu, 
 | `strings` | 否 | `Partial<SessionListStrings> \| undefined` |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 67f70e18db7bd557793170f5c95b642257de3afea57ea2120f3d7b68638572e6; doc-sha256: 65a9b9feea1e0cd1d04e2fe3e69f9fb267012d1e78860d3c0912d739be8e6936 -->
+<!-- source-sha256: bde2e5f32fd6284c16453d739709b6c0a5cdec7b294305353d7c9c3306cd986e; doc-sha256: db7bf07a1f5723dec5d14a8a6bb7c1b728e246cef9b5f12d07348b5323a5bd7e -->
 
 ## Tooltip
 
@@ -1378,7 +1378,7 @@ export function ToolApprovalCard({ approval, onDecision, onRefresh, onStop, stri
 | `onStop` | 否 | `(() => void) \| undefined` |
 | `strings` | 否 | `Partial<ToolApprovalCardStrings> \| undefined` |
 
-<!-- source-sha256: ebbf7562a8bd62f8ee353d43ad0ac1335d879f8588540fab35b7d4758c897235; doc-sha256: 570a32709e28feb4df50231c9f763a09fbc5e19d02b2599f12f1c7b496052cd9 -->
+<!-- source-sha256: ac606cfca0ff63fb10cc10faf99d4c4191188231b46b83ee973a217a49a4553e; doc-sha256: 570a32709e28feb4df50231c9f763a09fbc5e19d02b2599f12f1c7b496052cd9 -->
 
 ## ToolApprovalGroup
 
@@ -1405,7 +1405,7 @@ export function ToolApprovalGroup({ approvals, onDecision, onRefresh, onStop, st
 | `onStop` | 否 | `(() => void) \| undefined` |
 | `strings` | 否 | `Partial<ToolApprovalGroupStrings> \| undefined` |
 
-<!-- source-sha256: 840162f864151fc66008bdfc3c430994b7919b81c1e04e4289e345b0463eca55; doc-sha256: 570a32709e28feb4df50231c9f763a09fbc5e19d02b2599f12f1c7b496052cd9 -->
+<!-- source-sha256: bae0c5e03c214df3078c3e2ea780b0dc3a8cd49dd929657468ac287b6f8dd88c; doc-sha256: 570a32709e28feb4df50231c9f763a09fbc5e19d02b2599f12f1c7b496052cd9 -->
 
 ## PlazaCard
 
@@ -1428,7 +1428,7 @@ export function PlazaCard({ entry, onOpen, strings: stringsOverride, }: { entry:
 | `onOpen` | 是 | `(slug: string) => void` |
 | `strings` | 否 | `Partial<PlazaCardStrings> \| undefined` |
 
-<!-- source-sha256: 7937620e4d18654f85e84e5c6a2d276178cff57cbf150b8011961fd84b54d708; doc-sha256: 0cc8f6c08932b8f6667d1cb7470dd7f7c9b0e39ce08ee43d9e64458773142ffc -->
+<!-- source-sha256: d68cf878ae9b356c1ed4d2ce47b159a2f8f8f1a5b210b1c0c03c3e9aa3bfe70c; doc-sha256: 5b88f15c4b87393e4e9982e2e7755ea9bc240a16e183e2897157330e0976dee0 -->
 
 ## CategoryTabs
 
@@ -1453,7 +1453,7 @@ export function CategoryTabs({ categories, active, onChange, strings: stringsOve
 | `onChange` | 是 | `(next: PlazaTabId) => void` |
 | `strings` | 否 | `Partial<CategoryTabsStrings> \| undefined` |
 
-<!-- source-sha256: 776fbc65544543682bb0dfffc85ac3751d406f05f2c532aab3b1a2d07b722560; doc-sha256: 0cc8f6c08932b8f6667d1cb7470dd7f7c9b0e39ce08ee43d9e64458773142ffc -->
+<!-- source-sha256: 369df57e43d930f1871278f9eaecfb2479ee8a51309ba2e1ff6341aea1bfd5b6; doc-sha256: 5b88f15c4b87393e4e9982e2e7755ea9bc240a16e183e2897157330e0976dee0 -->
 
 ## MeterBar
 
@@ -1479,7 +1479,7 @@ export function MeterBar({ value, max, unlimited, className, strings: stringsOve
 | `className` | 否 | `string \| undefined` |
 | `strings` | 否 | `Partial<MeterBarStrings> \| undefined` |
 
-<!-- source-sha256: 778569f6551270386dbddbbc99b01714ee652d27cd68ea1a1b80b93e48e2702f; doc-sha256: 0cc8f6c08932b8f6667d1cb7470dd7f7c9b0e39ce08ee43d9e64458773142ffc -->
+<!-- source-sha256: 778569f6551270386dbddbbc99b01714ee652d27cd68ea1a1b80b93e48e2702f; doc-sha256: 5b88f15c4b87393e4e9982e2e7755ea9bc240a16e183e2897157330e0976dee0 -->
 
 ## ActivityHeatmap
 
@@ -1502,7 +1502,7 @@ export function ActivityHeatmap({ days, strings: stringsOverride, }: { days: { d
 | `days` | 是 | `{ day: string; turns: number; }[]` |
 | `strings` | 否 | `Partial<ActivityHeatmapStrings> \| undefined` |
 
-<!-- source-sha256: aa81f47f0614d72dce971caa259f768e962f7efc4817d4030a4dbf2e659fb769; doc-sha256: 0cc8f6c08932b8f6667d1cb7470dd7f7c9b0e39ce08ee43d9e64458773142ffc -->
+<!-- source-sha256: aa81f47f0614d72dce971caa259f768e962f7efc4817d4030a4dbf2e659fb769; doc-sha256: 5b88f15c4b87393e4e9982e2e7755ea9bc240a16e183e2897157330e0976dee0 -->
 
 ## SkillGlyph
 
@@ -1524,7 +1524,7 @@ export function SkillGlyph({ className }: { className?: string; }): JSX.Element;
 | --- | --- | --- |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: d9de85c8b0212497a70e076a9abef6541fab905600661840784cdf7b4b4ce7d3; doc-sha256: f320870970c84a798596399d8c6fc4e526493f31c70f26c3b25195fbaa3d8201 -->
+<!-- source-sha256: 3aa36be6e37c7eafcd85d9fdf8061763804b2a5042c74ca94ea4a2e28ac8c3bf; doc-sha256: f320870970c84a798596399d8c6fc4e526493f31c70f26c3b25195fbaa3d8201 -->
 
 ## 相关类型
 
@@ -1716,10 +1716,10 @@ import type { AgentHeaderStrings } from "@openagentpack/kit-chat-ui";
 
 ### ArtifactDescriptor
 
-来自 `@openagentpack/kit-sdk/protocol`。
+来自 `@openagentkit/sdk/protocol`。
 
 ```ts
-import type { ArtifactDescriptor } from "@openagentpack/kit-sdk/protocol";
+import type { ArtifactDescriptor } from "@openagentkit/sdk/protocol";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1769,7 +1769,7 @@ import type { AttachmentItem } from "@openagentpack/kit-chat-ui";
 
 ### AttachmentRef
 
-来自 `@openagentpack/kit-sdk/protocol`。
+来自 `@openagentkit/sdk/protocol`。
 
 ```ts
 export type AttachmentRef = { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; };
@@ -1885,10 +1885,10 @@ import type { CategoryTabsStrings } from "@openagentpack/kit-chat-ui";
 
 ### ChatAgentThread
 
-来自 `@openagentpack/kit-sdk/chat`。
+来自 `@openagentkit/sdk/chat`。
 
 ```ts
-import type { ChatAgentThread } from "@openagentpack/kit-sdk/chat";
+import type { ChatAgentThread } from "@openagentkit/sdk/chat";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1909,10 +1909,10 @@ import type { ChatAgentThread } from "@openagentpack/kit-sdk/chat";
 
 ### ChatMessage
 
-来自 `@openagentpack/kit-sdk/messages`。
+来自 `@openagentkit/sdk/messages`。
 
 ```ts
-import type { ChatMessage } from "@openagentpack/kit-sdk/messages";
+import type { ChatMessage } from "@openagentkit/sdk/messages";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1928,10 +1928,10 @@ import type { ChatMessage } from "@openagentpack/kit-sdk/messages";
 
 ### ChatMultiAgent
 
-来自 `@openagentpack/kit-sdk/chat`。
+来自 `@openagentkit/sdk/chat`。
 
 ```ts
-import type { ChatMultiAgent } from "@openagentpack/kit-sdk/chat";
+import type { ChatMultiAgent } from "@openagentkit/sdk/chat";
 ```
 
 | 字段 | 必填 | 类型 |
@@ -1961,7 +1961,7 @@ import type { ChatStrings } from "@openagentpack/kit-chat-ui";
 
 ### ChatToolApproval
 
-来自 `@openagentpack/kit-sdk/chat`。
+来自 `@openagentkit/sdk/chat`。
 
 ```ts
 export type ChatToolApproval = Omit<{ batch_id: string; call_id: string; request_event_id: string | null; name: string; arguments: unknown; tool_type: string; actionable: boolean; server_label?: string | undefined; session_thread_id?: string | undefined; status?: "pending" | "submitted" | "uncertain" | undefined; result?: "allow" | "deny" | undefined; }, "status"> & { status: "pending" | "submitting" | "submitted" | "uncertain" | "stale"; };
@@ -2032,7 +2032,7 @@ import type { ConfirmDialogStrings } from "@openagentpack/kit-chat-ui";
 
 ### ConnectionState
 
-来自 `@openagentpack/kit-sdk/chat`。
+来自 `@openagentkit/sdk/chat`。
 
 ```ts
 export type ConnectionState = "disconnected" | "connecting" | "connected" | "reconnecting";
@@ -2315,7 +2315,7 @@ import type { MessageListStrings } from "@openagentpack/kit-chat-ui";
 
 ### MessagePart
 
-来自 `@openagentpack/kit-sdk/messages`。
+来自 `@openagentkit/sdk/messages`。
 
 ```ts
 export type MessagePart = ({ type: "text"; text: string; } | { type: "reasoning"; text: string; status?: "streaming" | "done" | "failed" | "interrupted"; startedAt?: string; } | { type: "tool"; toolId: string; name: string; status: "running" | "done" | "error"; input?: unknown; output?: unknown; startedAt?: string; endedAt?: string; } | { type: "artifact"; artifact: ArtifactDescriptor; } | { type: "attachment"; file: AttachmentRef; } | { type: "status"; text: string; } | { type: "sub-agent"; threadId: string; } | { type: "unknown"; label: string; value: unknown; }) & { id?: string; };
@@ -2329,7 +2329,7 @@ export type MessagePart = ({ type: "text"; text: string; } | { type: "reasoning"
 
 ### MessageStatus
 
-来自 `@openagentpack/kit-sdk/messages`。
+来自 `@openagentkit/sdk/messages`。
 
 ```ts
 export type MessageStatus = "pending" | "streaming" | "failed" | "done" | "interrupted";
@@ -2396,7 +2396,7 @@ import type { PlazaCardStrings } from "@openagentpack/kit-chat-ui";
 
 ### PlazaCategory
 
-来自 `@openagentpack/kit-sdk/protocol`。
+来自 `@openagentkit/sdk/protocol`。
 
 ```ts
 export type PlazaCategory = "data" | "general" | "writing" | "coding" | "other";
@@ -2406,7 +2406,7 @@ export type PlazaCategory = "data" | "general" | "writing" | "coding" | "other";
 
 ### PlazaEntry
 
-来自 `@openagentpack/kit-sdk/protocol`。
+来自 `@openagentkit/sdk/protocol`。
 
 ```ts
 export type PlazaEntry = { slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "data" | "general" | "writing" | "coding" | "other"; featured: boolean; stats: { mine: boolean; turns_30d: number; last_used_at?: string | undefined; }; description?: string | undefined; icon?: string | undefined; opening_remarks?: string | undefined; theme?: { accent?: string | undefined; iconBackground?: string | undefined; } | undefined; };
@@ -2879,7 +2879,7 @@ import type { SessionSidebarStrings } from "@openagentpack/kit-chat-ui";
 
 ### SessionSummary
 
-来自 `@openagentpack/kit-sdk/protocol`。
+来自 `@openagentkit/sdk/protocol`。
 
 ```ts
 export type SessionSummary = { session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; };
@@ -3132,7 +3132,7 @@ import type { ToolApprovalCardStrings } from "@openagentpack/kit-chat-ui";
 
 ### ToolApprovalDecision
 
-来自 `@openagentpack/kit-sdk/protocol`。
+来自 `@openagentkit/sdk/protocol`。
 
 ```ts
 export type ToolApprovalDecision = { batch_id: string; call_id: string; result: "allow" | "deny"; deny_message?: string | undefined; };

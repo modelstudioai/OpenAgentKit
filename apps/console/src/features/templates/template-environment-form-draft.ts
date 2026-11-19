@@ -3,7 +3,7 @@ import {
 	ProjectEnvironmentCreateInputSchema,
 	ProjectEnvironmentNetworkingSchema,
 	type RemoteEnvironmentDetail,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import i18n from "i18next";
 import { localizedValidationMessage } from "../../lib/validation-message.ts";
 

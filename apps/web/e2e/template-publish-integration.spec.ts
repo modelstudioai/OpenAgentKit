@@ -1,4 +1,4 @@
-import type { OperationView, ResourceDraftView, TemplateView } from "@openagentpack/kit-sdk/protocol";
+import type { OperationView, ResourceDraftView, TemplateView } from "@openagentkit/sdk/protocol";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures.ts";
 import { ADMIN_TOKEN, openConsoleNavigation } from "./helpers.ts";

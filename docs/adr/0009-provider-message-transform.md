@@ -1,7 +1,7 @@
 # ADR-0009：Provider 定义消息转换，Chat 持有会话状态
 
 > 纯消息转换的现行位置与导入入口见 [ADR-0026](./0026-sdk-feature-modules.md)：
-> 实现在 `messages/`，从 `kit-sdk/messages` 导入；本文的策略与状态所有权继续有效。
+> 实现在 `messages/`，从 `@openagentkit/sdk/messages` 导入；本文的策略与状态所有权继续有效。
 
 ## 背景
 

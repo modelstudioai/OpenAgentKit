@@ -1,5 +1,5 @@
+import type { PlazaCategory, PlazaEntry } from "@openagentkit/sdk/protocol";
 import { ActivityHeatmap, CategoryTabs, MeterBar, PlazaCard, type PlazaTabId } from "@openagentpack/kit-chat-ui";
-import type { PlazaCategory, PlazaEntry } from "@openagentpack/kit-sdk/protocol";
 
 export interface DiscoveryUsageProps {
 	entries: PlazaEntry[];

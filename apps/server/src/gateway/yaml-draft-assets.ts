@@ -1,6 +1,6 @@
 import { lstat, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
-import { KitError, type ProjectFileUploadInput, type ProjectSkillUploadInput } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type ProjectFileUploadInput, type ProjectSkillUploadInput } from "@openagentkit/sdk/protocol";
 import { validateProjectFileUploads } from "./project-file-sources.ts";
 import { validateProjectSkillUploads } from "./project-skill-sources.ts";
 import type { ProjectSourceFileUpload, ProjectSourceSkillUpload } from "./types.ts";

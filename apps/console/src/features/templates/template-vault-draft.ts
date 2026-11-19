@@ -1,4 +1,4 @@
-import { ProjectVaultCreateInputSchema, type RemoteVaultDetail } from "@openagentpack/kit-sdk/protocol";
+import { ProjectVaultCreateInputSchema, type RemoteVaultDetail } from "@openagentkit/sdk/protocol";
 import i18n from "i18next";
 import { localizedValidationMessage } from "../../lib/validation-message.ts";
 import { validateCatalogVaults } from "../catalog/catalog-vault-field.tsx";

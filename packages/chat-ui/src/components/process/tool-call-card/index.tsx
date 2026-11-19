@@ -4,7 +4,7 @@ import { ProcessStep, ProcessValue, ProcessValueCode } from "../step/index.tsx";
 import { toolSummary } from "../tool-summary/index.ts";
 import toolCallCardStrings, { type ToolCallCardStrings } from "./strings.ts";
 
-export type ToolPart = Extract<import("@openagentpack/kit-sdk/messages").MessagePart, { type: "tool" }>;
+export type ToolPart = Extract<import("@openagentkit/sdk/messages").MessagePart, { type: "tool" }>;
 
 function displayValue(value: unknown, fallback: string): string {
 	if (typeof value === "string") return value;

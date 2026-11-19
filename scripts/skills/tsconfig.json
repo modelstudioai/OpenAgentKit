@@ -13,73 +13,73 @@
       "@openagentpack/kit-chat-ui": [
         "../../packages/chat-ui/src/index.ts"
       ],
-      "@openagentpack/kit-sdk/chat": [
+      "@openagentkit/sdk/chat": [
         "../../packages/sdk/src/chat/index.ts"
       ],
-      "@openagentpack/kit-sdk/sessions": [
+      "@openagentkit/sdk/sessions": [
         "../../packages/sdk/src/sessions/index.ts"
       ],
-      "@openagentpack/kit-sdk/files": [
+      "@openagentkit/sdk/files": [
         "../../packages/sdk/src/files/index.ts"
       ],
-      "@openagentpack/kit-sdk/usage": [
+      "@openagentkit/sdk/usage": [
         "../../packages/sdk/src/usage/index.ts"
       ],
-      "@openagentpack/kit-sdk/auth": [
+      "@openagentkit/sdk/auth": [
         "../../packages/sdk/src/auth/index.ts"
       ],
-      "@openagentpack/kit-sdk/messages": [
+      "@openagentkit/sdk/messages": [
         "../../packages/sdk/src/messages/index.ts"
       ],
-      "@openagentpack/kit-sdk/config": [
+      "@openagentkit/sdk/config": [
         "../../packages/sdk/src/config/index.ts"
       ],
-      "@openagentpack/kit-sdk/state": [
+      "@openagentkit/sdk/state": [
         "../../packages/sdk/src/state.ts"
       ],
-      "@openagentpack/kit-sdk/request": [
+      "@openagentkit/sdk/request": [
         "../../packages/sdk/src/request/index.ts"
       ],
-      "@openagentpack/kit-sdk/stream": [
+      "@openagentkit/sdk/stream": [
         "../../packages/sdk/src/stream/index.ts"
       ],
-      "@openagentpack/kit-sdk/providers": [
+      "@openagentkit/sdk/providers": [
         "../../packages/sdk/src/providers/index.ts"
       ],
-      "@openagentpack/kit-sdk/providers/kit": [
+      "@openagentkit/sdk/providers/kit": [
         "../../packages/sdk/src/providers/kit/index.ts"
       ],
-      "@openagentpack/kit-sdk/providers/kit/react": [
+      "@openagentkit/sdk/providers/kit/react": [
         "../../packages/sdk/src/providers/kit/react/index.ts"
       ],
-      "@openagentpack/kit-sdk/providers/session-events": [
+      "@openagentkit/sdk/providers/session-events": [
         "../../packages/sdk/src/providers/session-events/index.ts"
       ],
-      "@openagentpack/kit-sdk/providers/bailian": [
+      "@openagentkit/sdk/providers/bailian": [
         "../../packages/sdk/src/providers/bailian/index.ts"
       ],
-      "@openagentpack/kit-sdk/protocol": [
+      "@openagentkit/sdk/protocol": [
         "../../packages/sdk/src/protocol/index.ts"
       ],
-      "@openagentpack/kit-sdk/hooks": [
+      "@openagentkit/sdk/hooks": [
         "../../packages/sdk/src/hooks/index.ts"
       ],
-      "@openagentpack/kit-sdk/chat/hooks": [
+      "@openagentkit/sdk/chat/hooks": [
         "../../packages/sdk/src/chat/hooks/index.ts"
       ],
-      "@openagentpack/kit-sdk/sessions/hooks": [
+      "@openagentkit/sdk/sessions/hooks": [
         "../../packages/sdk/src/sessions/hooks/index.ts"
       ],
-      "@openagentpack/kit-sdk/files/hooks": [
+      "@openagentkit/sdk/files/hooks": [
         "../../packages/sdk/src/files/hooks/index.ts"
       ],
-      "@openagentpack/kit-sdk/agents/hooks": [
+      "@openagentkit/sdk/agents/hooks": [
         "../../packages/sdk/src/agents/hooks/index.ts"
       ],
-      "@openagentpack/kit-sdk/usage/hooks": [
+      "@openagentkit/sdk/usage/hooks": [
         "../../packages/sdk/src/usage/hooks/index.ts"
       ],
-      "@openagentpack/kit-sdk/auth/hooks": [
+      "@openagentkit/sdk/auth/hooks": [
         "../../packages/sdk/src/auth/hooks/index.ts"
       ]
     }

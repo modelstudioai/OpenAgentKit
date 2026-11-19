@@ -11,7 +11,7 @@ import { Layout } from "@openagentpack/kit-chat-ui";
 ```
 
 copy-in 接入（组合示例还需 `session-sidebar` / `agent-header`；不自动安装 npm 依赖，需自装
-`@openagentpack/kit-sdk/hooks`、`@radix-ui/react-dialog`，导入共享 `theme.css`，外层给明确高度如 `h-dvh`，
+`@openagentkit/sdk/hooks`、`@radix-ui/react-dialog`，导入共享 `theme.css`，外层给明确高度如 `h-dvh`，
 员工端外观经 `data-kit-appearance="workspace"` 启用）：
 
 ```bash
@@ -27,8 +27,8 @@ pnpm kit:add agent-header
 {/* skill-example: kit-components/examples/layout.tsx */}
 
 ```tsx
+import type { AgentSummary, SessionSummary } from "@openagentkit/sdk/protocol";
 import { AgentHeader, Chat, Layout, SessionSidebar } from "@openagentpack/kit-chat-ui";
-import type { AgentSummary, SessionSummary } from "@openagentpack/kit-sdk/protocol";
 import { type ComponentProps, type ReactNode, useState } from "react";
 
 export interface WorkspaceLayoutProps {

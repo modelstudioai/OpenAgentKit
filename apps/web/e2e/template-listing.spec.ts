@@ -1,4 +1,4 @@
-import type { CatalogAgentView, TemplateCreateInput, TemplateView } from "@openagentpack/kit-sdk/protocol";
+import type { CatalogAgentView, TemplateCreateInput, TemplateView } from "@openagentkit/sdk/protocol";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { selectConsoleOption } from "./console-select-helpers.ts";
 import { expect, test } from "./fixtures.ts";

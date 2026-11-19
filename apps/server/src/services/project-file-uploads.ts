@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { KitError, type ProjectFileUpload } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type ProjectFileUpload } from "@openagentkit/sdk/protocol";
 import { assertProjectFileName } from "../gateway/project-file-sources.ts";
 import type { ProjectSourceFileUpload } from "../gateway/types.ts";
 

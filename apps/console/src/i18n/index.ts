@@ -1,4 +1,4 @@
-import { setKitErrorMessageResolver } from "@openagentpack/kit-sdk/state";
+import { setKitErrorMessageResolver } from "@openagentkit/sdk/state";
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import enAuth from "./locales/en/auth.ts";

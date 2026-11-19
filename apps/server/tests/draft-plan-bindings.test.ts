@@ -1,4 +1,4 @@
-import type { ProjectPlan, ProjectResourceBindings } from "@openagentpack/kit-sdk/protocol";
+import type { ProjectPlan, ProjectResourceBindings } from "@openagentkit/sdk/protocol";
 import { setDefaultFetch } from "@openagentpack/sdk";
 import { expect, it, vi } from "vitest";
 import { fixture } from "./helpers/yaml-draft.ts";

@@ -1,7 +1,7 @@
 "use client";
 
+import type { ChatMessage } from "@openagentkit/sdk/messages";
 import { EmptyState, ErrorState, StatusIndicator, ThreadPanel } from "@openagentpack/kit-chat-ui";
-import type { ChatMessage } from "@openagentpack/kit-sdk/messages";
 
 const THREADS: Record<string, ChatMessage[]> = {
 	th_subagent_billing: [

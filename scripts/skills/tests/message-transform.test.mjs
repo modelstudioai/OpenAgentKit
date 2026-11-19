@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createChatController } from "@openagentpack/kit-sdk/chat";
+import { createChatController } from "@openagentkit/sdk/chat";
 import { withDisplayLabel } from "../src/kit-chat-provider/examples/message-transform.ts";
 
 test("the display wrapper keeps a class Provider's subscription and send receiver", async () => {

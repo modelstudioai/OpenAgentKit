@@ -1,6 +1,6 @@
-import type { ChatMultiAgent } from "@openagentpack/kit-sdk/chat";
-import type { ChatMessage } from "@openagentpack/kit-sdk/messages";
-import { skillInputTokens } from "@openagentpack/kit-sdk/protocol";
+import type { ChatMultiAgent } from "@openagentkit/sdk/chat";
+import type { ChatMessage } from "@openagentkit/sdk/messages";
+import { skillInputTokens } from "@openagentkit/sdk/protocol";
 import { type ReactNode, useMemo, useRef, useState } from "react";
 import { resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
 import { MessageList } from "../message-list/index.tsx";

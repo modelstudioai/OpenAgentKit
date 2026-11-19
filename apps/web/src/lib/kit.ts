@@ -1,7 +1,7 @@
-import { createMemberAuthController } from "@openagentpack/kit-sdk/auth";
-import { resolveApiBaseUrl } from "@openagentpack/kit-sdk/config";
-import { errorFromResponse, isProtocolCompatible, KitError } from "@openagentpack/kit-sdk/protocol";
-import { createRequest } from "@openagentpack/kit-sdk/request";
+import { createMemberAuthController } from "@openagentkit/sdk/auth";
+import { resolveApiBaseUrl } from "@openagentkit/sdk/config";
+import { errorFromResponse, isProtocolCompatible, KitError } from "@openagentkit/sdk/protocol";
+import { createRequest } from "@openagentkit/sdk/request";
 import { createMemberSessionStorage, normalizeMemberApiBaseUrl } from "../features/auth/member-session-storage.ts";
 import { createExampleClient } from "./backend.ts";
 import { createExampleChatProvider } from "./chat-backend.ts";

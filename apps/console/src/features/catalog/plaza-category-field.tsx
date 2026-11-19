@@ -1,4 +1,4 @@
-import type { PlazaCategory } from "@openagentpack/kit-sdk/protocol";
+import type { PlazaCategory } from "@openagentkit/sdk/protocol";
 import { Form, Select } from "antd";
 import { useTranslation } from "react-i18next";
 import { formRowClass, formRowLabelClass } from "../../lib/form-row.ts";

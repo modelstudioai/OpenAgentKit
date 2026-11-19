@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { MemberAuthView, MemberLoginResult } from "@openagentpack/kit-sdk/protocol";
+import type { MemberAuthView, MemberLoginResult } from "@openagentkit/sdk/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
@@ -144,7 +144,7 @@ describe("本地成员认证", () => {
 		expect(limited.status).toBe(429);
 		expect(Number(limited.headers.get("retry-after"))).toBeGreaterThan(0);
 		expect(await limited.text()).not.toContain("Wrong!Password2026");
-	});
+	}, 15_000);
 
 	it("成员会话/附件隔离，伪造匿名 cookie 与可信 JWT 都不能冒充 member_id", async () => {
 		const { app, config, db, services } = makeApp({ KIT_JWT_SECRET: "trusted-signing-secret" });

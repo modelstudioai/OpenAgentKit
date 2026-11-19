@@ -1,4 +1,4 @@
-import { KitError, sessionStatusOf } from "@openagentpack/kit-sdk/protocol";
+import { KitError, sessionStatusOf } from "@openagentkit/sdk/protocol";
 import type { GatewaySessionInfo, ProviderGateway } from "../gateway/types.ts";
 import type { SessionDeletionStore } from "../store/session-deletions.ts";
 import type { SessionIndex } from "../store/sessions.ts";

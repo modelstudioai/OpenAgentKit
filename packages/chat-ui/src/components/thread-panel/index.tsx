@@ -1,4 +1,4 @@
-import type { ChatMessage } from "@openagentpack/kit-sdk/messages";
+import type { ChatMessage } from "@openagentkit/sdk/messages";
 import { format, resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
 import { Message } from "../message/index.tsx";
 import threadPanelStrings, { type ThreadPanelStrings } from "./strings.ts";

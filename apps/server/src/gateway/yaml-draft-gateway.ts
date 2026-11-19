@@ -8,7 +8,7 @@ import {
 	ProjectMemoryStoreCreateInputSchema,
 	type ProjectResourceBinding,
 	ProjectVaultCreateInputSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { BailianCredentials } from "../config.ts";
 import { agentSkillOption, projectMcpCandidates } from "./draft-agent-options.ts";
 import { assertSafeDraftDeclaration } from "./draft-declaration-security.ts";

@@ -1,5 +1,5 @@
+import type { ChatMessage } from "@openagentkit/sdk/messages";
 import { MessageList } from "@openagentpack/kit-chat-ui";
-import type { ChatMessage } from "@openagentpack/kit-sdk/messages";
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import "../../src/styles.css";

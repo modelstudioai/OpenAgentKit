@@ -1,5 +1,5 @@
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
-import { KitError, type SessionPage, type SessionSummary } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type SessionPage, type SessionSummary } from "@openagentkit/sdk/protocol";
 
 export interface SessionDirectoryQuery {
 	agentSlug?: string;

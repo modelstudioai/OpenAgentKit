@@ -3,7 +3,7 @@ import {
 	type RemoteSkill,
 	RemoteSkillIdSchema,
 	RemoteSkillVersionIdSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { ProviderGateway } from "./types.ts";
 
 const skills: RemoteSkill[] = [

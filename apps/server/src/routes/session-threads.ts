@@ -1,5 +1,5 @@
 import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
-import { eventsPageSchema, KitError, SessionThreadsResponseSchema } from "@openagentpack/kit-sdk/protocol";
+import { eventsPageSchema, KitError, SessionThreadsResponseSchema } from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 
 const query = z.object({

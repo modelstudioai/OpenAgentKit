@@ -11582,6 +11582,10 @@ export interface paths {
                                     /** @default false */
                                     destructive: boolean;
                                     summary?: string;
+                                    summary_key?: string;
+                                    summary_params?: {
+                                        [key: string]: string | number | boolean | unknown;
+                                    };
                                 }[];
                             };
                         };
@@ -12582,6 +12586,10 @@ export interface paths {
                                     /** @default false */
                                     destructive: boolean;
                                     summary?: string;
+                                    summary_key?: string;
+                                    summary_params?: {
+                                        [key: string]: string | number | boolean | unknown;
+                                    };
                                 }[];
                             };
                         };
@@ -13226,6 +13234,10 @@ export interface paths {
                                     /** @default false */
                                     destructive: boolean;
                                     summary?: string;
+                                    summary_key?: string;
+                                    summary_params?: {
+                                        [key: string]: string | number | boolean | unknown;
+                                    };
                                 }[];
                             };
                         };
@@ -18725,6 +18737,10 @@ export interface paths {
                                     /** @default false */
                                     destructive: boolean;
                                     summary?: string;
+                                    summary_key?: string;
+                                    summary_params?: {
+                                        [key: string]: string | number | boolean | unknown;
+                                    };
                                 }[];
                                 project_revision: string;
                                 yaml_hash?: string;
@@ -21125,6 +21141,10 @@ export interface paths {
                                     /** @default false */
                                     destructive: boolean;
                                     summary?: string;
+                                    summary_key?: string;
+                                    summary_params?: {
+                                        [key: string]: string | number | boolean | unknown;
+                                    };
                                 }[];
                             };
                         };

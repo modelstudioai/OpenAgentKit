@@ -1,5 +1,5 @@
-import { KitError } from "@openagentpack/kit-sdk/protocol";
-import { createBailianChatProvider } from "@openagentpack/kit-sdk/providers/bailian";
+import { KitError } from "@openagentkit/sdk/protocol";
+import { createBailianChatProvider } from "@openagentkit/sdk/providers/bailian";
 import { type BackendConfig, createBackendHttp, readJson, record } from "./backend-http.ts";
 
 export function createRawBailianProvider(config: BackendConfig) {

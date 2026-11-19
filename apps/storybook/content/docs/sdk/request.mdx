@@ -3,7 +3,7 @@ title: Request 请求
 description: 用 createRequest 统一 HTTP、应用鉴权、响应与 SSE 字节读取
 ---
 
-`createRequest` 来自 `@openagentpack/kit-sdk/request`。
+`createRequest` 来自 `@openagentkit/sdk/request`。
 它管理 URL、动态身份头、fetch 与 HTTP 错误；`stream()` 内部组合
 [createSseStream](/docs/sdk/stream)。可独立使用，也可注入
 [createBailianChatProvider](/docs/sdk/custom-backend)。
@@ -21,8 +21,8 @@ description: 用 createRequest 统一 HTTP、应用鉴权、响应与 SSE 字节
 {/* skill-example: kit-chat-provider/examples/request.ts */}
 
 ```ts
-import { createRequest, type RequestClient } from "@openagentpack/kit-sdk/request";
-import type { RawSseMessage } from "@openagentpack/kit-sdk/stream";
+import { createRequest, type RequestClient } from "@openagentkit/sdk/request";
+import type { RawSseMessage } from "@openagentkit/sdk/stream";
 
 export function createApplicationRequest(baseUrl: string, getAppToken: () => Promise<string>): RequestClient {
 	return createRequest({

@@ -3,10 +3,10 @@ title: Stream 流解析
 description: 独立解析 SSE 字节流：解码、分帧、取消与资源释放
 ---
 
-本页 API 来自 `@openagentpack/kit-sdk/stream` 与 `@openagentpack/kit-sdk/protocol`；安装方式与包职责见
+本页 API 来自 `@openagentkit/sdk/stream` 与 `@openagentkit/sdk/protocol`；安装方式与包职责见
 [SDK 总览](/docs/sdk)。
 
-`createSseStream` 来自 `@openagentpack/kit-sdk/stream`。它把已有
+`createSseStream` 来自 `@openagentkit/sdk/stream`。它把已有
 `ReadableStream<Uint8Array>` 解码为 `AsyncGenerator<RawSseMessage>`，通过 `for await` 逐帧消费；
 不发 HTTP 请求，自然 EOF 只表示字节流结束，不代表 Agent 执行完成。
 
@@ -25,7 +25,7 @@ description: 独立解析 SSE 字节流：解码、分帧、取消与资源释�
 {/* skill-example: kit-chat-provider/examples/sse-stream.ts */}
 
 ```ts
-import { createSseStream, type RawSseMessage } from "@openagentpack/kit-sdk/stream";
+import { createSseStream, type RawSseMessage } from "@openagentkit/sdk/stream";
 
 // 调用方传入已持有的响应体。
 export async function consumeSse(
@@ -106,16 +106,16 @@ mock 字节流按所选分隔符编码、分块到达；切换分隔符观察 CR
 
 ### streamProtocolFrames
 
-已经使用本文的 `SseFrame` 协议时，可以从 `@openagentpack/kit-sdk/providers/kit` 调用
+已经使用本文的 `SseFrame` 协议时，可以从 `@openagentkit/sdk/providers/kit` 调用
 `streamProtocolFrames(request, path, handlers)`，复用现有 Request、解码和取消逻辑。
 原始百炼 SSE 通过[自建后端 Provider](/docs/sdk/custom-backend)接入。
 
 {/* skill-example: kit-chat-provider/examples/protocol-frames.ts */}
 
 ```ts
-import type { SseFrame } from "@openagentpack/kit-sdk/protocol";
-import { streamProtocolFrames } from "@openagentpack/kit-sdk/providers/kit";
-import type { RequestClient } from "@openagentpack/kit-sdk/request";
+import type { SseFrame } from "@openagentkit/sdk/protocol";
+import { streamProtocolFrames } from "@openagentkit/sdk/providers/kit";
+import type { RequestClient } from "@openagentkit/sdk/request";
 
 /** Request 已配置后端 base URL 及所需的身份与协议版本头。 */
 export async function observeProtocolFrames(

@@ -1,4 +1,4 @@
-import { PROTOCOL_VERSION, type RemoteEnvironmentDetail } from "@openagentpack/kit-sdk/protocol";
+import { PROTOCOL_VERSION, type RemoteEnvironmentDetail } from "@openagentkit/sdk/protocol";
 import type { Page, Route } from "@playwright/test";
 import { expect, test } from "./fixtures.ts";
 import { ADMIN_TOKEN, openConsoleNavigation } from "./helpers.ts";

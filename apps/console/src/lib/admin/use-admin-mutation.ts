@@ -1,4 +1,4 @@
-import { createMutation } from "@openagentpack/kit-sdk/state";
+import { createMutation } from "@openagentkit/sdk/state";
 import { useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
 export function useAdminMutation<Args extends unknown[], Result>(action: (...args: Args) => Promise<Result>, key = "") {

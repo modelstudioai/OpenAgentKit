@@ -2,11 +2,11 @@
 
 ## 未发布（首个公开版本）
 
-OpenAgentPack Kit 的首个公开版本，提供搭建百炼 Managed Agent 体验页与管理端的全栈套件。
+OpenAgentKit 的首个公开版本，提供搭建百炼 Managed Agent 体验页与管理端的全栈套件。
 
 ### 包含
 
-- **SDK**：`@openagentpack/kit-sdk` 按聊天、会话、文件、智能体、用量与认证提供功能入口；
+- **SDK**：`@openagentkit/sdk` 按聊天、会话、文件、智能体、用量与认证提供功能入口；
   会话运行时按 Stream → Request → Provider → Chat 分层，React 接入位于各功能 `hooks/`。
 - **UI**：`@openagentpack/kit-chat-ui` 提供基于 Radix + Tailwind v4 的 copy-in 对话组件与
   冻结设计 token。

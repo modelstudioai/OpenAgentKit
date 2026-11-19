@@ -1,4 +1,4 @@
-import { type ProjectAgentCreateInput, ProjectAgentCreateInputSchema } from "@openagentpack/kit-sdk/protocol";
+import { type ProjectAgentCreateInput, ProjectAgentCreateInputSchema } from "@openagentkit/sdk/protocol";
 import { Alert, Button, Form, Input } from "antd";
 import i18n from "i18next";
 import { type ReactNode, type Ref, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";

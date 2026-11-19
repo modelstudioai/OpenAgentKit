@@ -3,8 +3,8 @@ import {
 	createSessionStore,
 	type SessionSnapshot,
 	type SessionStoreOptions,
-} from "@openagentpack/kit-sdk/chat";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
+} from "@openagentkit/sdk/chat";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
 
 // 控制器可独立于 React 使用，由宿主负责销毁。
 export function observeSession(

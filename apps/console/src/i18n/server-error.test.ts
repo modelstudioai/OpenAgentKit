@@ -1,4 +1,4 @@
-import { KitError } from "@openagentpack/kit-sdk/protocol";
+import { KitError } from "@openagentkit/sdk/protocol";
 import i18n from "i18next";
 import { afterEach, describe, expect, it } from "vitest";
 import { resolveServerErrorMessage } from "./server-error.ts";

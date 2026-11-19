@@ -1,4 +1,4 @@
-import type { MemoryStoreConfiguration } from "@openagentpack/kit-sdk/protocol";
+import type { MemoryStoreConfiguration } from "@openagentkit/sdk/protocol";
 import {
 	type AdminIdentityView,
 	type AdminMembersPage,
@@ -92,10 +92,10 @@ import {
 	type ToolUsagePage,
 	type UsageLimitConfig,
 	type UsageLimitPolicy,
-} from "@openagentpack/kit-sdk/protocol";
-import type { StreamSessionOptions, ThreadQueryOptions } from "@openagentpack/kit-sdk/providers";
-import { streamProtocolFrames } from "@openagentpack/kit-sdk/providers/kit";
-import { createRequest, type RequestClient, type RequestOptions } from "@openagentpack/kit-sdk/request";
+} from "@openagentkit/sdk/protocol";
+import type { StreamSessionOptions, ThreadQueryOptions } from "@openagentkit/sdk/providers";
+import { streamProtocolFrames } from "@openagentkit/sdk/providers/kit";
+import { createRequest, type RequestClient, type RequestOptions } from "@openagentkit/sdk/request";
 
 export type AdminClientOptions = RequestOptions | { request: RequestClient };
 

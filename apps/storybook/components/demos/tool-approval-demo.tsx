@@ -1,7 +1,7 @@
 "use client";
 
+import type { ChatToolApproval } from "@openagentkit/sdk/chat";
 import { ToolApprovalCard, ToolApprovalGroup } from "@openagentpack/kit-chat-ui";
-import type { ChatToolApproval } from "@openagentpack/kit-sdk/chat";
 import { useState } from "react";
 import { CONTROL_CLASS, TOOLBAR_CLASS } from "./general-demo.tsx";
 

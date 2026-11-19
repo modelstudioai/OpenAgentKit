@@ -104,17 +104,17 @@ test("functional SDK entries resolve and removed aggregate entries are unavailab
 		if (name !== "chat-ui") assert.ok(require.resolve(entry.name));
 	}
 	for (const entry of [
-		"@openagentpack/kit-sdk",
-		"@openagentpack/kit-sdk/adapters/react",
-		"@openagentpack/kit-sdk/react",
-		"@openagentpack/kit-sdk/request/stream",
-		"@openagentpack/kit-sdk/bailian",
-		"@openagentpack/kit-sdk/chat/react",
-		"@openagentpack/kit-sdk/sessions/react",
-		"@openagentpack/kit-sdk/files/react",
-		"@openagentpack/kit-sdk/agents/react",
-		"@openagentpack/kit-sdk/usage/react",
-		"@openagentpack/kit-sdk/auth/react",
+		"@openagentkit/sdk",
+		"@openagentkit/sdk/adapters/react",
+		"@openagentkit/sdk/react",
+		"@openagentkit/sdk/request/stream",
+		"@openagentkit/sdk/bailian",
+		"@openagentkit/sdk/chat/react",
+		"@openagentkit/sdk/sessions/react",
+		"@openagentkit/sdk/files/react",
+		"@openagentkit/sdk/agents/react",
+		"@openagentkit/sdk/usage/react",
+		"@openagentkit/sdk/auth/react",
 	]) {
 		assert.throws(() => require.resolve(entry), { code: "ERR_PACKAGE_PATH_NOT_EXPORTED" });
 	}

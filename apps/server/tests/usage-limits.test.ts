@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { SessionEvent, UsageLimitConfig } from "@openagentpack/kit-sdk/protocol";
+import type { SessionEvent, UsageLimitConfig } from "@openagentkit/sdk/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createMockGateway } from "../src/gateway/mock.ts";
 import type { GatewaySessionInfo } from "../src/gateway/types.ts";

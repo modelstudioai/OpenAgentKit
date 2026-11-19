@@ -10,7 +10,8 @@ import {
 	SettingOutlined,
 	TeamOutlined,
 } from "@ant-design/icons";
-import { useIsMobile } from "@openagentpack/kit-sdk/hooks";
+import { useIsMobile } from "@openagentkit/sdk/hooks";
+import { DEFAULT_BRAND_PRODUCT_NAME } from "@openagentkit/sdk/protocol";
 import { Card, Drawer, Layout } from "antd";
 import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -70,7 +71,7 @@ function Brand({ desktop = false }: { desktop?: boolean }) {
 				K
 			</span>
 			<h1 className={`${styles.brandTitle} leading-tight`}>
-				OpenAgentPack Kit
+				{DEFAULT_BRAND_PRODUCT_NAME}
 				<br />
 				{t("adminPortal")}
 			</h1>
@@ -158,19 +159,15 @@ export function ConsoleLayout({
 				) : null}
 				<Brand desktop={!isMobile} />
 				{isMobile ? <span className={styles.breadcrumbTitle}>{tabLabel}</span> : null}
+				<div className="ml-auto flex items-center">
+					<LanguageSwitcher />
+				</div>
 			</Header>
 			<Layout className={styles.body}>
 				{!isMobile ? (
 					<div className={styles.siderWrap}>
 						<Sider width={200} collapsedWidth={60} collapsed={collapsed} className={styles.sider}>
-							<div className={styles.siderBody}>
-								{nav}
-								{!collapsed ? (
-									<div className={styles.siderFooter}>
-										<LanguageSwitcher block />
-									</div>
-								) : null}
-							</div>
+							{nav}
 						</Sider>
 						<span aria-hidden="true" className={styles.siderDivider} />
 						<button
@@ -201,15 +198,10 @@ export function ConsoleLayout({
 					width={260}
 					open={open}
 					onClose={() => setOpen(false)}
-					styles={{ body: { padding: 0, display: "flex", flexDirection: "column" } }}
+					styles={{ body: { padding: 0 } }}
 				>
 					<Brand />
-					<div className={styles.drawerBody}>
-						{nav}
-						<div className={styles.drawerFooter}>
-							<LanguageSwitcher block />
-						</div>
-					</div>
+					{nav}
 				</Drawer>
 			) : null}
 		</Layout>

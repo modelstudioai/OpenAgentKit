@@ -1,4 +1,4 @@
-import { KitError } from "@openagentpack/kit-sdk/protocol";
+import { KitError } from "@openagentkit/sdk/protocol";
 import type { MemberSessionRecord } from "../store/member-sessions.ts";
 import type { AuthStreamBinding, MemberAuthService } from "./member-auth.ts";
 

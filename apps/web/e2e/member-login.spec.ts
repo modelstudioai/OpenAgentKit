@@ -4,7 +4,7 @@ import type {
 	MemberUsageLimitView,
 	SessionDetail,
 	SessionSummary,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { APIRequestContext, Page, Request, Response } from "@playwright/test";
 import { expect, test } from "./fixtures.ts";
 import { ADMIN_TOKEN, newSession, openSessionList, seedListedAgent } from "./helpers.ts";

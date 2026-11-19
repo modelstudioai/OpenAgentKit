@@ -1,4 +1,4 @@
-import { KitError } from "@openagentpack/kit-sdk/protocol";
+import { KitError } from "@openagentkit/sdk/protocol";
 import { ApiError, getRemoteEnvironment, type ProjectRuntimeContext } from "@openagentpack/sdk";
 import { environmentDetail } from "./environment-detail.ts";
 import type { ProviderGateway } from "./types.ts";

@@ -1,4 +1,4 @@
-import type { SessionSummary } from "@openagentpack/kit-sdk/protocol";
+import type { SessionSummary } from "@openagentkit/sdk/protocol";
 import {
 	createContext,
 	type ReactNode,

@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { PresetPackPreviewSchema, type PresetPacksPage, PresetPackViewSchema } from "@openagentpack/kit-sdk/protocol";
+import { PresetPackPreviewSchema, type PresetPacksPage, PresetPackViewSchema } from "@openagentkit/sdk/protocol";
 import { afterEach, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";

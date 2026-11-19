@@ -1,4 +1,4 @@
-# OpenAgentPack-Kit Agent 规则
+# OpenAgentKit Agent 规则
 
 本文件适用于当前独立仓库的全部工作，供人类维护者和 coding agent 共同使用。
 产品代码、配置、测试及验收依据均留在本仓库，不依赖父目录、全局 Skill 或个人环境。

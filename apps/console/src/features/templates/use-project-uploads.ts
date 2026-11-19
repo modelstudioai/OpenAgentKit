@@ -1,4 +1,4 @@
-import type { ProjectFileUpload, ProjectSkillUpload } from "@openagentpack/kit-sdk/protocol";
+import type { ProjectFileUpload, ProjectSkillUpload } from "@openagentkit/sdk/protocol";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AdminClient } from "../../lib/admin/index.ts";

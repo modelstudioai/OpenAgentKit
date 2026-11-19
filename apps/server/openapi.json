@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "OpenAgentPack Kit Server",
+    "title": "OpenAgentKit Server",
     "version": "2.0.0"
   },
   "tags": [
@@ -24397,6 +24397,28 @@
                               },
                               "summary": {
                                 "type": "string"
+                              },
+                              "summary_key": {
+                                "type": "string"
+                              },
+                              "summary_params": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "nullable": true
+                                    }
+                                  ]
+                                }
                               }
                             },
                             "required": [
@@ -26759,6 +26781,28 @@
                               },
                               "summary": {
                                 "type": "string"
+                              },
+                              "summary_key": {
+                                "type": "string"
+                              },
+                              "summary_params": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "nullable": true
+                                    }
+                                  ]
+                                }
                               }
                             },
                             "required": [
@@ -28310,6 +28354,28 @@
                               },
                               "summary": {
                                 "type": "string"
+                              },
+                              "summary_key": {
+                                "type": "string"
+                              },
+                              "summary_params": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "nullable": true
+                                    }
+                                  ]
+                                }
                               }
                             },
                             "required": [
@@ -41226,6 +41292,28 @@
                               },
                               "summary": {
                                 "type": "string"
+                              },
+                              "summary_key": {
+                                "type": "string"
+                              },
+                              "summary_params": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "nullable": true
+                                    }
+                                  ]
+                                }
                               }
                             },
                             "required": [
@@ -46311,6 +46399,28 @@
                               },
                               "summary": {
                                 "type": "string"
+                              },
+                              "summary_key": {
+                                "type": "string"
+                              },
+                              "summary_params": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "nullable": true
+                                    }
+                                  ]
+                                }
                               }
                             },
                             "required": [

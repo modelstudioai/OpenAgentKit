@@ -14,7 +14,7 @@ import {
 	type ProjectSkillUploadInput,
 	type ProjectVaultCreateInput,
 	ProjectVaultCreateInputSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { ProjectExecutionPlan, ProviderGateway, ResourceDraftGateway } from "../gateway/types.ts";
 import type { AuditLog } from "../store/audit.ts";
 import type { ConfirmGate } from "./confirm-gate.ts";

@@ -10,7 +10,7 @@ import type {
 	ResourceDraftEnvironmentCreateResult,
 	ResourceDraftMemoryStoreCreateResult,
 	ResourceDraftVaultCreateResult,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import { Alert, Button } from "antd";
 import i18n from "i18next";
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from "react";

@@ -8,7 +8,7 @@
       "file": "src/components/layout/index.tsx",
       "deps": ["kit-i18n"],
       "extraFiles": ["src/components/layout/strings.ts"],
-      "npmDependencies": ["@radix-ui/react-dialog", "@openagentpack/kit-sdk"]
+      "npmDependencies": ["@radix-ui/react-dialog", "@openagentkit/sdk"]
     },
     "chat": {
       "file": "src/components/chat/index.tsx",

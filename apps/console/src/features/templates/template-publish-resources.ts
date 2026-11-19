@@ -1,4 +1,4 @@
-import type { ProjectPlan, ResourceDraftDeclaration } from "@openagentpack/kit-sdk/protocol";
+import type { ProjectPlan, ResourceDraftDeclaration } from "@openagentkit/sdk/protocol";
 import i18n from "i18next";
 
 const RESOURCE_KEYS = {

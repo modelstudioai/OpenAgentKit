@@ -8,7 +8,7 @@ import {
 	type BrandingView,
 	BrandingViewSchema,
 	KitError,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { AppEnv, KitServices } from "../app-env.ts";
 import { requireAdmin } from "../services/identity.ts";
 import type { BrandingLogoMeta } from "../store/branding.ts";

@@ -1,6 +1,6 @@
 // 管理端外壳样式（CSS Modules / Less）：视觉规格迁移自独立站&百炼的 bfal-components
 // （Layout / TopNav / Sidebar）。颜色一律消费 antd-theme.ts 的 --ant-* css-var，
-// 不得写死色值；断点与 kit-sdk/adapters/react useIsMobile 同口径（768px）。
+// 不得写死色值。断点与 @openagentkit/sdk/hooks 的 useIsMobile 同口径（768px）。
 
 .shell {
 	height: 100dvh;
@@ -100,32 +100,6 @@
 	/* 对齐百炼 Sidebar nav 的容器 padding 0 12px 20px；宽度 200 为 border-box 不变，
 	   Menu token 的 itemMarginInline 已置 0，折叠态（60px）同样按此内缩 */
 	padding: 0 12px 20px;
-}
-
-.siderBody {
-	display: flex;
-	height: 100%;
-	min-height: 0;
-	flex-direction: column;
-}
-
-.siderFooter {
-	flex-shrink: 0;
-	padding-top: 12px;
-}
-
-.drawerBody {
-	display: flex;
-	flex: 1 1 auto;
-	min-height: 0;
-	flex-direction: column;
-	padding: 0 12px 20px;
-}
-
-.drawerFooter {
-	flex-shrink: 0;
-	margin-top: auto;
-	padding-top: 12px;
 }
 
 /* 侧栏右缘渐变分隔线：中段实、上下淡出（百炼 Sidebar 右缘规格） */

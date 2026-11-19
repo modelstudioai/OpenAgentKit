@@ -5,7 +5,7 @@ import {
 	MAX_MEMORY_ENTRIES,
 	type MemoryEntry,
 	type MemoryStoreConfiguration,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import {
 	ApiError,
 	getMemory,

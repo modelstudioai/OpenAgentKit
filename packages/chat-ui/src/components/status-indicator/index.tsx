@@ -1,4 +1,4 @@
-import type { ConnectionState } from "@openagentpack/kit-sdk/chat";
+import type { ConnectionState } from "@openagentkit/sdk/chat";
 import { resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
 import statusIndicatorStrings, { type StatusIndicatorStrings } from "./strings.ts";
 

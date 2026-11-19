@@ -10,7 +10,7 @@ import {
 	type UsageLimitConfig,
 	UsageLimitConfigSchema,
 	type UsageLimitMetricState,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import { GatewaySendRejectedError } from "../gateway/send-error.ts";
 import type { GatewaySendInput, GatewaySessionInfo, ProviderGateway } from "../gateway/types.ts";
 import type { AuditLog } from "../store/audit.ts";

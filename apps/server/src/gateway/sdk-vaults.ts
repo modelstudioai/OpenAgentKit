@@ -1,4 +1,4 @@
-import { KitError, type RemoteVault, type RemoteVaultDetail } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type RemoteVault, type RemoteVaultDetail } from "@openagentkit/sdk/protocol";
 import {
 	ApiError,
 	type CloudVault,

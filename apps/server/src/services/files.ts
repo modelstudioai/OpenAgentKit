@@ -4,7 +4,7 @@ import {
 	KitError,
 	type SessionPurpose,
 	uploadTypeRejectionReason,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { ProviderGateway } from "../gateway/types.ts";
 import type { FileStore } from "../store/files.ts";
 import type { SessionIndex } from "../store/sessions.ts";

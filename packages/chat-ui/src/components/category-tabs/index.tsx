@@ -1,4 +1,4 @@
-import type { PlazaCategory } from "@openagentpack/kit-sdk/protocol";
+import type { PlazaCategory } from "@openagentkit/sdk/protocol";
 import type { KeyboardEvent } from "react";
 
 export type PlazaTabId = PlazaCategory | "featured";

@@ -2,7 +2,7 @@ import "@hono/zod-openapi";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { RemoteSkillReference } from "@openagentpack/kit-sdk/protocol";
+import type { RemoteSkillReference } from "@openagentkit/sdk/protocol";
 import { afterEach, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";

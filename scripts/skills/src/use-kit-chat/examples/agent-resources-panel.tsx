@@ -1,12 +1,12 @@
-import { ArtifactCard, SubAgentPanel } from "@openagentpack/kit-chat-ui";
-import type { ChatMultiAgent } from "@openagentpack/kit-sdk/chat";
+import type { ChatMultiAgent } from "@openagentkit/sdk/chat";
 import type {
 	AgentMemoryStore,
 	AgentResourceItem,
 	AgentSummary,
 	ArtifactDescriptor,
 	RemoteAgentResources,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
+import { ArtifactCard, SubAgentPanel } from "@openagentpack/kit-chat-ui";
 import type { ReactNode } from "react";
 
 function ResourceSection({ title, children }: { title: string; children: ReactNode }) {

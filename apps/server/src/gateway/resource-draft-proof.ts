@@ -1,4 +1,4 @@
-import { ProjectResourceBindingSchema } from "@openagentpack/kit-sdk/protocol";
+import { ProjectResourceBindingSchema } from "@openagentkit/sdk/protocol";
 import { z } from "zod";
 export const ResourceDraftProofSchema = z
 	.object({

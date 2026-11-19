@@ -6,12 +6,12 @@ import {
 	SendMessageResponseSchema,
 	SessionThreadsResponseSchema,
 	ToolApprovalsResponseSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import {
 	createSessionEventChatProvider,
 	type SessionEventChatProviderOptions,
-} from "@openagentpack/kit-sdk/providers/session-events";
-import type { RequestClient } from "@openagentpack/kit-sdk/request";
+} from "@openagentkit/sdk/providers/session-events";
+import type { RequestClient } from "@openagentkit/sdk/request";
 
 /** 示例后端配置：用户接自己的后端时，替换路径、请求参数与 mapResponse。 */
 export function createExampleChatProvider(request: RequestClient) {

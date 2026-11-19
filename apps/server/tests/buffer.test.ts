@@ -1,4 +1,4 @@
-import type { SessionEvent } from "@openagentpack/kit-sdk/protocol";
+import type { SessionEvent } from "@openagentkit/sdk/protocol";
 import { describe, expect, it } from "vitest";
 import { createEventBufferRegistry } from "../src/services/event-buffer.ts";
 

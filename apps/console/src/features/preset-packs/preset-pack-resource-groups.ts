@@ -1,4 +1,4 @@
-import { type PresetPackResource, type PresetPackSession, presetPackResourceId } from "@openagentpack/kit-sdk/protocol";
+import { type PresetPackResource, type PresetPackSession, presetPackResourceId } from "@openagentkit/sdk/protocol";
 
 export interface PresetPackResourceRow {
 	key: string;

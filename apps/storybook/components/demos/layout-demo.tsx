@@ -1,5 +1,7 @@
 "use client";
 
+import type { ChatMessage } from "@openagentkit/sdk/messages";
+import type { AgentSummary, SessionSummary } from "@openagentkit/sdk/protocol";
 import {
 	AgentHeader,
 	Chat,
@@ -15,8 +17,6 @@ import {
 	SessionSidebar,
 	StatusIndicator,
 } from "@openagentpack/kit-chat-ui";
-import type { ChatMessage } from "@openagentpack/kit-sdk/messages";
-import type { AgentSummary, SessionSummary } from "@openagentpack/kit-sdk/protocol";
 import { useRef, useState } from "react";
 import { LogoMark, MessageSquare, SignalBars } from "../icons.tsx";
 

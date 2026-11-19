@@ -1,4 +1,4 @@
-import { AgentSummarySchema } from "@openagentpack/kit-sdk/protocol";
+import { AgentSummarySchema } from "@openagentkit/sdk/protocol";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { AgentHeader } from "./index.tsx";

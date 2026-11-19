@@ -1,9 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import {
-	type OperationView,
-	PublicationErrorDetailsSchema,
-	PublicationReportSchema,
-} from "@openagentpack/kit-sdk/protocol";
+import { type OperationView, PublicationErrorDetailsSchema, PublicationReportSchema } from "@openagentkit/sdk/protocol";
 
 interface Row {
 	operation_id: string;

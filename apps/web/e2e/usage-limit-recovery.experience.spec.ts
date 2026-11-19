@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import type { MemberUsageLimitView, QuotaRequestView, QuotaView } from "@openagentpack/kit-sdk/protocol";
+import type { MemberUsageLimitView, QuotaRequestView, QuotaView } from "@openagentkit/sdk/protocol";
 import type { Locator } from "@playwright/test";
 import { expect, test } from "./fixtures.ts";
 import { seedListedAgent } from "./helpers.ts";

@@ -1,13 +1,13 @@
-# OpenAgentPack Kit
+# OpenAgentKit
 
-**OpenAgentPack Kit 是面向百炼 Managed Agent 的应用开发与交付套件。**
+**OpenAgentKit 是面向百炼 Managed Agent 的应用开发与交付套件。**
 它提供可自托管的体验页、管理端和服务端，也提供可按需复用的对话组件、会话运行时、React hooks
 与开发 Skill，帮助团队把云端 Agent 接到实际产品中。
 
-[![Deploy docs](https://github.com/modelstudioai/OpenAgentPack-Kit/actions/workflows/docs.yml/badge.svg)](https://github.com/modelstudioai/OpenAgentPack-Kit/actions/workflows/docs.yml)
-[在线文档](https://modelstudioai.github.io/OpenAgentPack-Kit/) ·
-[快速开始](https://modelstudioai.github.io/OpenAgentPack-Kit/docs/quickstart/) ·
-[组件预览](https://modelstudioai.github.io/OpenAgentPack-Kit/docs/components/)
+[![Deploy docs](https://github.com/modelstudioai/OpenAgentKit/actions/workflows/docs.yml/badge.svg)](https://github.com/modelstudioai/OpenAgentKit/actions/workflows/docs.yml)
+[在线文档](https://modelstudioai.github.io/OpenAgentKit/) ·
+[快速开始](https://modelstudioai.github.io/OpenAgentKit/docs/quickstart/) ·
+[组件预览](https://modelstudioai.github.io/OpenAgentKit/docs/components/)
 
 团队可以直接搭建自己的 Agent 应用，也可以在已有业务系统中逐步引入所需能力，适用于团队助手门户、
 业务工作台中的智能助手，以及需要展示工具执行、人工审批和文件交付的对话场景。
@@ -64,13 +64,13 @@
 | 交付部分 | 主要内容 | 适用任务 |
 | --- | --- | --- |
 | UI 组件 `@openagentpack/kit-chat-ui` | Chat、Message、Sender、Attachments、FileCard、ToolApprovalCard 等 | 组合对话、输入、附件、文件和审批界面；支持将组件及声明依赖复制到业务项目中修改 |
-| 会话运行时 `@openagentpack/kit-sdk` 的功能入口 | 流解析、请求、后端适配、消息状态、重连与会话动作 | 接入既有后端，管理流式数据与会话交互；非 React 应用可直接订阅会话状态 |
-| React hooks `@openagentpack/kit-sdk/<功能>/hooks` | `useChat`、`useSessions`、`useAgentCatalog` 等 | 将连接、消息、发送、停止与审批绑定到 React 页面 |
+| 会话运行时 `@openagentkit/sdk` 的功能入口 | 流解析、请求、后端适配、消息状态、重连与会话动作 | 接入既有后端，管理流式数据与会话交互；非 React 应用可直接订阅会话状态 |
+| React hooks `@openagentkit/sdk/<功能>/hooks` | `useChat`、`useSessions`、`useAgentCatalog` 等 | 将连接、消息、发送、停止与审批绑定到 React 页面 |
 | 开发 Skill | `kit-components`、`use-kit-chat`、`kit-chat-provider` | 指导 coding agent 选组件、组合交互并适配后端，配有 API 参考与可编译示例 |
 
-SDK 按功能导入，例如 `@openagentpack/kit-sdk/chat`、`@openagentpack/kit-sdk/chat/hooks`
-与 `@openagentpack/kit-sdk/sessions/hooks`，不提供根聚合入口。
-Kit Context 由 `@openagentpack/kit-sdk/providers/kit/react` 提供。
+SDK 按功能导入，例如 `@openagentkit/sdk/chat`、`@openagentkit/sdk/chat/hooks`
+与 `@openagentkit/sdk/sessions/hooks`，不提供根聚合入口。
+Kit Context 由 `@openagentkit/sdk/providers/kit/react` 提供。
 
 开发 Skill 在写代码时提供指导；对话输入框里的技能选择用于向云端 Agent 表达使用意图，
 两者分别服务开发过程与业务执行。可直接浏览 [`assets/skills/`](./assets/skills)，
@@ -87,7 +87,7 @@ Kit Context 由 `@openagentpack/kit-sdk/providers/kit/react` 提供。
 
 ## 架构设计
 
-![OpenAgentPack Kit 核心功能架构](./docs/images/managed-agent-architecture.png)
+![OpenAgentKit 核心功能架构](./docs/images/managed-agent-architecture.svg)
 
 ### 应用界面、业务服务与云端执行分层
 
@@ -125,12 +125,12 @@ Kit 部署在团队自己的环境中，提供应用界面、身份与运营管�
 | Provider | 将后端接口和事件接入会话合同，提供事件到消息的转换规则 | 连接默认 Kit Server 或自建百炼后端 |
 | Chat | 持有事件快照与消息状态，编排重连、发送、停止和审批 | 通过 Controller 或 `useChat` 驱动页面 |
 
-上游 `@openagentpack/sdk` 负责百炼 API 接入与事件规范化；本仓库的 `@openagentpack/kit-sdk`
+上游 `@openagentpack/sdk` 负责百炼 API 接入与事件规范化；本仓库的 `@openagentkit/sdk`
 复用上游的 `SessionEvent` 契约，将事件快照转为可展示的消息、工具状态和文件信息。
 历史与实时流进入同一条处理链路，同一事件的后续快照会更新对应展示，UI 使用稳定的消息分片标识。
 
 采用 Kit Server 时可复用仓库的 Provider 接入；已有后端时，可以实现 `ChatProvider`，
-也可以使用 `@openagentpack/kit-sdk/providers/bailian` 的 `createBailianChatProvider`
+也可以使用 `@openagentkit/sdk/providers/bailian` 的 `createBailianChatProvider`
 接入自建后端转发的百炼原始 SSE，Provider 凭据仍保留在服务端。
 业务方可保留自己的身份、会话目录与文件接口。完整会话接入需要明确的订阅就绪、历史恢复、发送、
 中断和审批，详见[架构](./docs/architecture.md)与[协议](./docs/protocol.md)。
@@ -139,8 +139,8 @@ Kit 部署在团队自己的环境中，提供应用界面、身份与运营管�
 
 | 层 | 包 | 职责 |
 | --- | --- | --- |
-| 契约 | `@openagentpack/kit-sdk/protocol` | SDK 子入口：同构事件、SSE 帧、错误模型与 API schema |
-| SDK | `@openagentpack/kit-sdk` 的功能入口 | 按功能提供请求、Provider、聊天、会话、文件、认证和用量；React 通过各功能 `/hooks` 可选接入，Kit Context 在 `/providers/kit/react`，通用屏幕判断在 `/hooks`；管理业务归 Console |
+| 契约 | `@openagentkit/sdk/protocol` | SDK 子入口：同构事件、SSE 帧、错误模型与 API schema |
+| SDK | `@openagentkit/sdk` 的功能入口 | 按功能提供请求、Provider、聊天、会话、文件、认证和用量；React 通过各功能 `/hooks` 可选接入，Kit Context 在 `/providers/kit/react`，通用屏幕判断在 `/hooks`；管理业务归 Console |
 | UI 组件 | `@openagentpack/kit-chat-ui` | copy-in Chat 产品 UI（Radix + Tailwind v4） |
 | 服务端 | `@openagentpack/kit-server` | Hono 应用工厂：数据面 `/api/kit/*`、控制面 `/api/admin/*` |
 
@@ -152,7 +152,7 @@ Kit 部署在团队自己的环境中，提供应用界面、身份与运营管�
 ### 目录结构
 
 ```text
-OpenAgentPack-Kit/
+OpenAgentKit/
 ├── apps/                       # 可运行应用
 │   ├── web/                    # Web / H5 体验页
 │   ├── console/                # 管理端
@@ -185,7 +185,7 @@ OpenAgentPack-Kit/
 
 ## 文档
 
-- [在线文档站](https://modelstudioai.github.io/OpenAgentPack-Kit/)：用户文档、组件预览、SDK 接入与 API 参考。
+- [在线文档站](https://modelstudioai.github.io/OpenAgentKit/)：用户文档、组件预览、SDK 接入与 API 参考。
 - [使用文档](./apps/storybook/README.md)：快速开始、本地 Demo、核心概念、SDK、组件、API 与开发 Skill。
 - [工程文档](./docs/README.md)：架构、目录、接口、协议、测试与 ADR。
 - 核心参考：[架构](./docs/architecture.md)、[接口](./docs/interfaces.md)、[协议](./docs/protocol.md)、
@@ -201,7 +201,7 @@ OpenAgentPack-Kit/
 
 ### 原生对接 MA 协议，与底座持续演进
 
-OpenAgentPack Kit 原生对接百炼 Managed Agent（MA）协议，围绕会话、事件流、工具调用、人工审批、
+OpenAgentKit 原生对接百炼 Managed Agent（MA）协议，围绕会话、事件流、工具调用、人工审批、
 多 Agent 协作与文件交付提供适配。开发者可以复用协议解析、事件归并和状态同步能力，
 专注于业务场景与产品体验。组件、会话运行时和开发指南随 MA 能力演进持续更新。
 
@@ -305,7 +305,7 @@ pnpm verify:push # pre-push hook 跑的就是这套
 ```
 
 提交信息使用简体中文 Conventional Commits，例如 `fix(server): 修复会话恢复`。
-Issue 与反馈：https://github.com/modelstudioai/OpenAgentPack-Kit/issues
+Issue 与反馈：https://github.com/modelstudioai/OpenAgentKit/issues
 
 ## License
 

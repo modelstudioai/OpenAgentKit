@@ -15,8 +15,8 @@ Request 负责 HTTP 与错误映射；Client 复用现有 DTO 和方法签名。
 {/* skill-example: kit-chat-provider/examples/backend-data.ts */}
 
 ```ts
-import { type ClientOperations, createKitClient } from "@openagentpack/kit-sdk/providers/kit";
-import type { RequestClient } from "@openagentpack/kit-sdk/request";
+import { type ClientOperations, createKitClient } from "@openagentkit/sdk/providers/kit";
+import type { RequestClient } from "@openagentkit/sdk/request";
 
 // 只配置后端支持的功能。未配置的操作不会调用 Kit 路由。
 export function createDataClient(request: RequestClient) {
@@ -92,7 +92,7 @@ export function createDataClient(request: RequestClient) {
 
 目录、上传、首次发送及产物组件绑定见 [组件交互与后端调用](/docs/sdk/experience)。
 
-`createKitClient` 来自 `@openagentpack/kit-sdk/providers/kit`，提供可配置的数据面调用；`{ baseUrl }` 兼容模式封装 Kit Server API，
+`createKitClient` 来自 `@openagentkit/sdk/providers/kit`，提供可配置的数据面调用；`{ baseUrl }` 兼容模式封装 Kit Server API，
 可独立于 React 和 UI 组件使用。它负责请求与响应转换；对话订阅和发送编排由
 [useChat](/docs/sdk/use-chat) 或 [Controller](/docs/sdk/use-chat/#无-react-的-chat-controller) 负责。
 
@@ -114,7 +114,7 @@ export function createDataClient(request: RequestClient) {
 先读取配置并校验协议主版本，再使用返回的 `apiBaseUrl` 创建业务 Client。
 
 ```ts
-import { createKitClient, type KitClientOptions } from "@openagentpack/kit-sdk/providers/kit";
+import { createKitClient, type KitClientOptions } from "@openagentkit/sdk/providers/kit";
 
 export async function createConfiguredClient(
   configBaseUrl: string,
@@ -156,13 +156,9 @@ storage 由宿主实现。示例代码与 Skill 同源生成。
 {/* skill-example: use-kit-chat/examples/member-auth.tsx */}
 
 ```tsx
-import {
-	createMemberAuthController,
-	type MemberAuthController,
-	type MemberAuthOptions,
-} from "@openagentpack/kit-sdk/auth";
-import { useMemberAuth } from "@openagentpack/kit-sdk/auth/hooks";
-import { KitProvider } from "@openagentpack/kit-sdk/providers/kit/react";
+import { createMemberAuthController, type MemberAuthController, type MemberAuthOptions } from "@openagentkit/sdk/auth";
+import { useMemberAuth } from "@openagentkit/sdk/auth/hooks";
+import { KitProvider } from "@openagentkit/sdk/providers/kit/react";
 import type { FormEvent, ReactNode } from "react";
 
 // 公开配置解析出最终 API URL 后调用一次。宿主存储按带路径前缀的完整 URL 隔离，
@@ -252,8 +248,8 @@ dispose 取消客户端工作但不撤销登录；显式 logout 才撤销服务�
 
 ```tsx
 import type { ReactNode } from "react";
-import type { KitClient } from "@openagentpack/kit-sdk/providers/kit";
-import { KitProvider } from "@openagentpack/kit-sdk/providers/kit/react";
+import type { KitClient } from "@openagentkit/sdk/providers/kit";
+import { KitProvider } from "@openagentkit/sdk/providers/kit/react";
 
 export function KitRoot({ client, children }: { client: KitClient; children: ReactNode }) {
   return <KitProvider client={client}>{children}</KitProvider>;
@@ -294,16 +290,16 @@ Provider 的预签名 URL 不下发给浏览器。
 
 | API | 导入入口 | 用途 |
 | --- | --- | --- |
-| `useAttachments(options?)` | `@openagentpack/kit-sdk/files/hooks` | 管理上传、扫描轮询、失败与待发送附件状态 |
-| `resolveApiBaseUrl(queryApi?, config?)` | `@openagentpack/kit-sdk/config` | 按宿主注入、查询参数和运行时配置解析后端地址 |
-| `uploadSizeRejectionReason(size)` / `uploadTypeRejectionReason(name)` | `@openagentpack/kit-sdk/protocol` | 上传前拒绝原因；最终限制由后端执行 |
-| `sleep(ms, signal?)` | `@openagentpack/kit-sdk/chat` | 示例业务的可取消等待，不包含自动写请求重试策略 |
+| `useAttachments(options?)` | `@openagentkit/sdk/files/hooks` | 管理上传、扫描轮询、失败与待发送附件状态 |
+| `resolveApiBaseUrl(queryApi?, config?)` | `@openagentkit/sdk/config` | 按宿主注入、查询参数和运行时配置解析后端地址 |
+| `uploadSizeRejectionReason(size)` / `uploadTypeRejectionReason(name)` | `@openagentkit/sdk/protocol` | 上传前拒绝原因；最终限制由后端执行 |
+| `sleep(ms, signal?)` | `@openagentkit/sdk/chat` | 示例业务的可取消等待，不包含自动写请求重试策略 |
 
 文件选择、保存、剪贴板和主题能力由应用提供。Web 示例在 `apps/web/src/lib/host.ts`
 通过 `resolveHostCapabilities()` 读取壳注入与浏览器兜底实现，再用 `createArtifactHost()`
 装配产物预览与保存能力。这些函数属于应用接入层；自建项目按
-`@openagentpack/kit-sdk/files` 的 `ArtifactHost` 合同提供实现，传给
-`@openagentpack/kit-sdk/files/hooks` 的 `useArtifactActions({ host, ... })`。
+`@openagentkit/sdk/files` 的 `ArtifactHost` 合同提供实现，传给
+`@openagentkit/sdk/files/hooks` 的 `useArtifactActions({ host, ... })`。
 
 ### 订阅与游标续传
 
@@ -392,7 +388,7 @@ Operation 恢复属于 Console 应用接入层，不作为 SDK 导出；前端�
 
 ## 错误与确认
 
-HTTP 错误响应和流内错误使用 `KitError`（从 `@openagentpack/kit-sdk/protocol` 导入），含
+HTTP 错误响应和流内错误使用 `KitError`（从 `@openagentkit/sdk/protocol` 导入），含
 `code`、`message`、`status` 和 `retryable`；网络层也可能抛出原生异常。调用方应捕获错误，
 保留草稿并展示失败原因。`retryable` 不表示可以自动重发消息或审批。
 

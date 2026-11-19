@@ -13,7 +13,7 @@ import {
 	type MemberGroupsPatch,
 	MemberGroupsPatchSchema,
 	type PlanResponse,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { z } from "zod";
 import type { AuditLog } from "../store/audit.ts";
 import type { GroupStore } from "../store/groups.ts";

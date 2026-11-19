@@ -12,7 +12,7 @@ Kit 已提供请求、流处理、消息状态和会话列表等前端数据接�
 无需依赖 `kit-chat-ui`。本栏目集中介绍这些能力及其与上游 SDK 的关系。
 
 仓库中的 **SDK 专指 `@openagentpack/sdk`**，负责服务端的 Provider 接入，并通过浏览器安全
-子入口提供百炼事件纯转换。Kit 的数据处理能力由 `@openagentpack/kit-sdk` 的功能子入口提供，
+子入口提供百炼事件纯转换。Kit 的数据处理能力由 `@openagentkit/sdk` 的功能子入口提供，
 例如对话使用 `/chat` 与 `/chat/hooks`，HTTP 使用 `/request`，Kit Context 使用 `/providers/kit/react`。
 各功能的 `hooks/` 都是 React hooks；通用 `/hooks` 只公开 `useIsMobile`，
 `/providers/kit/react` 公开 `KitProvider`、`useKitClient`、`useKitContext`。
@@ -77,7 +77,7 @@ Provider 的 `transformMessage` 负责 `SessionEvent → ChatMessage` 展示规�
 
 ## 能力与职责
 
-以下源码位置均相对于 `packages/sdk/src/`，导入入口均以 `@openagentpack/kit-sdk` 为前缀。
+以下源码位置均相对于 `packages/sdk/src/`，导入入口均以 `@openagentkit/sdk` 为前缀。
 
 | 需要的能力 | 源码位置 | 导入入口与主要 API |
 | --- | --- | --- |
@@ -115,7 +115,7 @@ Provider 凭据始终留在后端；浏览器不导入 SDK 主入口或 `interna
   原始流模式需要持续订阅、完整历史与上游就绪保证；单次发送 POST 返回一轮 SSE 不属于内置模式。
 - `useChat` 提供消息读取与执行动作；尚无公开的 `setMessages`、编辑历史、删除单条消息或
   重新生成 API。`useSessions` 不内置跨会话消息缓存、活动会话状态或请求队列。
-- `@openagentpack/kit-sdk` 当前仍标记为 `private: true`。本栏目示例面向仓库 workspace
+- `@openagentkit/sdk` 当前仍标记为 `private: true`。本栏目示例面向仓库 workspace
   与源码集成，不代表这些包已经正式发布到 npm。
 
 仓库当前精确依赖 npm 正式发布的 `@openagentpack/sdk@0.10.0`，包内容由

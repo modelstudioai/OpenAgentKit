@@ -1,4 +1,4 @@
-import type { MemberUsageSummary } from "@openagentpack/kit-sdk/protocol";
+import type { MemberUsageSummary } from "@openagentkit/sdk/protocol";
 import { useTranslation } from "react-i18next";
 
 import styles from "./members.module.less";

@@ -3,7 +3,7 @@ import type {
 	PresetPackAgentResources,
 	PresetPackPreview,
 	TemplateView,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { type AgentPresentationDraft, AgentPresentationFields } from "../catalog/agent-presentation-fields.tsx";

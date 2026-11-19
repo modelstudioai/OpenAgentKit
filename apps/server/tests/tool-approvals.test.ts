@@ -1,7 +1,7 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { ToolApprovalsResponse } from "@openagentpack/kit-sdk/protocol";
+import type { ToolApprovalsResponse } from "@openagentkit/sdk/protocol";
 import { describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";

@@ -11,7 +11,7 @@ import {
 	TemplatesQuerySchema,
 	TemplateUpdateInputSchema,
 	TemplateViewSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 import { requireAdmin } from "../services/identity.ts";
 import { registerTemplateVersionRoutes } from "./template-versions.ts";

@@ -1,4 +1,4 @@
-import { KitError } from "@openagentpack/kit-sdk/protocol";
+import { KitError } from "@openagentkit/sdk/protocol";
 
 /** 删除先关入口，再等待已受理的写入退出。不能只禁用浏览器按钮。 */
 export function createSessionMutations(isBlocked: (sessionId: string) => boolean) {

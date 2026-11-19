@@ -1,7 +1,7 @@
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
-import type { SendMessageResponse, ToolApprovalsResponse } from "@openagentpack/kit-sdk/protocol";
-import { createBailianChatProvider } from "@openagentpack/kit-sdk/providers/bailian";
-import { createRequest } from "@openagentpack/kit-sdk/request";
+import { useChat } from "@openagentkit/sdk/chat/hooks";
+import type { SendMessageResponse, ToolApprovalsResponse } from "@openagentkit/sdk/protocol";
+import { createBailianChatProvider } from "@openagentkit/sdk/providers/bailian";
+import { createRequest } from "@openagentkit/sdk/request";
 import { useState, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 import "../../src/styles.css";

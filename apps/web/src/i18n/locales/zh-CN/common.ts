@@ -20,7 +20,7 @@ export default {
 		en: "English",
 		switchTo: "切换到{{language}}",
 	},
-	appTitle: "OpenAgentPack Kit 体验页",
+	appTitle: "OpenAgentKit 体验页",
 	bootstrapFailed: "无法读取服务配置",
 	loading: "加载中…",
 };

@@ -1,6 +1,6 @@
 # apps/server — Kit Server
 
-OpenAgentPack Kit 的服务端：用 Hono 包装百炼 Managed Agent，向体验页提供数据面 API，
+OpenAgentKit 的服务端：用 Hono 包装百炼 Managed Agent，向体验页提供数据面 API，
 向管理端提供控制面 API。运行时依赖 Node.js 24 与内置 `node:sqlite`。
 
 本文件面向人类读者；修改代码前请先读 [AGENTS.md](./AGENTS.md) 中的不变量和闸门。

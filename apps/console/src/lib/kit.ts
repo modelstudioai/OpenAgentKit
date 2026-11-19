@@ -1,7 +1,7 @@
-import { resolveApiBaseUrl } from "@openagentpack/kit-sdk/config";
-import { errorFromResponse } from "@openagentpack/kit-sdk/protocol";
-import { createKitClient } from "@openagentpack/kit-sdk/providers/kit";
-import { createRequest } from "@openagentpack/kit-sdk/request";
+import { resolveApiBaseUrl } from "@openagentkit/sdk/config";
+import { errorFromResponse } from "@openagentkit/sdk/protocol";
+import { createKitClient } from "@openagentkit/sdk/providers/kit";
+import { createRequest } from "@openagentkit/sdk/request";
 import i18n from "i18next";
 import { adminToken, bindAdminBackend, normalizeAdminBaseUrl } from "./auth.ts";
 

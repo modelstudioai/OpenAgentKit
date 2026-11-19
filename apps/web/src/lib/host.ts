@@ -1,4 +1,4 @@
-import type { ArtifactHost } from "@openagentpack/kit-sdk/files";
+import type { ArtifactHost } from "@openagentkit/sdk/files";
 /** 体验页使用的宿主能力：壳注入优先，缺失能力回退到浏览器实现。 */
 export interface HostCapabilities {
 	pickFiles?(options?: { multiple?: boolean; accept?: string }): Promise<File[] | null>;

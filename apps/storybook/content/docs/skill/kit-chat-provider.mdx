@@ -17,7 +17,7 @@ description: 使用中文 Skill 将默认 Kit Server 或自建百炼后端接入
 | --- | --- |
 | 标准 `SessionEvent` 与控制帧（含示例 Kit Server） | 配置公开 `createSessionEventChatProvider`，显式交给 `useChat` |
 | 标准事件但使用其他流封装 | 实现 `ChatProvider` 五方法并映射生命周期回调 |
-| 百炼原始 SSE 与完整原始事件历史 | 使用 `@openagentpack/kit-sdk/providers/bailian` 的 `createBailianChatProvider` |
+| 百炼原始 SSE 与完整原始事件历史 | 使用 `@openagentkit/sdk/providers/bailian` 的 `createBailianChatProvider` |
 
 体验页与自建标准事件后端使用同一工厂；已有 KitClient 应用仍可保留
 `createKitChatProvider(client)` 与默认 Context 接入。
@@ -59,9 +59,9 @@ description: 使用中文 Skill 将默认 Kit Server 或自建百炼后端接入
 {/* skill-example: kit-chat-provider/examples/backend-http.ts */}
 
 ```ts
-import { KitError, SendMessageResponseSchema, ToolApprovalsResponseSchema } from "@openagentpack/kit-sdk/protocol";
-import type { SessionEventChatProviderOptions } from "@openagentpack/kit-sdk/providers/session-events";
-import { createRequest } from "@openagentpack/kit-sdk/request";
+import { KitError, SendMessageResponseSchema, ToolApprovalsResponseSchema } from "@openagentkit/sdk/protocol";
+import type { SessionEventChatProviderOptions } from "@openagentkit/sdk/providers/session-events";
+import { createRequest } from "@openagentkit/sdk/request";
 
 export interface BackendConfig {
 	// 显式传入运行时配置，后端可以与页面不同源。
@@ -159,8 +159,8 @@ export function createBackendHttp(config: BackendConfig) {
 {/* skill-example: kit-chat-provider/examples/raw-bailian-provider.ts */}
 
 ```ts
-import { KitError } from "@openagentpack/kit-sdk/protocol";
-import { createBailianChatProvider } from "@openagentpack/kit-sdk/providers/bailian";
+import { KitError } from "@openagentkit/sdk/protocol";
+import { createBailianChatProvider } from "@openagentkit/sdk/providers/bailian";
 import { type BackendConfig, createBackendHttp, readJson, record } from "./backend-http.ts";
 
 export function createRawBailianProvider(config: BackendConfig) {
@@ -224,8 +224,8 @@ Skill 包含独立的[消息转换合同](/skills/kit-chat-provider/references/m
 {/* skill-example: kit-chat-provider/examples/message-transform.ts */}
 
 ```ts
-import { type MessageTransformer, transformSessionEvent } from "@openagentpack/kit-sdk/messages";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
+import { type MessageTransformer, transformSessionEvent } from "@openagentkit/sdk/messages";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
 
 // 幂等替换展示标签，后续事件重建线程时可重复调用，原始 SessionEvent 与生命周期保持原样。
 const replaceDisplayLabel: MessageTransformer = (input) => {
@@ -277,9 +277,9 @@ export function withDisplayLabel(provider: ChatProvider): ChatProvider {
 {/* skill-example: kit-chat-provider/examples/normalized-provider.ts */}
 
 ```ts
-import { PROTOCOL_VERSION, PROTOCOL_VERSION_HEADER } from "@openagentpack/kit-sdk/protocol";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
-import { createSessionEventChatProvider } from "@openagentpack/kit-sdk/providers/session-events";
+import { PROTOCOL_VERSION, PROTOCOL_VERSION_HEADER } from "@openagentkit/sdk/protocol";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
+import { createSessionEventChatProvider } from "@openagentkit/sdk/providers/session-events";
 import { type BackendConfig, createBackendHttp } from "./backend-http.ts";
 
 // Web 应用复用此公开工厂，配置自己的路径和 { data } 映射。

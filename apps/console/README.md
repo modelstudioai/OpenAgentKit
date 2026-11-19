@@ -78,7 +78,7 @@ UI 组件栈：重控件（表格、表单、树、上传）优先 antd v6；对
 协议头和响应包装由 `src/lib/admin/client.ts` 负责。成员用量控制器在 `member-usage.ts`，
 Operation 观察与恢复在 `operation.ts`；页面通过同目录的 hooks 订阅。
 
-这些业务不属于公开 SDK，`@openagentpack/kit-sdk/admin` 已移除。查询、提交和订阅复用
+这些业务不属于公开 SDK，`@openagentkit/sdk/admin` 已移除。查询、提交和订阅复用
 SDK 根入口的 `createQuery`、`createMutation`、`createObservable`；帧读取复用
 `streamProtocolFrames`。不从 SDK 私有源码导入，也不维护第二份解析或状态实现。
 

@@ -6,7 +6,7 @@ import type {
 	TemplateUsageRow,
 	ToolUsageItem,
 	ToolUsagePage,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Button, DatePicker, Empty, Result, Select, Table } from "antd";
 import dayjs from "dayjs";

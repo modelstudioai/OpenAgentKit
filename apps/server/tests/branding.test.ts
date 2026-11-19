@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BrandingViewSchema, KitRuntimeConfigSchema } from "@openagentpack/kit-sdk/protocol";
+import { BrandingViewSchema, KitRuntimeConfigSchema } from "@openagentkit/sdk/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
@@ -57,7 +57,7 @@ describe("员工端品牌配置", () => {
 	it("默认公开配置返回产品名；管理员保存 URL 后立即反映到 /api/config", async () => {
 		const { app } = setup();
 		const initial = await view(await request(app, "/api/admin/branding"));
-		expect(initial.productName).toBe("OpenAgentPack Kit");
+		expect(initial.productName).toBe("OpenAgentKit");
 		expect(initial.logoUrl).toBeUndefined();
 
 		const saved = await request(app, "/api/admin/branding", {
@@ -71,6 +71,41 @@ describe("员工端品牌配置", () => {
 			((await (await request(app, "/api/config", { headers: {} })).json()) as { data: unknown }).data,
 		);
 		expect(runtime.branding).toMatchObject({ productName: "员工工作台", logoUrl: "/brand/kit-logo.svg" });
+	});
+
+	it.each([
+		{
+			scenario: "系统写入的旧默认名称",
+			updatedBy: null,
+			logoUrl: null,
+			expectedName: "OpenAgentKit",
+		},
+		{
+			scenario: "管理员保存的同名品牌及 Logo",
+			updatedBy: "admin:branding",
+			logoUrl: "/brand/team-logo.svg",
+			expectedName: "OpenAgentPack Kit",
+		},
+	])("升级旧库时正确处理$scenario", ({ updatedBy, logoUrl, expectedName }) => {
+		const dataDir = mkdtempSync(join(tmpdir(), "kit-branding-upgrade-"));
+		cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
+		const previous = openDatabase(dataDir);
+		try {
+			// 重建升级前的品牌记录，重新打开文件执行新迁移。
+			previous.prepare("DELETE FROM _kit_migrations WHERE id = ?").run("033_openagentkit_default_branding");
+			previous
+				.prepare("UPDATE kit_branding SET product_name = ?, logo_url = ?, updated_by = ? WHERE id = 1")
+				.run("OpenAgentPack Kit", logoUrl, updatedBy);
+		} finally {
+			previous.close();
+		}
+		const upgraded = openDatabase(dataDir);
+		cleanup.push(() => upgraded.close());
+		expect(upgraded.prepare("SELECT product_name, logo_url, updated_by FROM kit_branding WHERE id = 1").get()).toEqual({
+			product_name: expectedName,
+			logo_url: logoUrl,
+			updated_by: updatedBy,
+		});
 	});
 
 	it("上传 Logo 后由公开图片接口提供；省略 logoUrl 保持上传，null 清除", async () => {
@@ -158,7 +193,7 @@ describe("员工端品牌配置", () => {
 			body: { productName: "审计员品牌" },
 		});
 		expect(readOnly.status).toBe(403);
-		expect(services.branding.get().product_name).toBe("OpenAgentPack Kit");
+		expect(services.branding.get().product_name).toBe("OpenAgentKit");
 
 		await request(app, "/api/admin/branding", { method: "PUT", body: { productName: "品牌" } });
 		const row = db

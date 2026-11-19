@@ -1,5 +1,5 @@
-import type { ChatAgentThread, ChatMultiAgent } from "@openagentpack/kit-sdk/chat";
-import type { ChatMessage, MessagePart } from "@openagentpack/kit-sdk/messages";
+import type { ChatAgentThread, ChatMultiAgent } from "@openagentkit/sdk/chat";
+import type { ChatMessage, MessagePart } from "@openagentkit/sdk/messages";
 import { useEffect, useState } from "react";
 import { FileCard } from "../../file-card/index.tsx";
 import { format, resolveStrings, useKitLocale } from "../../kit-i18n/index.ts";

@@ -5,7 +5,7 @@ import {
 	type RemoteSkillSource,
 	RemoteSkillSourceSchema,
 	RemoteSkillVersionIdSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import {
 	ApiError,
 	getRemoteSkill,

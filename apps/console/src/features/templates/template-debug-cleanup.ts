@@ -1,4 +1,4 @@
-import { KitError } from "@openagentpack/kit-sdk/protocol";
+import { KitError } from "@openagentkit/sdk/protocol";
 import i18n from "i18next";
 import type { AdminClient } from "../../lib/admin/index.ts";
 

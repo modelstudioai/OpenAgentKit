@@ -5,7 +5,7 @@ import {
 	TemplateUsageLimitViewSchema,
 	UsageLimitConfigSchema,
 	UsageLimitPolicySchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 import { requireAdminWrite } from "../services/identity.ts";
 

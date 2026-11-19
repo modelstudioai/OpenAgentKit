@@ -1,6 +1,6 @@
-import { encodeFrame, PROTOCOL_VERSION } from "@openagentpack/kit-sdk/protocol";
-import { createKitChatProvider } from "@openagentpack/kit-sdk/providers/kit";
-import { createRequest } from "@openagentpack/kit-sdk/request";
+import { encodeFrame, PROTOCOL_VERSION } from "@openagentkit/sdk/protocol";
+import { createKitChatProvider } from "@openagentkit/sdk/providers/kit";
+import { createRequest } from "@openagentkit/sdk/request";
 import { describe, expect, it, vi } from "vitest";
 import { createAdminClient } from "./client.ts";
 

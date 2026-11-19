@@ -23,7 +23,7 @@ ChatProvider 的 `toolApprovals` 与 `submitToolApproval` 接入自己的查询�
 
 ```tsx
 import { ToolApprovalCard } from "@openagentpack/kit-chat-ui";
-import type { UseChatResult } from "@openagentpack/kit-sdk/chat/hooks";
+import type { UseChatResult } from "@openagentkit/sdk/chat/hooks";
 
 export function ApprovalList({ chat }: { chat: UseChatResult }) {
   return (
@@ -66,7 +66,7 @@ export function ApprovalList({ chat }: { chat: UseChatResult }) {
 
 ### ToolApprovalDecision
 
-`chat.submitApproval(decision)` 接收 `@openagentpack/kit-sdk/protocol` 导出的
+`chat.submitApproval(decision)` 接收 `@openagentkit/sdk/protocol` 导出的
 `ToolApprovalDecision`，每次只提交一个调用：
 
 | 字段 | 类型 | 说明 |

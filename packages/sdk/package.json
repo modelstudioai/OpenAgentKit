@@ -1,8 +1,8 @@
 {
-  "name": "@openagentpack/kit-sdk",
+  "name": "@openagentkit/sdk",
   "version": "1.0.0",
   "private": true,
-  "description": "OpenAgentPack Kit SDK：数据处理、协议契约、会话运行时、后端适配与可选 React 适配层",
+  "description": "OpenAgentKit SDK：数据处理、协议契约、会话运行时、后端适配与可选 React 适配层",
   "license": "Apache-2.0",
   "type": "module",
   "exports": {

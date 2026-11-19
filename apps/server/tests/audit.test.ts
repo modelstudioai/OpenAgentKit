@@ -7,7 +7,7 @@ import {
 	type CatalogAgentView,
 	type PlanResponse,
 	type TemplateView,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";

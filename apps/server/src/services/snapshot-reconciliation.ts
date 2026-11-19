@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from "node:util";
-import { KitError, mergeEventSnapshots, type SessionEvent } from "@openagentpack/kit-sdk/protocol";
+import { KitError, mergeEventSnapshots, type SessionEvent } from "@openagentkit/sdk/protocol";
 
 export function snapshotConflict(): KitError {
 	return new KitError("provider_error", "历史与实时快照的更新顺序无法确认，请重新连接后刷新");

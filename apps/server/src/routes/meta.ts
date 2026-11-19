@@ -1,5 +1,5 @@
 import { type OpenAPIHono, z } from "@hono/zod-openapi";
-import { BRANDING_LOGO_PATH, PROTOCOL_VERSION } from "@openagentpack/kit-sdk/protocol";
+import { BRANDING_LOGO_PATH, PROTOCOL_VERSION } from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 
 export function registerMetaRoutes(app: OpenAPIHono<AppEnv>) {

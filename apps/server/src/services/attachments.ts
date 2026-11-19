@@ -1,4 +1,4 @@
-import type { AttachmentRef } from "@openagentpack/kit-sdk/protocol";
+import type { AttachmentRef } from "@openagentkit/sdk/protocol";
 
 /**
  * 默认挂载目录。实测（SDK 0.8 `PROVIDER_MOUNT_PREFIXES`）：bailian/ark 的 sandbox 前缀是 `/mnt`，

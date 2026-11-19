@@ -1,4 +1,4 @@
-import { PROTOCOL_VERSION } from "@openagentpack/kit-sdk/protocol";
+import { PROTOCOL_VERSION } from "@openagentkit/sdk/protocol";
 import { expect, test } from "./fixtures.ts";
 import { ADMIN_TOKEN } from "./helpers.ts";
 
