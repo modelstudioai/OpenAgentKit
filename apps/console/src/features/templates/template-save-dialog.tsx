@@ -1,12 +1,14 @@
 import { KitError, type TemplateCreateInput, type TemplateView } from "@openagentpack/kit-sdk/protocol";
 import { Alert, Button, Modal } from "antd";
 import { useEffect, useId, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import { TemplateNameField, validateTemplateName } from "./template-name-field.tsx";
 import styles from "./template-pages.module.less";
 
 function useTemplateSave(input: Omit<TemplateCreateInput, "name">, name: string, editingTemplate?: TemplateView) {
+	const { t } = useTranslation("templates");
 	const client = useMemo(getAdminClient, []);
 	const [conflict, setConflict] = useState(false);
 	const save = useAdminMutation(async () => {
@@ -24,10 +26,7 @@ function useTemplateSave(input: Omit<TemplateCreateInput, "name">, name: string,
 			throw error;
 		}
 	});
-	const error =
-		save.error && conflict
-			? `${save.error}。草稿已保留。如模版已被更新，请返回模版列表后重新进入编辑，核对最新配置后再保存。`
-			: save.error;
+	const error = save.error && conflict ? `${save.error}${t("save.conflictSuffix")}` : save.error;
 	return { ...save, error };
 }
 
@@ -51,20 +50,21 @@ export function TemplateSaveDialog({
 	onSaved: (template: TemplateView) => void;
 	onPendingChange: (pending: boolean) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const formId = useId();
 	const [confirming, setConfirming] = useState(false);
 	const save = useTemplateSave(input, name, editingTemplate);
 	const nameError = validateTemplateName(name);
 	const copy = editingTemplate
 		? {
-				title: "保存修改",
-				saveLabel: "保存修改",
-				description: "保存修改后的智能体、运行时资源和展示配置；已上架的条目将自动使用最新配置。",
+				title: t("save.editTitle"),
+				saveLabel: t("save.editTitle"),
+				description: t("save.editDescription"),
 			}
 		: {
-				title: "保存智能体",
-				saveLabel: "保存",
-				description: "保存所选智能体、运行时资源和展示配置，之后可在智能体管理中查看。",
+				title: t("save.createTitle"),
+				saveLabel: t("save.createLabel"),
+				description: t("save.createDescription"),
 			};
 	function submit() {
 		if (save.pending || nameError) return;
@@ -101,7 +101,7 @@ export function TemplateSaveDialog({
 				footer={
 					<div className={styles.formActions}>
 						<Button disabled={save.pending} onClick={close}>
-							取消
+							{t("cancel")}
 						</Button>
 						<Button type="primary" htmlType="submit" form={formId} loading={save.pending} disabled={Boolean(nameError)}>
 							{copy.saveLabel}
@@ -129,19 +129,19 @@ export function TemplateSaveDialog({
 				open={confirming}
 				centered
 				width={320}
-				title="确认保存修改"
+				title={t("save.confirmTitle")}
 				maskClosable={false}
 				onCancel={() => setConfirming(false)}
 				footer={
 					<div className={styles.formActions}>
-						<Button onClick={() => setConfirming(false)}>取消</Button>
+						<Button onClick={() => setConfirming(false)}>{t("cancel")}</Button>
 						<Button type="primary" loading={save.pending} onClick={submit}>
-							{save.pending ? "保存中…" : "确认"}
+							{save.pending ? t("save.saving") : t("save.confirm")}
 						</Button>
 					</div>
 				}
 			>
-				<p>修改后会自动生效，是否确认？</p>
+				<p>{t("save.confirmBody")}</p>
 			</Modal>
 		</>
 	);

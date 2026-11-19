@@ -18,6 +18,7 @@ import {
 import { createKitChatProvider } from "@openagentpack/kit-sdk/providers/kit";
 import { Button } from "antd";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
@@ -37,6 +38,7 @@ export interface TemplateDebugPreviewProps {
 
 /** 调用方按运行时配置保持实例；进入时创建，实例释放时清理自建临时会话。 */
 export function TemplateDebugPreview({ input, agent, name, presentation, onBusyChange }: TemplateDebugPreviewProps) {
+	const { t } = useTranslation("templates");
 	const model = useTemplateDebug(input, onBusyChange);
 	const { sessionId, identity, canWrite, create, send, stop, download, approve, chat } = model;
 	const displayAgent = useMemo(
@@ -51,13 +53,11 @@ export function TemplateDebugPreview({ input, agent, name, presentation, onBusyC
 	);
 	const error = identity.error || create.error || send.error || stop.error || download.error || approve.error;
 	return (
-		<section aria-label="模版预览调试" className={styles.pageStack}>
+		<section aria-label={t("debug.aria")} className={styles.pageStack}>
 			<div className={styles.rowBetween}>
 				<div className={`${styles.shrinkRoot} ${styles.fieldStack}`}>
-					<h3 className={styles.sectionTitle}>预览调试</h3>
-					<p className={styles.metaAny}>
-						{sessionId ? `调试会话：${sessionId}` : "使用已选择的智能体与运行时配置创建调试会话。"}
-					</p>
+					<h3 className={styles.sectionTitle}>{t("debug.title")}</h3>
+					<p className={styles.metaAny}>{sessionId ? t("debug.session", { id: sessionId }) : t("debug.createHint")}</p>
 				</div>
 				{!sessionId && create.error ? (
 					<Button
@@ -67,7 +67,7 @@ export function TemplateDebugPreview({ input, agent, name, presentation, onBusyC
 							void create.run().catch(() => undefined);
 						}}
 					>
-						重试创建
+						{t("debug.retryCreate")}
 					</Button>
 				) : null}
 			</div>
@@ -112,16 +112,17 @@ export function TemplateDebugPreview({ input, agent, name, presentation, onBusyC
 type DebugModel = ReturnType<typeof useTemplateDebug>;
 
 function DebugEmptyState({ model, presentation }: { model: DebugModel; presentation: AgentPresentation }) {
+	const { t } = useTranslation("templates");
 	const { sessionId, create, canWrite, setDraft } = model;
 	return (
 		<div className={`${styles.pageStack} ${styles.preWrap}`}>
 			<EmptyState
 				title={
 					create.pending
-						? "正在创建调试会话"
-						: (presentation.opening_remarks ?? (sessionId ? "开始对话调试" : "准备预览智能体"))
+						? t("debug.creating")
+						: (presentation.opening_remarks ?? (sessionId ? t("debug.startChat") : t("debug.prepare")))
 				}
-				hint={sessionId ? "选择示例问题，或输入消息开始调试。" : "创建会话后即可发送消息。"}
+				hint={sessionId ? t("debug.sessionHint") : t("debug.prepareHint")}
 				loading={create.pending}
 			/>
 			<Prompts
@@ -139,6 +140,7 @@ function DebugEmptyState({ model, presentation }: { model: DebugModel; presentat
 }
 
 function DebugApprovals({ model }: { model: DebugModel }) {
+	const { t } = useTranslation("templates");
 	const { sessionId, canWrite, chat, approve, stop } = model;
 	return (
 		<div className={styles.stack2}>
@@ -155,7 +157,7 @@ function DebugApprovals({ model }: { model: DebugModel }) {
 					/>
 				) : (
 					<p key={`${approval.batch_id}:${approval.call_id}`} className={styles.body13}>
-						工具审批：{approval.name} · {approval.status}（只读）
+						{t("debug.approval", { name: approval.name, status: approval.status })}
 					</p>
 				),
 			)}
@@ -164,13 +166,10 @@ function DebugApprovals({ model }: { model: DebugModel }) {
 }
 
 function DebugComposer({ model, prompts }: { model: DebugModel; prompts: string[] }) {
+	const { t } = useTranslation("templates");
 	const { sessionId, identity, canWrite, create, send, stop, approve, chat, draft, setDraft } = model;
 	if (!canWrite)
-		return (
-			<p className={styles.formNote}>
-				{identity.loading ? "正在验证管理员身份…" : "当前身份只读，无法创建会话、发送消息或审批工具调用。"}
-			</p>
-		);
+		return <p className={styles.formNote}>{identity.loading ? t("debug.verifying") : t("debug.readOnlyComposer")}</p>;
 	const items = [...new Set(prompts)].map((prompt) => ({ label: prompt, value: prompt }));
 	return (
 		<Suggestion items={items} block onSelect={setDraft}>
@@ -198,7 +197,7 @@ function DebugComposer({ model, prompts }: { model: DebugModel; prompts: string[
 					prefix={
 						items.length ? (
 							<Button size="small" disabled={!sessionId || create.pending} onClick={() => onTrigger()}>
-								示例问题
+								{t("debug.examplePrompts")}
 							</Button>
 						) : null
 					}
@@ -209,6 +208,7 @@ function DebugComposer({ model, prompts }: { model: DebugModel; prompts: string[
 }
 
 function useTemplateDebug(input: CreateTemplateDebugSessionRequest, onBusyChange?: (busy: boolean) => void) {
+	const { t } = useTranslation("templates");
 	const client = useMemo(getAdminClient, []);
 	const identity = useAdminQuery("templates:debug:identity", (signal) => client.identity(signal));
 	const canWrite = identity.data?.role === "admin";
@@ -225,7 +225,7 @@ function useTemplateDebug(input: CreateTemplateDebugSessionRequest, onBusyChange
 	const provider = useMemo(() => createKitChatProvider(client.debug), [client]);
 	const chat = useChat({ sessionId, provider });
 	const create = useAdminMutation(async () => {
-		if (!canWrite) throw new Error("当前身份只读");
+		if (!canWrite) throw new Error(t("debug.errors.readOnly"));
 		const id = await owner.create();
 		if (id) setSessionId(id);
 	});
@@ -241,18 +241,18 @@ function useTemplateDebug(input: CreateTemplateDebugSessionRequest, onBusyChange
 		};
 	}, [canWrite, create.run]);
 	const send = useAdminMutation(async (text: string) => {
-		if (!canWrite) throw new Error("当前身份只读");
-		if (!sessionId) throw new Error("请先创建调试会话");
+		if (!canWrite) throw new Error(t("debug.errors.readOnly"));
+		if (!sessionId) throw new Error(t("debug.errors.noSession"));
 		if (!text.trim()) return;
 		await chat.send(text.trim());
 		setDraft((current) => (current === text ? "" : current));
 	});
 	const stop = useAdminMutation(async () => {
-		if (!canWrite) throw new Error("当前身份只读");
+		if (!canWrite) throw new Error(t("debug.errors.readOnly"));
 		await chat.stop();
 	});
 	const approve = useAdminMutation(async (decision: ToolApprovalDecision) => {
-		if (!canWrite) throw new Error("当前身份只读");
+		if (!canWrite) throw new Error(t("debug.errors.readOnly"));
 		await chat.submitApproval(decision);
 	});
 	const download = useAdminMutation(async (fileId: string) => {

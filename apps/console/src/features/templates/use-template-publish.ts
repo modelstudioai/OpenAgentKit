@@ -1,5 +1,6 @@
 import { KitError, type OperationView, type ProjectPlan } from "@openagentpack/kit-sdk/protocol";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";
 import { useAdminOperation } from "../../lib/admin/use-admin-operation.ts";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
@@ -8,12 +9,12 @@ import { pendingPublishResources, publishResourceNames } from "./template-publis
 import { type TemplateResourceDraft, useTemplateResourceDraft } from "./template-resource-draft.tsx";
 
 const PROGRESS = {
-	loading: "正在读取资源草稿…",
-	validate: "正在校验新建资源…",
-	plan: "正在生成发布计划…",
-	submitting: "正在提交发布…",
-	publishing: "正在发布新建资源…",
-	finalizing: "正在确认发布结果并清理临时文件…",
+	loading: "publish.progress.loading",
+	validate: "publish.progress.validate",
+	plan: "publish.progress.plan",
+	submitting: "publish.progress.submitting",
+	publishing: "publish.progress.publishing",
+	finalizing: "publish.progress.finalizing",
 } as const;
 type Phase = "idle" | "review" | keyof typeof PROGRESS;
 interface Review {
@@ -30,6 +31,7 @@ const recoveryFor = (draft: TemplateResourceDraft) => {
 
 /** 只发布本轮隔离草稿；远端选择不触发 Build，成功后的恢复只读取凭证或重试清理。 */
 export function useTemplatePublish({ onPublished }: { onPublished: (projectName?: string) => void }) {
+	const { t } = useTranslation("templates");
 	const client = useMemo(getAdminClient, []);
 	const drafts = useTemplateResourceDraft();
 	const completed = useRef(onPublished);
@@ -73,7 +75,7 @@ export function useTemplatePublish({ onPublished }: { onPublished: (projectName?
 		if (!draft.operation_id) {
 			uncertain.current = true;
 			setRecovery("result");
-			throw new Error("发布结果尚未确认，请重试读取发布结果，避免重复提交。");
+			throw new Error(t("publish.errors.resultUnknown"));
 		}
 		draftId.current = draft.draft_id;
 		handledOperation.current = null;
@@ -89,20 +91,19 @@ export function useTemplatePublish({ onPublished }: { onPublished: (projectName?
 			if (knownSucceeded || draft.status === "published" || draft.recovery_action === "finalize") {
 				if (draft.status !== "published" || draft.cleanup_pending) draft = await client.resourceDrafts.finalize(name);
 				signal.throwIfAborted();
-				if (draft.status !== "published" || draft.cleanup_pending)
-					throw new Error("发布结果已确认，临时文件尚未清理完成，请重试清理。");
+				if (draft.status !== "published" || draft.cleanup_pending) throw new Error(t("publish.errors.cleanupPending"));
 				done(name);
 				return;
 			}
-			throw new Error("尚未取得发布成功凭证，请重试读取发布结果。");
+			throw new Error(t("publish.errors.noSuccessReceipt"));
 		},
-		[client, done],
+		[client, done, t],
 	);
 	const prepare = useAdminMutation(async (signal: AbortSignal) => {
 		const currentIdentity = await identity.refresh();
 		signal.throwIfAborted();
-		if (!currentIdentity) throw new Error("无法读取管理员身份，请重试。");
-		if (currentIdentity.role !== "admin") throw new Error("当前身份无权发布资源。");
+		if (!currentIdentity) throw new Error(t("publish.errors.unknownIdentity"));
+		if (currentIdentity.role !== "admin") throw new Error(t("publish.errors.notAdmin"));
 		const draft = await drafts.readActive(signal);
 		signal.throwIfAborted();
 		if (!draft) {
@@ -149,7 +150,7 @@ export function useTemplatePublish({ onPublished }: { onPublished: (projectName?
 		if (draft.recovery_action === "read_result") {
 			setRecovery("result");
 			uncertain.current = true;
-			throw new Error("发布已开始或结果待核对，草稿已保留。请核对下方资源结果；此批次不能重新发布。");
+			throw new Error(t("publish.errors.pendingRetry"));
 		}
 		if (draft.recovery_action === "finalize") {
 			uncertain.current = true;
@@ -172,7 +173,7 @@ export function useTemplatePublish({ onPublished }: { onPublished: (projectName?
 	async function preparePlan(name: string, signal: AbortSignal) {
 		const before = await client.draftResources.overview(name, signal);
 		signal.throwIfAborted();
-		if (before.active_mutation) throw new Error("资源草稿正在修改，请完成后重试。");
+		if (before.active_mutation) throw new Error(t("publish.errors.mutationBusy"));
 		setPhase("validate");
 		const validation = await client.draftResources.validate(name);
 		signal.throwIfAborted();
@@ -185,12 +186,12 @@ export function useTemplatePublish({ onPublished }: { onPublished: (projectName?
 	}
 
 	async function assertPlanCurrent(name: string, plan: ProjectPlan, signal: AbortSignal) {
-		if (plan.expires_at <= Date.now()) throw new Error("发布计划已过期，请重新准备发布。");
+		if (plan.expires_at <= Date.now()) throw new Error(t("publish.errors.planExpired"));
 		const overview = await client.draftResources.overview(name, signal);
 		signal.throwIfAborted();
-		if (plan.expires_at <= Date.now()) throw new Error("发布计划已过期，请重新准备发布。");
+		if (plan.expires_at <= Date.now()) throw new Error(t("publish.errors.planExpired"));
 		if (overview.active_mutation || overview.project_revision !== plan.project_revision)
-			throw new Error("资源草稿已变化，请重新准备发布。");
+			throw new Error(t("publish.errors.planChanged"));
 	}
 	async function reviewPlan(name: string, plan: ProjectPlan, signal: AbortSignal) {
 		const changes = pendingPublishResources(plan);
@@ -199,8 +200,8 @@ export function useTemplatePublish({ onPublished }: { onPublished: (projectName?
 		await assertPlanCurrent(name, plan, signal);
 		signal.throwIfAborted();
 		if (!changes.length) {
-			if (plan.destructive) throw new Error("发布计划缺少变更明细，请重新准备发布。");
-			if (!declarations) throw new Error("无法确认资源草稿是否为空，请重新读取并准备发布。");
+			if (plan.destructive) throw new Error(t("publish.errors.planMissingChanges"));
+			if (!declarations) throw new Error(t("publish.errors.declarationsUnavailable"));
 			// 空草稿没有远端写入；保留它供下一次新建，不伪造发布成功凭证。
 			if (!declarations.length) {
 				done(name);
@@ -222,7 +223,7 @@ export function useTemplatePublish({ onPublished }: { onPublished: (projectName?
 			confirm_token: current.plan.confirm_token,
 		});
 		signal.throwIfAborted();
-		if (!result.operation_id) throw new Error("发布响应缺少操作标识。");
+		if (!result.operation_id) throw new Error(t("publish.errors.noOperation"));
 		setOperationId(result.operation_id);
 		setPhase("publishing");
 	});
@@ -258,7 +259,7 @@ export function useTemplatePublish({ onPublished }: { onPublished: (projectName?
 			if (submitted.current && (!(reason instanceof KitError) || reason.status >= 500)) {
 				uncertain.current = true;
 				setRecovery("result");
-				fail(new Error("发布结果尚未确认，请重试读取发布结果，避免重复提交。"), controller.signal);
+				fail(new Error(t("publish.errors.resultUnknown")), controller.signal);
 				return;
 			}
 			fail(reason, controller.signal);
@@ -271,7 +272,7 @@ export function useTemplatePublish({ onPublished }: { onPublished: (projectName?
 		locked.current = false;
 	}
 	const recover = useAdminMutation(async (signal: AbortSignal) => {
-		if (!draftId.current) throw new Error("缺少发布草稿标识，请重新进入页面读取。");
+		if (!draftId.current) throw new Error(t("publish.errors.missingDraft"));
 		const draft = await client.resourceDrafts.get(draftId.current, signal);
 		signal.throwIfAborted();
 		if (draft.status === "published" || recovery === "finalize") {
@@ -284,8 +285,8 @@ export function useTemplatePublish({ onPublished }: { onPublished: (projectName?
 			if (await restoreFailedReceipt(draft.draft_id, signal)) return;
 			setRecovery(null);
 			uncertain.current = false;
-			throw new Error("未取得发布成功凭证，草稿已保留。重新准备时会再次核对是否可以安全重试。");
-		} else throw new Error("发布结果尚未确认，请稍后重试读取，避免重复提交。");
+			throw new Error(t("publish.errors.missingReceipt"));
+		} else throw new Error(t("publish.errors.resultRetry"));
 	});
 	function retryRecovery() {
 		if (locked.current) return;
@@ -321,7 +322,10 @@ export function useTemplatePublish({ onPublished }: { onPublished: (projectName?
 		} else {
 			locked.current = false;
 			setPhase("idle");
-			setError(operation.error || (operation.status === "cancelled" ? "资源发布已取消。" : "资源发布失败。"));
+			setError(
+				operation.error ||
+					(operation.status === "cancelled" ? t("publish.errors.cancelled") : t("publish.errors.failed")),
+			);
 			// 下一步只能来自服务端持久阶段，不能从 HTTP retryable 或单项成功自行推断可重发。
 			uncertain.current = true;
 			setRecovery("result");
@@ -339,7 +343,7 @@ export function useTemplatePublish({ onPublished }: { onPublished: (projectName?
 					});
 			}
 		}
-	}, [observed.operation, operationId, finishPublished, fail, client]);
+	}, [observed.operation, operationId, finishPublished, fail, client, t]);
 	return {
 		start,
 		confirm,
@@ -356,7 +360,7 @@ export function useTemplatePublish({ onPublished }: { onPublished: (projectName?
 		retryRecovery,
 		error,
 		busy: phase !== "idle",
-		progress: phase in PROGRESS ? PROGRESS[phase as keyof typeof PROGRESS] : "",
+		progress: phase in PROGRESS ? t(PROGRESS[phase as keyof typeof PROGRESS]) : "",
 		operation: operationId ? observed.operation : terminalOperation,
 		observationError: operationId ? observed.error : null,
 		reportError,

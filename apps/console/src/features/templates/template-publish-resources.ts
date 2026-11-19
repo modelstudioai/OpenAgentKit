@@ -1,15 +1,21 @@
 import type { ProjectPlan, ResourceDraftDeclaration } from "@openagentpack/kit-sdk/protocol";
+import i18n from "i18next";
 
-const RESOURCE_LABELS: Record<string, string> = {
-	agent: "智能体",
-	environment: "环境",
-	file: "文件",
-	skill: "Skill",
-	memory_store: "记忆库",
-	vault: "密钥库",
-	deployment: "部署",
-};
-const ACTION_LABELS = { create: "创建", update: "更新", delete: "删除", noop: "检查" } as const;
+const RESOURCE_KEYS = {
+	agent: "publish.resources.types.agent",
+	environment: "publish.resources.types.environment",
+	file: "publish.resources.types.file",
+	skill: "publish.resources.types.skill",
+	memory_store: "publish.resources.types.memory_store",
+	vault: "publish.resources.types.vault",
+	deployment: "publish.resources.types.deployment",
+} as const;
+const ACTION_KEYS = {
+	create: "publish.resources.actions.create",
+	update: "publish.resources.actions.update",
+	delete: "publish.resources.actions.delete",
+	noop: "publish.resources.actions.noop",
+} as const;
 
 /** 危险标记优先于 noop；不能把不一致的计划当作无需发布。 */
 export function pendingPublishResources(plan: ProjectPlan) {
@@ -27,14 +33,21 @@ export function publishResourceNames(declarations: ResourceDraftDeclaration[]): 
 }
 
 export function pendingPublishDescription(plan: ProjectPlan, names: Record<string, string>, includeNoop = false) {
+	const t = i18n.getFixedT(null, "templates");
 	const changes = includeNoop ? plan.diff : pendingPublishResources(plan);
 	const rows = changes.map((entry) => {
 		const address = /^([^:/]+)[:/](.+)$/.exec(entry.resource);
 		const type = address?.[1] ?? "";
 		const id = address?.[2] ?? entry.resource;
 		const name = names[`${type}:${id}`] || id;
-		const action = `${ACTION_LABELS[entry.action]}${entry.destructive ? "（包含破坏性变更）" : ""}`;
-		return `• ${RESOURCE_LABELS[type] || "资源"}：${name}\n  ${action} · ${entry.resource}${entry.summary ? `\n  ${entry.summary}` : ""}`;
+		const typeLabel = RESOURCE_KEYS[type as keyof typeof RESOURCE_KEYS]
+			? t(RESOURCE_KEYS[type as keyof typeof RESOURCE_KEYS])
+			: t("publish.resources.fallbackType");
+		const action = `${t(ACTION_KEYS[entry.action])}${entry.destructive ? t("publish.resources.destructive") : ""}`;
+		return (
+			t("publish.resources.row", { type: typeLabel, name, action, resource: entry.resource }) +
+			(entry.summary ? t("publish.resources.summary", { summary: entry.summary }) : "")
+		);
 	});
-	return `待发布资源（${changes.length} 项）：\n\n${rows.join("\n\n")}`;
+	return `${t("publish.resources.title", { count: changes.length })}\n\n${rows.join("\n\n")}`;
 }

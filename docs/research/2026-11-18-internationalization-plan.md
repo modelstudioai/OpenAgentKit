@@ -208,7 +208,7 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
 
 | feature | 引号内串数 | 状态 |
 | --- | --- | --- |
-| templates | 661 | 迁移中（批次 1–3b：列表/创建外壳/Agent 配置/环境/文件/记忆库/密钥库；其余分批） |
+| templates | 661 | 迁移中（批次 1–4a：配置/资源子编辑器/保存发布/详情调试；其余分批） |
 | usage | 138 | ✅ 全部（限额链路、Session 用量页、趋势卡、模版用量详情与 Provider 遥测表；聚合行名称参数化） |
 | members | 88 | ✅ 全部（列表/用量页/遥测表/创建页/hook 错误兜底；共享指标与采集状态词表入 common） |
 | preset-packs | 83 | ✅ 全部（选择/资源详情抽屉/会话资源；纯函数消息以缺省参数保持兼容） |
@@ -270,3 +270,13 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
 - 密钥库：库级表单、密钥列表、添加/编辑密钥弹窗、导入选择、详情抽屉；密钥值仍不进入引用，
   修改后重新填写变量值与共享确认文案全部入词表。
 - 纯函数（文件校验、记忆/密钥创建校验）经 `i18n.getFixedT` 取词，默认中文输出与既有测试断言一致。
+
+#### templates 批次 4a：保存发布、详情与调试（2026-11-19）
+
+- 保存/发布链路：`template-save-action`、`template-save-dialog`、`use-template-publish`、
+  `template-publish-resources`、`template-publish-status`、`template-publication-report`。
+  进度阶段、计划摘要、恢复/清理动作、结果表全部入 `workflow / save / publish` 词表。
+- 详情/调试链路：`template-detail`、`template-detail-debug`、`template-debug-preview`；
+  Tab、版本/保存时间、应用版本提示、只读态、示例问题与审批只读文案已迁移。
+- 发布资源类型/动作在纯函数中经 `i18n.getFixedT` 渲染，计划文本结构保持不变。
+- 仍待迁：版本历史、已保存配置/资源、Skill 上传弹窗、上传队列与草稿上下文、清理队列。

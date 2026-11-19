@@ -1,23 +1,30 @@
 import type { PublicationReport } from "@openagentpack/kit-sdk/protocol";
 import { Table } from "antd";
+import { useTranslation } from "react-i18next";
 
-const statuses = { succeeded: "已成功", failed: "未执行成功", skipped: "已跳过", unknown: "结果待核对" };
-const types = {
-	agent: "智能体",
-	environment: "环境",
-	skill: "Skill",
-	file: "文件",
-	memory_store: "记忆库",
-	vault: "密钥库",
-};
+const STATUS_KEYS = {
+	succeeded: "publish.report.statuses.succeeded",
+	failed: "publish.report.statuses.failed",
+	skipped: "publish.report.statuses.skipped",
+	unknown: "publish.report.statuses.unknown",
+} as const;
+const TYPE_KEYS = {
+	agent: "publish.report.types.agent",
+	environment: "publish.report.types.environment",
+	skill: "publish.report.types.skill",
+	file: "publish.report.types.file",
+	memory_store: "publish.report.types.memory_store",
+	vault: "publish.report.types.vault",
+} as const;
 
 /** 展示执行事实；允许的恢复动作由批次接口决定。 */
 export function TemplatePublicationReport({ report }: { report: PublicationReport }) {
+	const { t } = useTranslation("templates");
 	return (
-		<section aria-label="资源发布结果" className="space-y-2 animate-(--kit-animate-in)">
+		<section aria-label={t("publish.report.aria")} className="space-y-2 animate-(--kit-animate-in)">
 			<p>
-				{report.outcome === "succeeded" ? "资源执行已完成。" : "资源执行未全部完成，请核对以下结果。"}
-				完整发布状态以成功回执为准。
+				{report.outcome === "succeeded" ? t("publish.report.succeeded") : t("publish.report.incomplete")}
+				{t("publish.report.statusSuffix")}
 			</p>
 			<Table
 				size="small"
@@ -26,17 +33,25 @@ export function TemplatePublicationReport({ report }: { report: PublicationRepor
 				dataSource={report.resources}
 				scroll={{ x: true }}
 				columns={[
-					{ title: "资源", render: (_, resource) => `${types[resource.type]} · ${resource.id}` },
-					{ title: "结果", render: (_, resource) => statuses[resource.status] },
 					{
-						title: "已知远端身份",
+						title: t("publish.report.colResource"),
+						render: (_, resource) => `${t(TYPE_KEYS[resource.type])} · ${resource.id}`,
+					},
+					{ title: t("publish.report.colResult"), render: (_, resource) => t(STATUS_KEYS[resource.status]) },
+					{
+						title: t("publish.report.colRemote"),
 						render: (_, resource) =>
 							resource.remote_id ? `${resource.remote_id}${resource.version ? ` · v${resource.version}` : ""}` : "—",
 					},
 					{
-						title: "错误",
+						title: t("publish.report.colError"),
 						render: (_, resource) =>
-							resource.error_details ? `${resource.error_details.code}（${resource.error_details.phase}）` : "—",
+							resource.error_details
+								? t("publish.report.errorDetail", {
+										code: resource.error_details.code,
+										phase: resource.error_details.phase,
+									})
+								: "—",
 					},
 				]}
 			/>

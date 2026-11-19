@@ -7,6 +7,7 @@ import type {
 import { Alert, Button } from "antd";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import { useTranslation } from "react-i18next";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
@@ -87,6 +88,7 @@ function runtimeKey(input: CreateTemplateDebugSessionRequest | null) {
 }
 
 function useTemplateWorkflow(props: TemplateSaveActionProps) {
+	const { t } = useTranslation("templates");
 	const {
 		name,
 		selection,
@@ -148,18 +150,18 @@ function useTemplateWorkflow(props: TemplateSaveActionProps) {
 	const publish = useTemplatePublish({ onPublished: resolution.start });
 	const prepareAgent = useAdminMutation(async () => {
 		const agent = await props.agentForm.current?.save();
-		if (!agent) throw new Error("请先完成基础配置");
+		if (!agent) throw new Error(t("workflow.errors.finishBase"));
 		flushSync(() => onResolved({ ...selection, agent }));
-		if (!props.environmentForm.current) throw new Error("请先加载环境配置");
+		if (!props.environmentForm.current) throw new Error(t("workflow.errors.loadEnvironment"));
 		const environment = await props.environmentForm.current.save();
 		flushSync(() => onResolved({ ...selection, agent, environment }));
-		if (!props.fileForm.current) throw new Error("请先加载文件配置");
+		if (!props.fileForm.current) throw new Error(t("workflow.errors.loadFiles"));
 		const files = await props.fileForm.current.save();
 		flushSync(() => onResolved({ ...selection, agent, environment, files }));
-		if (!props.memoryForm.current) throw new Error("请先加载记忆库配置");
+		if (!props.memoryForm.current) throw new Error(t("workflow.errors.loadMemories"));
 		const memories = await props.memoryForm.current.save();
 		flushSync(() => onResolved({ ...selection, agent, environment, files, memories }));
-		if (!props.vaultForm.current) throw new Error("请先加载密钥库配置");
+		if (!props.vaultForm.current) throw new Error(t("workflow.errors.loadVaults"));
 		const vaults = await props.vaultForm.current.save();
 		flushSync(() => onResolved({ ...selection, agent, environment, files, memories, vaults }));
 		publish.start();
@@ -221,6 +223,7 @@ function useTemplateWorkflow(props: TemplateSaveActionProps) {
 
 /** 配置页先准备本批资源，确认发布并解析后进入调试；预览步骤再打开保存表单。 */
 export function TemplateSaveAction(props: TemplateSaveActionProps) {
+	const { t } = useTranslation("templates");
 	const { step, onStepChange, name, onNameChange, presentation, busy, editingTemplate, onSaved } = props;
 	const model = useTemplateWorkflow(props);
 	const { route, complete } = useConsoleRoute();
@@ -261,20 +264,20 @@ export function TemplateSaveAction(props: TemplateSaveActionProps) {
 					message={identity.error}
 					action={
 						<Button size="small" onClick={() => void identity.refresh()}>
-							重试
+							{t("retry")}
 						</Button>
 					}
 				/>
 			) : null}
 			{model.prepareError ? <Alert type="error" showIcon message={model.prepareError} /> : null}
-			{identity.data?.role === "auditor" ? <p>当前身份只读，不能调试或保存智能体。</p> : null}
+			{identity.data?.role === "auditor" ? <p>{t("workflow.readOnly")}</p> : null}
 			<TemplatePublishStatus publish={publish} onRetry={prepare} retryDisabled={disabled} />
-			{resolution.pending ? <p role="status">正在读取已发布资源…</p> : null}
+			{resolution.pending ? <p role="status">{t("workflow.readPublished")}</p> : null}
 			{resolution.error ? (
 				<div className={styles.stack2}>
 					<Alert type="error" showIcon message={resolution.error} />
 					<Button disabled={disabled} onClick={resolution.retry}>
-						重试读取资源
+						{t("workflow.retryRead")}
 					</Button>
 				</div>
 			) : null}
@@ -282,7 +285,7 @@ export function TemplateSaveAction(props: TemplateSaveActionProps) {
 				<div hidden={step !== "preview"}>
 					<TemplateDebugPreview
 						key={preview.key}
-						input={{ ...preview.input, title: `${name.trim()} 预览调试` }}
+						input={{ ...preview.input, title: t("workflow.previewTitle", { name: name.trim() }) }}
 						agent={preview.agent}
 						name={name}
 						presentation={toAgentPresentation(presentation)}
@@ -290,11 +293,11 @@ export function TemplateSaveAction(props: TemplateSaveActionProps) {
 					/>
 				</div>
 			) : null}
-			<footer role="contentinfo" aria-label="模版配置操作" className={styles.wizardFooter}>
+			<footer role="contentinfo" aria-label={t("workflow.footerAria")} className={styles.wizardFooter}>
 				<div className={styles.wizardFooterInner}>
 					{step === "preview" ? (
 						<Button disabled={busy || pending} onClick={() => onStepChange("config")}>
-							上一步：选择配置
+							{t("workflow.backToConfig")}
 						</Button>
 					) : null}
 					<Button
@@ -305,7 +308,11 @@ export function TemplateSaveAction(props: TemplateSaveActionProps) {
 							else openSave(event.currentTarget);
 						}}
 					>
-						{step === "config" ? "下一步：预览调试" : editingTemplate ? "保存修改" : "保存智能体"}
+						{step === "config"
+							? t("workflow.nextPreview")
+							: editingTemplate
+								? t("workflow.saveEdit")
+								: t("workflow.saveAgent")}
 					</Button>
 				</div>
 			</footer>
