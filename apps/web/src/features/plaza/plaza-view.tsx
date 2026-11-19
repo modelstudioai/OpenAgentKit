@@ -55,6 +55,21 @@ interface PlazaSections {
 	mainHint?: string;
 }
 
+function plazaCategoryName(t: TFunction<"plaza">, id: PlazaCategory): string {
+	switch (id) {
+		case "general":
+			return t("categories.general");
+		case "writing":
+			return t("categories.writing");
+		case "coding":
+			return t("categories.coding");
+		case "data":
+			return t("categories.data");
+		case "other":
+			return t("categories.other");
+	}
+}
+
 /**
  * 分区与主网格的派生规则（纯函数，方便推理）：
  * - 只有「精选 tab + 无关键词」才出「同学们都在用 / 我的 Agent」两个分区；
@@ -62,13 +77,6 @@ interface PlazaSections {
  * - 分类 tab / 搜索时主网格 = 服务端已过滤的 agents。
  */
 function sectionsOf(view: PlazaSnapshot, tab: PlazaTabId, searching: boolean, t: TFunction<"plaza">): PlazaSections {
-	const categoryLabels = {
-		general: t("categories.general"),
-		writing: t("categories.writing"),
-		coding: t("categories.coding"),
-		data: t("categories.data"),
-		other: t("categories.other"),
-	} satisfies Record<PlazaCategory, string>;
 	const agents = view.agents;
 	const onFeatured = tab === "featured";
 	const featured = pick(agents, view.featured);
@@ -90,11 +98,10 @@ function sectionsOf(view: PlazaSnapshot, tab: PlazaTabId, searching: boolean, t:
 		}
 		return unique;
 	};
-	const category = view.categories.find((c) => c.id === tab);
 	let mainTitle = t("allAgents");
 	if (searching) mainTitle = t("searchResults");
 	else if (onFeatured) mainTitle = useFeatured ? t("featured") : t("allAgents");
-	else mainTitle = category?.name ?? categoryLabels[tab as PlazaCategory];
+	else mainTitle = plazaCategoryName(t, tab as PlazaCategory);
 	return {
 		popular: showSections ? takeUnique(pick(agents, view.popular)) : [],
 		mine: showSections ? takeUnique(agents.filter((entry) => entry.stats.mine)) : [],
@@ -182,6 +189,10 @@ export function PlazaView({
 		...(category ? { category } : {}),
 		...(q ? { q } : {}),
 	});
+	const localizedCategories = (view?.categories ?? []).map((item) => ({
+		...item,
+		name: plazaCategoryName(t, item.id),
+	}));
 
 	/*
 	 * CategoryTabs 也是冻结公开面、不接受 data-testid；这里按它的渲染顺序（「精选」+ categories）
@@ -234,7 +245,7 @@ export function PlazaView({
 				</div>
 				{leading}
 				<div ref={tabsRef} data-testid="plaza-tabs" className="mt-6 min-w-0">
-					<CategoryTabs categories={view?.categories ?? []} active={tab} onChange={setTab} />
+					<CategoryTabs categories={localizedCategories} active={tab} onChange={setTab} />
 				</div>
 				<PlazaResults
 					view={view}
