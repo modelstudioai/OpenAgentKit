@@ -11,6 +11,8 @@ import { MemberLoginForm } from "./member-login-form.tsx";
 export interface MemberAccountProps {
 	member: MemberView | null;
 	onLogout: () => Promise<void>;
+	/** 账号菜单底部附加控件（如语言切换），由宿主布局注入。 */
+	languageControl?: ReactNode;
 }
 
 export interface MemberExperienceProps extends MemberAccountProps {
@@ -46,7 +48,7 @@ export function MemberAuthGate({
 }
 
 /** 账号区：头像旁常驻展示用户名，hover（桌面）或点击头像（触屏/键盘）展开浮层展示用户名与退出登录。 */
-export function MemberAccount({ member, onLogout }: MemberAccountProps) {
+export function MemberAccount({ member, onLogout, languageControl }: MemberAccountProps) {
 	const { t } = useTranslation("auth");
 	const [open, setOpen] = useState(false);
 	return (
@@ -95,6 +97,9 @@ export function MemberAccount({ member, onLogout }: MemberAccountProps) {
 					>
 						{member?.display_name ?? t("defaultUser")}
 					</span>
+					{languageControl ? (
+						<div className="border-t border-[var(--kit-border-subtle)] pt-2">{languageControl}</div>
+					) : null}
 					{member ? (
 						<button
 							type="button"

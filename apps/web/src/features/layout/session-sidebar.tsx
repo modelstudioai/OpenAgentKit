@@ -422,7 +422,7 @@ export function SessionSidebar({
 				agentName={agentName}
 			/>
 			<div className="flex shrink-0 items-center gap-1 border-t border-[var(--kit-border-subtle)] px-3 py-2">
-				<MemberAccount member={member} onLogout={onLogout} />
+				<MemberAccount member={member} onLogout={onLogout} languageControl={<LanguageSwitcher />} />
 				<span className="min-w-0 flex-1" />
 				<button
 					type="button"
@@ -449,7 +449,6 @@ export function SessionSidebar({
 					</svg>
 					{t("views.usage")}
 				</button>
-				<LanguageSwitcher />
 			</div>
 		</aside>
 	);

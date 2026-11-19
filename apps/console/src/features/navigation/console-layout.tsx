@@ -158,15 +158,19 @@ export function ConsoleLayout({
 				) : null}
 				<Brand desktop={!isMobile} />
 				{isMobile ? <span className={styles.breadcrumbTitle}>{tabLabel}</span> : null}
-				<div className="ml-auto flex items-center">
-					<LanguageSwitcher />
-				</div>
 			</Header>
 			<Layout className={styles.body}>
 				{!isMobile ? (
 					<div className={styles.siderWrap}>
 						<Sider width={200} collapsedWidth={60} collapsed={collapsed} className={styles.sider}>
-							{nav}
+							<div className={styles.siderBody}>
+								{nav}
+								{!collapsed ? (
+									<div className={styles.siderFooter}>
+										<LanguageSwitcher />
+									</div>
+								) : null}
+							</div>
 						</Sider>
 						<span aria-hidden="true" className={styles.siderDivider} />
 						<button
@@ -197,10 +201,15 @@ export function ConsoleLayout({
 					width={260}
 					open={open}
 					onClose={() => setOpen(false)}
-					styles={{ body: { padding: 0 } }}
+					styles={{ body: { padding: 0, display: "flex", flexDirection: "column" } }}
 				>
 					<Brand />
-					{nav}
+					<div className={styles.drawerBody}>
+						{nav}
+						<div className={styles.drawerFooter}>
+							<LanguageSwitcher />
+						</div>
+					</div>
 				</Drawer>
 			) : null}
 		</Layout>

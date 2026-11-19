@@ -11,7 +11,7 @@ export function LanguageSwitcher() {
 		<fieldset
 			aria-label={t("languageSwitcher.label")}
 			data-testid="language-switcher"
-			className="flex shrink-0 items-center rounded-[var(--kit-radius-sm)] border border-[var(--kit-border)] p-0.5"
+			className="flex w-full shrink-0 items-center rounded-[var(--kit-radius-sm)] border border-[var(--kit-border)] p-0.5"
 		>
 			{SUPPORTED_LOCALES.map((locale) => {
 				const active = isEn ? locale === "en" : locale === "zh-CN";
@@ -21,7 +21,7 @@ export function LanguageSwitcher() {
 						type="button"
 						aria-pressed={active}
 						onClick={() => void setLocale(locale)}
-						className={`cursor-pointer rounded-[var(--kit-radius-sm)] px-2 py-1 text-[length:var(--kit-text-label)] transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none ${FOCUS_RING} ${
+						className={`flex-1 cursor-pointer rounded-[var(--kit-radius-sm)] px-2 py-1 text-[length:var(--kit-text-label)] transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none ${FOCUS_RING} ${
 							active
 								? "bg-[var(--kit-nav-active)] text-[var(--kit-fg)]"
 								: "text-[var(--kit-fg-muted)] hover:bg-[var(--kit-nav-active)] hover:text-[var(--kit-fg)]"
