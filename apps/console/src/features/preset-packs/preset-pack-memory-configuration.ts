@@ -10,6 +10,7 @@ export async function loadPresetPackMemoryConfiguration(
 	signal: AbortSignal,
 	readConfiguration: (id: string, signal: AbortSignal) => Promise<MemoryStoreConfiguration>,
 	listStores: (signal: AbortSignal) => Promise<RemoteMemoryStore[]>,
+	notFoundMessage = "记忆库不存在或已不可访问，请重新读取资源列表",
 ): Promise<PresetPackMemoryConfiguration> {
 	try {
 		const configuration = await readConfiguration(id, signal);
@@ -20,7 +21,7 @@ export async function loadPresetPackMemoryConfiguration(
 		const stores = await listStores(signal);
 		signal.throwIfAborted();
 		const store = stores.find((item) => item.memory_store_id === id);
-		if (!store) throw new Error("记忆库不存在或已不可访问，请重新读取资源列表");
+		if (!store) throw new Error(notFoundMessage);
 		return { kind: "reference", store };
 	}
 }

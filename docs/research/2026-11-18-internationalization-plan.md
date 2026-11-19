@@ -211,7 +211,7 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
 | templates | 661 | 待迁（最大块，后续分批） |
 | usage | 138 | ✅ 全部（限额链路、Session 用量页、趋势卡、模版用量详情与 Provider 遥测表；聚合行名称参数化） |
 | members | 88 | ✅ 全部（列表/用量页/遥测表/创建页/hook 错误兜底；共享指标与采集状态词表入 common） |
-| preset-packs | 83 | 🔶 智能体选择页已迁；资源详情抽屉与会话资源页待迁 |
+| preset-packs | 83 | ✅ 全部（选择/资源详情抽屉/会话资源；纯函数消息以缺省参数保持兼容） |
 | catalog / navigation / operations | 18 × 3 | navigation ✅、operations ✅；catalog 待迁 |
 | branding | 15 | ✅ |
 | lib / root / auth | 6 / 8 / 4 | auth ✅，其余待迁 |
