@@ -1,6 +1,7 @@
 import type { AdminMembersPage, CreateMemberRequest, CreateMemberResponse } from "@openagentpack/kit-sdk/protocol";
 import { KitError } from "@openagentpack/kit-sdk/protocol";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { adminApi } from "../../lib/api.ts";
 
 function errorMessage(cause: unknown, fallback: string) {
@@ -9,6 +10,7 @@ function errorMessage(cause: unknown, fallback: string) {
 
 /** 查询变更会取消旧请求；分页游标只属于当前搜索条件。 */
 export function useMembers() {
+	const { t } = useTranslation("members");
 	const [query, setQuery] = useState({ search: "", cursors: [""], revision: 0 });
 	const [result, setResult] = useState<AdminMembersPage | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -36,7 +38,7 @@ export function useMembers() {
 						setQuery((current) => ({ ...current, cursors: [""] }));
 						return;
 					}
-					setError(errorMessage(cause, "成员列表加载失败"));
+					setError(errorMessage(cause, t("list.loadFailed")));
 				})
 				.finally(() => {
 					if (!controller.signal.aborted) setLoading(false);
@@ -46,7 +48,7 @@ export function useMembers() {
 			controller.abort();
 			clearTimeout(timer);
 		};
-	}, [query]);
+	}, [query, t]);
 	return {
 		rows: result?.data ?? [],
 		loading,
@@ -72,6 +74,7 @@ export function useMembers() {
 
 /** 密码与一次性创建结果只保留在当前页面状态，不写持久存储。 */
 export function useCreateMember(onPendingChange: (pending: boolean) => void) {
+	const { t } = useTranslation("members");
 	const [result, setResult] = useState<CreateMemberResponse["data"] | null>(null);
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -110,7 +113,7 @@ export function useCreateMember(onPendingChange: (pending: boolean) => void) {
 					return true;
 				}
 			} catch (cause) {
-				if (active.current) setError(errorMessage(cause, "创建用户失败，请重试"));
+				if (active.current) setError(errorMessage(cause, t("create.failed")));
 			} finally {
 				submitting.current = false;
 				if (active.current) {

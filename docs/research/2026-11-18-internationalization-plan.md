@@ -210,7 +210,7 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
 | --- | --- | --- |
 | templates | 661 | 待迁（最大块，后续分批） |
 | usage | 138 | 待迁 |
-| members | 88 | 🔶 列表页 + 用量采集状态 + 路由已迁（含共享指标词表入 common）；member-usage-page、create-member-page 待迁 |
+| members | 88 | ✅ 全部（列表/用量页/遥测表/创建页/hook 错误兜底；共享指标与采集状态词表入 common） |
 | preset-packs | 83 | 待迁 |
 | catalog / navigation / operations | 18 × 3 | navigation ✅（含 JSX 文本约 20）；其余待迁 |
 | branding | 15 | 待迁 |
@@ -223,3 +223,10 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
 - 遗留：`inner-layout` 的 `backLabel` 默认值「返回」随其调用页面迁移（模板批次）一并处理。
 - 下一批建议：members + usage（226 串，业务闭环最完整），随后 preset-packs / operations / catalog / branding，
   最后 templates（661 串分 2–3 批）。
+
+#### members 收尾备注（2026-11-19）
+
+- `member-usage-page` 的模型/工具遥测列与 `template-usage-panel` 的会话明细列从模块级常量改为 `columns(t)` 工厂；
+  `captureTime` 纯函数注入 `t`；跨命名空间键用 `t(key, { ns: "common" })`。
+- 残留风险：创建成员表单的字段校验消息来自 SDK `CreateMemberRequestSchema`（zod 中文 message），
+  属 §6「协议错误/枚举词表映射」议题；migrate 后 en 界面会出现中文校验提示，需随 §6 一并处理。
