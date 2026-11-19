@@ -1,6 +1,8 @@
 import type { UsageLimitDayState, UsageLimitMetricState } from "@openagentpack/kit-sdk/protocol";
 import { Button, Result } from "antd";
+import type { TFunction } from "i18next";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { type AdminClient, createAdminClient } from "../../lib/admin/index.ts";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { adminRequest } from "../../lib/kit.ts";
@@ -11,7 +13,6 @@ import {
 	LimitPeriodTabs,
 	limitsDescription,
 	UsageLimitEditor,
-	usageLimitNotice,
 } from "./usage-limit-editor.tsx";
 
 export function useUsageLimitAccess() {
@@ -20,18 +21,19 @@ export function useUsageLimitAccess() {
 	return { client, identity, canWrite: identity.data?.role === "admin" };
 }
 
-function timeText(value?: string) {
-	return value ? new Date(value).toLocaleString("zh-CN", { timeZone: "UTC", hour12: false }) : "尚未更新";
+function timeText(value: string | undefined, t: TFunction<"usage">) {
+	return value ? new Date(value).toLocaleString("zh-CN", { timeZone: "UTC", hour12: false }) : t("panels.notUpdated");
 }
 
 function LoadError({ error, onRetry }: { error: string; onRetry: () => void }) {
+	const { t } = useTranslation("usage");
 	return (
 		<Result
 			status="error"
 			title={error}
 			extra={
 				<Button size="small" onClick={onRetry}>
-					重试
+					{t("panels.retry")}
 				</Button>
 			}
 		/>
@@ -39,6 +41,7 @@ function LoadError({ error, onRetry }: { error: string; onRetry: () => void }) {
 }
 
 export function DefaultUsageLimits({ client, canWrite }: { client: AdminClient; canWrite: boolean }) {
+	const { t } = useTranslation("usage");
 	const [open, setOpen] = useState(false);
 	const [editing, setEditing] = useState(false);
 	const policy = useAdminQuery("usage-limits:policy", (signal) => client.usageLimits.policy(signal), { enabled: open });
@@ -51,28 +54,28 @@ export function DefaultUsageLimits({ client, canWrite }: { client: AdminClient; 
 					setEditing(false);
 				}}
 			>
-				限额设置
+				{t("panels.toggle")}
 			</Button>
 			{open && (
-				<section aria-label="默认限额设置" className={styles.limitPanel}>
+				<section aria-label={t("panels.defaultSectionAria")} className={styles.limitPanel}>
 					<header className={styles.limitHeader}>
-						<h3 className={styles.limitTitle}>默认限额</h3>
+						<h3 className={styles.limitTitle}>{t("panels.defaultTitle")}</h3>
 						{canWrite && policy.data && !editing && (
 							<Button size="small" onClick={() => setEditing(true)}>
-								设置默认限额
+								{t("panels.setDefault")}
 							</Button>
 						)}
 					</header>
-					<p className={styles.metaText}>适用于未设置个人限额的本地成员。{usageLimitNotice}</p>
-					{policy.loading && !policy.data && <p role="status">正在加载默认限额…</p>}
+					<p className={styles.metaText}>{t("panels.defaultHint", { notice: t("limitNotice") })}</p>
+					{policy.loading && !policy.data && <p role="status">{t("panels.loadingDefault")}</p>}
 					{policy.error && <LoadError error={policy.error} onRetry={() => void policy.refresh()} />}
 					{policy.data && (
 						<>
-							<p className={styles.preLine}>{limitsDescription(policy.data.limits)}</p>
-							<p className={styles.metaText}>最近设置（UTC）：{timeText(policy.data.updated_at)}</p>
+							<p className={styles.preLine}>{limitsDescription(policy.data.limits, t)}</p>
+							<p className={styles.metaText}>{t("panels.lastSet", { time: timeText(policy.data.updated_at, t) })}</p>
 							{editing && canWrite && (
 								<UsageLimitEditor
-									title="默认限额"
+									title={t("editor.defaultTitle")}
 									initial={policy.data.limits}
 									onSave={async (limits) => {
 										await client.usageLimits.setPolicy(limits);
@@ -83,17 +86,20 @@ export function DefaultUsageLimits({ client, canWrite }: { client: AdminClient; 
 							)}
 						</>
 					)}
-					{!canWrite && <p className={styles.metaText}>当前身份只读。</p>}
+					{!canWrite && <p className={styles.metaText}>{t("panels.readOnly")}</p>}
 				</section>
 			)}
 		</div>
 	);
 }
 
-const statusLabels: Record<UsageLimitMetricState["status"], string> = {
-	ok: "可用",
-	exceeded: "已达限额，后续发送受限",
-	unavailable: "用量暂不可确认",
+const statusLabels: Record<
+	UsageLimitMetricState["status"],
+	"balance.status.ok" | "balance.status.exceeded" | "balance.status.unavailable"
+> = {
+	ok: "balance.status.ok",
+	exceeded: "balance.status.exceeded",
+	unavailable: "balance.status.unavailable",
 };
 
 // styles 取值为 string | undefined（noUncheckedIndexedAccess），故不加 Record<string> 注解；
@@ -105,9 +111,14 @@ const statusClass = {
 };
 
 /** 日维度未设置时的跟随文案：月维度已设置 → 跟随月度，两者都未设置 → 不限量；undefined = 按日数值正常展示。 */
-function dayFallbackText(dayLimit: number | null, monthLimit: number | null, unit: string): string | undefined {
+function dayFallbackText(
+	dayLimit: number | null,
+	monthLimit: number | null,
+	unit: string,
+	t: TFunction<"usage">,
+): string | undefined {
 	if (dayLimit !== null) return undefined;
-	return monthLimit === null ? "不限量" : `跟随月度（${formatLimit(monthLimit, unit)}）`;
+	return monthLimit === null ? t("unlimited") : t("balance.followMonth", { amount: formatLimit(monthLimit, unit, t) });
 }
 
 function MetricBalance({
@@ -124,26 +135,27 @@ function MetricBalance({
 	limitText?: string;
 	remainingText?: string;
 }) {
+	const { t } = useTranslation("usage");
 	return (
 		<div className={styles.balanceCard}>
 			<h4 className={styles.balanceTitle}>{title}</h4>
 			<dl className={styles.balanceGrid}>
-				<dt className={styles.balanceLabel}>已用</dt>
-				<dd>{metric.used === null ? "待确认" : formatLimit(metric.used, unit)}</dd>
-				<dt className={styles.balanceLabel}>上限</dt>
-				<dd>{limitText ?? (metric.limit === null ? "不限量" : formatLimit(metric.limit, unit))}</dd>
-				<dt className={styles.balanceLabel}>剩余</dt>
+				<dt className={styles.balanceLabel}>{t("balance.used")}</dt>
+				<dd>{metric.used === null ? t("balance.pendingConfirm") : formatLimit(metric.used, unit, t)}</dd>
+				<dt className={styles.balanceLabel}>{t("balance.limit")}</dt>
+				<dd>{limitText ?? (metric.limit === null ? t("unlimited") : formatLimit(metric.limit, unit, t))}</dd>
+				<dt className={styles.balanceLabel}>{t("balance.remaining")}</dt>
 				<dd>
 					{remainingText ??
 						(metric.limit === null
-							? "不限量"
+							? t("unlimited")
 							: metric.remaining === null
-								? "待确认"
-								: formatLimit(metric.remaining, unit))}
+								? t("balance.pendingConfirm")
+								: formatLimit(metric.remaining, unit, t))}
 				</dd>
 			</dl>
 			<p role="status" className={`${styles.statusNote} ${statusClass[metric.status]}`}>
-				{statusLabels[metric.status]}
+				{t(statusLabels[metric.status])}
 			</p>
 		</div>
 	);
@@ -167,6 +179,7 @@ function PeriodUsageStatus({
 	};
 	scopeLabel: string;
 }) {
+	const { t } = useTranslation("usage");
 	const active =
 		period === "month"
 			? { key: view.month, resetAt: view.reset_at, tokens: view.tokens, seconds: view.active_seconds }
@@ -180,35 +193,39 @@ function PeriodUsageStatus({
 		<>
 			<div className={styles.scopeRow}>
 				<p className={styles.scopeMeta}>
-					{active.key}（UTC {period === "month" ? "月" : "日"}） · {scopeLabel} · 下次重置：{timeText(active.resetAt)}{" "}
-					UTC
+					{t("periodStatus.meta", {
+						key: active.key,
+						period: period === "month" ? t("period.monthShort") : t("period.dayShort"),
+						scope: scopeLabel,
+						reset: timeText(active.resetAt, t),
+					})}
 				</p>
 				<LimitPeriodTabs period={period} onChange={onChange} />
 			</div>
 			<div className={styles.balanceColumns}>
 				<MetricBalance
-					title={period === "month" ? "当月 Token（输入 + 输出）" : "今日 Token（输入 + 输出）"}
+					title={period === "month" ? t("periodStatus.tokensMonth") : t("periodStatus.tokensDay")}
 					metric={active.tokens}
 					unit="Token"
 					limitText={
-						period === "day" ? dayFallbackText(view.day_state.tokens.limit, view.tokens.limit, "Token") : undefined
+						period === "day" ? dayFallbackText(view.day_state.tokens.limit, view.tokens.limit, "Token", t) : undefined
 					}
 					remainingText={
-						period === "day" ? dayFallbackText(view.day_state.tokens.limit, view.tokens.limit, "Token") : undefined
+						period === "day" ? dayFallbackText(view.day_state.tokens.limit, view.tokens.limit, "Token", t) : undefined
 					}
 				/>
 				<MetricBalance
-					title={period === "month" ? "当月运行时长" : "今日运行时长"}
+					title={period === "month" ? t("periodStatus.secondsMonth") : t("periodStatus.secondsDay")}
 					metric={active.seconds}
-					unit="秒"
+					unit={t("unitSeconds")}
 					limitText={
 						period === "day"
-							? dayFallbackText(view.day_state.active_seconds.limit, view.active_seconds.limit, "秒")
+							? dayFallbackText(view.day_state.active_seconds.limit, view.active_seconds.limit, t("unitSeconds"), t)
 							: undefined
 					}
 					remainingText={
 						period === "day"
-							? dayFallbackText(view.day_state.active_seconds.limit, view.active_seconds.limit, "秒")
+							? dayFallbackText(view.day_state.active_seconds.limit, view.active_seconds.limit, t("unitSeconds"), t)
 							: undefined
 					}
 				/>
@@ -225,6 +242,7 @@ export function MemberUsageLimits({
 	memberId: string;
 	initiallyEditing?: boolean;
 }) {
+	const { t } = useTranslation("usage");
 	const { client, identity, canWrite } = useUsageLimitAccess();
 	const [editing, setEditing] = useState(initiallyEditing);
 	const [period, setPeriod] = useState<LimitPeriod>("month");
@@ -241,9 +259,9 @@ export function MemberUsageLimits({
 	});
 	const current = view.data;
 	return (
-		<section aria-label="成员限额设置" className={styles.limitPanel}>
+		<section aria-label={t("panels.memberSectionAria")} className={styles.limitPanel}>
 			<header className={styles.limitHeader}>
-				<h3 className={styles.limitTitle}>限额设置</h3>
+				<h3 className={styles.limitTitle}>{t("panels.limitTitle")}</h3>
 				<div className={styles.limitActions}>
 					<Button
 						size="small"
@@ -251,17 +269,17 @@ export function MemberUsageLimits({
 						disabled={!canRead || editing}
 						onClick={() => void view.refresh()}
 					>
-						刷新限额状态
+						{t("panels.refresh")}
 					</Button>
 					{canWrite && current && !editing && (
 						<Button size="small" onClick={() => setEditing(true)}>
-							设置限额
+							{t("panels.setLimit")}
 						</Button>
 					)}
 				</div>
 			</header>
-			<p className={styles.metaText}>{usageLimitNotice}</p>
-			{(identity.loading || view.loading) && !current && <p role="status">正在加载限额…</p>}
+			<p className={styles.metaText}>{t("limitNotice")}</p>
+			{(identity.loading || view.loading) && !current && <p role="status">{t("panels.loading")}</p>}
 			{identity.error && <LoadError error={identity.error} onRetry={() => void identity.refresh()} />}
 			{view.error && <LoadError error={view.error} onRetry={() => void view.refresh()} />}
 			{current && (
@@ -270,19 +288,24 @@ export function MemberUsageLimits({
 						period={period}
 						onChange={setPeriod}
 						view={current}
-						scopeLabel={current.override ? "个人限额" : "跟随默认限额"}
+						scopeLabel={current.override ? t("panels.scopePersonal") : t("panels.scopeFollowDefault")}
 					/>
 					<p className={styles.metaText}>
-						计量启用（UTC）：{timeText(current.accounting_started_at)}；最近更新（UTC）：
-						{timeText(current.refreshed_at)}。 此处汇总该成员所有 Agent，不随下方 Agent 筛选变化。
+						{t("panels.memberMeta", {
+							started: timeText(current.accounting_started_at, t),
+							updated: timeText(current.refreshed_at, t),
+						})}
 					</p>
 					{editing && canWrite && (
 						<>
 							{policy.error && (
-								<LoadError error={`默认限额读取失败：${policy.error}`} onRetry={() => void policy.refresh()} />
+								<LoadError
+									error={t("panels.policyLoadFailed", { error: policy.error })}
+									onRetry={() => void policy.refresh()}
+								/>
 							)}
 							<UsageLimitEditor
-								title="成员限额"
+								title={t("editor.memberTitle")}
 								initial={current.limits}
 								defaults={policy.data?.limits}
 								canReset={current.override !== null}
@@ -300,7 +323,7 @@ export function MemberUsageLimits({
 					)}
 				</>
 			)}
-			{identity.data?.role === "auditor" && <p className={styles.metaText}>当前身份只读。</p>}
+			{identity.data?.role === "auditor" && <p className={styles.metaText}>{t("panels.readOnly")}</p>}
 		</section>
 	);
 }
@@ -313,6 +336,7 @@ export function TemplateUsageLimits({
 	templateId: string;
 	initiallyEditing?: boolean;
 }) {
+	const { t } = useTranslation("usage");
 	const { client, identity, canWrite } = useUsageLimitAccess();
 	const [editing, setEditing] = useState(initiallyEditing);
 	const [period, setPeriod] = useState<LimitPeriod>("month");
@@ -326,9 +350,9 @@ export function TemplateUsageLimits({
 	);
 	const current = view.data;
 	return (
-		<section aria-label="模版限额设置" className={styles.limitPanel}>
+		<section aria-label={t("panels.templateSectionAria")} className={styles.limitPanel}>
 			<header className={styles.limitHeader}>
-				<h3 className={styles.limitTitle}>限额设置</h3>
+				<h3 className={styles.limitTitle}>{t("panels.limitTitle")}</h3>
 				<div className={styles.limitActions}>
 					<Button
 						size="small"
@@ -336,19 +360,17 @@ export function TemplateUsageLimits({
 						disabled={!canRead || editing}
 						onClick={() => void view.refresh()}
 					>
-						刷新限额状态
+						{t("panels.refresh")}
 					</Button>
 					{canWrite && current && !editing && (
 						<Button size="small" onClick={() => setEditing(true)}>
-							设置限额
+							{t("panels.setLimit")}
 						</Button>
 					)}
 				</div>
 			</header>
-			<p className={styles.metaText}>
-				限额作用于该模版上架条目下全部成员合计的消耗；超限后该模版对所有成员暂停发送。{usageLimitNotice}
-			</p>
-			{(identity.loading || view.loading) && !current && <p role="status">正在加载限额…</p>}
+			<p className={styles.metaText}>{t("panels.templateHint", { notice: t("limitNotice") })}</p>
+			{(identity.loading || view.loading) && !current && <p role="status">{t("panels.loading")}</p>}
 			{identity.error && <LoadError error={identity.error} onRetry={() => void identity.refresh()} />}
 			{view.error && <LoadError error={view.error} onRetry={() => void view.refresh()} />}
 			{current && (
@@ -357,11 +379,11 @@ export function TemplateUsageLimits({
 						period={period}
 						onChange={setPeriod}
 						view={current}
-						scopeLabel={current.override ? "模版限额" : "未设置（不限量）"}
+						scopeLabel={current.override ? t("panels.scopeTemplate") : t("panels.scopeUnset")}
 					/>
 					{editing && canWrite && (
 						<UsageLimitEditor
-							title="模版限额"
+							title={t("editor.templateTitle")}
 							initial={current.limits}
 							canReset={current.override !== null}
 							onSave={async (limits) => {
@@ -381,7 +403,7 @@ export function TemplateUsageLimits({
 					)}
 				</>
 			)}
-			{identity.data?.role === "auditor" && <p className={styles.metaText}>当前身份只读。</p>}
+			{identity.data?.role === "auditor" && <p className={styles.metaText}>{t("panels.readOnly")}</p>}
 		</section>
 	);
 }

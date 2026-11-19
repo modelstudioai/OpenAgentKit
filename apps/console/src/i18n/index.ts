@@ -4,10 +4,12 @@ import enAuth from "./locales/en/auth.ts";
 import enCommon from "./locales/en/common.ts";
 import enMembers from "./locales/en/members.ts";
 import enNavigation from "./locales/en/navigation.ts";
+import enUsage from "./locales/en/usage.ts";
 import zhAuth from "./locales/zh-CN/auth.ts";
 import zhCommon from "./locales/zh-CN/common.ts";
 import zhMembers from "./locales/zh-CN/members.ts";
 import zhNavigation from "./locales/zh-CN/navigation.ts";
+import zhUsage from "./locales/zh-CN/usage.ts";
 
 export const SUPPORTED_LOCALES = ["zh-CN", "en"] as const;
 export type KitLocale = (typeof SUPPORTED_LOCALES)[number];
@@ -46,8 +48,20 @@ export function resolveLocale(env: LocaleEnv): KitLocale {
 }
 
 export interface I18nResources {
-	"zh-CN": { common: typeof zhCommon; auth: typeof zhAuth; navigation: typeof zhNavigation; members: typeof zhMembers };
-	en: { common: typeof enCommon; auth: typeof enAuth; navigation: typeof enNavigation; members: typeof enMembers };
+	"zh-CN": {
+		common: typeof zhCommon;
+		auth: typeof zhAuth;
+		navigation: typeof zhNavigation;
+		members: typeof zhMembers;
+		usage: typeof zhUsage;
+	};
+	en: {
+		common: typeof enCommon;
+		auth: typeof enAuth;
+		navigation: typeof enNavigation;
+		members: typeof enMembers;
+		usage: typeof enUsage;
+	};
 }
 
 /** 入口在挂载前调用：资源内联，初始化即时完成，不引入 HTTP 语言包加载。 */
@@ -58,10 +72,10 @@ export async function initI18n() {
 		fallbackLng: "zh-CN",
 		supportedLngs: [...SUPPORTED_LOCALES],
 		defaultNS: "common",
-		ns: ["common", "auth", "navigation", "members"],
+		ns: ["common", "auth", "navigation", "members", "usage"],
 		resources: {
-			"zh-CN": { common: zhCommon, auth: zhAuth, navigation: zhNavigation, members: zhMembers },
-			en: { common: enCommon, auth: enAuth, navigation: enNavigation, members: enMembers },
+			"zh-CN": { common: zhCommon, auth: zhAuth, navigation: zhNavigation, members: zhMembers, usage: zhUsage },
+			en: { common: enCommon, auth: enAuth, navigation: enNavigation, members: enMembers, usage: enUsage },
 		},
 	});
 	document.documentElement.lang = i18n.resolvedLanguage ?? lng;
