@@ -203,3 +203,23 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
 - 新增 `e2e/locale.experience.spec.ts`：`?lang=en` 直达断言 `<html lang>`、英文搜索框/导航与
   chat-ui 输入框英文占位；第二条断言「用户显式选择优先于 URL」的持久化语义。
   本机 8787 被开发中 server 占用，本轮未执行；端口空闲时 `pnpm e2e` 即可跑。
+
+### 2026-11-19 阶段 3（console）启动
+
+| feature | 引号内串数 | 状态 |
+| --- | --- | --- |
+| templates | 661 | 待迁（最大块，后续分批） |
+| usage | 138 | 待迁 |
+| members | 88 | 待迁 |
+| preset-packs | 83 | 待迁 |
+| catalog / navigation / operations | 18 × 3 | navigation ✅（含 JSX 文本约 20）；其余待迁 |
+| branding | 15 | 待迁 |
+| lib / root / auth | 6 / 8 / 4 | auth ✅，其余待迁 |
+
+- console 首批：`navigation`（外壳导航/品牌/抽屉）+ `auth`（登录页）命名空间；
+  NAV_GROUPS 改为 `NavigationKey` 字面量键表，渲染时 `t(key)`；`ConfigProvider` 联动阶段 0 已就绪。
+- 修正：console 的 `declare module "i18next"` 曾把 `resources` 指向 locale 层级（`I18nResources`），
+  应为 `I18nResources["zh-CN"]`；web 同问题此前已修。
+- 遗留：`inner-layout` 的 `backLabel` 默认值「返回」随其调用页面迁移（模板批次）一并处理。
+- 下一批建议：members + usage（226 串，业务闭环最完整），随后 preset-packs / operations / catalog / branding，
+  最后 templates（661 串分 2–3 批）。

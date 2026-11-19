@@ -1,7 +1,11 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
+import enAuth from "./locales/en/auth.ts";
 import enCommon from "./locales/en/common.ts";
+import enNavigation from "./locales/en/navigation.ts";
+import zhAuth from "./locales/zh-CN/auth.ts";
 import zhCommon from "./locales/zh-CN/common.ts";
+import zhNavigation from "./locales/zh-CN/navigation.ts";
 
 export const SUPPORTED_LOCALES = ["zh-CN", "en"] as const;
 export type KitLocale = (typeof SUPPORTED_LOCALES)[number];
@@ -40,8 +44,8 @@ export function resolveLocale(env: LocaleEnv): KitLocale {
 }
 
 export interface I18nResources {
-	"zh-CN": { common: typeof zhCommon };
-	en: { common: typeof enCommon };
+	"zh-CN": { common: typeof zhCommon; auth: typeof zhAuth; navigation: typeof zhNavigation };
+	en: { common: typeof enCommon; auth: typeof enAuth; navigation: typeof enNavigation };
 }
 
 /** 入口在挂载前调用：资源内联，初始化即时完成，不引入 HTTP 语言包加载。 */
@@ -52,8 +56,11 @@ export async function initI18n() {
 		fallbackLng: "zh-CN",
 		supportedLngs: [...SUPPORTED_LOCALES],
 		defaultNS: "common",
-		ns: ["common"],
-		resources: { "zh-CN": { common: zhCommon }, en: { common: enCommon } },
+		ns: ["common", "auth", "navigation"],
+		resources: {
+			"zh-CN": { common: zhCommon, auth: zhAuth, navigation: zhNavigation },
+			en: { common: enCommon, auth: enAuth, navigation: enNavigation },
+		},
 	});
 	document.documentElement.lang = i18n.resolvedLanguage ?? lng;
 	return i18n;
@@ -69,6 +76,6 @@ export function setLocale(locale: KitLocale) {
 declare module "i18next" {
 	interface CustomTypeOptions {
 		defaultNS: "common";
-		resources: I18nResources;
+		resources: I18nResources["zh-CN"];
 	}
 }
