@@ -786,7 +786,7 @@ export type SessionEvent = { type: string; event_id?: string | undefined; role?:
 | `code` | 否 | `string \| null \| undefined` |
 | `message` | 否 | `string \| null \| undefined` |
 
-<!-- source-sha256: a3ae4f4348e9c9b671360b6b3c13603bf16abf4718f52738b89ccc49c9e5fb4c; doc-sha256: 137fa2e9f947a02faa8f1aa85e85bd54538f214caa269a0a3af35bf8bdb8fa6c -->
+<!-- source-sha256: 19898cd813f32186233349faf10be579ce2e7ab95461563eb7b354c2abd7ad1f; doc-sha256: 137fa2e9f947a02faa8f1aa85e85bd54538f214caa269a0a3af35bf8bdb8fa6c -->
 
 ## SendMessageRequest
 

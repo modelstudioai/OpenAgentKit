@@ -34,7 +34,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@openagentpack/sdk": "0.10.0",
+    "@openagentpack/sdk": "0.11.0",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"

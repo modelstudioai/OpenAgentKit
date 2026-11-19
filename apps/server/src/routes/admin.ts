@@ -30,7 +30,7 @@ import {
 	UsageSummarySchema,
 	UsageTrendSchema,
 } from "@openagentpack/kit-sdk/protocol";
-import { ApiError, type UsageSummaryRequest, type UsageTrendRequest } from "@openagentpack/sdk";
+import { ApiError, type UsageSummaryRequest, type UsageTimeRange, type UsageTrendRequest } from "@openagentpack/sdk";
 import type { AppEnv } from "../app-env.ts";
 import { redactSecrets } from "../config.ts";
 import type { ProviderGateway } from "../gateway/types.ts";
@@ -513,7 +513,8 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 		session_id: z.string().min(1).max(128).optional(),
 		agent_id: z.string().min(1).max(128).optional(),
 	};
-	/** 维度组装：session_id 优先（会话维度），其次 agent_id（agent 维度）；两者都缺省时走模版口径扇出，不暴露 workspace。 */
+	/** 维度组装：session_id 优先（会话维度），其次 agent_id（agent 维度）；两者都缺省时路由已拦截走模版口径扇出，
+	 * 不暴露 workspace——此分支仅为 0.11.0 互斥联合类型的完备性（运行时不可达）。 */
 	function usageSummaryRequest(query: {
 		session_id?: string;
 		agent_id?: string;
@@ -521,7 +522,8 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 		end_time?: number;
 	}): UsageSummaryRequest {
 		if (query.session_id) return { dimension: "session", session_id: query.session_id };
-		return { dimension: "agent", agent_id: query.agent_id, time_range: usageTimeRange(query) };
+		if (query.agent_id) return { dimension: "agent", agent_id: query.agent_id, time_range: usageTimeRange(query) };
+		return { dimension: "workspace", time_range: usageTimeRange(query) };
 	}
 
 	/** 「全部」模版口径：逐模版绑定智能体（含已删模版，去重）以 agent 维度查询后合并，非模版智能体不计入。
@@ -534,7 +536,7 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 	async function usageSummaryAcrossTemplates(
 		gateway: Pick<ProviderGateway, "getUsageSummary">,
 		templates: { boundAgentIds(): string[] },
-		time_range: UsageSummaryRequest["time_range"],
+		time_range: UsageTimeRange,
 	): Promise<UsageSummary> {
 		const agentIds = templates.boundAgentIds();
 		if (!agentIds.length) return emptyUsageSummary(time_range);
