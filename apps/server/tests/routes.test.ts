@@ -738,6 +738,19 @@ describe("会话生命周期与文件（B1/B2）", () => {
 			body: JSON.stringify({ text: "hello", client_message_id: "cm2" }),
 		});
 		expect(orphanSend.status).toBe(403);
+
+		// slug 复用不复活旧会话：软删后同 slug 建新条目，旧会话仍按条目 ID 判定只读，
+		// 新会话落在新条目上可正常发送。
+		services.catalog.upsert({ slug: "assistant", display_name: "A2", remote_agent_id: "agent_mock" });
+		services.catalog.setStatus("assistant", "listed");
+		expect((await send()).status).toBe(403);
+		const { sessionId: reusedSessionId } = await seedAndCreate(app);
+		const reusedSend = await app.request(`/api/kit/sessions/${reusedSessionId}/messages`, {
+			method: "POST",
+			headers: { ...json, cookie },
+			body: JSON.stringify({ text: "hello", client_message_id: "cm3" }),
+		});
+		expect(reusedSend.status).toBe(202);
 	});
 
 	it("文件上传 → 下载 roundtrip", async () => {

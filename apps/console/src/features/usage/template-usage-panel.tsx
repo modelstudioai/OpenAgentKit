@@ -32,6 +32,16 @@ function captureTime(value?: string) {
 	return value ? new Date(value).toLocaleString("zh-CN", { hour12: false }) : "尚未采集";
 }
 
+/** 「全部」口径部分成功提示：coverage 仅在部分模版绑定智能体查询失败时出现。 */
+function CoverageNote({ coverage }: { coverage: UsageSummary["coverage"] }) {
+	if (!coverage || coverage.complete) return null;
+	return (
+		<p role="status" className={styles.metaText}>
+			部分智能体用量缺失（{coverage.missing_agent_ids.join("、")}），以下统计为已成功部分的合计。
+		</p>
+	);
+}
+
 function refreshedAt(row: TemplateUsageRow) {
 	return row.refreshed_at ? new Date(row.refreshed_at).toLocaleString("zh-CN", { hour12: false }) : "尚未成功采集";
 }
@@ -363,8 +373,9 @@ export function TemplateUsagePanel({
 				<Popover
 					content={
 						<span className={styles.preLine}>
-							按模版统计从其上架条目发起的体验会话模型用量，包含已删除会话保存的用量；各项 Token 独立展示，缺失值不按 0
-							计算，「全部」为各模版求和。
+							用量按模版绑定的智能体汇总，包含该智能体的全部调用（体验会话、调试与 Kit 外调用都计入）；
+							下方明细仅列体验会话，保留已删除会话的用量记录。「全部」为所有模版绑定智能体的去重汇总，
+							单个智能体查询失败时仅标注缺失来源，不影响其余数据。 各项 Token 独立展示，未知值不按 0 计算。
 						</span>
 					}
 					title="口径说明"
@@ -379,6 +390,7 @@ export function TemplateUsagePanel({
 					<StatRangePicker value={statRange} onChange={setStatRange} />
 				</div>
 			</div>
+			<CoverageNote coverage={summary?.coverage} />
 			{loading ? (
 				<p role="status" className={styles.loadingNote}>
 					正在加载模版用量…

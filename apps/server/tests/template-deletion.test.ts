@@ -233,4 +233,33 @@ describe("模版删除", () => {
 		expect(services.catalog.get(entry.id)).toEqual(entry);
 		expect(services.audit.list().filter((row) => row.action === "templates.delete")).toEqual([]);
 	});
+
+	// 编辑的 Provider 校验是异步窗口，删除可能在窗口内提交；写入事务必须复核 deleted_at，不能覆盖已删模版。
+	it("编辑期间完成的删除在写入时被复核，在途更新按不存在拒绝", async () => {
+		const { services, db, save, plan, remove } = setup();
+		const template = await save("竞态删除模版");
+		const listAgents = services.gateway.listRemoteAgents.bind(services.gateway);
+		vi.spyOn(services.gateway, "listRemoteAgents").mockImplementation(async () => {
+			const prepared = await plan(template);
+			expect((await remove(template, confirmation(prepared))).status).toBe(200);
+			return listAgents();
+		});
+		await expect(
+			services.templates.update(
+				template.template_id,
+				{
+					...TemplateInputSchema.strip().parse(template),
+					base_version: template.version,
+					description: "竞态窗口内的更新",
+				},
+				"fixture",
+			),
+		).rejects.toMatchObject({ code: "not_found", status: 404 });
+		const after = db
+			.prepare("SELECT version, deleted_at FROM kit_templates WHERE template_id=?")
+			.get(template.template_id) as { version: number; deleted_at: string | null };
+		expect(after.version).toBe(template.version);
+		expect(after.deleted_at).not.toBeNull();
+		expect(services.audit.list().filter((row) => row.action === "templates.update")).toEqual([]);
+	});
 });

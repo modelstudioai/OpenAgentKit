@@ -377,6 +377,14 @@ input.searchInput {
 	color: var(--kit-fg-muted);
 }
 
+/* 合计含未知来源的小标记：弱化展示，悬停出说明 */
+.unknownMark {
+	margin-left: 4px;
+	font-weight: 400;
+	color: var(--kit-fg-muted);
+	cursor: help;
+}
+
 .totalValue {
 	margin-top: 4px;
 	font-weight: 600;
@@ -480,6 +488,13 @@ input.searchInput {
 .barSecondaryPast {
 	background: var(--kit-success);
 	opacity: 0.3;
+}
+
+/* 未知桶（协议 null 表示来源未知）：不按 0 绘制，基线处出短横标记 */
+.barUnknown {
+	height: 2px;
+	background: var(--kit-fg-muted);
+	opacity: 0.5;
 }
 
 .chartXAxis {

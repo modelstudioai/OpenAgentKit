@@ -1,6 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
-import type { UsageGranularity, UsageSummary, UsageTrend, UsageTrendPoint } from "@openagentpack/kit-sdk/protocol";
+import type {
+	UsageCoverage,
+	UsageGranularity,
+	UsageSummary,
+	UsageTrend,
+	UsageTrendPoint,
+} from "@openagentpack/kit-sdk/protocol";
 import {
 	CatalogAgentInputSchema,
 	CreateQuotaPackSchema,
@@ -518,7 +524,13 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 		return { dimension: "agent", agent_id: query.agent_id, time_range: usageTimeRange(query) };
 	}
 
-	/** 「全部」模版口径：逐模版绑定智能体（含已删模版，去重）以 agent 维度查询后合并，非模版智能体不计入。 */
+	/** 「全部」模版口径：逐模版绑定智能体（含已删模版，去重）以 agent 维度查询后合并，非模版智能体不计入。
+	 * 单个智能体查询失败不打挂整个请求（P2-5）：返回已成功部分的合并并标注 coverage 部分成功。 */
+	function coverageOf(agentIds: string[], settled: PromiseSettledResult<unknown>[]): UsageCoverage | undefined {
+		const missing = agentIds.filter((_, index) => settled[index]?.status === "rejected");
+		return missing.length ? { complete: false, missing_agent_ids: missing } : undefined;
+	}
+
 	async function usageSummaryAcrossTemplates(
 		gateway: Pick<ProviderGateway, "getUsageSummary">,
 		templates: { boundAgentIds(): string[] },
@@ -526,10 +538,14 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 	): Promise<UsageSummary> {
 		const agentIds = templates.boundAgentIds();
 		if (!agentIds.length) return emptyUsageSummary(time_range);
-		const results = await Promise.all(
+		const settled = await Promise.allSettled(
 			agentIds.map((agent_id) => gateway.getUsageSummary({ dimension: "agent", agent_id, time_range })),
 		);
-		return mergeUsageSummaries(results.map((result) => result.data)) ?? emptyUsageSummary(time_range);
+		const merged =
+			mergeUsageSummaries(settled.flatMap((result) => (result.status === "fulfilled" ? [result.value.data] : []))) ??
+			emptyUsageSummary(time_range);
+		const coverage = coverageOf(agentIds, settled);
+		return coverage ? { ...merged, coverage } : merged;
 	}
 
 	app.openapi(
@@ -543,7 +559,7 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 			responses: {
 				200: {
 					description:
-						"Provider 侧用量汇总（app-control usage.summary）：维度由参数决定——传 session_id 为 dimension:session（按会话自身窗口，不传 time_range/granularity；本地账本已标记删除的会话直接返回零值空汇总，不查询 Provider），传 agent_id 为 dimension:agent，都不传为模版口径（服务端逐模版绑定智能体——含已删模版、去重——以 agent 维度查询并合并为各模版求和，非模版智能体不计入）；?start_time=&end_time=（毫秒，缺省最近 7 天）在服务端转成 UTC+8 偏移的 RFC 3339 字符串；返回 {data:{query_range,data_updated_at,usage:{total,models,tools}}}，指标统一为 {value,unit}（未知为 null、已知零值为 0，跨智能体合并时任一来源未知即未知，cache_hit_ratio 按合并后的 cache_read/input 重算）；模型/工具明细同一次响应返回，无分页、无服务端名称筛选，单次明细合计上限 10 万条；无模版绑定时返回零值汇总；管理员与 auditor 可读",
+						"Provider 侧用量汇总（app-control usage.summary）：维度由参数决定——传 session_id 为 dimension:session（按会话自身窗口，不传 time_range/granularity；本地账本已标记删除的会话直接返回零值空汇总，不查询 Provider），传 agent_id 为 dimension:agent，都不传为模版口径（服务端逐模版绑定智能体——含已删模版、去重——以 agent 维度查询并合并为各模版求和，非模版智能体不计入；单个智能体查询失败不打挂整个请求，返回已成功部分的合并并在 data.coverage 标注 {complete:false, missing_agent_ids}，缺省即完整）；?start_time=&end_time=（毫秒，缺省最近 7 天）在服务端转成 UTC+8 偏移的 RFC 3339 字符串；返回 {data:{query_range,data_updated_at,usage:{total,models,tools}}}，指标统一为 {value,unit}（未知为 null、已知零值为 0，跨智能体合并时任一来源未知即未知，cache_hit_ratio 按合并后的 cache_read/input 重算）；模型/工具明细同一次响应返回，无分页、无服务端名称筛选，单次明细合计上限 10 万条；无模版绑定时返回零值汇总；管理员与 auditor 可读",
 					content: { "application/json": { schema: z.object({ data: UsageSummarySchema }) } },
 				},
 				...errors,
@@ -576,7 +592,8 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 		return { dimension: "agent", agent_id: query.agent_id, time_range, granularity };
 	}
 
-	/** 「全部」模版口径：逐模版绑定智能体（含已删模版，去重）以 agent 维度查询后按时间桶合并，非模版智能体不计入。 */
+	/** 「全部」模版口径：逐模版绑定智能体（含已删模版，去重）以 agent 维度查询后按时间桶合并，非模版智能体不计入。
+	 * 单个智能体查询失败不打挂整个请求（P2-5）：返回已成功部分的合并并标注 coverage 部分成功。 */
 	async function usageTrendAcrossTemplates(
 		gateway: Pick<ProviderGateway, "getUsageTrend">,
 		templates: { boundAgentIds(): string[] },
@@ -585,10 +602,19 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 		const agentIds = templates.boundAgentIds();
 		const granularity: UsageGranularity = query.granularity ?? "day";
 		if (!agentIds.length) return emptyUsageTrend(usageTimeRange(query), granularity);
-		const trends = await Promise.all(
+		const settled = await Promise.allSettled(
 			agentIds.map((agent_id) => usageTrendAggregated(gateway, usageTrendRequest({ ...query, agent_id }))),
 		);
-		return mergeTrends(trends) ?? emptyUsageTrend(usageTimeRange(query), granularity);
+		// 分页游标缺失是服务端聚合不变量被破坏（KitError），不属于可标注的单智能体不可用，照旧整体拒绝。
+		const fatal = settled.find(
+			(result): result is PromiseRejectedResult => result.status === "rejected" && result.reason instanceof KitError,
+		);
+		if (fatal) throw fatal.reason;
+		const merged =
+			mergeTrends(settled.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []))) ??
+			emptyUsageTrend(usageTimeRange(query), granularity);
+		const coverage = coverageOf(agentIds, settled);
+		return coverage ? { ...merged, coverage } : merged;
 	}
 
 	const USAGE_TREND_PAGE_SIZE = 100;
@@ -649,7 +675,7 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 			responses: {
 				200: {
 					description:
-						"用量分桶趋势：传 agent_id 为 agent 维度；都不传为模版口径（服务端逐模版绑定智能体——含已删模版、去重——以 agent 维度查询并按时间桶合并为各模版求和，非模版智能体不计入，无模版绑定时返回空点）（Provider 侧，UTC+8 对齐，无数据的时间桶省略）；粒度由 granularity 参数决定（hour/day/month，缺省 day）；服务端聚合全部分页返回，has_more 恒为 false",
+						"用量分桶趋势：传 agent_id 为 agent 维度；都不传为模版口径（服务端逐模版绑定智能体——含已删模版、去重——以 agent 维度查询并按时间桶合并为各模版求和，非模版智能体不计入，无模版绑定时返回空点；单个智能体查询失败不打挂整个请求，返回已成功部分的合并并在 data.coverage 标注 {complete:false, missing_agent_ids}，缺省即完整；服务端分页游标缺失仍整体拒绝）（Provider 侧，UTC+8 对齐，无数据的时间桶省略）；粒度由 granularity 参数决定（hour/day/month，缺省 day）；服务端聚合全部分页返回，has_more 恒为 false",
 					content: { "application/json": { schema: z.object({ data: UsageTrendSchema }) } },
 				},
 				...errors,

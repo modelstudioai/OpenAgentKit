@@ -655,7 +655,8 @@ INSERT OR IGNORE INTO kit_branding (id, product_name, updated_at) VALUES (1, 'Op
 ALTER TABLE kit_templates ADD COLUMN deleted_at TEXT;`,
 	},
 	{
-		// 软删后身份可复用：slug/模版名的内联 UNIQUE 换成排除已删行的部分唯一索引，重建两表及其子表。
+		// 软删后身份可复用：slug/模版名的内联 UNIQUE 换成排除已删行的部分唯一索引，重建两表及全部子表。
+		// 模版限额表也要随迁：它对 kit_templates 有级联外键，删除旧表会把存量限额配置一并清空。
 		id: "034_soft_delete_identity_reuse",
 		sql: `
 CREATE TABLE catalog_agents_new (
@@ -717,17 +718,82 @@ CREATE TABLE kit_template_listings_new (
 );
 INSERT INTO kit_template_listings_new (template_id, catalog_id)
 SELECT template_id, catalog_id FROM kit_template_listings;
+CREATE TABLE kit_usage_limit_templates_new (
+  template_id TEXT PRIMARY KEY REFERENCES kit_templates_new(template_id) ON DELETE CASCADE,
+  monthly_tokens INTEGER, monthly_active_seconds REAL, updated_at TEXT NOT NULL, updated_by TEXT NOT NULL,
+  daily_tokens INTEGER, daily_active_seconds REAL
+);
+INSERT INTO kit_usage_limit_templates_new (template_id, monthly_tokens, monthly_active_seconds, updated_at, updated_by,
+  daily_tokens, daily_active_seconds)
+SELECT template_id, monthly_tokens, monthly_active_seconds, updated_at, updated_by, daily_tokens, daily_active_seconds
+FROM kit_usage_limit_templates;
 DROP TABLE kit_template_listings;
 DROP TABLE kit_template_versions;
+DROP TABLE kit_usage_limit_templates;
 DROP TABLE kit_templates;
 DROP TABLE catalog_agents;
 ALTER TABLE catalog_agents_new RENAME TO catalog_agents;
 ALTER TABLE kit_templates_new RENAME TO kit_templates;
 ALTER TABLE kit_template_versions_new RENAME TO kit_template_versions;
 ALTER TABLE kit_template_listings_new RENAME TO kit_template_listings;
+ALTER TABLE kit_usage_limit_templates_new RENAME TO kit_usage_limit_templates;
 CREATE UNIQUE INDEX idx_catalog_agents_slug_active ON catalog_agents(slug) WHERE deleted_at IS NULL;
 CREATE UNIQUE INDEX idx_kit_templates_name_active ON kit_templates(name) WHERE deleted_at IS NULL;
 CREATE INDEX idx_templates_created ON kit_templates(created_at, template_id);`,
+	},
+	{
+		// 用量归属改用目录条目 ID：slug 软删后可复用，按 slug 连接会把旧会话、限额与归属串到新条目。
+		// 会话与用量账补落条目 ID（按 slug + 会话时间落在条目存活窗口解析）；条目月/日账换按条目 ID 记键。
+		// 账本行自身无时间戳，按「优先活动条目」解析（与旧 slug 读取口径一致）；无法解析的行是旧硬删
+		// 孤儿条目的不可达账目（删除后无模版、无上架可引用），随重建丢弃。
+		id: "035_usage_entry_identity",
+		sql: `
+ALTER TABLE kit_sessions ADD COLUMN catalog_entry_id TEXT;
+ALTER TABLE kit_session_usage ADD COLUMN catalog_entry_id TEXT;
+UPDATE kit_sessions SET catalog_entry_id = (
+  SELECT c.id FROM catalog_agents c
+  WHERE c.slug = kit_sessions.agent_slug
+    AND c.created_at <= kit_sessions.created_at
+    AND (c.deleted_at IS NULL OR c.deleted_at > kit_sessions.created_at)
+  ORDER BY c.created_at DESC LIMIT 1
+) WHERE agent_slug IS NOT NULL;
+UPDATE kit_session_usage SET catalog_entry_id = (
+  SELECT c.id FROM catalog_agents c
+  WHERE c.slug = kit_session_usage.agent_slug
+    AND c.created_at <= kit_session_usage.created_at
+    AND (c.deleted_at IS NULL OR c.deleted_at > kit_session_usage.created_at)
+  ORDER BY c.created_at DESC LIMIT 1
+) WHERE agent_slug IS NOT NULL;
+CREATE INDEX idx_sessions_entry ON kit_sessions(catalog_entry_id);
+CREATE INDEX idx_session_usage_entry ON kit_session_usage(catalog_entry_id);
+CREATE TABLE kit_usage_limit_agent_months_new (
+  catalog_entry_id TEXT NOT NULL, month TEXT NOT NULL, tokens INTEGER NOT NULL DEFAULT 0,
+  active_seconds REAL NOT NULL DEFAULT 0, tokens_unknown INTEGER NOT NULL DEFAULT 0,
+  active_seconds_unknown INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (catalog_entry_id, month)
+);
+INSERT INTO kit_usage_limit_agent_months_new
+  (catalog_entry_id, month, tokens, active_seconds, tokens_unknown, active_seconds_unknown)
+SELECT (
+  SELECT c.id FROM catalog_agents c WHERE c.slug = old.agent_slug
+  ORDER BY (c.deleted_at IS NOT NULL), c.updated_at DESC LIMIT 1
+), old.month, old.tokens, old.active_seconds, old.tokens_unknown, old.active_seconds_unknown
+FROM kit_usage_limit_agent_months old
+WHERE EXISTS (SELECT 1 FROM catalog_agents c WHERE c.slug = old.agent_slug);
+CREATE TABLE kit_usage_limit_agent_days_new (
+  catalog_entry_id TEXT NOT NULL, day TEXT NOT NULL, tokens INTEGER NOT NULL DEFAULT 0,
+  active_seconds REAL NOT NULL DEFAULT 0, PRIMARY KEY (catalog_entry_id, day)
+);
+INSERT INTO kit_usage_limit_agent_days_new (catalog_entry_id, day, tokens, active_seconds)
+SELECT (
+  SELECT c.id FROM catalog_agents c WHERE c.slug = old.agent_slug
+  ORDER BY (c.deleted_at IS NOT NULL), c.updated_at DESC LIMIT 1
+), old.day, old.tokens, old.active_seconds
+FROM kit_usage_limit_agent_days old
+WHERE EXISTS (SELECT 1 FROM catalog_agents c WHERE c.slug = old.agent_slug);
+DROP TABLE kit_usage_limit_agent_months;
+ALTER TABLE kit_usage_limit_agent_months_new RENAME TO kit_usage_limit_agent_months;
+DROP TABLE kit_usage_limit_agent_days;
+ALTER TABLE kit_usage_limit_agent_days_new RENAME TO kit_usage_limit_agent_days;`,
 	},
 ];
 

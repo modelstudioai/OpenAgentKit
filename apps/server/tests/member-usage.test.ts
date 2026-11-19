@@ -68,7 +68,14 @@ function setup(env: Record<string, string | undefined> = {}) {
 		);
 	}
 	function session(id: string, memberId: string, agentSlug = "agent-a") {
-		services.sessionIndex.create({ sessionId: id, subjectId: memberId, agentSlug });
+		// 归属键是目录条目 ID：slug 有活动条目时随创建绑定（与创建路由一致），无条目为 null。
+		const entry = agentSlug ? services.catalog.getBySlug(agentSlug) : null;
+		services.sessionIndex.create({
+			sessionId: id,
+			subjectId: memberId,
+			agentSlug,
+			...(entry && !entry.deleted ? { catalogEntryId: entry.id } : {}),
+		});
 	}
 	return { db, services, app: createApp(services), usageStore, members, member, session, dataDir };
 }
@@ -78,6 +85,30 @@ function detail(id: string, input = 10): GatewaySessionInfo {
 		status: "idle",
 		usage: { input_tokens: input, output_tokens: 2, cache_read_input_tokens: 0, cache_creation_input_tokens: 1 },
 		stats: { active_seconds: 0.5, duration_seconds: 2 },
+	};
+}
+function metricOf(value: number | null, unit = "count"): UsageMetric {
+	return { value, unit };
+}
+function stubTotal(input: number, calls: number): UsageTotal {
+	return {
+		input_tokens: metricOf(input, "tokens"),
+		output_tokens: metricOf(0, "tokens"),
+		total_tokens: metricOf(input, "tokens"),
+		cache_read_tokens: metricOf(0, "tokens"),
+		cache_creation_tokens: metricOf(0, "tokens"),
+		cache_hit_ratio: metricOf(0, "ratio"),
+		model_call_count: metricOf(calls),
+		tool_call_count: metricOf(calls),
+		builtin_tool_call_count: metricOf(calls),
+		mcp_tool_call_count: metricOf(0),
+		custom_tool_call_count: metricOf(0),
+		turns: metricOf(calls),
+		steps: metricOf(calls),
+		interrupt_error_count: metricOf(0),
+		model_failed_count: metricOf(0),
+		tool_failed_count: metricOf(0),
+		runtime_ms: metricOf(0, "ms"),
 	};
 }
 
@@ -568,12 +599,13 @@ describe("成员累计会话用量", () => {
 		});
 		templates.saveListing(created.template_id, () => services.catalog.getBySlug("trend-tpl")!);
 		const usageDay = new Date().toISOString().slice(0, 10);
+		const trendEntryId = services.catalog.getBySlug("trend-tpl")!.id;
 		db.prepare(
-			"INSERT INTO kit_usage_limit_agent_days (agent_slug, day, tokens, active_seconds) VALUES (?, ?, ?, ?)",
-		).run("trend-tpl", usageDay, 120, 1.5);
+			"INSERT INTO kit_usage_limit_agent_days (catalog_entry_id, day, tokens, active_seconds) VALUES (?, ?, ?, ?)",
+		).run(trendEntryId, usageDay, 120, 1.5);
 		db.prepare(
-			"INSERT INTO kit_usage_limit_agent_days (agent_slug, day, tokens, active_seconds) VALUES (?, ?, ?, ?)",
-		).run("rogue-entry", usageDay, 999, 9); // 非模版上架条目
+			"INSERT INTO kit_usage_limit_agent_days (catalog_entry_id, day, tokens, active_seconds) VALUES (?, ?, ?, ?)",
+		).run("cat-rogue", usageDay, 999, 9); // 未绑定模版上架的条目
 
 		const response = await app.request(`/api/admin/usage/templates/daily-trend?template_id=${created.template_id}`, {
 			headers: auditor,
@@ -600,8 +632,8 @@ describe("成员累计会话用量", () => {
 		expect((await app.request("/api/admin/usage/templates/daily-trend")).status).toBe(401);
 	});
 
-	// 条目软删保留用量候选：解析展示名并携带 deleted；slug 复用后取活动行，不残留已删标记。
-	it("成员用量候选：条目软删后带 deleted 标记，slug 复用取活动行", async () => {
+	// 条目软删保留用量候选：展示名按会话绑定的条目解析并携带 deleted；slug 复用不串旧会话的归属。
+	it("成员用量候选：条目软删后带 deleted 标记，slug 复用不串旧会话归属", async () => {
 		const { db, services, member, session } = setup();
 		member("member_a");
 		const now0 = new Date().toISOString();
@@ -616,10 +648,17 @@ describe("成员累计会话用量", () => {
 		expect(services.memberUsage.summary("member_a").agents).toEqual([
 			{ slug: "old-agent", display_name: "旧条目", deleted: true },
 		]);
+		// 同 slug 新条目不复用为旧会话的身份：旧会话仍解析到已删旧条目。
 		const now1 = new Date().toISOString();
 		db.prepare(
 			"INSERT INTO catalog_agents (id, slug, display_name, remote_agent_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
 		).run("cat-new", "old-agent", "新条目", "agent-a", now1, now1);
+		expect(services.memberUsage.summary("member_a").agents).toEqual([
+			{ slug: "old-agent", display_name: "旧条目", deleted: true },
+		]);
+		// 新会话绑定新条目；展示名按最新会话的条目解析，切到新条目且不带已删标记。
+		session("s-new", "member_a", "old-agent");
+		await services.memberUsage.refresh("member_a", true);
 		expect(services.memberUsage.summary("member_a").agents).toEqual([{ slug: "old-agent", display_name: "新条目" }]);
 	});
 
@@ -848,30 +887,6 @@ describe("成员累计会话用量", () => {
 
 	it("全部用量 = 各模版绑定智能体求和：扇出 agent 维度、非模版智能体不查询、时间桶与明细合并", async () => {
 		const { db, services, app } = setup();
-		function metricOf(value: number | null, unit = "count"): UsageMetric {
-			return { value, unit };
-		}
-		function stubTotal(input: number, cacheRead: number, calls: number): UsageTotal {
-			return {
-				input_tokens: metricOf(input, "tokens"),
-				output_tokens: metricOf(0, "tokens"),
-				total_tokens: metricOf(input, "tokens"),
-				cache_read_tokens: metricOf(cacheRead, "tokens"),
-				cache_creation_tokens: metricOf(0, "tokens"),
-				cache_hit_ratio: metricOf(0, "ratio"),
-				model_call_count: metricOf(calls),
-				tool_call_count: metricOf(calls),
-				builtin_tool_call_count: metricOf(calls),
-				mcp_tool_call_count: metricOf(0),
-				custom_tool_call_count: metricOf(0),
-				turns: metricOf(calls),
-				steps: metricOf(calls),
-				interrupt_error_count: metricOf(0),
-				model_failed_count: metricOf(0),
-				tool_failed_count: metricOf(0),
-				runtime_ms: metricOf(0, "ms"),
-			};
-		}
 		function stubModel(name: string, input: number, calls: number): UsageModelRow {
 			return {
 				model_name: name,
@@ -895,7 +910,7 @@ describe("成员累计会话用量", () => {
 				query_range: { start_time: "2026-11-11T00:00:00+08:00", end_time: "2026-11-18T00:00:00+08:00" },
 				data_updated_at: "2026-11-18T09:00:00+08:00",
 				usage: {
-					total: stubTotal(100, 40, 2),
+					total: stubTotal(100, 2),
 					models: [stubModel("qwen-max", 100, 2)],
 					tools: [stubTool("builtin", "web_search", 2)],
 				},
@@ -904,7 +919,7 @@ describe("成员累计会话用量", () => {
 				query_range: { start_time: "2026-11-11T00:00:00+08:00", end_time: "2026-11-18T00:00:00+08:00" },
 				data_updated_at: "2026-11-18T10:00:00+08:00",
 				usage: {
-					total: stubTotal(50, 10, 1),
+					total: stubTotal(50, 1),
 					models: [stubModel("qwen-max", 50, 1)],
 					tools: [stubTool("builtin", "web_search", 1), stubTool("mcp", "memory_search", 2)],
 				},
@@ -959,7 +974,7 @@ describe("成员累计会话用量", () => {
 					{
 						start_time: "2026-11-17T00:00:00+08:00",
 						end_time: "2026-11-18T00:00:00+08:00",
-						usage: { total: stubTotal(100, 0, 1), models: [], tools: [] },
+						usage: { total: stubTotal(100, 1), models: [], tools: [] },
 					},
 				],
 				has_more: false,
@@ -973,12 +988,12 @@ describe("成员累计会话用量", () => {
 					{
 						start_time: "2026-11-17T00:00:00+08:00",
 						end_time: "2026-11-18T00:00:00+08:00",
-						usage: { total: stubTotal(50, 0, 1), models: [], tools: [] },
+						usage: { total: stubTotal(50, 1), models: [], tools: [] },
 					},
 					{
 						start_time: "2026-11-18T00:00:00+08:00",
 						end_time: "2026-11-19T00:00:00+08:00",
-						usage: { total: stubTotal(20, 0, 1), models: [], tools: [] },
+						usage: { total: stubTotal(20, 1), models: [], tools: [] },
 					},
 				],
 				has_more: false,
@@ -1002,5 +1017,69 @@ describe("成员累计会话用量", () => {
 		]);
 		expect(trendBody.data.points[0]?.usage.total.input_tokens).toEqual(metricOf(150, "tokens"));
 		expect(trendBody.data.points[1]?.usage.total.input_tokens).toEqual(metricOf(20, "tokens"));
+	});
+
+	// 「全部」口径部分成功：单个模版绑定智能体查询失败返回已成功部分的合并并标注 coverage，不打挂请求。
+	it("全部用量部分成功：失败智能体标注 coverage，汇总与趋势均返回已成功合并", async () => {
+		const { db, services, app } = setup();
+		const now = new Date().toISOString();
+		const insertTemplate = db.prepare(
+			"INSERT INTO kit_templates (template_id, name, remote_agent_id, remote_agent_name, config_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+		);
+		insertTemplate.run("t1", "模版一", "agent-a", "agent-a", "{}", now);
+		insertTemplate.run("t2", "模版二", "agent-b", "agent-b", "{}", now);
+
+		vi.spyOn(services.gateway, "getUsageSummary").mockImplementation(async (request) => {
+			if (request.agent_id === "agent-a")
+				return {
+					request_id: "req_stub",
+					data: {
+						query_range: { start_time: "2026-11-11T00:00:00+08:00", end_time: "2026-11-18T00:00:00+08:00" },
+						data_updated_at: null,
+						usage: { total: stubTotal(100, 2), models: [], tools: [] },
+					},
+				} as UsageSummaryResponse;
+			throw new Error("agent-b 查询失败");
+		});
+		const all = await app.request("/api/admin/usage/summary", { headers: auditor });
+		expect(all.status).toBe(200);
+		const body = (await all.json()) as { data: UsageSummary };
+		expect(body.data.usage.total.input_tokens).toEqual(metricOf(100, "tokens"));
+		expect(body.data.coverage).toEqual({ complete: false, missing_agent_ids: ["agent-b"] });
+
+		vi.spyOn(services.gateway, "getUsageTrend").mockImplementation(async (request) => {
+			if (request.agent_id === "agent-a")
+				return {
+					request_id: "req_stub",
+					data: {
+						query_range: { start_time: "2026-11-11T00:00:00+08:00", end_time: "2026-11-18T00:00:00+08:00" },
+						data_updated_at: null,
+						granularity: "day",
+						points: [
+							{
+								start_time: "2026-11-17T00:00:00+08:00",
+								end_time: "2026-11-18T00:00:00+08:00",
+								usage: { total: stubTotal(100, 1), models: [], tools: [] },
+							},
+						],
+						has_more: false,
+						next_page_token: null,
+					},
+				} as UsageTrendResponse;
+			throw new Error("agent-b 趋势查询失败");
+		});
+		const trend = await app.request("/api/admin/usage/trend", { headers: auditor });
+		expect(trend.status).toBe(200);
+		const trendBody = (await trend.json()) as { data: UsageTrend };
+		expect(trendBody.data.points[0]?.usage.total.input_tokens).toEqual(metricOf(100, "tokens"));
+		expect(trendBody.data.coverage).toEqual({ complete: false, missing_agent_ids: ["agent-b"] });
+
+		// 全部智能体都失败：返回零值汇总且 coverage 列出全部缺失来源。
+		vi.spyOn(services.gateway, "getUsageSummary").mockRejectedValue(new Error("全部失败"));
+		const none = await app.request("/api/admin/usage/summary", { headers: auditor });
+		expect(none.status).toBe(200);
+		const noneBody = (await none.json()) as { data: UsageSummary };
+		expect(noneBody.data.usage.total.input_tokens).toEqual(metricOf(0, "tokens"));
+		expect(noneBody.data.coverage).toEqual({ complete: false, missing_agent_ids: ["agent-a", "agent-b"] });
 	});
 });

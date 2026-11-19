@@ -269,7 +269,8 @@ export function createTemplateStore(db: DatabaseSync) {
 				return get(id);
 			});
 		},
-		/** 历史只追加；当前配置、版本和关联目录同步必须在同一事务提交。 */
+		/** 历史只追加；当前配置、版本和关联目录同步必须在同一事务提交。
+		 * 事务内复核 deleted_at：编辑的 Provider 校验是异步窗口，删除可能在窗口内提交，不能覆盖已删模版。 */
 		update(
 			templateId: string,
 			baseVersion: number,
@@ -277,6 +278,7 @@ export function createTemplateStore(db: DatabaseSync) {
 			syncCatalog: (template: TemplateView) => void,
 		): TemplateView {
 			return transaction(() => {
+				if (isDeleted(templateId)) throw new KitError("not_found", "模版不存在");
 				const current = get(templateId);
 				if (current.version !== baseVersion) throw new KitError("conflict", "模版已有新版本，请刷新后重新编辑");
 				if (input.remote_agent_id !== current.remote_agent_id) assertAgentAvailable(input.remote_agent_id, templateId);

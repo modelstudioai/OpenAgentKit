@@ -207,6 +207,16 @@ export const UsageToolRowSchema = z.object({
 export type UsageToolRow = z.infer<typeof UsageToolRowSchema>;
 
 /**
+ * 「全部」模版口径合并的部分成功标注：某模版绑定智能体查询失败时不打挂整个请求，
+ * 改为返回已成功部分的合并并标注缺失来源；仅在部分失败时出现，缺省即完整。
+ */
+export const UsageCoverageSchema = z.object({
+	complete: z.boolean(),
+	missing_agent_ids: z.array(z.string()),
+});
+export type UsageCoverage = z.infer<typeof UsageCoverageSchema>;
+
+/**
  * 一个查询维度的用量汇总：total / models / tools 是同一范围的三个视图，
  * 不得把 total 与明细行相加；无统计记录时 data_updated_at 为 null。
  */
@@ -219,6 +229,8 @@ export const UsageSummarySchema = z.object({
 		models: z.array(UsageModelRowSchema),
 		tools: z.array(UsageToolRowSchema),
 	}),
+	/** 仅「全部」模版口径部分成功时出现。 */
+	coverage: UsageCoverageSchema.optional(),
 });
 export type UsageSummary = z.infer<typeof UsageSummarySchema>;
 
@@ -245,5 +257,7 @@ export const UsageTrendSchema = z.object({
 	has_more: z.boolean(),
 	/** 下一页游标；末页或已过期时为 null。 */
 	next_page_token: z.string().nullable(),
+	/** 仅「全部」模版口径部分成功时出现。 */
+	coverage: UsageCoverageSchema.optional(),
 });
 export type UsageTrend = z.infer<typeof UsageTrendSchema>;

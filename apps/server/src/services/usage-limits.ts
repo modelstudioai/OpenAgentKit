@@ -105,14 +105,14 @@ export function createUsageLimitService({
 	}
 	/** 共享模版的准入边界：补采与合计判断按条目串行，锁序恒为成员锁 → 条目锁，不反向获取。 */
 	const templateLocks = new Map<string, Promise<unknown>>();
-	async function templateLocked<T>(slug: string, work: () => Promise<T>): Promise<T> {
-		const previous = templateLocks.get(slug) ?? Promise.resolve();
+	async function templateLocked<T>(entryId: string, work: () => Promise<T>): Promise<T> {
+		const previous = templateLocks.get(entryId) ?? Promise.resolve();
 		const task = previous.catch(() => {}).then(work);
-		templateLocks.set(slug, task);
+		templateLocks.set(entryId, task);
 		try {
 			return await task;
 		} finally {
-			if (templateLocks.get(slug) === task) templateLocks.delete(slug);
+			if (templateLocks.get(entryId) === task) templateLocks.delete(entryId);
 		}
 	}
 	async function bounded<T>(promise: Promise<T>): Promise<T> {
@@ -368,10 +368,10 @@ export function createUsageLimitService({
 		if (used >= limit) throw templateQuotaError(name, period, periodKey, limit, used);
 	}
 	/** 共享模版准入合计：条目月账 + 条目日账 + 全部未入账预览增量（增量按采集确认日归入当日）。 */
-	function templateAdmissionTotals(slug: string, month: string, rows: UsageLimitSession[], collected: Collection) {
-		const monthTotals = store.agentTotals(slug, month);
+	function templateAdmissionTotals(entryId: string, month: string, rows: UsageLimitSession[], collected: Collection) {
+		const monthTotals = store.agentTotals(entryId, month);
 		const day = dayKey(now());
-		const dayTotals = store.agentDayTotals(slug, day);
+		const dayTotals = store.agentDayTotals(entryId, day);
 		const totals = {
 			dayKey: day,
 			tokens: monthTotals.tokens,
@@ -403,10 +403,10 @@ export function createUsageLimitService({
 		};
 	}
 	/** 条目锁内的准入判断：先只读补采清单里尚未读取的会话，再按账本 + 未入账增量做共享限额检查。 */
-	async function admitTemplate(slug: string, month: string, collected: Collection, override: UsageLimitConfig) {
-		const rows = store.templateSessions(slug, month);
+	async function admitTemplate(entryId: string, month: string, collected: Collection, override: UsageLimitConfig) {
+		const rows = store.templateSessions(entryId, month);
 		await previewTemplateSessions(rows, collected);
-		const totals = templateAdmissionTotals(slug, month, rows, collected);
+		const totals = templateAdmissionTotals(entryId, month, rows, collected);
 		assertTemplateMetric("tokens", "month", month, override.monthly_tokens, totals.tokens, totals.monthTokensUnknown);
 		assertTemplateMetric(
 			"active_seconds",
@@ -436,11 +436,15 @@ export function createUsageLimitService({
 	}
 	/** 模版限额准入：其他成员已发生、尚未采集的消耗以只读补采计入合计（不入账，自有基线
 	 * 仍只在成员锁内写入）；本次读取失败、字段缺失或计数倒退的会话不得凭旧账本放行。 */
-	async function assertTemplateAdmission(agentSlug: string | undefined, month: string, collected: Collection) {
-		if (!agentSlug) return;
-		const override = store.templateOverrideBySlug(agentSlug);
+	async function assertTemplateAdmission(
+		catalogEntryId: string | null | undefined,
+		month: string,
+		collected: Collection,
+	) {
+		if (!catalogEntryId) return;
+		const override = store.templateOverrideByEntry(catalogEntryId);
 		if (!override || !enabled(override)) return;
-		await templateLocked(agentSlug, () => admitTemplate(agentSlug, month, collected, override));
+		await templateLocked(catalogEntryId, () => admitTemplate(catalogEntryId, month, collected, override));
 	}
 	function templateView(templateId: string): TemplateUsageLimitView {
 		const override = store.templateOverride(templateId);
@@ -451,31 +455,31 @@ export function createUsageLimitService({
 			daily_active_seconds: null,
 		};
 		const month = monthKey(now());
-		const slug = store.templateSlug(templateId);
-		const used = slug
-			? store.agentTotals(slug, month)
+		const entryId = store.templateEntryId(templateId);
+		const used = entryId
+			? store.agentTotals(entryId, month)
 			: { tokens: 0, active_seconds: 0, tokens_unknown: 0, active_seconds_unknown: 0 };
 		const day = dayKey(now());
-		const dayUsed = slug ? store.agentDayTotals(slug, day) : { tokens: 0, active_seconds: 0 };
+		const dayUsed = entryId ? store.agentDayTotals(entryId, day) : { tokens: 0, active_seconds: 0 };
 		return {
 			template_id: templateId,
 			month,
 			reset_at: resetAtFor(month),
 			limits,
 			override,
-			tokens: metric(limits.monthly_tokens, used.tokens, Boolean(slug) && !used.tokens_unknown),
+			tokens: metric(limits.monthly_tokens, used.tokens, Boolean(entryId) && !used.tokens_unknown),
 			active_seconds: metric(
 				limits.monthly_active_seconds,
 				used.active_seconds,
-				Boolean(slug) && !used.active_seconds_unknown,
+				Boolean(entryId) && !used.active_seconds_unknown,
 			),
 			day_state: {
 				day,
 				reset_at: dayResetAtFor(day),
-				tokens: metric(limits.daily_tokens, dayUsed.tokens, Boolean(slug)),
-				active_seconds: metric(limits.daily_active_seconds, dayUsed.active_seconds, Boolean(slug)),
+				tokens: metric(limits.daily_tokens, dayUsed.tokens, Boolean(entryId)),
+				active_seconds: metric(limits.daily_active_seconds, dayUsed.active_seconds, Boolean(entryId)),
 			},
-			...(slug ? { refreshed_at: now().toISOString() } : {}),
+			...(entryId ? { refreshed_at: now().toISOString() } : {}),
 		};
 	}
 	/** 模版用量逐日趋势：条目逐日账（模版限额账本启用后开始记录），零值补全到今天（UTC 日键）；
@@ -629,7 +633,7 @@ export function createUsageLimitService({
 			const admittedAt = now();
 			const admittedMonth = admissionMonth(sessionId, continuation, admittedAt);
 			assertAvailable(view(local.subject_id, started, collected, admittedMonth, sessionId));
-			await assertTemplateAdmission(local.agent_slug, admittedMonth, collected);
+			await assertTemplateAdmission(local.catalog_entry_id, admittedMonth, collected);
 			await beforeSend?.();
 			const reject = store.begin({
 				sessionId,

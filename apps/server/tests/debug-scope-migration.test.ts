@@ -99,8 +99,9 @@ it("已有项目调试迁移后明确来源并保留原归属，允许无项目�
 	let db = openDatabase(dataDir);
 	try {
 		// 重建 014 的真实 Session 表，证明新迁移不把已存在的项目记录当成模版。
+		// 035 一并重跑：其 ALTER 依赖 035 前的 kit_session_usage 与条目月/日账形状，降级时需一并还原。
 		db.exec(`
-DELETE FROM _kit_migrations WHERE id IN ('015_template_debug_sessions', '024_template_default_environment');
+DELETE FROM _kit_migrations WHERE id IN ('015_template_debug_sessions', '024_template_default_environment', '035_usage_entry_identity');
 DROP TABLE kit_sessions;
 CREATE TABLE kit_sessions (
  session_id TEXT PRIMARY KEY, subject_id TEXT NOT NULL, purpose TEXT NOT NULL,
@@ -110,6 +111,38 @@ CREATE TABLE kit_sessions (
 );
 INSERT INTO kit_sessions VALUES ('project-debug','admin','admin_debug',NULL,'agent_remote','project','assistant','rev',0,'旧调试','idle','2026-10-20',NULL,'[]');
 INSERT INTO kit_sessions VALUES ('employee','admin','experience','assistant','agent_remote',NULL,NULL,NULL,NULL,'员工会话','idle','2026-10-20',NULL,'[]');
+DROP TABLE kit_session_usage;
+CREATE TABLE kit_session_usage (
+  session_id TEXT PRIMARY KEY,
+  member_id TEXT NOT NULL,
+  agent_slug TEXT NOT NULL,
+  title TEXT,
+  status TEXT,
+  created_at TEXT NOT NULL,
+  input_tokens INTEGER,
+  output_tokens INTEGER,
+  cache_read_input_tokens INTEGER,
+  cache_creation_input_tokens INTEGER,
+  active_seconds REAL,
+  duration_seconds REAL,
+  collection_status TEXT NOT NULL DEFAULT 'pending',
+  captured_at TEXT,
+  attempted_at TEXT,
+  capture_revision INTEGER NOT NULL DEFAULT 0,
+  finalized_at TEXT,
+  deleted_at TEXT
+);
+DROP TABLE kit_usage_limit_agent_months;
+CREATE TABLE kit_usage_limit_agent_months (
+  agent_slug TEXT NOT NULL, month TEXT NOT NULL, tokens INTEGER NOT NULL DEFAULT 0,
+  active_seconds REAL NOT NULL DEFAULT 0, tokens_unknown INTEGER NOT NULL DEFAULT 0,
+  active_seconds_unknown INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (agent_slug, month)
+);
+DROP TABLE kit_usage_limit_agent_days;
+CREATE TABLE kit_usage_limit_agent_days (
+  agent_slug TEXT NOT NULL, day TEXT NOT NULL, tokens INTEGER NOT NULL DEFAULT 0,
+  active_seconds REAL NOT NULL DEFAULT 0, PRIMARY KEY (agent_slug, day)
+);
 `);
 		db.close();
 		db = openDatabase(dataDir);
@@ -153,8 +186,11 @@ it("升级旧模版调试索引保留完整配置，允许默认环境但仍拒�
 	let db = openDatabase(dataDir);
 	try {
 		// 015 仍要求模版调试显式指定环境，重建该形状验证 024 的实际升级。
+		// 024 重建会丢掉后加的 catalog_entry_id，故 035 一并重跑；其 ALTER 依赖的
+		// kit_session_usage 与条目月/日账需还原到 035 前形状。重建表先含该列，
+		// 供重跑前 createSessionIndex 写入。
 		db.exec(`
-DELETE FROM _kit_migrations WHERE id = '024_template_default_environment';
+DELETE FROM _kit_migrations WHERE id IN ('024_template_default_environment', '035_usage_entry_identity');
 DROP TABLE kit_sessions;
 CREATE TABLE kit_sessions (
   session_id TEXT PRIMARY KEY, subject_id TEXT NOT NULL,
@@ -163,7 +199,7 @@ CREATE TABLE kit_sessions (
   project_revision TEXT, source_dirty INTEGER, title TEXT, status TEXT,
   created_at TEXT NOT NULL, last_event_at TEXT, files_json TEXT,
   debug_source TEXT CHECK (debug_source IN ('project', 'template')),
-  remote_environment_id TEXT, runtime_json TEXT,
+  remote_environment_id TEXT, runtime_json TEXT, catalog_entry_id TEXT,
   CHECK ((purpose = 'experience' AND agent_slug IS NOT NULL AND debug_source IS NULL)
     OR (purpose = 'admin_debug' AND agent_slug IS NULL AND remote_agent_id IS NOT NULL AND debug_source IS NOT NULL AND
       ((debug_source = 'project' AND project_name IS NOT NULL AND agent_key IS NOT NULL)
@@ -171,6 +207,38 @@ CREATE TABLE kit_sessions (
 );
 CREATE INDEX idx_sessions_subject ON kit_sessions(purpose, subject_id, created_at);
 CREATE INDEX idx_debug_sessions_project ON kit_sessions(purpose, subject_id, project_name, agent_key, created_at);
+DROP TABLE kit_session_usage;
+CREATE TABLE kit_session_usage (
+  session_id TEXT PRIMARY KEY,
+  member_id TEXT NOT NULL,
+  agent_slug TEXT NOT NULL,
+  title TEXT,
+  status TEXT,
+  created_at TEXT NOT NULL,
+  input_tokens INTEGER,
+  output_tokens INTEGER,
+  cache_read_input_tokens INTEGER,
+  cache_creation_input_tokens INTEGER,
+  active_seconds REAL,
+  duration_seconds REAL,
+  collection_status TEXT NOT NULL DEFAULT 'pending',
+  captured_at TEXT,
+  attempted_at TEXT,
+  capture_revision INTEGER NOT NULL DEFAULT 0,
+  finalized_at TEXT,
+  deleted_at TEXT
+);
+DROP TABLE kit_usage_limit_agent_months;
+CREATE TABLE kit_usage_limit_agent_months (
+  agent_slug TEXT NOT NULL, month TEXT NOT NULL, tokens INTEGER NOT NULL DEFAULT 0,
+  active_seconds REAL NOT NULL DEFAULT 0, tokens_unknown INTEGER NOT NULL DEFAULT 0,
+  active_seconds_unknown INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (agent_slug, month)
+);
+DROP TABLE kit_usage_limit_agent_days;
+CREATE TABLE kit_usage_limit_agent_days (
+  agent_slug TEXT NOT NULL, day TEXT NOT NULL, tokens INTEGER NOT NULL DEFAULT 0,
+  active_seconds REAL NOT NULL DEFAULT 0, PRIMARY KEY (agent_slug, day)
+);
 `);
 		const previous = createSessionIndex(db);
 		previous.create({ sessionId: "employee", subjectId: "admin", agentSlug: "assistant" });

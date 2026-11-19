@@ -14,6 +14,7 @@ interface Row {
 	subject_id: string;
 	purpose: SessionPurpose;
 	agent_slug: string | null;
+	catalog_entry_id: string | null;
 	remote_agent_id: string | null;
 	debug_source: "project" | "template" | null;
 	remote_environment_id: string | null;
@@ -54,7 +55,7 @@ export type CreateSessionIndexInput = {
 	title?: string;
 	files?: AttachmentRef[];
 } & (
-	| { purpose?: "experience"; agentSlug: string; remoteAgentId?: string }
+	| { purpose?: "experience"; agentSlug: string; catalogEntryId?: string; remoteAgentId?: string }
 	| { purpose: "admin_debug"; debug: DebugSessionTarget }
 );
 
@@ -116,10 +117,22 @@ function debugRow(row: Row) {
 
 function targetColumns(input: CreateSessionIndexInput) {
 	if (input.purpose !== "admin_debug")
-		return [input.agentSlug, input.remoteAgentId ?? null, null, null, null, null, null, null, null];
+		return [
+			input.agentSlug,
+			input.catalogEntryId ?? null,
+			input.remoteAgentId ?? null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+		];
 	const target = input.debug;
 	if (target.source === "template")
 		return [
+			null,
 			null,
 			target.remote_agent_id,
 			null,
@@ -135,6 +148,7 @@ function targetColumns(input: CreateSessionIndexInput) {
 			}),
 		];
 	return [
+		null,
 		null,
 		target.remote_agent_id,
 		target.project_name,
@@ -161,10 +175,10 @@ export function createSessionIndex(db: DatabaseSync) {
 		create(input: CreateSessionIndexInput) {
 			const now = new Date().toISOString();
 			db.prepare(`INSERT INTO kit_sessions
-        (session_id, subject_id, purpose, agent_slug, remote_agent_id, project_name, agent_key,
+        (session_id, subject_id, purpose, agent_slug, catalog_entry_id, remote_agent_id, project_name, agent_key,
           project_revision, source_dirty, debug_source, remote_environment_id, runtime_json,
           title, status, created_at, last_event_at, files_json)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
 				input.sessionId,
 				input.subjectId,
 				input.purpose ?? "experience",

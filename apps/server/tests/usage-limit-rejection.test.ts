@@ -24,11 +24,12 @@ afterEach(() => {
 	for (const close of cleanup.splice(0).reverse()) close();
 });
 
-/** 模版条目 fixture：catalog slug 与 setup 的会话 agentSlug 同名，限额外部数据最少。 */
+/** 模版条目 fixture：catalog slug 与 setup 的会话 agentSlug 同名，限额外部数据最少。
+ * 返回条目 ID：账本与准入按条目 ID 记键（slug 软删后可复用）。 */
 function listing(db: ReturnType<typeof openDatabase>) {
 	const catalog = createCatalogStore(db);
 	const templates = createTemplateStore(db);
-	catalog.create({ slug: "agent", display_name: "模版条目", remote_agent_id: "remote-x" });
+	const entry = catalog.create({ slug: "agent", display_name: "模版条目", remote_agent_id: "remote-x" });
 	const created = templates.create({
 		name: "客服模版",
 		remote_agent_id: "remote-x",
@@ -43,8 +44,8 @@ function listing(db: ReturnType<typeof openDatabase>) {
 		vault_ids: [],
 		category: "general",
 	});
-	templates.saveListing(created.template_id, () => catalog.getBySlug("agent")!);
-	return created.template_id;
+	templates.saveListing(created.template_id, () => entry);
+	return { templateId: created.template_id, entryId: entry.id };
 }
 
 function setup() {
@@ -54,6 +55,7 @@ function setup() {
 	cleanup.push(() => db.close());
 	const members = createMemberStore(db);
 	const index = createSessionIndex(db);
+	const { templateId, entryId } = listing(db);
 	let now = new Date("2026-10-31T20:00:00.000Z");
 	members.create(
 		{
@@ -70,7 +72,7 @@ function setup() {
 	const details = new Map<string, GatewaySessionInfo>();
 	const events = new Map<string, SessionEvent[]>();
 	for (const id of ["s", "other"]) {
-		index.create({ sessionId: id, subjectId: "member", agentSlug: "agent" });
+		index.create({ sessionId: id, subjectId: "member", agentSlug: "agent", catalogEntryId: entryId });
 		details.set(id, {
 			session_id: id,
 			status: "idle",
@@ -129,6 +131,8 @@ function setup() {
 		post,
 		members,
 		index,
+		templateId,
+		entryId,
 		respond: (value: typeof response) => {
 			response = value;
 		},
@@ -221,7 +225,6 @@ describe("明确拒绝与未知发送结果的恢复边界（合成 HTTP，不�
 
 	it("模版月度限额：采集双写条目月账，超限拒发并可通过重置恢复；未设置不拦", async () => {
 		const f = setup();
-		const templateId = listing(f.db);
 
 		f.respond(200);
 		await f.run();
@@ -233,14 +236,14 @@ describe("明确拒绝与未知发送结果的恢复边界（合成 HTTP，不�
 		});
 		await f.service.member("member");
 		// 发送采集与成员月账同事务双写条目月账（input 100 + output 0）。
-		expect(f.store.agentTotals("agent", "2026-10").tokens).toBe(100);
+		expect(f.store.agentTotals(f.entryId, "2026-10").tokens).toBe(100);
 
 		// 未设置覆盖时不拦。
 		f.respond(200);
 		await expect(f.run("s", "second")).resolves.toEqual({ event_ids: ["accepted-2"] });
 
 		f.service.setTemplate(
-			templateId,
+			f.templateId,
 			{ monthly_tokens: 50, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 			"admin",
 		);
@@ -255,7 +258,7 @@ describe("明确拒绝与未知发送结果的恢复边界（合成 HTTP，不�
 			code: "quota_exceeded",
 			details: { scope: "template", limit: 50, used: 100, metric: "tokens" },
 		});
-		f.service.resetTemplate(templateId, "admin");
+		f.service.resetTemplate(f.templateId, "admin");
 		// 403 拒绝发生在发送受理之前，不消耗 Provider POST 编号。
 		await expect(f.run("s", "fourth")).resolves.toEqual({ event_ids: ["accepted-3"] });
 	});
@@ -263,7 +266,7 @@ describe("明确拒绝与未知发送结果的恢复边界（合成 HTTP，不�
 	it("模版共享月账：等待期间其他成员入账的增量不被明确拒绝的回滚覆盖", async () => {
 		const f = setup();
 		f.service.setTemplate(
-			listing(f.db),
+			f.templateId,
 			{ monthly_tokens: 100, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 			"admin",
 		);
@@ -280,7 +283,7 @@ describe("明确拒绝与未知发送结果的恢复边界（合成 HTTP，不�
 			},
 			"unused",
 		);
-		f.index.create({ sessionId: "sb", subjectId: "member_b", agentSlug: "agent" });
+		f.index.create({ sessionId: "sb", subjectId: "member_b", agentSlug: "agent", catalogEntryId: f.entryId });
 		f.details.set("sb", {
 			session_id: "sb",
 			status: "idle",
@@ -303,17 +306,17 @@ describe("明确拒绝与未知发送结果的恢复边界（合成 HTTP，不�
 		const pendingA = f.run("s", "a-second");
 		await vi.waitFor(() => expect(f.post).toHaveBeenCalledTimes(3), { interval: 1 });
 		f.store.observe("sb", { input_tokens: 60, output_tokens: 40 }, now);
-		expect(f.store.agentTotals("agent", "2026-10").tokens).toBe(100);
+		expect(f.store.agentTotals(f.entryId, "2026-10").tokens).toBe(100);
 		f.respond(400); // A 的 POST 将被 Provider 明确拒绝。
 		releaseA();
 		await expect(pendingA).rejects.toMatchObject({ code: "provider_error", details: { request_rejected: true } });
 		// 回滚只撤销本次请求引入的变更：B 已入账的 100 保留，重启后仍在，重复采集不重计。
-		expect(f.store.agentTotals("agent", "2026-10")).toMatchObject({ tokens: 100, tokens_unknown: 0 });
+		expect(f.store.agentTotals(f.entryId, "2026-10")).toMatchObject({ tokens: 100, tokens_unknown: 0 });
 		const reopened = openDatabase(f.dataDir);
 		cleanup.push(() => reopened.close());
-		expect(createUsageLimitStore(reopened).agentTotals("agent", "2026-10").tokens).toBe(100);
+		expect(createUsageLimitStore(reopened).agentTotals(f.entryId, "2026-10").tokens).toBe(100);
 		f.store.observe("sb", { input_tokens: 60, output_tokens: 40 }, now);
-		expect(f.store.agentTotals("agent", "2026-10").tokens).toBe(100);
+		expect(f.store.agentTotals(f.entryId, "2026-10").tokens).toBe(100);
 	});
 
 	it("允许审批被明确拒绝后仍可人工重试，不被审批缓存或月度账本改写为未知", async () => {

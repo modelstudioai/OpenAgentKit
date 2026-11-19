@@ -13,9 +13,6 @@ import {
 
 type SnapshotValues = SessionUsage & SessionStats;
 
-/** slug 可被已删行与活动行复用：按 slug 连接条目时固定选活动行（无活动行取最近更新的已删行），保证一行匹配。 */
-const CATALOG_BY_SLUG_ACTIVE =
-	"c.id = (SELECT i.id FROM catalog_agents i WHERE i.slug = u.agent_slug ORDER BY (i.deleted_at IS NOT NULL), i.updated_at DESC LIMIT 1)";
 type Row = Omit<MemberSessionUsage, "usage" | "stats" | "title" | "status" | "captured_at" | "deleted_at"> & {
 	title: string | null;
 	status: string | null;
@@ -94,9 +91,10 @@ export function createSessionUsageStore(db: DatabaseSync) {
 	function get(sessionId: string) {
 		return db.prepare("SELECT * FROM kit_session_usage WHERE session_id = ?").get(sessionId) as Row | undefined;
 	}
+	// 归属键与 kit_sessions 同步：slug 软删后可复用，按条目 ID 归属才不会把新条目的会话串到旧条目。
 	function syncMember(memberId: string) {
-		db.prepare(`INSERT INTO kit_session_usage (session_id, member_id, agent_slug, title, status, created_at)
-			SELECT s.session_id, s.subject_id, s.agent_slug, s.title, s.status, s.created_at
+		db.prepare(`INSERT INTO kit_session_usage (session_id, member_id, agent_slug, catalog_entry_id, title, status, created_at)
+			SELECT s.session_id, s.subject_id, s.agent_slug, s.catalog_entry_id, s.title, s.status, s.created_at
 			FROM kit_sessions s JOIN kit_members m ON m.member_id = s.subject_id
 			WHERE s.purpose = 'experience' AND m.member_id = ?
 			ON CONFLICT(session_id) DO UPDATE SET title = excluded.title
@@ -104,8 +102,8 @@ export function createSessionUsageStore(db: DatabaseSync) {
 	}
 	/** 登记全部成员的体验会话并返回涉及成员，供调用方调度后台采集。 */
 	function syncAll(): string[] {
-		db.prepare(`INSERT INTO kit_session_usage (session_id, member_id, agent_slug, title, status, created_at)
-			SELECT s.session_id, s.subject_id, s.agent_slug, s.title, s.status, s.created_at
+		db.prepare(`INSERT INTO kit_session_usage (session_id, member_id, agent_slug, catalog_entry_id, title, status, created_at)
+			SELECT s.session_id, s.subject_id, s.agent_slug, s.catalog_entry_id, s.title, s.status, s.created_at
 			FROM kit_sessions s JOIN kit_members m ON m.member_id = s.subject_id
 			WHERE s.purpose = 'experience'
 			ON CONFLICT(session_id) DO UPDATE SET title = excluded.title
@@ -156,7 +154,7 @@ export function createSessionUsageStore(db: DatabaseSync) {
 				FROM kit_templates t
 				LEFT JOIN kit_template_listings l ON l.template_id = t.template_id
 				LEFT JOIN catalog_agents c ON c.id = l.catalog_id
-				LEFT JOIN kit_session_usage u ON u.agent_slug = c.slug
+				LEFT JOIN kit_session_usage u ON u.catalog_entry_id = c.id
 				${filter}
 				GROUP BY t.template_id ORDER BY t.created_at, t.template_id`)
 				.all(...(search ? [pattern, pattern, pattern] : [])) as (Record<string, number | null> & {
@@ -191,7 +189,7 @@ export function createSessionUsageStore(db: DatabaseSync) {
 				COALESCE(SUM(u.cache_read_input_tokens), 0) AS cache_read_tokens,
 				COALESCE(SUM(u.cache_creation_input_tokens), 0) AS cache_creation_tokens
 				FROM kit_session_usage u
-				JOIN catalog_agents c ON ${CATALOG_BY_SLUG_ACTIVE}
+				JOIN catalog_agents c ON c.id = u.catalog_entry_id
 				JOIN kit_template_listings l ON l.catalog_id = c.id
 				JOIN kit_templates t ON t.template_id = l.template_id
 				GROUP BY t.remote_agent_id`)
@@ -232,7 +230,7 @@ export function createSessionUsageStore(db: DatabaseSync) {
 				COALESCE(SUM(u.cache_read_input_tokens), 0) AS cache_read_tokens,
 				COALESCE(SUM(u.cache_creation_input_tokens), 0) AS cache_creation_tokens
 				FROM kit_session_usage u
-				JOIN catalog_agents c ON ${CATALOG_BY_SLUG_ACTIVE}
+				JOIN catalog_agents c ON c.id = u.catalog_entry_id
 				JOIN kit_template_listings l ON l.catalog_id = c.id
 				JOIN kit_templates t ON t.template_id = l.template_id
 				GROUP BY t.remote_agent_id, hour`)
@@ -360,13 +358,18 @@ export function createSessionUsageStore(db: DatabaseSync) {
 				FROM kit_session_usage WHERE ${filter}`)
 				.get(...params) as Record<string, number | null>;
 			const metrics = metricSummary(totals, counts.total);
+			// 展示名按最新会话落下的条目解析（slug 可复用，不能按 slug 反查当前条目）；
+			// 成员侧筛选键仍为 agent_slug，条目 ID 仅用于展示归属。
 			const agents = db
-				.prepare(`SELECT u.agent_slug AS slug, c.display_name AS display_name, (c.deleted_at IS NOT NULL) AS deleted
-				FROM kit_session_usage u
-				LEFT JOIN catalog_agents c ON ${CATALOG_BY_SLUG_ACTIVE}
-				WHERE u.member_id = ?
-				GROUP BY u.agent_slug
-				ORDER BY u.agent_slug`)
+				.prepare(`SELECT slug, display_name, deleted FROM (
+					SELECT u.agent_slug AS slug,
+						ROW_NUMBER() OVER (PARTITION BY u.agent_slug ORDER BY u.created_at DESC, u.session_id DESC) AS rn,
+						c.display_name AS display_name, (c.deleted_at IS NOT NULL) AS deleted
+					FROM kit_session_usage u
+					LEFT JOIN catalog_agents c ON c.id = u.catalog_entry_id
+					WHERE u.member_id = ?
+				) WHERE rn = 1
+				ORDER BY slug`)
 				.all(memberId) as { slug: string; display_name: string | null; deleted: number }[];
 			return {
 				session_count: counts.total,
@@ -439,7 +442,7 @@ export function createSessionUsageStore(db: DatabaseSync) {
 				.prepare(`SELECT u.*, m.display_name AS member_display_name, m.username AS member_username
 				FROM kit_template_listings l
 				JOIN catalog_agents c ON c.id = l.catalog_id
-				JOIN kit_session_usage u ON u.agent_slug = c.slug
+				JOIN kit_session_usage u ON u.catalog_entry_id = c.id
 				JOIN kit_members m ON m.member_id = u.member_id
 				WHERE l.template_id = ?
 				${cursor ? "AND (u.created_at < ? OR (u.created_at = ? AND u.session_id < ?))" : ""}

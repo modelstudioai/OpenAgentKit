@@ -77,70 +77,73 @@ export function createUsageLimitStore(db: DatabaseSync) {
 				| undefined) ?? { tokens: 0, active_seconds: 0, tokens_unknown: 0, active_seconds_unknown: 0 }
 		);
 	}
-	/** 会话的记账条目：优先用量账本行（保留已删除会话），退回会话索引。 */
-	function agentSlugOf(sessionId: string): string | null {
+	/** 会话的记账条目（目录条目 ID，035 起落列）：优先用量账本行（保留已删除会话），退回会话索引。 */
+	function catalogEntryOf(sessionId: string): string | null {
 		return (
 			(
-				db.prepare("SELECT agent_slug FROM kit_session_usage WHERE session_id = ?").get(sessionId) as
-					| { agent_slug: string | null }
+				db.prepare("SELECT catalog_entry_id FROM kit_session_usage WHERE session_id = ?").get(sessionId) as
+					| { catalog_entry_id: string | null }
 					| undefined
-			)?.agent_slug ??
+			)?.catalog_entry_id ??
 			(
-				db.prepare("SELECT agent_slug FROM kit_sessions WHERE session_id = ?").get(sessionId) as
-					| { agent_slug: string | null }
+				db.prepare("SELECT catalog_entry_id FROM kit_sessions WHERE session_id = ?").get(sessionId) as
+					| { catalog_entry_id: string | null }
 					| undefined
-			)?.agent_slug ??
+			)?.catalog_entry_id ??
 			null
 		);
 	}
-	function agentTotals(slug: string, month: string) {
+	function agentTotals(entryId: string, month: string) {
 		return (
 			(db
 				.prepare(
-					"SELECT tokens, active_seconds, tokens_unknown, active_seconds_unknown FROM kit_usage_limit_agent_months WHERE agent_slug = ? AND month = ?",
+					"SELECT tokens, active_seconds, tokens_unknown, active_seconds_unknown FROM kit_usage_limit_agent_months WHERE catalog_entry_id = ? AND month = ?",
 				)
-				.get(slug, month) as
+				.get(entryId, month) as
 				| { tokens: number; active_seconds: number; tokens_unknown: number; active_seconds_unknown: number }
 				| undefined) ?? { tokens: 0, active_seconds: 0, tokens_unknown: 0, active_seconds_unknown: 0 }
 		);
 	}
-	function addAgentMonthly(slug: string, month: string, tokenDelta: number, secondsDelta: number) {
-		if (!Number.isSafeInteger(agentTotals(slug, month).tokens + tokenDelta))
+	function addAgentMonthly(entryId: string, month: string, tokenDelta: number, secondsDelta: number) {
+		if (!Number.isSafeInteger(agentTotals(entryId, month).tokens + tokenDelta))
 			throw new KitError("conflict", "用量数值超出可统计范围", { retryable: true });
-		db.prepare(`INSERT INTO kit_usage_limit_agent_months (agent_slug, month, tokens, active_seconds) VALUES (?, ?, ?, ?)
-		ON CONFLICT(agent_slug, month) DO UPDATE SET tokens = excluded.tokens, active_seconds = excluded.active_seconds`).run(
-			slug,
+		db.prepare(`INSERT INTO kit_usage_limit_agent_months (catalog_entry_id, month, tokens, active_seconds) VALUES (?, ?, ?, ?)
+		ON CONFLICT(catalog_entry_id, month) DO UPDATE SET tokens = excluded.tokens, active_seconds = excluded.active_seconds`).run(
+			entryId,
 			month,
-			agentTotals(slug, month).tokens + tokenDelta,
-			agentTotals(slug, month).active_seconds + secondsDelta,
+			agentTotals(entryId, month).tokens + tokenDelta,
+			agentTotals(entryId, month).active_seconds + secondsDelta,
 		);
 	}
 	/** 条目日账：与成员逐日账（020）同构；日账无未知标记，跨月丢失维度由月账闸门兜底。 */
-	function agentDayTotals(slug: string, day: string) {
+	function agentDayTotals(entryId: string, day: string) {
 		return (
 			(db
-				.prepare("SELECT tokens, active_seconds FROM kit_usage_limit_agent_days WHERE agent_slug = ? AND day = ?")
-				.get(slug, day) as { tokens: number; active_seconds: number } | undefined) ?? { tokens: 0, active_seconds: 0 }
+				.prepare("SELECT tokens, active_seconds FROM kit_usage_limit_agent_days WHERE catalog_entry_id = ? AND day = ?")
+				.get(entryId, day) as { tokens: number; active_seconds: number } | undefined) ?? {
+				tokens: 0,
+				active_seconds: 0,
+			}
 		);
 	}
-	function addAgentDaily(slug: string, day: string, tokenDelta: number, secondsDelta: number) {
+	function addAgentDaily(entryId: string, day: string, tokenDelta: number, secondsDelta: number) {
 		if (tokenDelta === 0 && secondsDelta === 0) return;
-		const previous = agentDayTotals(slug, day);
+		const previous = agentDayTotals(entryId, day);
 		if (!Number.isSafeInteger(previous.tokens + tokenDelta) || !Number.isFinite(previous.active_seconds + secondsDelta))
 			throw new KitError("conflict", "用量数值超出可统计范围", { retryable: true });
-		db.prepare(`INSERT INTO kit_usage_limit_agent_days (agent_slug, day, tokens, active_seconds) VALUES (?, ?, ?, ?)
-		ON CONFLICT(agent_slug, day) DO UPDATE SET tokens = excluded.tokens, active_seconds = excluded.active_seconds`).run(
-			slug,
+		db.prepare(`INSERT INTO kit_usage_limit_agent_days (catalog_entry_id, day, tokens, active_seconds) VALUES (?, ?, ?, ?)
+		ON CONFLICT(catalog_entry_id, day) DO UPDATE SET tokens = excluded.tokens, active_seconds = excluded.active_seconds`).run(
+			entryId,
 			day,
 			previous.tokens + tokenDelta,
 			previous.active_seconds + secondsDelta,
 		);
 	}
-	function markAgentUnknown(slug: string, month: string, tokens: boolean, seconds: boolean) {
-		db.prepare(`INSERT INTO kit_usage_limit_agent_months (agent_slug, month, tokens_unknown, active_seconds_unknown) VALUES (?, ?, ?, ?)
-		ON CONFLICT(agent_slug, month) DO UPDATE SET tokens_unknown = MAX(tokens_unknown, excluded.tokens_unknown),
+	function markAgentUnknown(entryId: string, month: string, tokens: boolean, seconds: boolean) {
+		db.prepare(`INSERT INTO kit_usage_limit_agent_months (catalog_entry_id, month, tokens_unknown, active_seconds_unknown) VALUES (?, ?, ?, ?)
+		ON CONFLICT(catalog_entry_id, month) DO UPDATE SET tokens_unknown = MAX(tokens_unknown, excluded.tokens_unknown),
 		active_seconds_unknown = MAX(active_seconds_unknown, excluded.active_seconds_unknown)`).run(
-			slug,
+			entryId,
 			month,
 			Number(tokens),
 			Number(seconds),
@@ -211,16 +214,16 @@ export function createUsageLimitStore(db: DatabaseSync) {
 		);
 	}
 	function prepareAgentAdmission(
-		slug: string,
+		entryId: string,
 		row: UsageLimitSession,
 		month: string,
 		crossing: boolean,
 		lostTokens: boolean,
 		lostSeconds: boolean,
 	) {
-		if (crossing && row.admission_month) markAgentUnknown(slug, row.admission_month, lostTokens, lostSeconds);
+		if (crossing && row.admission_month) markAgentUnknown(entryId, row.admission_month, lostTokens, lostSeconds);
 		markAgentUnknown(
-			slug,
+			entryId,
 			month,
 			lostTokens || row.input_tokens === null || row.output_tokens === null,
 			lostSeconds || row.active_seconds === null,
@@ -238,26 +241,30 @@ export function createUsageLimitStore(db: DatabaseSync) {
 		if (crossing && row.admission_month) markUnknown(row.member_id, row.admission_month, lostTokens, lostSeconds);
 		resetBaseline(row, month, lostTokens, lostSeconds);
 		// 条目月账与成员账同月同规则：跨月丢失维度标记未知，基线缺失亦然。
-		const slug = agentSlugOf(row.session_id);
-		if (slug) prepareAgentAdmission(slug, row, month, crossing, lostTokens, lostSeconds);
+		const entryId = catalogEntryOf(row.session_id);
+		if (entryId) prepareAgentAdmission(entryId, row, month, crossing, lostTokens, lostSeconds);
 	}
 	/** begin 的条目月账快照：prepareAdmission 前后各固定一份。回滚用它识别「本次 begin 引入的未知标记」，
-	 * 数值列不参与（begin 不写数值，覆盖反而会抹掉其他成员的入账）。 */
+	 * 数值列不参与（begin 不写数值，覆盖反而会抹掉其他成员的入账）。
+	 * 成员侧基线（受理月、跨月未知标记）不依赖条目：条目缺失（无目录归属）也要推进 prepareAdmission，
+	 * 否则 observe 因 admission_month 为空不入账。 */
 	function beginAgentMonths(
-		slug: string | null,
+		entryId: string | null,
 		month: string,
 		row: UsageLimitSession,
 		available: { tokens: boolean; active_seconds: boolean },
 	) {
-		if (slug === null) return [];
-		const entry = slug;
+		if (entryId === null) {
+			prepareAdmission(row, month, available);
+			return [];
+		}
 		const months = [...new Set([month, row.admission_month])].filter((value): value is string => value !== null);
-		const before = months.map((value) => agentTotals(entry, value));
+		const before = months.map((value) => agentTotals(entryId, value));
 		prepareAdmission(row, month, available);
 		return months.map((value, index) => ({
 			month: value,
 			before: before[index]!,
-			after: agentTotals(entry, value),
+			after: agentTotals(entryId, value),
 		}));
 	}
 	/** 仅明确未受理时恢复本次 begin 改动；不撤销此前采集的增量，恢复快照在 begin 事务内固定。 */
@@ -277,7 +284,7 @@ export function createUsageLimitStore(db: DatabaseSync) {
 	/** 共享条目月账不能整行快照覆盖：begin 之后其他成员可能已入账。数值列不动，仅当未知标记
 	 * 仍停留在本次 begin 提升后的值时回退；期间别人的保守提升（MAX 语义）一律保留。 */
 	function restoreAgentUnknown(
-		slug: string,
+		entryId: string,
 		month: string,
 		before: ReturnType<typeof agentTotals>,
 		after: ReturnType<typeof agentTotals>,
@@ -285,12 +292,12 @@ export function createUsageLimitStore(db: DatabaseSync) {
 		db.prepare(`UPDATE kit_usage_limit_agent_months SET
 			tokens_unknown = CASE WHEN tokens_unknown = ? THEN ? ELSE tokens_unknown END,
 			active_seconds_unknown = CASE WHEN active_seconds_unknown = ? THEN ? ELSE active_seconds_unknown END
-			WHERE agent_slug = ? AND month = ?`).run(
+			WHERE catalog_entry_id = ? AND month = ?`).run(
 			after.tokens_unknown,
 			before.tokens_unknown,
 			after.active_seconds_unknown,
 			before.active_seconds_unknown,
-			slug,
+			entryId,
 			month,
 		);
 	}
@@ -298,7 +305,7 @@ export function createUsageLimitStore(db: DatabaseSync) {
 		input: { sessionId: string; key: string },
 		row: UsageLimitSession,
 		previousMonths: { month: string; totals: ReturnType<typeof totals> }[],
-		slug: string | null,
+		entryId: string | null,
 		previousAgentMonths: {
 			month: string;
 			before: ReturnType<typeof agentTotals>;
@@ -313,15 +320,15 @@ export function createUsageLimitStore(db: DatabaseSync) {
 			"UPDATE kit_usage_limit_sessions SET admission_month = ?, input_tokens = ?, output_tokens = ?, active_seconds = ? WHERE session_id = ?",
 		).run(row.admission_month, row.input_tokens, row.output_tokens, row.active_seconds, row.session_id);
 		for (const previous of previousMonths) restoreMemberMonth(row.member_id, previous.month, previous.totals);
-		if (!slug) return;
+		if (!entryId) return;
 		for (const previous of previousAgentMonths)
-			restoreAgentUnknown(slug, previous.month, previous.before, previous.after);
+			restoreAgentUnknown(entryId, previous.month, previous.before, previous.after);
 	}
 	function revertBegin(
 		input: { sessionId: string; key: string },
 		row: UsageLimitSession,
 		previousMonths: { month: string; totals: ReturnType<typeof totals> }[],
-		slug: string | null,
+		entryId: string | null,
 		previousAgentMonths: {
 			month: string;
 			before: ReturnType<typeof agentTotals>;
@@ -329,17 +336,18 @@ export function createUsageLimitStore(db: DatabaseSync) {
 		}[],
 	) {
 		// 闭包不落库；进程在 POST 后退出时，持久 sending 继续保护未知结果。
-		return () => transaction(() => revertCommitted(input, row, previousMonths, slug, previousAgentMonths));
+		return () => transaction(() => revertCommitted(input, row, previousMonths, entryId, previousAgentMonths));
 	}
 	/** 一次采集观测的全部记账：月账、条目月账、成员与条目逐日账（同事务），再由调用方推进会话基线。 */
 	function applyObservation(row: UsageLimitSession, next: ReturnType<typeof observation>, now: string) {
-		const slug = agentSlugOf(row.session_id);
+		const entryId = catalogEntryOf(row.session_id);
 		addMonthly(row, next.tokenDelta, next.secondsDelta);
 		// 模版月账与成员账同月同增量；会话条目缺失（不可归属）时不写模版账。
-		if (slug && row.admission_month) addAgentMonthly(slug, row.admission_month, next.tokenDelta, next.secondsDelta);
+		if (entryId && row.admission_month)
+			addAgentMonthly(entryId, row.admission_month, next.tokenDelta, next.secondsDelta);
 		// 逐日账与成员月账同规则（无受理月不计），归因到采集确认日；条目日账同步双写。
 		if (row.admission_month) addMemberDaily(row.member_id, now.slice(0, 10), next.tokenDelta, next.secondsDelta);
-		if (slug && row.admission_month) addAgentDaily(slug, now.slice(0, 10), next.tokenDelta, next.secondsDelta);
+		if (entryId && row.admission_month) addAgentDaily(entryId, now.slice(0, 10), next.tokenDelta, next.secondsDelta);
 	}
 	return {
 		policy(): UsageLimitPolicy {
@@ -407,13 +415,12 @@ export function createUsageLimitStore(db: DatabaseSync) {
 			);
 		},
 		/** 发送准入按会话条目反查模版覆盖；未上架或未设置的条目返回 null（不限量）。 */
-		templateOverrideBySlug(slug: string): UsageLimitConfig | null {
+		templateOverrideByEntry(entryId: string): UsageLimitConfig | null {
 			return (
 				(db
 					.prepare(`SELECT o.monthly_tokens, o.monthly_active_seconds, o.daily_tokens, o.daily_active_seconds FROM kit_usage_limit_templates o
-				JOIN kit_template_listings l ON l.template_id = o.template_id
-				JOIN catalog_agents c ON c.id = l.catalog_id WHERE c.slug = ?`)
-					.get(slug) as UsageLimitConfig | undefined) ?? null
+				JOIN kit_template_listings l ON l.template_id = o.template_id WHERE l.catalog_id = ?`)
+					.get(entryId) as UsageLimitConfig | undefined) ?? null
 			);
 		},
 		setTemplateOverride(templateId: string, config: UsageLimitConfig, by: string, now: string) {
@@ -434,15 +441,13 @@ export function createUsageLimitStore(db: DatabaseSync) {
 		resetTemplateOverride(templateId: string) {
 			db.prepare("DELETE FROM kit_usage_limit_templates WHERE template_id = ?").run(templateId);
 		},
-		templateSlug(templateId: string): string | null {
+		templateEntryId(templateId: string): string | null {
 			return (
 				(
 					db
-						.prepare(
-							"SELECT c.slug AS slug FROM kit_template_listings l JOIN catalog_agents c ON c.id = l.catalog_id WHERE l.template_id = ?",
-						)
-						.get(templateId) as { slug: string } | undefined
-				)?.slug ?? null
+						.prepare("SELECT catalog_id AS entry_id FROM kit_template_listings WHERE template_id = ?")
+						.get(templateId) as { entry_id: string } | undefined
+				)?.entry_id ?? null
 			);
 		},
 		/** 模版条目逐日账趋势：与 summaryByTemplate 同一 join 口径（模版上架条目），自 fromDay 起逐日合计；
@@ -455,8 +460,7 @@ export function createUsageLimitStore(db: DatabaseSync) {
 				.prepare(`SELECT d.day AS day, SUM(d.tokens) AS tokens, SUM(d.active_seconds) AS active_seconds
 			FROM kit_usage_limit_agent_days d
 			JOIN kit_template_listings l ON ${templateId ? "l.template_id = ?" : "1 = 1"}
-			JOIN catalog_agents c ON c.id = l.catalog_id
-			WHERE d.agent_slug = c.slug AND d.day >= ?
+			WHERE l.catalog_id = d.catalog_entry_id AND d.day >= ?
 			GROUP BY d.day ORDER BY d.day ASC`)
 				.all(...(templateId ? [templateId] : []), fromDay) as unknown as {
 				day: string;
@@ -471,8 +475,7 @@ export function createUsageLimitStore(db: DatabaseSync) {
 					db
 						.prepare(`SELECT MIN(d.day) AS since FROM kit_usage_limit_agent_days d
 			JOIN kit_template_listings l ON ${templateId ? "l.template_id = ?" : "1 = 1"}
-			JOIN catalog_agents c ON c.id = l.catalog_id
-			WHERE d.agent_slug = c.slug`)
+			WHERE l.catalog_id = d.catalog_entry_id`)
 						.get(...(templateId ? [templateId] : [])) as { since: string | null } | undefined
 				)?.since ?? null
 			);
@@ -497,14 +500,14 @@ export function createUsageLimitStore(db: DatabaseSync) {
 		agentTotals,
 		memberDayTotals,
 		agentDayTotals,
-		/** 模版准入的跨成员只读清单：该条目当月入账的全部会话（含其他成员，归属反查与 agentSlugOf 同口径）。 */
-		templateSessions(slug: string, month: string) {
+		/** 模版准入的跨成员只读清单：该条目当月入账的全部会话（含其他成员，归属反查与 catalogEntryOf 同口径）。 */
+		templateSessions(entryId: string, month: string) {
 			return db
 				.prepare(`SELECT s.* FROM kit_usage_limit_sessions s
-				WHERE s.admission_month = ? AND (s.session_id IN (SELECT session_id FROM kit_session_usage WHERE agent_slug = ?)
-					OR s.session_id IN (SELECT session_id FROM kit_sessions WHERE agent_slug = ? AND purpose = 'experience'))
+				WHERE s.admission_month = ? AND (s.session_id IN (SELECT session_id FROM kit_session_usage WHERE catalog_entry_id = ?)
+					OR s.session_id IN (SELECT session_id FROM kit_sessions WHERE catalog_entry_id = ? AND purpose = 'experience'))
 				ORDER BY s.session_id`)
-				.all(month, slug, slug) as unknown as UsageLimitSession[];
+				.all(month, entryId, entryId) as unknown as UsageLimitSession[];
 		},
 		/** 模版准入补采的只读预览：按会话基线计算未入账增量与维度可用性，不写任何账本。 */
 		previewDelta(row: UsageLimitSession, values: UsageObservation) {
@@ -581,11 +584,11 @@ export function createUsageLimitStore(db: DatabaseSync) {
 					.filter((value): value is string => value !== null)
 					.map((value) => ({ month: value, totals: totals(row.member_id, value) }));
 				// 条目月账是跨成员共享账本：begin 前后各固定一份快照，回滚只回退未知标记（restoreAgentUnknown）。
-				const slug = agentSlugOf(input.sessionId);
-				const previousAgentMonths = beginAgentMonths(slug, month, row, input.available);
+				const entryId = catalogEntryOf(input.sessionId);
+				const previousAgentMonths = beginAgentMonths(entryId, month, row, input.available);
 				// 成员锁覆盖 POST；仅明确未受理时恢复本次 begin 改动，不撤销此前采集的增量。
 				// 闭包不落库；进程在 POST 后退出时，持久 sending 继续保护未知结果。
-				return revertBegin(input, row, previousMonths, slug, previousAgentMonths);
+				return revertBegin(input, row, previousMonths, entryId, previousAgentMonths);
 			});
 		},
 		accepted(sessionId: string, key: string, eventIds: string[]) {
