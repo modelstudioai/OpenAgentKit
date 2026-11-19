@@ -1428,7 +1428,7 @@ export function PlazaCard({ entry, onOpen, strings: stringsOverride, }: { entry:
 | `onOpen` | 是 | `(slug: string) => void` |
 | `strings` | 否 | `Partial<PlazaCardStrings> \| undefined` |
 
-<!-- source-sha256: a7d500cda960c9ac1b5dfbb63f775d02a7518c96c9b05ec07cab91c116f216be; doc-sha256: 0cc8f6c08932b8f6667d1cb7470dd7f7c9b0e39ce08ee43d9e64458773142ffc -->
+<!-- source-sha256: 7937620e4d18654f85e84e5c6a2d276178cff57cbf150b8011961fd84b54d708; doc-sha256: 0cc8f6c08932b8f6667d1cb7470dd7f7c9b0e39ce08ee43d9e64458773142ffc -->
 
 ## CategoryTabs
 
@@ -2380,6 +2380,7 @@ import type { PlazaCardStrings } from "@openagentpack/kit-chat-ui";
 
 | 字段 | 必填 | 类型 |
 | --- | --- | --- |
+| `categories` | 是 | `{ general: string; writing: string; coding: string; data: string; other: string; }` |
 | `capabilities` | 是 | `{ streaming: string; fileUpload: string; artifacts: string; threads: string; reasoning: string; }` |
 | `usedToday` | 是 | `string` |
 | `usedYesterday` | 是 | `string` |
