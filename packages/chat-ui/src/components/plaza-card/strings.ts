@@ -1,7 +1,14 @@
 import type { KitStringTable } from "../kit-i18n/index.ts";
 
-/** PlazaCard 文案键；分类名走服务端数据（PLAZA_CATEGORY_LABELS 为协议词汇，另行收敛）。 */
+/** PlazaCard 文案键；分类名由 UI 词表按稳定枚举值映射。 */
 export interface PlazaCardStrings {
+	categories: {
+		general: string;
+		writing: string;
+		coding: string;
+		data: string;
+		other: string;
+	};
 	capabilities: {
 		streaming: string;
 		fileUpload: string;
@@ -23,6 +30,13 @@ export interface PlazaCardStrings {
 
 const plazaCardStrings: KitStringTable<PlazaCardStrings> = {
 	"zh-CN": {
+		categories: {
+			general: "通用",
+			writing: "写作",
+			coding: "编程",
+			data: "数据分析",
+			other: "其他",
+		},
 		capabilities: {
 			streaming: "流式输出",
 			fileUpload: "文件上传",
@@ -42,6 +56,13 @@ const plazaCardStrings: KitStringTable<PlazaCardStrings> = {
 		start: "开始体验",
 	},
 	en: {
+		categories: {
+			general: "General",
+			writing: "Writing",
+			coding: "Coding",
+			data: "Data analysis",
+			other: "Other",
+		},
 		capabilities: {
 			streaming: "Streaming",
 			fileUpload: "File upload",

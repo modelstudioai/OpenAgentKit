@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
+import { localizedValidationMessage } from "../../lib/validation-message.ts";
 import { AgentVersionConfigurationView } from "./agent-version-configuration-view.tsx";
 import { MANAGED_AGENT_MODELS } from "./managed-agent-models.ts";
 import { TemplateAgentCapabilities } from "./template-agent-capability-picker.tsx";
@@ -83,7 +84,7 @@ function validationErrors(issues: { path: PropertyKey[]; message: string }[]) {
 	for (const issue of issues) {
 		const key = issue.path[0] as FieldName;
 		if (["name", "model", "description", "instructions"].includes(key))
-			next[key] = key === "model" ? t("agent.form.modelRequired") : issue.message;
+			next[key] = key === "model" ? t("agent.form.modelRequired") : localizedValidationMessage(issue);
 	}
 	return next;
 }

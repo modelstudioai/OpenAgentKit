@@ -212,7 +212,7 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
 | usage | 138 | ✅ 全部（限额链路、Session 用量页、趋势卡、模版用量详情与 Provider 遥测表；聚合行名称参数化） |
 | members | 88 | ✅ 全部（列表/用量页/遥测表/创建页/hook 错误兜底；共享指标与采集状态词表入 common） |
 | preset-packs | 83 | ✅ 全部（选择/资源详情抽屉/会话资源；纯函数消息以缺省参数保持兼容） |
-| catalog / navigation / operations | 18 × 3 | ✅ 全部（catalog 校验消息经全局 i18n 实例，签名不变；分类枚举名仍走 SDK 词表待 §6） |
+| catalog / navigation / operations | 18 × 3 | ✅ 全部（catalog 校验消息经全局 i18n 实例；分类枚举名已改 UI 词表） |
 | branding | 15 | ✅ |
 | eval | — | ✅（workspace 选择、run 列表、报告 iframe） |
 | lib / root / auth | 6 / 8 / 4 | ✅ 全部（启动失败、服务地址、统计占位、成员用量/Operation 兜底、页脚） |
@@ -301,3 +301,15 @@ sub-agent-card 家族用显式 strings prop 链（ThreadEventStates 同时被面
 - `InnerLayout` 移除中文默认 `backLabel`，所有带返回按钮的调用方显式传入本地化标签。
 - 扫描结果：`apps/console/src` 可见中文已清零（仅剩代码注释）；`PLAZA_CATEGORY_LABELS` 与 SDK zod
   校验消息仍按 §6「协议错误/枚举词表映射」处理。
+
+#### §6 协议枚举与校验消息映射（2026-11-19）
+
+- 广场分类不再直接展示 SDK 中文常量：console 新增 `plaza-categories` 映射（catalog 词表），
+  web 广场标题使用 `plaza.categories`，chat-ui `PlazaCard` 词典新增 `categories`；
+  三个 UI 均按稳定枚举值取本地化名称，SDK `PLAZA_CATEGORY_LABELS` 仅保留给服务端内部使用。
+- zod 校验消息：console 新增 `localizedValidationMessage`。中文界面保留 SDK 原文的具体提示，
+  其他语言按 issue code（`invalid_type`/`too_small`/`too_big`/`invalid_value`/`invalid_format`/
+  `unrecognized_keys`）映射到 `common.validation.*`，避免英文界面出现中文。
+  已接入创建成员、密钥条目、Agent 表单、环境/记忆库/密钥库创建校验。
+- 仍待处理：server 生成的发布计划摘要、配额分类名等文本没有 locale 参数；需要在 server 响应中
+  返回结构化参数或英文模板（计划中的 server error `params` 扩展）后另行迁移。

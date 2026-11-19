@@ -1,16 +1,12 @@
 import { useIsMobile } from "@openagentpack/kit-sdk/hooks";
-import {
-	PLAZA_CATEGORY_LABELS,
-	type PlazaCategory,
-	type TemplatesQuery,
-	type TemplateView,
-} from "@openagentpack/kit-sdk/protocol";
+import type { PlazaCategory, TemplatesQuery, TemplateView } from "@openagentpack/kit-sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Button, Empty, Input, Result, Select, Table } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
+import { PLAZA_CATEGORIES, plazaCategoryLabel } from "../catalog/plaza-categories.ts";
 import { useConsoleRoute } from "../navigation/console-router.tsx";
 import { EditTemplatePage } from "./edit-template-page.tsx";
 import { TemplateDeleteDialog } from "./template-delete-dialog.tsx";
@@ -24,7 +20,6 @@ const SEARCH_DELAY_MS = 300;
 type TemplateAction = { kind: "listing" | "delete"; template: TemplateView };
 type TemplateStatusFilter = "" | NonNullable<TemplatesQuery["status"]>;
 type TemplateCategoryFilter = "" | PlazaCategory;
-const CATEGORIES = Object.keys(PLAZA_CATEGORY_LABELS) as PlazaCategory[];
 
 function useTemplateList(client: ReturnType<typeof getAdminClient>, paused: boolean) {
 	const [search, setSearch] = useState("");
@@ -115,6 +110,7 @@ function TemplateListFilters({
 	busy: boolean;
 }) {
 	const { t } = useTranslation("templates");
+	const { t: tc } = useTranslation("catalog");
 	return (
 		<div className={styles.filterRow}>
 			<Input
@@ -156,7 +152,7 @@ function TemplateListFilters({
 					disabled={busy}
 					options={[
 						{ value: "", label: t("status.all") },
-						...CATEGORIES.map((value) => ({ value, label: PLAZA_CATEGORY_LABELS[value] })),
+						...PLAZA_CATEGORIES.map((value) => ({ value, label: plazaCategoryLabel(value, tc) })),
 					]}
 					onChange={(value) => changeCategory(value as TemplateCategoryFilter)}
 				/>

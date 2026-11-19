@@ -1,13 +1,9 @@
-import { PLAZA_CATEGORY_LABELS, type PlazaCategory } from "@openagentpack/kit-sdk/protocol";
+import type { PlazaCategory } from "@openagentpack/kit-sdk/protocol";
 import { Form, Select } from "antd";
 import { useTranslation } from "react-i18next";
 import { formRowClass, formRowLabelClass } from "../../lib/form-row.ts";
 import styles from "./catalog.module.less";
-
-const CATEGORY_OPTIONS = (Object.keys(PLAZA_CATEGORY_LABELS) as PlazaCategory[]).map((id) => ({
-	value: id,
-	label: PLAZA_CATEGORY_LABELS[id],
-}));
+import { PLAZA_CATEGORIES, plazaCategoryLabel } from "./plaza-categories.ts";
 
 /** 上架条目与模版共用广场分类，不属于 Provider 运行时配置。 */
 export function PlazaCategoryField({
@@ -25,6 +21,7 @@ export function PlazaCategoryField({
 }) {
 	const { t } = useTranslation("catalog");
 	const labelText = label ?? t("plazaCategory");
+	const categoryOptions = PLAZA_CATEGORIES.map((id) => ({ value: id, label: plazaCategoryLabel(id, t) }));
 	if (horizontal) {
 		return (
 			<div className={formRowClass}>
@@ -40,7 +37,7 @@ export function PlazaCategoryField({
 					aria-label={labelText}
 					className={styles.fullControl}
 					value={value}
-					options={CATEGORY_OPTIONS}
+					options={categoryOptions}
 					onChange={(next) => onChange(next)}
 				/>
 			</div>
@@ -64,7 +61,7 @@ export function PlazaCategoryField({
 					aria-label={labelText}
 					className={styles.fullControl}
 					value={value}
-					options={CATEGORY_OPTIONS}
+					options={categoryOptions}
 					onChange={(next) => onChange(next)}
 				/>
 			</Form.Item>

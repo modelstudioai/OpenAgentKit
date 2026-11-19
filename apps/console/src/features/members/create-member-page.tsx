@@ -3,6 +3,7 @@ import { CreateMemberRequestSchema, type CreateMemberResponse } from "@openagent
 import { Alert, Button, Input, Radio, Typography } from "antd";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { localizedValidationMessage } from "../../lib/validation-message.ts";
 import styles from "./members.module.less";
 import { useCreateMember } from "./use-members.ts";
 
@@ -96,7 +97,7 @@ export function CreateMemberPage({
 			const next: Record<string, string> = {};
 			for (const issue of parsed.error.issues) {
 				const field = String(issue.path[0]);
-				next[field] ??= issue.message;
+				next[field] ??= localizedValidationMessage(issue);
 			}
 			setErrors(next);
 			return;

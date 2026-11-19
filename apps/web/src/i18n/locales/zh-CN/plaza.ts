@@ -1,5 +1,12 @@
 /** plaza 命名空间：Agent 广场。 */
 export default {
+	categories: {
+		general: "通用",
+		writing: "写作",
+		coding: "编程",
+		data: "数据分析",
+		other: "其他",
+	},
 	allAgents: "全部 Agent",
 	searchResults: "搜索结果",
 	featured: "精选",

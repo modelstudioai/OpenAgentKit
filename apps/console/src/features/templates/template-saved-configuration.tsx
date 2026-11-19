@@ -1,6 +1,7 @@
-import { PLAZA_CATEGORY_LABELS, type TemplateView } from "@openagentpack/kit-sdk/protocol";
+import type { TemplateView } from "@openagentpack/kit-sdk/protocol";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { plazaCategoryLabel } from "../catalog/plaza-categories.ts";
 import styles from "./template-resources.module.less";
 import {
 	SavedAgentConfiguration,
@@ -20,6 +21,7 @@ function DetailSection({ title, children }: { title: string; children: ReactNode
 
 export function SavedConfiguration({ template }: { template: Omit<TemplateView, "listing" | "updated_at"> }) {
 	const { t } = useTranslation("templates");
+	const { t: tc } = useTranslation("catalog");
 	return (
 		<div className={styles.savedRoot}>
 			<DetailSection title={t("savedConfig.presentation")}>
@@ -30,7 +32,7 @@ export function SavedConfiguration({ template }: { template: Omit<TemplateView, 
 					</div>
 					<div>
 						<dt className={styles.termLabel}>{t("savedConfig.category")}</dt>
-						<dd className={styles.termValue}>{PLAZA_CATEGORY_LABELS[template.category]}</dd>
+						<dd className={styles.termValue}>{plazaCategoryLabel(template.category, tc)}</dd>
 					</div>
 					<div>
 						<dt className={styles.termLabel}>{t("savedConfig.description")}</dt>

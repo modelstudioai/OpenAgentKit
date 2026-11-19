@@ -4,6 +4,7 @@ import {
 	ProjectMemoryStoreCreateInputSchema,
 } from "@openagentpack/kit-sdk/protocol";
 import i18n from "i18next";
+import { localizedValidationMessage } from "../../lib/validation-message.ts";
 import { type CatalogMemoryDraft, validateCatalogMemories } from "../catalog/catalog-memory-fields.tsx";
 import type { TemplateLocalResource } from "./template-local-resources.tsx";
 
@@ -90,7 +91,10 @@ export function memoryCreateInput(row: TemplateMemoryDraft, revision: string) {
 		...(configuration?.description.trim() ? { description: configuration.description.trim() } : {}),
 		...(entries.length ? { entries: entries.map(({ key, content }) => ({ key, content })) } : {}),
 	});
-	if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? t("memory.errors.check"));
+	if (!parsed.success)
+		throw new Error(
+			parsed.error.issues[0] ? localizedValidationMessage(parsed.error.issues[0]) : t("memory.errors.check"),
+		);
 	return parsed.data;
 }
 

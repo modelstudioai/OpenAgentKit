@@ -35,4 +35,11 @@ export default {
 	},
 	retry: "Retry",
 	plazaCategory: "Plaza category",
+	plazaCategories: {
+		general: "General",
+		writing: "Writing",
+		coding: "Coding",
+		data: "Data analysis",
+		other: "Other",
+	},
 };

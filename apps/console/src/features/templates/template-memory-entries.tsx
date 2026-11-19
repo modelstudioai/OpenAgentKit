@@ -2,6 +2,7 @@ import { MAX_MEMORY_ENTRIES, MemoryEntrySchema } from "@openagentpack/kit-sdk/pr
 import { Button, Input, Modal } from "antd";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { localizedValidationMessage } from "../../lib/validation-message.ts";
 import styles from "./template-forms.module.less";
 import type { TemplateMemoryEntry } from "./template-memory-draft.ts";
 import { TemplateMemoryEntryList } from "./template-memory-entry-list.tsx";
@@ -25,7 +26,7 @@ function MemoryEntryDialog({
 	function save() {
 		const parsed = MemoryEntrySchema.safeParse({ key, content });
 		if (!parsed.success) {
-			setError(parsed.error.issues[0]?.message ?? t("memory.entries.check"));
+			setError(parsed.error.issues[0] ? localizedValidationMessage(parsed.error.issues[0]) : t("memory.entries.check"));
 			return;
 		}
 		if (siblings.some((entry) => entry.id !== initial?.id && entry.key === parsed.data.key)) {

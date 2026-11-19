@@ -1,4 +1,4 @@
-import { PLAZA_CATEGORY_LABELS, type PlazaEntry } from "@openagentpack/kit-sdk/protocol";
+import type { PlazaEntry } from "@openagentpack/kit-sdk/protocol";
 import type { ReactNode } from "react";
 import { isIconImageSource } from "../agent-header/index.tsx";
 import { format, resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
@@ -96,7 +96,7 @@ export function PlazaCard({
 							</span>
 						) : null}
 						<span className="rounded-full bg-[var(--kit-bg-subtle)] px-2 py-0.5 text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)]">
-							{PLAZA_CATEGORY_LABELS[entry.category]}
+							{strings.categories[entry.category]}
 						</span>
 						{entry.stats.mine ? (
 							<span className="rounded-full bg-[var(--kit-success)]/15 px-2 py-0.5 text-[length:var(--kit-text-meta)] text-[var(--kit-success)]">

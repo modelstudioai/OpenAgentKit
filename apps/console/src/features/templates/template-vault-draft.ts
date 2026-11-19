@@ -1,5 +1,6 @@
 import { ProjectVaultCreateInputSchema, type RemoteVaultDetail } from "@openagentpack/kit-sdk/protocol";
 import i18n from "i18next";
+import { localizedValidationMessage } from "../../lib/validation-message.ts";
 import { validateCatalogVaults } from "../catalog/catalog-vault-field.tsx";
 import type { TemplateVaultSelectionValue } from "./template-local-resources.tsx";
 import type { VaultCredentialDraft } from "./template-vault-credential-dialog.tsx";
@@ -78,7 +79,7 @@ export function vaultCreateInput(row: TemplateVaultDraft, revision: string) {
 		const issue = parsed.error.issues[0];
 		if (row.configuration && issue?.path.at(-1) === "secret_value")
 			throw new Error(t("vault.errors.secretValueRequired"));
-		throw new Error(issue?.message ?? t("vault.errors.check"));
+		throw new Error(issue ? localizedValidationMessage(issue) : t("vault.errors.check"));
 	}
 	return parsed.data;
 }

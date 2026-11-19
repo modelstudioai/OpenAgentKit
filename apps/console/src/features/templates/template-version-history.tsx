@@ -1,10 +1,11 @@
 import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui";
-import { PLAZA_CATEGORY_LABELS, type TemplateVersionSummary } from "@openagentpack/kit-sdk/protocol";
+import type { TemplateVersionSummary } from "@openagentpack/kit-sdk/protocol";
 import { type ReactNode, useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import { ghostButtonClass } from "../../lib/styles.ts";
+import { plazaCategoryLabel } from "../catalog/plaza-categories.ts";
 import styles from "./template-resources.module.less";
 
 const PAGE_SIZE = 20;
@@ -141,6 +142,7 @@ function SummaryPoint({ children }: { children: ReactNode }) {
 
 function VersionConfigurationSummary({ version }: { version: TemplateVersionSummary }) {
 	const { t } = useTranslation("templates");
+	const { t: tc } = useTranslation("catalog");
 	const agentVersion =
 		version.agent_version !== undefined
 			? t("history.agentVersion", { version: version.agent_version })
@@ -191,7 +193,7 @@ function VersionConfigurationSummary({ version }: { version: TemplateVersionSumm
 				<span className={styles.blockMedium}>{t("history.presentation")}</span>
 				<SummaryPoint>
 					{t("history.category")}
-					{PLAZA_CATEGORY_LABELS[version.category]}
+					{plazaCategoryLabel(version.category, tc)}
 				</SummaryPoint>
 			</span>
 		</>

@@ -2,6 +2,7 @@ import { type ProjectVaultCredentialInput, ProjectVaultCredentialInputSchema } f
 import { Button, Checkbox, Input, Modal, Select } from "antd";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { localizedValidationMessage } from "../../lib/validation-message.ts";
 import styles from "./template-forms.module.less";
 
 export interface VaultCredentialDraft {
@@ -83,7 +84,8 @@ export function TemplateVaultCredentialDialog({
 			acknowledged,
 		});
 		const issues: Record<string, string> = {};
-		if (!result.success) for (const issue of result.error.issues) issues[String(issue.path[0])] ??= issue.message;
+		if (!result.success)
+			for (const issue of result.error.issues) issues[String(issue.path[0])] ??= localizedValidationMessage(issue);
 		const others = siblings.filter((item) => item.id !== initial?.id);
 		if (others.some((item) => item.input.name === name.trim())) issues.name = t("vault.dialog.duplicateName");
 		if (others.some((item) => item.input.secret_name === secretName.trim()))

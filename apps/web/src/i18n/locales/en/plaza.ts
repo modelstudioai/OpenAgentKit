@@ -1,4 +1,11 @@
 export default {
+	categories: {
+		general: "General",
+		writing: "Writing",
+		coding: "Coding",
+		data: "Data analysis",
+		other: "Other",
+	},
 	allAgents: "All agents",
 	searchResults: "Search results",
 	featured: "Featured",

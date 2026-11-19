@@ -1,11 +1,6 @@
 import { CategoryTabs, EmptyState, ErrorState, PlazaCard, type PlazaTabId } from "@openagentpack/kit-chat-ui";
 import { usePlaza } from "@openagentpack/kit-sdk/agents/hooks";
-import {
-	PLAZA_CATEGORY_LABELS,
-	type PlazaCategory,
-	type PlazaEntry,
-	type PlazaView as PlazaSnapshot,
-} from "@openagentpack/kit-sdk/protocol";
+import type { PlazaCategory, PlazaEntry, PlazaView as PlazaSnapshot } from "@openagentpack/kit-sdk/protocol";
 import type { TFunction } from "i18next";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -67,6 +62,13 @@ interface PlazaSections {
  * - 分类 tab / 搜索时主网格 = 服务端已过滤的 agents。
  */
 function sectionsOf(view: PlazaSnapshot, tab: PlazaTabId, searching: boolean, t: TFunction<"plaza">): PlazaSections {
+	const categoryLabels = {
+		general: t("categories.general"),
+		writing: t("categories.writing"),
+		coding: t("categories.coding"),
+		data: t("categories.data"),
+		other: t("categories.other"),
+	} satisfies Record<PlazaCategory, string>;
 	const agents = view.agents;
 	const onFeatured = tab === "featured";
 	const featured = pick(agents, view.featured);
@@ -92,7 +94,7 @@ function sectionsOf(view: PlazaSnapshot, tab: PlazaTabId, searching: boolean, t:
 	let mainTitle = t("allAgents");
 	if (searching) mainTitle = t("searchResults");
 	else if (onFeatured) mainTitle = useFeatured ? t("featured") : t("allAgents");
-	else mainTitle = category?.name ?? PLAZA_CATEGORY_LABELS[tab as PlazaCategory];
+	else mainTitle = category?.name ?? categoryLabels[tab as PlazaCategory];
 	return {
 		popular: showSections ? takeUnique(pick(agents, view.popular)) : [],
 		mine: showSections ? takeUnique(agents.filter((entry) => entry.stats.mine)) : [],

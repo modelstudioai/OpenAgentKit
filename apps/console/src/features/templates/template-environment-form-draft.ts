@@ -5,6 +5,7 @@ import {
 	type RemoteEnvironmentDetail,
 } from "@openagentpack/kit-sdk/protocol";
 import i18n from "i18next";
+import { localizedValidationMessage } from "../../lib/validation-message.ts";
 
 export const ENVIRONMENT_PACKAGE_MANAGERS = ["apt", "npm", "pip", "go", "cargo", "gem"] as const;
 export interface EnvironmentCreateDraft {
@@ -77,7 +78,10 @@ export function environmentFormInput(draft: EnvironmentCreateDraft, revision: st
 		...(Object.keys(packages).length ? { packages } : {}),
 		...(metadata.size ? { metadata: Object.fromEntries(metadata) } : {}),
 	});
-	if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? t("agent.environment.config.check"));
+	if (!parsed.success)
+		throw new Error(
+			parsed.error.issues[0] ? localizedValidationMessage(parsed.error.issues[0]) : t("agent.environment.config.check"),
+		);
 	return parsed.data;
 }
 

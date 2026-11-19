@@ -35,4 +35,13 @@ export default {
 	footnote: {
 		agentAssets: "智能体资产用于创建、编辑和调试模版，智能体管理提供上架与下架操作。",
 	},
+	validation: {
+		invalidType: "字段缺失或数据类型不符合要求",
+		tooSmall: "内容为空或长度不足",
+		tooBig: "内容超过长度限制",
+		invalidValue: "取值不在支持范围内",
+		invalidFormat: "格式无效",
+		unrecognizedKeys: "包含不支持的字段",
+		invalid: "字段格式或引用不符合要求",
+	},
 };

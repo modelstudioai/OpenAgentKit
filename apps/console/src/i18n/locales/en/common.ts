@@ -36,4 +36,13 @@ export default {
 		agentAssets:
 			"Agent assets are used to create, edit, and debug agents; agent management provides listing and unlisting actions.",
 	},
+	validation: {
+		invalidType: "A field is missing or has an invalid data type",
+		tooSmall: "The value is empty or too short",
+		tooBig: "The value exceeds the length limit",
+		invalidValue: "The value is outside the supported range",
+		invalidFormat: "Invalid format",
+		unrecognizedKeys: "The value contains unsupported fields",
+		invalid: "The field format or reference is invalid",
+	},
 };
