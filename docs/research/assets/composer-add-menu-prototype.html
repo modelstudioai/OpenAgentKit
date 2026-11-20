@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>「添加」菜单 · 组件原型</title>
+<style>
+	:root {
+		color-scheme: light;
+		--page-bg: #f3f5f9;
+		--card-bg: #ffffff;
+		--card-border: #e3e6ef;
+		--ink: #1a2032;
+		--ink-2: #5b6478;
+		--ink-3: #5f656e;
+		--focus: #2563eb;
+	}
+	* { box-sizing: border-box; }
+	html, body { margin: 0; }
+	body {
+		font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", "Microsoft YaHei", sans-serif;
+		background: var(--page-bg);
+		color: var(--ink);
+		font-size: 14px;
+		line-height: 1.6;
+	}
+	.wrap { max-width: 1060px; margin: 0 auto; padding: 40px 24px 72px; }
+	h1 { font-size: 22px; line-height: 1.4; margin: 0 0 6px; }
+	h2 { font-size: 17px; line-height: 1.5; margin: 40px 0 12px; }
+	.lead { color: var(--ink-2); margin: 0 0 20px; max-width: 62em; }
+	.tag {
+		display: inline-block; vertical-align: 2px; margin-left: 8px;
+		padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 500;
+		background: #eef4ff; color: #2456a6; border: 1px solid #d5e3fa;
+	}
+	.card {
+		background: var(--card-bg); border: 1px solid var(--card-border);
+		border-radius: 14px; padding: 20px;
+	}
+	code, pre { font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace; }
+	p code, li code { background: #f1f3f8; border-radius: 4px; padding: 1px 5px; font-size: 12.5px; }
+	pre {
+		background: #14161f; color: #dfe4f2; border-radius: 10px;
+		padding: 18px 20px; overflow-x: auto; font-size: 12.5px; line-height: 1.7; margin: 12px 0 0;
+	}
+	pre .k { color: #7dd3fc; }
+	pre .s { color: #fbbf77; }
+	pre .c { color: #7c86a3; }
+	pre .f { color: #c4b5fd; }
+	button:focus-visible, [tabindex]:focus-visible, .m-item:focus-visible {
+		outline: 2px solid var(--focus); outline-offset: 1px;
+	}
+
+	/* ---------- 演示区 ---------- */
+	.demo-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+	.seg { display: inline-flex; border: 1px solid var(--card-border); border-radius: 999px; overflow: hidden; }
+	.seg button {
+		border: 0; background: transparent; padding: 5px 14px; font-size: 13px;
+		color: var(--ink-2); cursor: pointer; font-family: inherit;
+	}
+	.seg button[aria-pressed="true"] { background: #14161f; color: #ffffff; }
+	.demo-note { font-size: 12.5px; color: var(--ink-2); }
+	.stage {
+		position: relative; border: 1px solid var(--card-border); border-radius: 14px;
+		min-height: 430px; padding: 24px 20px 26px;
+		display: flex; flex-direction: column; justify-content: flex-end; gap: 14px;
+		background:
+			radial-gradient(120% 90% at 50% 0%, #eef1f8 0%, #f7f8fb 58%, #f2f4f9 100%);
+		overflow: hidden;
+	}
+	.bubble { max-width: 460px; background: #ffffff; border: 1px solid var(--card-border); border-radius: 12px; padding: 9px 14px; color: var(--ink-2); font-size: 13.5px; align-self: flex-start; }
+	.bubble.user { align-self: flex-end; background: #eef1fb; border-color: #dfe6f6; color: var(--ink); }
+	.composer {
+		width: 100%; max-width: 700px; margin: 0 auto; background: #ffffff;
+		border: 1px solid var(--card-border); border-radius: 14px;
+		box-shadow: 0 8px 28px rgb(16 19 34 / 8%);
+	}
+	.composer-editor {
+		min-height: 58px; padding: 12px 16px 0; font-size: 14px; line-height: 22px;
+		color: var(--ink); outline: none; overflow-y: auto; max-height: 140px;
+		caret-color: var(--ink);
+	}
+	.composer-editor:empty::before { content: attr(data-placeholder); color: var(--ink-2); pointer-events: none; }
+	.chip {
+		display: inline-flex; align-items: center; gap: 4px; vertical-align: baseline;
+		background: #eef4ff; color: #2456a6; border-radius: 6px; padding: 0 7px;
+		font-size: 12.5px; font-weight: 500; line-height: 20px; user-select: none;
+	}
+	.composer-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px 12px; }
+	.tool-left, .tool-right { display: flex; align-items: center; gap: 8px; }
+	.icon-round {
+		width: 32px; height: 32px; border-radius: 999px; border: 1px solid var(--card-border);
+		background: #ffffff; display: grid; place-items: center; cursor: pointer; padding: 0;
+		color: var(--ink); transition: background-color 160ms ease-out;
+	}
+	.icon-round:hover { background: #f6f7fb; }
+	.pill-stub {
+		display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
+		border: 1px solid var(--card-border); border-radius: 999px; background: #fff;
+		font-size: 13px; color: var(--ink-2); cursor: not-allowed; user-select: none;
+	}
+	.model-stub {
+		display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px;
+		border-radius: 999px; background: transparent; border: 0;
+		font-size: 12px; font-weight: 500; color: var(--ink-2); cursor: not-allowed; user-select: none;
+	}
+	.send {
+		width: 32px; height: 32px; border-radius: 999px; border: 0; background: #14151c;
+		display: grid; place-items: center; cursor: pointer; color: #fff; transition: background-color 160ms ease-out;
+	}
+	.send:hover { background: #000000; }
+	.log { font-size: 12.5px; color: var(--ink-2); margin-top: 10px; min-height: 1.6em; }
+	.log b { color: var(--ink); font-weight: 600; }
+
+	/* ---------- 菜单（双皮肤 CSS 变量） ---------- */
+	body[data-skin="default"] {
+		--m-panel-radius: 9px;
+		--m-panel-border: #e3e6ef;
+		--m-panel-shadow: 0 8px 28px rgb(16 19 34 / 8%);
+		--m-item-h: 36px;
+		--m-item-radius: 5px;
+		--m-item-pad: 6px 10px;
+		--m-item-gap: 8px;
+		--m-item-hover: #f6f7fb;
+		--m-fg: #101322;
+		--m-muted: #5b6478;
+		--m-sep-color: #e3e6ef;
+	}
+	body[data-skin="design"] {
+		--m-panel-radius: 16px;
+		--m-panel-border: #e9e9ed;
+		--m-panel-shadow: 0 6px 10px rgb(0 0 0 / 5%);
+		--m-item-h: 32px;
+		--m-item-radius: 12px;
+		--m-item-pad: 6px 12px;
+		--m-item-gap: 8px;
+		--m-item-hover: rgb(20 21 28 / 4%);
+		--m-fg: #14151c;
+		--m-muted: #5f656e;
+		--m-sep-color: #e9e9ed;
+	}
+	.menu {
+		position: fixed; z-index: 60; background: #ffffff;
+		border: 1px solid var(--m-panel-border); border-radius: var(--m-panel-radius);
+		box-shadow: var(--m-panel-shadow); padding: 4px;
+		display: flex; flex-direction: column; gap: 2px;
+	}
+	.menu[hidden] { display: none; }
+	#menu-main { width: 240px; }
+	#menu-sub { width: 300px; }
+	.m-item {
+		display: flex; align-items: center; gap: var(--m-item-gap);
+		min-height: var(--m-item-h); padding: var(--m-item-pad);
+		border-radius: var(--m-item-radius); font-size: 13px; line-height: 20px;
+		color: var(--m-fg); cursor: default; user-select: none;
+		transition: background-color 160ms ease-out;
+	}
+	.m-item:hover, .m-item[data-highlighted] { background: var(--m-item-hover); }
+	.m-item .ic { flex: 0 0 auto; display: grid; place-items: center; width: 16px; height: 16px; color: var(--m-fg); }
+	.m-item .label { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.m-item .desc {
+		flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+		color: var(--m-muted); font-size: 13px;
+	}
+	.m-item .trail { flex: 0 0 auto; margin-left: auto; display: grid; place-items: center; color: var(--m-muted); }
+	.m-item .check { flex: 0 0 auto; display: none; color: var(--m-fg); }
+	.m-item[data-active] .check { display: grid; place-items: center; }
+	.m-item .grow { flex: 1 1 auto; }
+	.m-item.more { font-size: 12px; color: var(--m-muted); }
+	.m-item.more .label { flex: 1 1 auto; }
+	.m-sep { height: 1px; background: var(--m-sep-color); margin: 4px 0; flex: 0 0 auto; }
+	.m-scroll { max-height: 173px; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 2px; }
+	[data-skin="design"] .m-scroll { scrollbar-width: thin; scrollbar-color: #e9e9ed transparent; }
+	[data-skin="design"] .m-scroll::-webkit-scrollbar { width: 4px; }
+	[data-skin="design"] .m-scroll::-webkit-scrollbar-thumb { background: #e9e9ed; border-radius: 2px; }
+	[data-skin="design"] .m-scroll::-webkit-scrollbar-track { background: transparent; }
+	[data-skin="default"] .m-scroll { scrollbar-width: thin; scrollbar-color: #d5d9e4 transparent; }
+	[data-skin="default"] .m-scroll::-webkit-scrollbar { width: 8px; }
+	[data-skin="default"] .m-scroll::-webkit-scrollbar-thumb { background: #d5d9e4; border-radius: 4px; }
+	@media (prefers-reduced-motion: no-preference) {
+		.menu { animation: menu-in 140ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+		@keyframes menu-in { from { opacity: 0; transform: translateY(4px) scale(0.98); } to { opacity: 1; transform: none; } }
+		.m-item, .icon-round, .send { transition: background-color 160ms ease-out; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.menu { animation: none; }
+	}
+
+	/* ---------- 协议区 ---------- */
+	table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+	th, td { text-align: left; border-bottom: 1px solid var(--card-border); padding: 9px 12px; vertical-align: top; }
+	th { color: var(--ink-2); font-weight: 600; background: #f8f9fc; }
+	td code { white-space: nowrap; }
+	.anatomy {
+		display: flex; align-items: stretch; gap: 8px; margin-top: 14px; font-size: 12.5px;
+	}
+	.anatomy .slot {
+		display: flex; flex-direction: column; justify-content: center; gap: 2px;
+		border: 1.5px dashed #b9c2d8; border-radius: 8px; padding: 10px 14px; min-height: 64px;
+	}
+	.anatomy .slot .name { font-weight: 600; }
+	.anatomy .slot .hint { color: var(--ink-2); }
+	.anatomy .arrow { align-self: center; color: var(--ink-2); }
+	ul.tight { margin: 10px 0 0; padding-left: 20px; }
+	ul.tight li { margin: 6px 0; }
+	.foot { margin-top: 44px; font-size: 12.5px; color: var(--ink-2); }
+	.foot ul { margin: 8px 0 0; padding-left: 20px; }
+	.foot li { margin: 4px 0; }
+</style>
+</head>
+<body data-skin="design">
+<div class="wrap">
+	<h1>「添加」菜单 · 组件原型<span class="tag">已拍板：Menu 扩展 + MenuItem anatomy</span></h1>
+	<p class="lead">
+		演示 chat-ui Menu 包装层扩展后的效果：新增 <code>MenuSeparator</code> / <code>MenuSub</code> /
+		<code>MenuSubTrigger</code> / <code>MenuSubContent</code> 四个导出，MenuItem 增加
+		<code>icon / description / trailing</code> 结构化插槽。「添加」按钮本身不新增组件，
+		由业务侧 <code>MenuTrigger asChild</code> + 圆形图标钮组合。
+	</p>
+
+	<h2>交互演示</h2>
+	<div class="card">
+		<div class="demo-bar">
+			<div class="seg" role="group" aria-label="皮肤切换">
+				<button type="button" id="skin-design" aria-pressed="true">设计还原态</button>
+				<button type="button" id="skin-default" aria-pressed="false">kit 默认态</button>
+			</div>
+			<span class="demo-note">
+				默认态 = 组件自带 token 皮肤（radius-sm 等）；还原态 = 业务侧 className 覆盖（演示原则 3）。
+				同一份业务组合代码，两种皮都成立。
+			</span>
+		</div>
+		<div class="stage">
+			<div class="bubble">你好，帮我把上季度的用量数据整理成周报。</div>
+			<div class="bubble user">好的，请先选择要统计的知识库范围。</div>
+			<div class="composer">
+				<div class="composer-editor" id="editor" contenteditable="true" role="textbox" aria-multiline="true"
+					data-placeholder="和「小炼」一起工作吧（业务占位文案示意）" aria-label="消息输入框"></div>
+				<div class="composer-toolbar">
+					<div class="tool-left">
+						<button type="button" class="icon-round" id="add-btn" aria-label="添加" aria-haspopup="menu" aria-expanded="false">
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
+						</button>
+						<span class="pill-stub" title="后续逐个拍板">
+							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8 12 6-6a3 3 0 0 1 4 4l-8 8a5 5 0 0 1-7-7l8-8"/></svg>
+							附件
+						</span>
+						<span class="pill-stub">知识</span>
+						<span class="pill-stub">记忆</span>
+						<span class="pill-stub">联网搜</span>
+					</div>
+					<div class="tool-right">
+						<span class="model-stub">旗舰
+							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg>
+						</span>
+						<button type="button" class="send" id="send-btn" aria-label="发送">
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m-6 6 6-6 6 6"/></svg>
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<p class="log" id="log" aria-live="polite">最近动作：<b>尚未发生</b>（点击「添加」开始）</p>
+	</div>
+
+	<h2>业务方使用示例</h2>
+	<div class="card">
+		<p style="margin:0;color:var(--ink-2);font-size:13px">
+			菜单词条、点击行为、数据源全部在业务侧；组件层只提供形态。选中技能插入
+			<code>/name </code> 标记，与 <code>/</code> 触发的 Suggestion 共用同一份技能数据。
+		</p>
+<pre><code><span class="k">import</span> {
+  Menu, MenuTrigger, MenuContent, MenuItem, MenuSeparator,
+  MenuSub, MenuSubTrigger, MenuSubContent,
+  <span class="k">type</span> SenderRef,
+} <span class="k">from</span> <span class="s">"@openagentpack/kit-chat-ui"</span>;
+
+<span class="k">function</span> <span class="f">AddMenu</span>({ skills, senderRef, onPickFile }: {
+  skills: Array&lt;{ id: string; name: string; icon: ReactNode; description: string }&gt;;
+  senderRef: RefObject&lt;SenderRef | null&gt;;
+  onPickFile: () =&gt; void;
+}) {
+  <span class="k">const</span> { t } = useTranslation(<span class="s">"chat"</span>); <span class="c">// 菜单词条归业务 i18n，组件词典不含</span>
+  <span class="k">const</span> insertSkill = (name: string) =&gt;
+    senderRef.current?.replaceRange(caret, caret, <span class="s">`/${name} `</span>);
+
+  <span class="k">return</span> (
+    &lt;<span class="f">Menu</span>&gt;
+      &lt;<span class="f">MenuTrigger</span> asChild&gt;
+        &lt;button type=<span class="s">"button"</span> aria-label={t(<span class="s">"add.trigger"</span>)}&gt;&lt;PlusIcon /&gt;&lt;/button&gt;
+      &lt;/<span class="f">MenuTrigger</span>&gt;
+      &lt;<span class="f">MenuContent</span> side=<span class="s">"top"</span> className=<span class="s">"w-60"</span>&gt;
+        &lt;<span class="f">MenuItem</span> icon={&lt;PaperclipIcon /&gt;} onSelect={onPickFile}&gt;
+          {t(<span class="s">"add.file"</span>)}
+        &lt;/<span class="f">MenuItem</span>&gt;
+        &lt;<span class="f">MenuSeparator</span> /&gt;
+
+        &lt;<span class="f">MenuSub</span>&gt;
+          &lt;<span class="f">MenuSubTrigger</span> icon={&lt;PackageIcon /&gt;}&gt;{t(<span class="s">"add.skills"</span>)}&lt;/<span class="f">MenuSubTrigger</span>&gt;
+          &lt;<span class="f">MenuSubContent</span> className=<span class="s">"w-[300px]"</span>&gt;
+            <span class="c">{'/* active 由业务从 sender 草稿派生：草稿删除 /name 标记后自动回到 false */'}</span>
+            &lt;div className=<span class="s">"max-h-[173px] overflow-y-auto overscroll-contain"</span>&gt;
+              {skills.map((s) =&gt; (
+                &lt;<span class="f">MenuItem</span> key={s.id} icon={s.icon} description={s.description}
+                  active={draftSkills.includes(s.name)}
+                  onSelect={() =&gt; insertSkill(s.name)}&gt;
+                  {s.name}
+                &lt;/<span class="f">MenuItem</span>&gt;
+              ))}
+            &lt;/div&gt;
+            <span class="c">{'/* 固定操作区：不随列表滚动，与选项区用组合表达 */'}</span>
+            &lt;<span class="f">MenuItem</span> className=<span class="s">"text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)]"</span>
+              onSelect={viewAllSkills}&gt;
+              {t(<span class="s">"add.viewMore"</span>, { count: 8 })}
+            &lt;/<span class="f">MenuItem</span>&gt;
+            &lt;<span class="f">MenuSeparator</span> /&gt;
+            &lt;<span class="f">MenuItem</span> icon={&lt;SettingsIcon /&gt;} onSelect={manageSkills}&gt;
+              {t(<span class="s">"add.manageSkills"</span>)}
+            &lt;/<span class="f">MenuItem</span>&gt;
+          &lt;/<span class="f">MenuSubContent</span>&gt;
+        &lt;/<span class="f">MenuSub</span>&gt;
+
+        &lt;<span class="f">MenuSub</span>&gt;
+          &lt;<span class="f">MenuSubTrigger</span> icon={&lt;WrenchIcon /&gt;}&gt;{t(<span class="s">"add.mcp"</span>)}&lt;/<span class="f">MenuSubTrigger</span>&gt;
+          &lt;<span class="f">MenuSubContent</span>&gt;{<span class="c">/* MCP 面板：业务组合 */</span>}&lt;/<span class="f">MenuSubContent</span>&gt;
+        &lt;/<span class="f">MenuSub</span>&gt;
+        &lt;<span class="f">MenuSeparator</span> /&gt;
+        &lt;<span class="f">MenuSub</span>&gt;
+          <span class="c">{'/* 右侧指示想换图标：传 trailing 整体接管，内置 chevron 不再渲染 */'}</span>
+          &lt;<span class="f">MenuSubTrigger</span> icon={&lt;BotIcon /&gt;} trailing={&lt;MyCaretIcon /&gt;}&gt;
+            {t(<span class="s">"add.agent"</span>)}
+          &lt;/<span class="f">MenuSubTrigger</span>&gt;
+          &lt;<span class="f">MenuSubContent</span>&gt;{<span class="c">/* Agent 面板：业务组合 */</span>}&lt;/<span class="f">MenuSubContent</span>&gt;
+        &lt;/<span class="f">MenuSub</span>&gt;
+      &lt;/<span class="f">MenuContent</span>&gt;
+    &lt;/<span class="f">Menu</span>&gt;
+  );
+}</code></pre>
+	</div>
+
+	<h2>组件协议</h2>
+	<div class="card">
+		<p style="margin:0 0 4px;font-weight:600">新增导出（定型薄包装，Radix 能力原样透传）</p>
+		<table>
+			<thead><tr><th>导出</th><th>职责</th><th>关键 props</th></tr></thead>
+			<tbody>
+				<tr><td><code>MenuSeparator</code></td><td>分组线，1px token 分隔</td><td>Radix Separator 透传</td></tr>
+				<tr><td><code>MenuSub</code></td><td>二级菜单根</td><td>Radix Sub 透传</td></tr>
+				<tr><td><code>MenuSubTrigger</code></td><td>二级触发行，右侧默认内置 chevron</td><td><code>icon?</code> <code>children</code> <code>description?</code> <code>trailing?</code> <code>chevron?=true</code>，<code>trailing</code> 存在时整体接管右侧</td></tr>
+				<tr><td><code>MenuSubContent</code></td><td>二级面板，自动避让翻面</td><td>Radix SubContent 透传</td></tr>
+				<tr><td><code>MenuItem</code>（扩展）</td><td>菜单行，结构化 anatomy</td><td><code>icon?</code> <code>children</code> <code>description?</code> <code>trailing?</code> <code>active?</code></td></tr>
+			</tbody>
+		</table>
+
+		<p style="margin:20px 0 0;font-weight:600">MenuItem 行布局协议</p>
+		<div class="anatomy" aria-label="行布局协议图示">
+			<div class="slot"><span class="name">icon</span><span class="hint">16px，业务注入</span></div>
+			<span class="arrow">→</span>
+			<div class="slot"><span class="name">children</span><span class="hint">主文案，grow</span></div>
+			<span class="arrow">→</span>
+			<div class="slot"><span class="name">description</span><span class="hint">ellipsis 弱化</span></div>
+			<span class="arrow">→</span>
+			<div class="slot"><span class="name">trailing</span><span class="hint">缺省渲染内置图形（chevron / 选中勾）</span></div>
+		</div>
+		<p class="demo-note" style="margin-top:10px">
+			四段全部可缺席，缺省退化为纯文字行；一个语义一个 prop，不留平行通道。
+		</p>
+
+		<p style="margin:20px 0 0;font-weight:600">可插拔四通道</p>
+		<table>
+			<thead><tr><th>通道</th><th>机制</th></tr></thead>
+			<tbody>
+				<tr><td>icon</td><td><code>ReactNode</code> prop，业务注入任意图标（组件 / svg / img）</td></tr>
+				<tr><td>文案</td><td>菜单词条走 <code>children</code> / 业务 i18n；组件词典不含任何菜单文案</td></tr>
+				<tr><td>样式</td><td><code>className</code> + Radix <code>data-highlighted</code> / <code>data-disabled</code> 状态钩子</td></tr>
+				<tr><td>结构</td><td>菜单项全部业务组合；组件不设 <code>type: "option" | "action"</code> 这类业务语义 prop</td></tr>
+			</tbody>
+		</table>
+
+		<p style="margin:20px 0 0;font-weight:600">协议边界</p>
+		<ul class="tight">
+			<li>组件层无「技能 / 知识 / MCP」语义；词条、行为、数据全在业务侧。</li>
+			<li>「选项区滚动 + 操作区钉底」= 组合（滚动 div + <code>MenuSeparator</code>），不引入组件概念。</li>
+			<li>面板默认 kit token（<code>--kit-radius-sm</code> 9px 等）；设计稿 16px 圆角等由业务 className 覆盖。</li>
+			<li>键盘导航、typeahead、Escape、焦点圈由 Radix 提供；本原型演示鼠标路径 + Escape。</li>
+			<li>「查看更多 (N)」「管理技能」与普通条目同构（anatomy 相同），钉底是分区组合的结果。</li>
+			<li>SubTrigger 内置 chevron 只是 <code>trailing</code> 缺席时的默认值：业务传 <code>trailing</code> 即接管右侧（换图标、换形态都走这一个插槽）；<code>chevron={false}</code> 用于既不传 trailing 也不要指示。</li>
+			<li><code>MenuItem</code> 的 <code>active?</code> 是业务派生的选中态（如从 sender 草稿扫描 <code>/name </code> 标记），组件不感知 sender；选中勾同样是 trailing 缺席时的默认值，样式经 <code>data-active</code> 钩子覆盖；定义 active 后角色升级为 <code>menuitemcheckbox</code> + <code>aria-checked</code>。</li>
+		</ul>
+	</div>
+
+	<div class="foot">
+		示意值来源标注：
+		<ul>
+			<li>设计还原态：面板 240/300 宽、圆角 16px、行高 32px、hover <code>#14151C0A</code>、分组线 <code>#E9E9ED</code>，来自 Figma Solution 节点 60:2238 / 60:2465 的 DSL。</li>
+			<li>kit 默认态：<code>--kit-radius-sm</code> 9px、<code>--kit-shadow</code>、<code>--kit-bg-subtle</code> <code>#f6f7fb</code>、<code>--kit-fg</code> <code>#101322</code>、<code>--kit-fg-muted</code> <code>#5b6478</code>，来自 packages/chat-ui/src/theme.css。</li>
+			<li>可读性替换：设计稿弱化文字 <code>#14151C66</code> / <code>#14151C99</code> 对比度低于 4.5:1，原型统一取 <code>#5f656e</code>（白底达标），落码时同步标注。</li>
+			<li>Agent / MCP 图标设计稿为占位（brand-bilibili 等），原型用中性图标示意；技能名称与描述为示意数据，非真实词条。</li>
+			<li>滚动列表视口高 173px 取自设计稿滚动条区域，示意值。</li>
+		</ul>
+	</div>
+</div>
+
+<!-- 弹层（fixed，脱离 stage 裁剪） -->
+<div class="menu" id="menu-main" role="menu" aria-label="添加" hidden>
+	<div class="m-item" role="menuitem" tabindex="-1" data-action="pickFile">
+		<span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21.4 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.2-9.19a4 4 0 0 1 5.65 5.66L9.4 17.4a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></span>
+		<span class="label">添加文件</span>
+	</div>
+	<div class="m-sep" role="separator"></div>
+	<div class="m-item m-sub" role="menuitem" tabindex="-1" data-sub="skills" aria-haspopup="menu" aria-expanded="false">
+		<span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 9.4 7.55 4.24M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.27 6.96 12 12.01l8.73-5.05M12 22.08V12"/></svg></span>
+		<span class="label">技能</span>
+		<span class="trail"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m9 18 6-6-6-6"/></svg></span>
+	</div>
+	<div class="m-item m-sub" role="menuitem" tabindex="-1" data-sub="mcp" aria-haspopup="menu" aria-expanded="false">
+		<span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76-3.76z"/></svg></span>
+		<span class="label">MCP</span>
+		<span class="trail"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m9 18 6-6-6-6"/></svg></span>
+	</div>
+	<div class="m-sep" role="separator"></div>
+	<div class="m-item m-sub" role="menuitem" tabindex="-1" data-sub="agent" aria-haspopup="menu" aria-expanded="false">
+		<span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="4" y="8" width="16" height="12" rx="3"/><path stroke-linecap="round" d="M12 8V5m-6 9h.01M18 14h.01M9 17h6"/></svg></span>
+		<span class="label">Agent</span>
+		<span class="trail"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m9 18 6-6-6-6"/></svg></span>
+	</div>
+</div>
+
+<div class="menu" id="menu-sub" role="menu" aria-label="子菜单" hidden>
+	<div id="sub-skills" hidden>
+		<div class="m-scroll">
+			<div class="m-item" role="menuitem" tabindex="-1" data-skill="BPMS官方审审核">
+				<span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 9.4 7.55 4.24M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.27 6.96 12 12.01l8.73-5.05M12 22.08V12"/></svg></span>
+				<span class="label">BPMS官方审审核</span>
+				<span class="desc">每当用户请求查询或处理审批单据时…</span>
+			</div>
+			<div class="m-item" role="menuitem" tabindex="-1" data-skill="钉钉文档高级助手">
+				<span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 9.4 7.55 4.24M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.27 6.96 12 12.01l8.73-5.05M12 22.08V12"/></svg></span>
+				<span class="label">钉钉文档高级助手</span>
+				<span class="desc">每当用户请求查询或处理文档时…</span>
+			</div>
+			<div class="m-item" role="menuitem" tabindex="-1" data-skill="web-search">
+				<span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 9.4 7.55 4.24M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.27 6.96 12 12.01l8.73-5.05M12 22.08V12"/></svg></span>
+				<span class="label">web-search</span>
+				<span class="desc">Search the web for current information…</span>
+			</div>
+			<div class="m-item" role="menuitem" tabindex="-1" data-skill="报表生成助手">
+				<span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 9.4 7.55 4.24M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.27 6.96 12 12.01l8.73-5.05M12 22.08V12"/></svg></span>
+				<span class="label">报表生成助手</span>
+				<span class="desc">每当用户请求生成数据报表时…</span>
+			</div>
+			<div class="m-item" role="menuitem" tabindex="-1" data-skill="代码审查官">
+				<span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 9.4 7.55 4.24M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.27 6.96 12 12.01l8.73-5.05M12 22.08V12"/></svg></span>
+				<span class="label">代码审查官</span>
+				<span class="desc">每当用户请求审查代码变更时…</span>
+			</div>
+			<div class="m-item" role="menuitem" tabindex="-1" data-skill="会议纪要整理">
+				<span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 9.4 7.55 4.24M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.27 6.96 12 12.01l8.73-5.05M12 22.08V12"/></svg></span>
+				<span class="label">会议纪要整理</span>
+				<span class="desc">每当用户请求整理会议记录时…</span>
+			</div>
+			<div class="m-item" role="menuitem" tabindex="-1" data-skill="翻译润色">
+				<span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 9.4 7.55 4.24M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.27 6.96 12 12.01l8.73-5.05M12 22.08V12"/></svg></span>
+				<span class="label">翻译润色</span>
+				<span class="desc">每当用户请求翻译或润色文本时…</span>
+			</div>
+		</div>
+		<div class="m-item more" role="menuitem" tabindex="-1" data-action="viewMore">
+			<span class="label">查看更多 (8)</span>
+		</div>
+		<div class="m-sep" role="separator"></div>
+		<div class="m-item" role="menuitem" tabindex="-1" data-action="manageSkills">
+			<span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+			<span class="label">管理技能</span>
+		</div>
+	</div>
+	<div id="sub-mcp" hidden>
+		<div class="m-item" role="menuitem" tabindex="-1" data-action="mcpStub">
+			<span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76-3.76z"/></svg></span>
+			<span class="label">已连接的服务器（示意）</span>
+		</div>
+	</div>
+	<div id="sub-agent" hidden>
+		<div class="m-item" role="menuitem" tabindex="-1" data-action="agentStub">
+			<span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="4" y="8" width="16" height="12" rx="3"/><path stroke-linecap="round" d="M12 8V5m-6 9h.01M18 14h.01M9 17h6"/></svg></span>
+			<span class="label">可用的 Agent（示意）</span>
+		</div>
+	</div>
+</div>
+
+<script>
+	(function () {
+		"use strict";
+		var body = document.body;
+		var addBtn = document.getElementById("add-btn");
+		var editor = document.getElementById("editor");
+		var log = document.getElementById("log");
+		var main = document.getElementById("menu-main");
+		var sub = document.getElementById("menu-sub");
+		var subViews = { skills: document.getElementById("sub-skills"), mcp: document.getElementById("sub-mcp"), agent: document.getElementById("sub-agent") };
+		var subTrigger = null;
+		var lastFocus = null;
+		var CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20 6 9 17l-5-5"/></svg>';
+
+		// 业务派生 active 的演示：草稿里的 chip ↔ 菜单项 data-active 双向同步
+		sub.querySelectorAll("[data-skill]").forEach(function (item) {
+			item.setAttribute("role", "menuitemcheckbox");
+			item.setAttribute("aria-checked", "false");
+			var check = document.createElement("span");
+			check.className = "check";
+			check.innerHTML = CHECK_SVG;
+			item.appendChild(check);
+		});
+
+		function syncActive() {
+			var names = [];
+			editor.querySelectorAll(".chip").forEach(function (c) { names.push(c.textContent.trim()); });
+			sub.querySelectorAll("[data-skill]").forEach(function (item) {
+				var on = names.indexOf(item.dataset.skill) !== -1;
+				if (on) { item.setAttribute("data-active", "true"); item.setAttribute("aria-checked", "true"); }
+				else { item.removeAttribute("data-active"); item.setAttribute("aria-checked", "false"); }
+			});
+		}
+		editor.addEventListener("input", syncActive);
+
+		function say(text) { log.innerHTML = "最近动作：<b></b>"; log.querySelector("b").textContent = text; }
+
+		function skinButtons() {
+			var design = document.getElementById("skin-design");
+			var dflt = document.getElementById("skin-default");
+			design.addEventListener("click", function () { body.dataset.skin = "design"; design.setAttribute("aria-pressed", "true"); dflt.setAttribute("aria-pressed", "false"); say("切换皮肤：设计还原态"); });
+			dflt.addEventListener("click", function () { body.dataset.skin = "default"; dflt.setAttribute("aria-pressed", "true"); design.setAttribute("aria-pressed", "false"); say("切换皮肤：kit 默认态"); });
+		}
+
+		function placeMain() {
+			var r = addBtn.getBoundingClientRect();
+			main.style.visibility = "hidden";
+			main.hidden = false;
+			var h = main.offsetHeight, w = main.offsetWidth;
+			var top = r.top - h - 8;
+			if (top < 8) top = 8;
+			var left = Math.min(Math.max(8, r.left), window.innerWidth - w - 8);
+			main.style.top = top + "px";
+			main.style.left = left + "px";
+			main.style.visibility = "";
+		}
+
+		function placeSub(name, triggerEl) {
+			Object.keys(subViews).forEach(function (k) { subViews[k].hidden = k !== name; });
+			sub.hidden = false;
+			sub.style.visibility = "hidden";
+			var mr = main.getBoundingClientRect();
+			var tr = triggerEl.getBoundingClientRect();
+			var w = sub.offsetWidth, h = sub.offsetHeight;
+			var left = mr.right + 6;
+			if (left + w > window.innerWidth - 8) left = mr.left - w - 6;
+			var top = tr.top - 4;
+			if (top + h > window.innerHeight - 8) top = window.innerHeight - h - 8;
+			if (top < 8) top = 8;
+			sub.style.left = left + "px";
+			sub.style.top = top + "px";
+			sub.style.visibility = "";
+		}
+
+		function openSub(name, triggerEl) {
+			if (subTrigger) { subTrigger.removeAttribute("data-highlighted"); subTrigger.setAttribute("aria-expanded", "false"); }
+			subTrigger = triggerEl;
+			placeSub(name, triggerEl);
+			triggerEl.setAttribute("aria-expanded", "true");
+		}
+
+		function closeSub() {
+			sub.hidden = true;
+			if (subTrigger) { subTrigger.setAttribute("aria-expanded", "false"); subTrigger = null; }
+		}
+
+		function openMain() {
+			placeMain();
+			addBtn.setAttribute("aria-expanded", "true");
+			lastFocus = document.activeElement;
+		}
+
+		function closeAll() {
+			main.hidden = true;
+			closeSub();
+			addBtn.setAttribute("aria-expanded", "false");
+		}
+
+		function insertSkill(name) {
+			var chip = document.createElement("span");
+			chip.className = "chip";
+			chip.contentEditable = "false";
+			chip.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 9.4 7.55 4.24M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>';
+			var label = document.createElement("span");
+			label.textContent = name;
+			chip.appendChild(label);
+			editor.appendChild(chip);
+			editor.appendChild(document.createTextNode(" "));
+			editor.focus();
+			var sel = window.getSelection();
+			if (sel) {
+				var range = document.createRange();
+				range.selectNodeContents(editor);
+				range.collapse(false);
+				sel.removeAllRanges();
+				sel.addRange(range);
+			}
+			syncActive();
+			say("选中技能：" + name + " → replaceRange 插入 /" + name + " 标记，菜单项 active");
+		}
+
+		function removeSkill(name) {
+			editor.querySelectorAll(".chip").forEach(function (c) {
+				if (c.textContent.trim() === name) c.remove();
+			});
+			syncActive();
+			say("从草稿删除技能：" + name + " → 菜单 active 同步消失");
+		}
+
+		addBtn.addEventListener("click", function (e) {
+			e.stopPropagation();
+			if (main.hidden) { openMain(); } else { closeAll(); }
+		});
+
+		main.addEventListener("click", function (e) { e.stopPropagation(); });
+		sub.addEventListener("click", function (e) { e.stopPropagation(); });
+
+		main.querySelectorAll(".m-item").forEach(function (item) {
+			var subName = item.dataset.sub;
+			if (subName) {
+				item.addEventListener("mouseenter", function () { openSub(subName, item); });
+				item.addEventListener("click", function () { openSub(subName, item); });
+			} else {
+				item.addEventListener("mouseenter", function () { if (subTrigger) closeSub(); });
+			}
+			item.addEventListener("click", function () {
+				var action = item.dataset.action;
+				if (action === "pickFile") { say("onPickFile()（业务行为：打开文件选择）"); closeAll(); }
+				if (action === "viewMore") { say("查看更多 (8)（业务行为：跳转技能管理页）"); closeAll(); }
+				if (action === "manageSkills") { say("管理技能（业务行为：跳转技能管理页）"); closeAll(); }
+				if (action === "mcpStub") { say("MCP 面板条目（业务组合示意）"); closeAll(); }
+				if (action === "agentStub") { say("Agent 面板条目（业务组合示意）"); closeAll(); }
+			});
+		});
+
+		sub.querySelectorAll("[data-skill]").forEach(function (item) {
+			item.addEventListener("click", function () {
+				if (item.hasAttribute("data-active")) { removeSkill(item.dataset.skill); }
+				else { insertSkill(item.dataset.skill); }
+				closeAll();
+			});
+		});
+
+		document.addEventListener("mousedown", function (e) {
+			if (!main.hidden && !main.contains(e.target) && !sub.contains(e.target) && e.target !== addBtn && !addBtn.contains(e.target)) {
+				closeAll();
+			}
+		});
+
+		document.addEventListener("keydown", function (e) {
+			if (e.key === "Escape" && !main.hidden) {
+				closeAll();
+				addBtn.focus();
+			}
+		});
+
+		document.getElementById("send-btn").addEventListener("click", function () {
+			var text = editor.textContent.trim();
+			say(text ? "onSubmit(\"" + (text.length > 18 ? text.slice(0, 18) + "…" : text) + "\")（业务行为示意）" : "草稿为空，发送禁用（canSubmit 守卫）");
+		});
+
+		skinButtons();
+	})();
+</script>
+</body>
+</html>
