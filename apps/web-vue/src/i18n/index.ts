@@ -6,10 +6,12 @@ import enAuth from "../../../web/src/i18n/locales/en/auth.ts";
 import enCommon from "../../../web/src/i18n/locales/en/common.ts";
 import enLayout from "../../../web/src/i18n/locales/en/layout.ts";
 import enPlaza from "../../../web/src/i18n/locales/en/plaza.ts";
+import enUsage from "../../../web/src/i18n/locales/en/usage.ts";
 import zhAuth from "../../../web/src/i18n/locales/zh-CN/auth.ts";
 import zhCommon from "../../../web/src/i18n/locales/zh-CN/common.ts";
 import zhLayout from "../../../web/src/i18n/locales/zh-CN/layout.ts";
 import zhPlaza from "../../../web/src/i18n/locales/zh-CN/plaza.ts";
+import zhUsage from "../../../web/src/i18n/locales/zh-CN/usage.ts";
 import enWorkspace from "./locales/en/workspace.ts";
 import zhWorkspace from "./locales/zh-CN/workspace.ts";
 import { resolveServerErrorMessage } from "./server-error.ts";
@@ -68,11 +70,25 @@ export async function initI18n() {
 		fallbackLng: "zh-CN",
 		supportedLngs: [...SUPPORTED_LOCALES],
 		defaultNS: "common",
-		ns: ["common", "auth", "layout", "plaza", "workspace"],
+		ns: ["common", "auth", "layout", "plaza", "usage", "workspace"],
 		interpolation: { escapeValue: false },
 		resources: {
-			"zh-CN": { common: zhCommon, auth: zhAuth, layout: zhLayout, plaza: zhPlaza, workspace: zhWorkspace },
-			en: { common: enCommon, auth: enAuth, layout: enLayout, plaza: enPlaza, workspace: enWorkspace },
+			"zh-CN": {
+				common: zhCommon,
+				auth: zhAuth,
+				layout: zhLayout,
+				plaza: zhPlaza,
+				usage: zhUsage,
+				workspace: zhWorkspace,
+			},
+			en: {
+				common: enCommon,
+				auth: enAuth,
+				layout: enLayout,
+				plaza: enPlaza,
+				usage: enUsage,
+				workspace: enWorkspace,
+			},
 		},
 	});
 	setKitErrorMessageResolver(resolveServerErrorMessage);

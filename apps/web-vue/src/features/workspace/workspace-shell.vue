@@ -18,6 +18,7 @@ import { useTranslation } from "../../i18n/index.ts";
 import type { Branding } from "../../lib/branding.ts";
 import { useRoute } from "../../lib/use-route.ts";
 import PlazaView from "../plaza/plaza-view.vue";
+import UsageView from "../usage/usage-view.vue";
 
 const props = defineProps<{
 	member: MemberView | null;
@@ -29,6 +30,7 @@ const props = defineProps<{
 const emit = defineEmits<{ logout: [] }>();
 const { t } = useTranslation(["workspace", "auth", "layout"]);
 const { view, agentSlug, sessionId, navigate } = useRoute();
+const goToUsage = () => navigate({ view: "usage" });
 
 const sessions = useSessions({ client: props.client });
 const agents = useAgentCatalog({ client: props.client });
@@ -44,9 +46,11 @@ const currentAgent = computed(() => {
 	const slug = agentSlug.value ?? selectedAgent.value;
 	return agents.agents.value.find((agent) => agent.slug === slug) ?? agents.agents.value[0] ?? null;
 });
-const mobileTitle = computed(() =>
-	view.value === "plaza" ? t("layout:views.plaza") : (currentAgent.value?.display_name ?? props.branding.productName),
-);
+const mobileTitle = computed(() => {
+	if (view.value === "plaza") return t("layout:views.plaza");
+	if (view.value === "usage") return t("layout:views.usage");
+	return currentAgent.value?.display_name ?? props.branding.productName;
+});
 
 const groups = computed<SessionSidebarGroup[]>(() => {
 	const slugs = new Set<string>();
@@ -165,6 +169,23 @@ async function send(text: string, skills?: string[]) {
 						</div>
 						<button
 							type="button"
+							data-testid="sidebar-usage"
+							:aria-label="t('layout:views.usage')"
+							:title="t('layout:views.usage')"
+							:aria-pressed="view === 'usage'"
+							class="flex min-h-9 w-full items-center gap-2 rounded-[var(--kit-radius-sm)] px-2.5 py-1.5 text-left text-[length:var(--kit-text-label)] transition-colors hover:bg-[var(--kit-nav-active)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
+							:class="view === 'usage' ? 'bg-[var(--kit-nav-active)] font-medium' : 'text-[var(--kit-fg-muted)]'"
+							@click="
+								() => {
+									goToUsage();
+									closeSidebar();
+								}
+							"
+						>
+							{{ t("layout:views.usage") }}
+						</button>
+						<button
+							type="button"
 							data-testid="sidebar-nav-plaza"
 							:aria-current="view === 'plaza' ? 'page' : undefined"
 							class="flex min-h-9 w-full items-center gap-2 rounded-[var(--kit-radius-sm)] px-2.5 py-1.5 text-left text-[length:var(--kit-text-label)] transition-colors hover:bg-[var(--kit-nav-active)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
@@ -245,7 +266,8 @@ async function send(text: string, skills?: string[]) {
 			</header>
 		</template>
 
-		<PlazaView v-if="view === 'plaza'" :client="props.client" @open="openAgent" />
+		<UsageView v-if="view === 'usage'" :client="props.client" @open-agent="openAgent" />
+		<PlazaView v-else-if="view === 'plaza'" :client="props.client" @open="openAgent" />
 		<div v-else class="flex min-h-0 flex-1 flex-col">
 			<div
 				v-if="sendError"

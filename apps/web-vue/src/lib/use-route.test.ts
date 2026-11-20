@@ -5,6 +5,7 @@ describe("Vue 查询参数路由", () => {
 	it("agent+session 深链直达具体会话，缺 session 保持新会话语义", () => {
 		expect(parseRoute("?agent=demo&session=s1")).toEqual({ view: "chat", agentSlug: "demo", sessionId: "s1" });
 		expect(parseRoute("?agent=demo")).toEqual({ view: "chat", agentSlug: "demo", sessionId: null });
+		expect(parseRoute("?view=usage")).toEqual({ view: "usage", agentSlug: null, sessionId: null });
 		// session 不能脱离 agent 单独成立：无 agent 时仍回落广场
 		expect(parseRoute("?session=s1")).toEqual({ view: "plaza", agentSlug: null, sessionId: null });
 	});
@@ -19,7 +20,14 @@ describe("Vue 查询参数路由", () => {
 		expect(routeSearch({ view: "chat" }, "?agent=demo&session=s1")).toBe("?agent=demo&session=s1");
 	});
 
-	it("回到广场时 agent 与 session 一并清除", () => {
+	it("离开聊天视图时 agent 与 session 一并清除，用量深链写回 ?view=usage", () => {
+		expect(routeSearch({ view: "usage" }, "?agent=demo&session=s1")).toBe("?view=usage");
 		expect(routeSearch({ view: "plaza" }, "?agent=demo&session=s1")).toBe("");
+	});
+
+	it("保留宿主参数并在刷新后恢复用量页", () => {
+		const search = routeSearch({ view: "usage" }, "?api=x&agent=demo&session=s1");
+		expect(search).toBe("?api=x&view=usage");
+		expect(parseRoute(search)).toEqual({ view: "usage", agentSlug: null, sessionId: null });
 	});
 });
