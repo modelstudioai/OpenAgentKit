@@ -6,6 +6,7 @@
 | --- | --- | --- | --- |
 | `apps/server` | Node ESM | Node ≥ 24 | Hono 应用工厂 `createKitServer()`，数据面 + 控制面 |
 | `apps/web` | 纯静态 CSR | 浏览器 | 体验页，支持 Web / H5 |
+| `apps/web-vue` | 纯静态 CSR | 浏览器 | 体验页 Vue 3 平行实现；先做参考实现，暂不进发布产物 |
 | `apps/console` | 纯静态 CSR | 浏览器 | 管理端 |
 | `apps/storybook` | Next.js 静态导出（`out/`） | 构建使用 Node ≥24；部署为静态托管 | Fumadocs 文档站与组件预览 |
 
@@ -25,12 +26,17 @@ API Key 输入隐藏回显，凭据和管理员令牌不写启动日志。已有
 ```text
 apps/server ──► @openagentpack/sdk（上游主入口，仅服务端 runtime import）
      └───────► @openagentkit/sdk/protocol 与 SDK 功能数据入口
-apps/web / apps/console / packages/chat-ui
+apps/web / apps/console / apps/web-vue / packages/chat-ui / packages/chat-ui-vue
      ├───────► @openagentkit/sdk/<功能>/hooks 与 @openagentkit/sdk/providers/kit/react
      │                    └──────► SDK 功能数据入口
      ├───────► @openagentkit/sdk/hooks（屏幕判断）
      └───────► SDK 功能数据入口与 @openagentkit/sdk/protocol
 ```
+
+`apps/web-vue` 与 `packages/chat-ui-vue` 使用对称的 Vue 入口：
+`@openagentkit/sdk/<功能>/hooks-vue` 与 `@openagentkit/sdk/providers/kit/vue`。
+Vue 适配只管理订阅与生命周期，业务请求、SSE 与快照仍由同一份 SDK 数据层执行；
+两套 UI 包互不 import，只共享生成镜像与 `apps/web` 的产品文案。
 
 自定义宿主注入的能力由体验页本地适配，不经过 SDK：
 `apps/web/src/lib/host.ts` 读取 `window.__OPENAGENTPACK_KIT_BRIDGE__`，缺失时回退浏览器实现。

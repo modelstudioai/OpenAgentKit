@@ -10,10 +10,12 @@
 | 仓库脚本 | `pnpm test:scripts` | 首次配置、既有 `.env` 不变、取消 / 并发保护、依赖构建与服务启动顺序、组件复制 |
 | SDK 数据层 | `pnpm --filter @openagentkit/sdk test` | SSE 帧编解码、快照归并、`event_id` 去重、重连与 `after` 续传、工具审批、确认令牌 |
 | chat-ui | `pnpm --filter @openagentpack/kit-chat-ui test` | 消息渲染、执行过程、附件与快捷指令、审批交互、空态与禁用态 |
+| chat-ui-vue | `pnpm --filter @openagentpack/kit-chat-ui-vue test` | 与 React 版对称的组件行为；L2 合同（testid / role / aria） |
 | server | `pnpm --filter @openagentpack/kit-server test` | 路由与权限、身份归属、确认闸门、事件不落库、OpenAPI 一致性 |
 | gateway 合同 | 同上（`tests/fixtures/`） | Provider HTTP/SSE 映射；Mock 与 SdkGateway 跑同一套契约 |
 | Console | `pnpm --filter console test` | 管理客户端、导航、草稿所有权、资源表单与恢复 |
 | Web | `pnpm --filter web test` | 配置、身份隔离、宿主适配及页面纯逻辑 |
+| Web Vue | `pnpm --filter web-vue test` | Vue 版登录、身份生命周期与页面纯逻辑；共享体验类 E2E |
 | 文档站 | `pnpm --filter storybook test` | 接口文档与 Skill 链接；页面内容/预览另由静态构建及浏览器验证 |
 | 开发 Skill | `pnpm check:skills` / `pnpm typecheck:skills` / `pnpm test:skills` | 公开 API、生成漂移、示例编译、离线包及浏览器边界 |
 | web / console E2E | `pnpm e2e` | 对话、重连、归档/删除、附件、管理端 plan → 确认 → 执行 |

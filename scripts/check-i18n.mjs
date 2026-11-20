@@ -9,9 +9,9 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-export const DEFAULT_APPS = ["apps/web", "apps/console"];
+export const DEFAULT_APPS = ["apps/web", "apps/console", "apps/web-vue"];
 export const DEFAULT_LOCALES = ["zh-CN", "en"];
-export const CHAT_UI_COMPONENTS = "packages/chat-ui/src/components";
+export const CHAT_UI_COMPONENT_DIRS = ["packages/chat-ui/src/components", "packages/chat-ui-vue/src/components"];
 
 /** 把嵌套词表展平成点分键列表；非字符串叶子记为非法键使对齐检查失败。 */
 export function flattenKeys(value, prefix = "", out = []) {
@@ -98,7 +98,7 @@ function readSourceText(srcDir) {
 			if (statSync(full).isDirectory()) {
 				// 词表目录（locales）自身不算引用；i18n 引导代码里的 t() 调用计入引用。
 				if (entry !== "locales") walk(full);
-			} else if (/\.(ts|tsx)$/.test(entry)) {
+			} else if (/\.(ts|tsx|vue)$/.test(entry)) {
 				chunks.push(readFileSync(full, "utf8"));
 			}
 		}
@@ -143,9 +143,11 @@ async function main() {
 		}
 	}
 	if (!args.length) {
-		for (const problem of await checkChatUiStrings(CHAT_UI_COMPONENTS)) {
-			console.error(`✕ ${problem}`);
-			failed = true;
+		for (const dir of CHAT_UI_COMPONENT_DIRS) {
+			for (const problem of await checkChatUiStrings(dir)) {
+				console.error(`✕ ${problem}`);
+				failed = true;
+			}
 		}
 	}
 	if (failed) {

@@ -120,6 +120,11 @@
       "types": "./dist/auth/hooks.d.ts",
       "import": "./dist/auth/hooks.js",
       "default": "./dist/auth/hooks.js"
+		},
+		"./auth/hooks-vue": {
+			"types": "./dist/auth/hooks-vue.d.ts",
+			"import": "./dist/auth/hooks-vue.js",
+			"default": "./dist/auth/hooks-vue.js"
     }
   },
   "files": [
@@ -142,10 +147,14 @@
     "zod": "4.6.5"
   },
   "peerDependencies": {
-    "react": "^18 || ^19"
+    "react": "^18 || ^19",
+    "vue": "^3.5.0"
   },
   "peerDependenciesMeta": {
     "react": {
+      "optional": true
+    },
+    "vue": {
       "optional": true
     }
   },
@@ -158,6 +167,7 @@
     "react-dom": "^19.3.0",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "vue": "^3.5.0"
   }
 }

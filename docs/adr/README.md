@@ -32,3 +32,4 @@
 | [0025](./0025-console-owns-admin-client.md) | 管理端持有控制面客户端，SDK 仅公开通用调用状态 |
 | [0026](./0026-sdk-feature-modules.md) | SDK 按功能划分公开入口与 hooks |
 | [0027](./0027-skills-source-and-generated-output.md) | Skill 改为源目录 + 生成物，不再作为 workspace 包；状态更新改用中文内容 |
+| [0028](./0028-dual-framework-vue-implementation.md) | Web 体验提供 Vue 3 平行实现：SDK hooks-vue、chat-ui-vue、web-vue，按 L2 等价验收 |

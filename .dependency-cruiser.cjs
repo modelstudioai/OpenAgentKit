@@ -2,12 +2,14 @@
  * 依赖方向守护。每条规则都在对应包的 AGENTS.md 里点名，改动规则前请先改文档。
  *
  * 分层：sdk/protocol ← sdk ← chat-ui；server 只依赖 sdk/protocol 与 sdk 数据入口；
- * sdk 数据入口禁 React；React 仅限共享 hooks/、Kit React 接入与指定功能的 hooks/；chat-ui 禁 server；
+ * sdk 数据入口禁 React/Vue；React 仅限 hooks/ 与 Kit React 接入，Vue 仅限 hooks-vue/ 与 Kit Vue 接入；
+ * chat-ui / chat-ui-vue 互不依赖且禁 server；
  * antd 仅限 apps/console（ADR-0015）。
  */
 const sdkReact = "^packages/sdk/src/(hooks/|providers/kit/react/|(chat|sessions|files|agents|usage|auth)/hooks/)";
+const sdkVue = "^packages/sdk/src/(hooks-vue/|providers/kit/vue/|(chat|sessions|files|agents|usage|auth)/hooks-vue/)";
 const sdkEntryModules =
-	"chat|sessions|files|usage|auth|messages|config|request|stream|providers|providers/kit|providers/kit/react|providers/session-events|providers/bailian|protocol|hooks|chat/hooks|sessions/hooks|files/hooks|agents/hooks|usage/hooks|auth/hooks";
+	"chat|sessions|files|usage|auth|messages|config|request|stream|providers|providers/kit|providers/kit/react|providers/kit/vue|providers/session-events|providers/bailian|protocol|hooks|hooks-vue|chat/hooks|chat/hooks-vue|sessions/hooks|sessions/hooks-vue|files/hooks|files/hooks-vue|agents/hooks|agents/hooks-vue|usage/hooks|usage/hooks-vue|auth/hooks|auth/hooks-vue";
 const sdkPublicSources = `^packages/sdk/src/(state\\.ts|(${sdkEntryModules})/index\\.ts)$`;
 const sdkPublicDist = `^packages/sdk/dist/(state|${sdkEntryModules})\\.(js|d\\.ts)$`;
 
@@ -59,6 +61,29 @@ module.exports = {
 			severity: "error",
 			from: { path: "^packages/sdk/src/", pathNot: sdkReact },
 			to: { path: "node_modules/(react|react-dom|@radix-ui)/" },
+		},
+		{
+			name: "sdk-data-no-vue",
+			comment: "SDK 数据处理入口必须能在 Node 与任意 UI 框架同跑：禁 vue",
+			severity: "error",
+			from: { path: "^packages/sdk/src/", pathNot: sdkVue },
+			to: { path: "node_modules/vue/" },
+		},
+		{
+			name: "sdk-vue-no-react",
+			comment: "Vue adapter 只包装 SDK 数据能力，不得依赖 React、Radix、chat-ui 或 apps",
+			severity: "error",
+			from: { path: sdkVue },
+			to: {
+				path: "node_modules/(react|react-dom|@radix-ui)/|^packages/chat-ui/src|^packages/chat-ui-vue/src|^apps/",
+			},
+		},
+		{
+			name: "chat-ui-vue-no-react",
+			comment: "Vue 组件库不得依赖 React 版 chat-ui、React、Radix React 或 apps",
+			severity: "error",
+			from: { path: "^packages/chat-ui-vue/src" },
+			to: { path: "node_modules/(react|react-dom|@radix-ui)/|^packages/chat-ui/src|^apps/" },
 		},
 		{
 			name: "sdk-data-no-react-adapter",
@@ -243,7 +268,7 @@ module.exports = {
 		enhancedResolveOptions: {
 			exportsFields: ["exports"],
 			conditionNames: ["import", "require", "node", "default", "types"],
-			extensions: [".ts", ".tsx", ".js", ".jsx", ".json"],
+			extensions: [".ts", ".tsx", ".js", ".jsx", ".vue", ".json"],
 		},
 		reporterOptions: { dot: { collapsePattern: "^(node_modules|dist)/+" } },
 	},

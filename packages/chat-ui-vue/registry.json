@@ -1,0 +1,26 @@
+{
+	"$schema": "https://openagentpack.dev/schema/kit-chat-ui-registry.json",
+	"name": "kit-chat-ui-vue",
+	"version": 1,
+	"usage": "pnpm kit:add <component> 会把 Vue 组件源码复制进你的项目（copy-in），可自由修改；升级时按 docs 的 diff 指引合并。",
+	"components": {
+		"kit-i18n": {
+			"file": "src/components/kit-i18n/index.ts",
+			"deps": []
+		},
+		"states": {
+			"file": "src/components/states/index.ts",
+			"deps": ["empty-state", "error-state"]
+		},
+		"empty-state": {
+			"file": "src/components/empty-state/index.vue",
+			"deps": []
+		},
+		"error-state": {
+			"file": "src/components/error-state/index.vue",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/error-state/strings.ts"]
+		}
+	},
+	"theme": "src/theme.css"
+}

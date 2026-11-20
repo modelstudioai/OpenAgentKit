@@ -3,8 +3,8 @@
 ## 顶层
 
 ```
-apps/            可运行应用（server / web / console / storybook）
-packages/        可复用包（sdk / chat-ui / eval）
+apps/            可运行应用（server / web / web-vue / console / storybook）
+packages/        可复用包（sdk / chat-ui / chat-ui-vue / eval）
 assets/          生成产物（当前为 assets/skills；dist 不入库）
 docs/            权威文档（见 AGENTS.md 权威顺序）+ adr/ research/
 scripts/         仓库级脚本（start、dev、kit、skills、check-docs、check-no-inner-deps、lint-changed、build-release）

@@ -5,8 +5,9 @@
  * 用法：
  *   pnpm dev                        # server + web + console + storybook（默认）
  *   pnpm dev server web console     # 只起指定目标
+ *   pnpm dev server web-vue         # Vue 版体验页（默认不启动）
  *
- * 目标：server(:8787) web(:5173) console(:5174) storybook(:3000)
+ * 目标：server(:8787) web(:5173) console(:5174) storybook(:3000) web-vue(:5175)
  * 根 `.env` 会被读进子进程环境（server 自身也支持 --env-file-if-exists）。
  */
 import { spawn, spawnSync } from "node:child_process";
@@ -56,6 +57,7 @@ if (env.KIT_EVAL_WORKSPACES) {
 const ALL_TARGETS = {
 	server: { args: ["--filter", "@openagentpack/kit-server", "dev"] },
 	web: { args: ["--filter", "web", "dev"] },
+	"web-vue": { args: ["--filter", "web-vue", "dev"] },
 	console: { args: ["--filter", "console", "dev"] },
 	storybook: { args: ["--filter", "storybook", "dev"] },
 };
