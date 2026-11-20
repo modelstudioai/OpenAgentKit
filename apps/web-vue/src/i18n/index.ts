@@ -1,13 +1,15 @@
 import { setKitErrorMessageResolver } from "@openagentkit/sdk/state";
 import i18n from "i18next";
 import { computed, ref } from "vue";
-// 产品文案只有一份：auth / common / layout / plaza 直接复用 apps/web；本 app 只保留自己的 workspace 命名空间。
+// 产品文案只有一份：auth / chat / common / layout / plaza / usage 直接复用 apps/web；本 app 只保留自己的 workspace 命名空间。
 import enAuth from "../../../web/src/i18n/locales/en/auth.ts";
+import enChat from "../../../web/src/i18n/locales/en/chat.ts";
 import enCommon from "../../../web/src/i18n/locales/en/common.ts";
 import enLayout from "../../../web/src/i18n/locales/en/layout.ts";
 import enPlaza from "../../../web/src/i18n/locales/en/plaza.ts";
 import enUsage from "../../../web/src/i18n/locales/en/usage.ts";
 import zhAuth from "../../../web/src/i18n/locales/zh-CN/auth.ts";
+import zhChat from "../../../web/src/i18n/locales/zh-CN/chat.ts";
 import zhCommon from "../../../web/src/i18n/locales/zh-CN/common.ts";
 import zhLayout from "../../../web/src/i18n/locales/zh-CN/layout.ts";
 import zhPlaza from "../../../web/src/i18n/locales/zh-CN/plaza.ts";
@@ -70,12 +72,13 @@ export async function initI18n() {
 		fallbackLng: "zh-CN",
 		supportedLngs: [...SUPPORTED_LOCALES],
 		defaultNS: "common",
-		ns: ["common", "auth", "layout", "plaza", "usage", "workspace"],
+		ns: ["common", "auth", "chat", "layout", "plaza", "usage", "workspace"],
 		interpolation: { escapeValue: false },
 		resources: {
 			"zh-CN": {
 				common: zhCommon,
 				auth: zhAuth,
+				chat: zhChat,
 				layout: zhLayout,
 				plaza: zhPlaza,
 				usage: zhUsage,
@@ -84,6 +87,7 @@ export async function initI18n() {
 			en: {
 				common: enCommon,
 				auth: enAuth,
+				chat: enChat,
 				layout: enLayout,
 				plaza: enPlaza,
 				usage: enUsage,

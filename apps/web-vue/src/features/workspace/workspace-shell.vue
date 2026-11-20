@@ -4,14 +4,22 @@ import { useChat } from "@openagentkit/sdk/chat/hooks-vue";
 import type { MemberView, SessionSummary } from "@openagentkit/sdk/protocol";
 import type { ChatProvider } from "@openagentkit/sdk/providers";
 import type { KitClient } from "@openagentkit/sdk/providers/kit";
-import { useSessions } from "@openagentkit/sdk/sessions/hooks-vue";
+import type { SessionAction } from "@openagentkit/sdk/sessions";
+import { useSessionDirectory } from "@openagentkit/sdk/sessions/hooks-vue";
 import {
 	Chat,
+	ConfirmDialog,
 	EmptyState,
 	ErrorState,
 	Layout,
+	Menu,
+	MenuContent,
+	MenuItem,
+	MenuTrigger,
 	SessionSidebar,
 	type SessionSidebarGroup,
+	type SessionSidebarPage,
+	type SessionSidebarSection,
 } from "@openagentpack/kit-chat-ui-vue";
 import { computed, ref, watch } from "vue";
 import { useTranslation } from "../../i18n/index.ts";
@@ -28,14 +36,23 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{ logout: [] }>();
-const { t } = useTranslation(["workspace", "auth", "layout"]);
+const { t } = useTranslation(["workspace", "auth", "layout", "chat"]);
 const { view, agentSlug, sessionId, navigate } = useRoute();
 const goToUsage = () => navigate({ view: "usage" });
 
-const sessions = useSessions({ client: props.client });
+const directory = useSessionDirectory({
+	client: props.client,
+	// 归档/删除的正是当前打开会话时：清空地址回到新会话态，聊天页随路由重置。
+	onExecuted: (id) => {
+		if (id === sessionId.value) navigate({ view: "chat", session: null }, { replace: true });
+	},
+});
 const agents = useAgentCatalog({ client: props.client });
 const search = ref("");
 const selectedAgent = ref("");
+const selectedFrom = ref<{ sessionId: string; section: SessionSidebarSection } | null>(null);
+const editing = ref<{ id: string; section: SessionSidebarSection } | null>(null);
+const actionError = ref<string | null>(null);
 const creating = ref(false);
 const sending = ref(false);
 const createError = ref<string | null>(null);
@@ -52,19 +69,64 @@ const mobileTitle = computed(() => {
 	return currentAgent.value?.display_name ?? props.branding.productName;
 });
 
+const agentName = (slug: string) => agents.agents.value.find((agent) => agent.slug === slug)?.display_name ?? slug;
 const groups = computed<SessionSidebarGroup[]>(() => {
-	const slugs = new Set<string>();
-	for (const session of sessions.sessions.value) slugs.add(session.agent_slug);
-	for (const agent of agents.agents.value) slugs.add(agent.slug);
-	return [...slugs].map((slug) => ({
-		id: slug,
-		name: agents.agents.value.find((agent) => agent.slug === slug)?.display_name ?? slug,
-		sessions: sessions.sessions.value.filter((session) => session.agent_slug === slug),
-		initialized: true,
-		hasMore: false,
-		loading: sessions.loading.value,
+	return directory.snapshot.value.groups.map((group) => ({
+		id: group.slug,
+		name: agentName(group.slug),
+		sessions: group.sessions,
+		initialized: group.initialized,
+		loading: group.loading,
+		loadingMore: group.loadingMore,
+		hasMore: group.hasMore,
 	}));
 });
+const recent = computed<SessionSidebarPage>(() => ({
+	sessions: directory.snapshot.value.recent.sessions,
+	initialized: directory.snapshot.value.recent.initialized,
+	loading: directory.snapshot.value.recent.loading,
+	loadingMore: directory.snapshot.value.recent.loadingMore,
+	hasMore: directory.snapshot.value.recent.hasMore,
+	error: directory.snapshot.value.recent.error,
+}));
+const activeSection = computed<SessionSidebarSection>(() =>
+	selectedFrom.value?.sessionId === sessionId.value ? selectedFrom.value.section : "groups",
+);
+const activeGroupId = computed(() => (sessionId.value && activeSection.value === "groups" ? agentSlug.value : null));
+
+const pendingAction = computed(() => directory.actions.value.pending);
+const actionBusy = computed(() => directory.actions.value.busy);
+const dialogTitle = computed(() =>
+	pendingAction.value?.action === "archive"
+		? t("chat:sessionDialog.archiveTitle")
+		: t("chat:sessionDialog.deleteTitle"),
+);
+const dialogBody = computed(() => {
+	const pending = pendingAction.value;
+	if (!pending) return "";
+	if (pending.error) return pending.error;
+	if (!pending.plan) return t("chat:sessionDialog.planning");
+	return [
+		pending.action === "archive" ? t("chat:sessionDialog.archiveEffect") : t("chat:sessionDialog.deleteEffect"),
+		...pending.plan.diff.map((item) => `${item.resource} → ${item.action}`),
+		...(actionBusy.value ? [t("chat:sessionDialog.busyNote")] : []),
+	].join("\n\n");
+});
+const dialogConfirmLabel = computed(() => {
+	if (actionBusy.value) return t("chat:sessionDialog.processing");
+	return pendingAction.value?.plan ? t("chat:sessionDialog.confirm") : t("chat:sessionDialog.refetchPlan");
+});
+
+// 目录只加载智能体与最近页；分组在首次出现后按需拉取，避免初始化时并发请求全部历史。
+watch(
+	() => directory.snapshot.value.groups.map((group) => `${group.slug}:${group.initialized}`),
+	() => {
+		for (const group of directory.snapshot.value.groups) {
+			if (!group.initialized && !group.loading) group.load();
+		}
+	},
+	{ immediate: true },
+);
 
 watch(
 	agentSlug,
@@ -85,13 +147,71 @@ function goToPlaza() {
 	navigate({ view: "plaza" });
 }
 
-function select(session: SessionSummary) {
+function select(session: SessionSummary, section: SessionSidebarSection) {
+	selectedFrom.value = { sessionId: session.session_id, section };
 	navigate({ view: "chat", agent: session.agent_slug, session: session.session_id });
 }
 
 function openAgent(slug: string) {
 	selectedAgent.value = slug;
+	selectedFrom.value = null;
 	navigate({ view: "chat", agent: slug, session: null });
+}
+
+async function newSessionForAgent(slug: string) {
+	actionError.value = null;
+	try {
+		const listed = await directory.checkAgent(slug);
+		if (!listed) {
+			actionError.value = t("layout:errors.agentDelisted");
+			return false;
+		}
+		if (!agents.agents.value.some((agent) => agent.slug === slug)) {
+			actionError.value = t("layout:errors.agentUpdated");
+			return false;
+		}
+		selectedAgent.value = slug;
+		navigate({ view: "chat", agent: slug, session: null });
+		return true;
+	} catch {
+		actionError.value = t("layout:errors.agentCheckFailed");
+		return false;
+	}
+}
+
+function rowAction(session: SessionSummary, section: SessionSidebarSection, action: "rename" | SessionAction) {
+	if (action === "rename") {
+		editing.value = { id: session.session_id, section };
+		return;
+	}
+	void directory.requestAction(session.session_id, action);
+}
+
+async function renameSession(id: string, title: string) {
+	actionError.value = null;
+	try {
+		await directory.rename(id, title);
+	} catch (error) {
+		actionError.value = t("layout:errors.renameFailed", {
+			message: error instanceof Error ? error.message : String(error),
+		});
+	}
+}
+
+function finishEditing(id: string) {
+	if (editing.value?.id === id) editing.value = null;
+}
+
+function loadMore({ section, groupId }: { section: SessionSidebarSection; groupId?: string }) {
+	if (section === "recent") {
+		directory.snapshot.value.recent.loadMore();
+		return;
+	}
+	directory.snapshot.value.groups.find((group) => group.slug === groupId)?.loadMore();
+}
+
+function confirmAction() {
+	if (!actionBusy.value) void directory.confirmAction();
 }
 
 async function createSession() {
@@ -102,7 +222,7 @@ async function createSession() {
 	try {
 		const created = await props.client.createSession({ agentSlug: slug });
 		navigate({ view: "chat", agent: slug, session: created.session_id }, { replace: true });
-		await sessions.reload();
+		await directory.reload();
 	} catch (error) {
 		createError.value = error instanceof Error ? error.message : String(error);
 	} finally {
@@ -122,7 +242,7 @@ async function send(text: string, skills?: string[]) {
 			const created = await props.client.createSession({ agentSlug: slug });
 			activeSessionId = created.session_id;
 			navigate({ view: "chat", agent: slug, session: activeSessionId }, { replace: true });
-			await sessions.reload();
+			await directory.reload();
 		}
 		// 先建会话再发送：useChat.send 显式接收 sessionId，不依赖路由更新后的 watcher 时序。
 		await chat.send(text, { sessionId: activeSessionId, skills });
@@ -139,20 +259,57 @@ async function send(text: string, skills?: string[]) {
 		<template #sidebar="{ closeSidebar }">
 			<SessionSidebar
 				:groups="groups"
-				:recent="{ sessions: sessions.sessions.value, initialized: true, hasMore: false }"
+				:recent="recent"
 				:active-id="sessionId"
+				:active-section="activeSection"
+				:active-group-id="activeGroupId"
+				:editing="editing"
+				:action-error="actionError"
 				:search-input="search"
-				:loading="sessions.loading.value"
-				:error="sessions.error.value"
-				:agent-name="(slug) => agents.agents.value.find((agent) => agent.slug === slug)?.display_name ?? slug"
+				:loading="directory.snapshot.value.loading"
+				:error="directory.snapshot.value.error"
+				:agent-name="agentName"
 				@select="
-					(session) => {
-						select(session);
+					(session, section) => {
+						select(session, section);
 						closeSidebar();
 					}
 				"
+				@new-chat="
+					(slug) => void newSessionForAgent(slug).then((opened) => opened && closeSidebar())
+				"
+				@edited="renameSession"
+				@edit-end="finishEditing"
+				@load-more="loadMore"
+				@dismiss-error="actionError = null"
+				@reload="() => void directory.reload()"
 				@search-input="(value) => (search = value)"
 			>
+				<template #menu="{ session, section }">
+					<Menu>
+						<MenuTrigger as-child>
+							<button
+								type="button"
+								:aria-label="t('layout:moreActions')"
+								:title="t('layout:moreActions')"
+								class="grid size-full cursor-pointer place-items-center rounded-[var(--kit-radius-sm)] outline-none"
+							>
+								<svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" class="h-4 w-4">
+									<circle cx="5" cy="12" r="1.5" />
+									<circle cx="12" cy="12" r="1.5" />
+									<circle cx="19" cy="12" r="1.5" />
+								</svg>
+							</button>
+						</MenuTrigger>
+						<MenuContent align="end">
+							<MenuItem @select="rowAction(session, section, 'rename')">{{ t("layout:rename") }}</MenuItem>
+							<MenuItem @select="rowAction(session, section, 'archive')">{{ t("layout:archive") }}</MenuItem>
+							<MenuItem class="text-[var(--kit-danger)]" @select="rowAction(session, section, 'delete')">
+								{{ t("layout:delete") }}
+							</MenuItem>
+						</MenuContent>
+					</Menu>
+				</template>
 				<template #header>
 					<div class="flex flex-col gap-2 px-3 py-2">
 						<div class="flex min-h-10 items-center justify-between gap-2">
@@ -313,4 +470,14 @@ async function send(text: string, skills?: string[]) {
 			<EmptyState v-else :title="t('common:loading')" />
 		</div>
 	</Layout>
+
+	<ConfirmDialog
+		v-if="pendingAction"
+		:title="dialogTitle"
+		:body="dialogBody"
+		:busy="actionBusy"
+		:confirm-label="dialogConfirmLabel"
+		:on-confirm="confirmAction"
+		:on-cancel="directory.cancelAction"
+	/>
 </template>
