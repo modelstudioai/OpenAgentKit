@@ -15,6 +15,9 @@
 | `53:8949` / `53:5910` | Component 197「文本chat · 完整工具栏」：输入框整体（玻璃拟态卡 + 工具栏行 + 底部附加条叠层） |
 | `60:2238` | 「添加 · 主菜单」：添加文件 / 技能▸ / MCP▸ / Agent▸，含分组线 |
 | `60:2465` | 「技能 · 二级菜单」：技能行（图标+名称+描述）、查看更多 (8)、管理技能（钉底操作区） |
+| `53:11829` | 「连接器 · 默认形态」：plug 图标圆钮（32×32，未选连接器时与添加钮同形态） |
+| `53:11828` | 「连接器 · 已选 3+」：触发钮变胶囊（3 个 24×24 头像重叠堆叠 + `+1` 溢出计数） |
+| `35:12584` | 「连接器 · 展开列表」：标题 → 分隔线 → 滚动列表（logo + 名称 + Switch 行）→ 分隔线 → 管理连接器（钉底） |
 
 ## 组件三原则（全部设计的判据）
 
@@ -33,7 +36,7 @@
 
 ```
 <Sender variant="workspace">          ← 布局不动：编辑区在上 + 底行左 prefix / 右 suffix
-  prefix:  [图标圆钮 添加] [图标圆钮 添加附件]
+  prefix:  [图标圆钮 添加] [连接器触发钮（空态圆钮 ↔ 已选 IconStack 胶囊）]
            [PillButton 知识] [PillButton 记忆] [PillButton 联网搜]
   suffix:  [模型选择器（Menu 组合）] [内置发送钮]
   dock:    [附加条目 ×N]           ← 开放槽位
@@ -48,6 +51,11 @@
 | 底部附加条 | 新增 `Sender.Dock`（对齐 `Sender.Header` 先例）：渲染为 form 的兄弟区域（叠层几何要求 dock 在 form 元素外），组件固定 z 顺序（form 在上）+ 默认间距，业务经 `classNames.dock` 负 margin 实现设计稿「压边叠层」 | 待定 |
 | Dock 条目 / 模型选择器 | 不预抽：形态单一且无第二调用方，业务组合现有 chip/Menu；等第二形态出现再提 `DockItem` | 已拍板 |
 | 「添加」菜单 | Menu 包装层扩展，见下节 | 已拍板（协议级） |
+| 连接器触发钮形态 | 业务组合：空态 = 圆形图标钮（同「不做组件」决策）+ plug 图标；已选态 = 业务在钮内渲染 `IconStack`，形态派生全在业务 | 已拍板 |
+| 连接器面板 | 纯组合：MenuLabel + 分隔线 + 滚动行（MenuItem + trailing Switch）+ 分隔线 + 钉底「管理连接器」，与「添加」菜单同构 | 已拍板 |
+| `Switch` | 自研受控开关（role="switch"），不引 Radix、零新增依赖 | 已拍板 |
+| `IconStack` | 重叠堆叠展示 primitive（堆叠 + 白描边 + 溢出 `+N`），中性形态命名（否决 AvatarGroup 偏头像语义） | 已拍板 |
+| `MenuLabel` | 面板标题区（Radix Label 薄包装）；Beta 角标等附加物业务塞 children，不进协议 | 已拍板 |
 
 ## 「添加」菜单协议（已拍板）
 
@@ -97,6 +105,44 @@
 管理技能）与点击行为全部业务 i18n + 回调；技能数据与 `/` 触发的 Suggestion 共用同一份
 数据源，两个入口互不耦合；二级菜单选中技能 = `senderRef.replaceRange(caret, caret, "/name ")`。
 
+## 连接器协议（已拍板）
+
+### 新增导出
+
+| 导出 | 职责 | 关键 props |
+| --- | --- | --- |
+| `IconStack` | 重叠堆叠展示：`24px` 圆形条目、负间距重叠、`1px` 白描边、溢出渲染 `+N`（13px/500）。纯展示，不感知业务 | `items: ReactNode[]` `max?=3` `className` |
+| `Switch` | 自研受控开关：`role="switch"` + `aria-checked` 的 button，轨道/滑块消费 kit token（on = `--kit-accent`，滑块白底投影）；过渡走 `--kit-duration-fast` + `--kit-ease-out`，`prefers-reduced-motion` 降级 | `checked` `onCheckedChange?` `disabled?` |
+| `MenuLabel` | 面板标题区（连接器标题），Radix Label 薄包装，默认 `--kit-text-label` | Radix 透传 |
+
+Switch 自研（不用 Radix）的理由：形态就是一个 button + 两段 CSS，自研零依赖、皮完全走 token，
+也避免为菜单行内的「纯视觉」用法引入库控件的可焦点行为。
+
+### 触发钮形态（业务派生）
+
+- 空态：`MenuTrigger asChild` + 圆形图标钮 + plug 图标（=「圆形图标钮不做组件」决策直接适用）。
+- 已选态：同一钮内渲染 `<IconStack items={选中项 logo} max={3} />`；
+  空态/胶囊的切换由业务的选中列表派生，组件不做形态枚举。
+- 无障碍：钮上 `aria-haspopup="menu"`；堆叠条目 `aria-hidden`，名称靠 `aria-label` 表达。
+
+### 菜单行 = MenuItem + trailing Switch
+
+- 行 anatomy 完全复用 MenuItem 协议：`[icon logo] [children 名称] [trailing Switch]`；
+  行高 `min-h-9`（36px）与设计稿行高一致。
+- **Switch 在菜单行内是纯视觉指示**：业务传 `aria-hidden` + `pointer-events-none` +
+  `tabIndex={-1}`（守「不得嵌套交互元素」红线），点击整行切换，状态业务持有。
+- 行语义沿用 active 规则：业务传 `role="menuitemcheckbox"` + `aria-checked`；
+  勾形态这里不适用 → 业务不传 `active`，用 `trailing` 接管右侧（右侧插槽唯一规则自洽）。
+- **切换不关菜单**：Radix Item 选中默认关菜单，多选场景业务在 `onSelect` 里
+  `preventDefault`（文档化模式，组件不加开关 prop）。
+
+### 分区
+
+与「添加」菜单同构：标题区（MenuLabel）→ 分隔线 → 滚动选项区
+（`max-h` + `overflow-y-auto overscroll-contain` div，设计稿视口 216px）→ 分隔线 →
+钉底「管理连接器」（settings 图标 + 文字，与「管理技能」同款组合）。
+
+
 ## 视觉策略
 
 - 面板默认 kit token（`--kit-radius-sm` 9px、`--kit-shadow` 等）；设计稿的 16px 圆角、
@@ -112,12 +158,16 @@
 
 - 「添加」主菜单 + 技能二级菜单完整交互；技能行点击插入 chip、编辑器退格删除 chip 后
   菜单 active 双向同步（真实 input 事件驱动）；已选行点击 = 移除（业务 toggle 示意）。
+- 连接器演示：触发钮空态圆钮 ↔ 已选堆叠胶囊形态切换（IconStack 溢出 `+1`）；
+  行内 Switch 纯视觉、点整行切换且菜单保持打开（preventDefault 模式）；
+  钉底「管理连接器」。
 - 设计还原态 ↔ kit 默认态皮肤切换（演示原则 3：同一组合两种皮）。
 - 交付前 impeccable detect 通过（0 问题）。
 
 ## 落码清单（拍板完成后）
 
-1. chat-ui：Menu 四导出 + MenuItem anatomy + `active`；strings 无新增（菜单词条全业务）。
+1. chat-ui：Menu 导出族 + MenuItem anatomy + `active`；新增 `IconStack`、`Switch`（自研，零新增依赖）、
+   `MenuLabel`；strings 无新增（菜单词条全业务）。
 2. chat-ui-vue：ADR-0028 同合同镜像，公开注入点同名插槽；`pnpm gen:chat-ui-vue` 同步主题/文案。
 3. registry.json 依赖闭包、`src/index.ts` 公开导出、开发 Skill catalog 同步（`pnpm gen:skills`）。
 4. 真实调用方：新业务场景页面；组件不 fetch 业务接口，数据与动作由 SDK hooks 或回调注入。
@@ -125,7 +175,7 @@
 ## 待拍板队列
 
 1. PillButton（知识/记忆/联网搜）：形态协议草案已在讨论中给出
-   （`icon?/label/active?/chevron?/classNames` 四段 anatomy），待逐个确认。
-2. 添加附件（plug 图标钮）。
-3. Sender.Dock（溢出行为：换行 or 横滚未定）。
-4. 流光边框/玻璃拟态的业务加层示例文档化。
+   （`icon?/label/active?/chevron?/classNames` 四段 anatomy），待逐个确认；
+   知识钮已选时 trailing 显示计数（如 `3`）= 右侧插槽接管规则的直接应用。
+2. Sender.Dock（溢出行为：换行 or 横滚未定）。
+3. 流光边框/玻璃拟态的业务加层示例文档化。
