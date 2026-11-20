@@ -383,6 +383,9 @@ importers:
 
   packages/chat-ui-vue:
     dependencies:
+      '@openagentkit/sdk':
+        specifier: workspace:*
+        version: link:../sdk
       lowlight:
         specifier: ^3.3.0
         version: 3.3.0

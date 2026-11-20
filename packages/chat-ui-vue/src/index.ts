@@ -21,5 +21,18 @@ export {
 export { Markdown, type MarkdownStrings, markdownStrings } from "./components/markdown/index.ts";
 export { Menu, MenuContent, MenuItem, MenuTrigger } from "./components/menu/index.ts";
 export { Mermaid, type MermaidStrings, mermaidStrings } from "./components/mermaid/index.ts";
+export {
+	ClearButton,
+	LoadingButton,
+	SendButton,
+	Sender,
+	SenderHeader,
+	type SenderSelection,
+	type SenderSemantic,
+	type SenderSkill,
+	type SenderStrings,
+	type SenderSubmitType,
+	senderStrings,
+} from "./components/sender/index.ts";
 export { EmptyState, ErrorState } from "./components/states/index.ts";
 export { Tooltip, type TooltipSide } from "./components/tooltip/index.ts";

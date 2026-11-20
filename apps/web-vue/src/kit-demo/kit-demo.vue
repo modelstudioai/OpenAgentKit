@@ -10,12 +10,15 @@ import {
 	MenuItem,
 	MenuTrigger,
 	Mermaid,
+	Sender,
 	Tooltip,
 } from "@openagentpack/kit-chat-ui-vue";
 import { ref } from "vue";
 
 const confirmOpen = ref(false);
 const lastAction = ref("尚未操作");
+const lastSent = ref("尚未发送");
+const skills = [{ name: "review" }];
 
 const codeSample = `type Session = {
   id: string;
@@ -161,7 +164,30 @@ ${diagram}
 			</section>
 
 			<section class="rounded-[var(--kit-radius)] border border-[var(--kit-border)] bg-[var(--kit-surface)] p-6">
-				<h2 class="text-[length:var(--kit-text-heading)] font-semibold">6. 状态组件</h2>
+				<h2 class="text-[length:var(--kit-text-heading)] font-semibold">6. 对话输入框（Sender）</h2>
+				<p class="mt-1 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
+					合同：<code>role="textbox"</code> + contenteditable；chip 一次退格整体删除；Enter 提交、Shift+Enter 换行。
+				</p>
+				<div class="mt-4">
+					<Sender
+						:skills="skills"
+						default-value="/review 帮我看看这段代码"
+						@submit="(text) => (lastSent = text)"
+					>
+						<template #footer>
+							<span class="text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
+								输入 /review 会投影成技能 chip；退格一次整体删除。
+							</span>
+						</template>
+					</Sender>
+				</div>
+				<p data-testid="sender-last" class="mt-3 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
+					最近发送：{{ lastSent }}
+				</p>
+			</section>
+
+			<section class="rounded-[var(--kit-radius)] border border-[var(--kit-border)] bg-[var(--kit-surface)] p-6">
+				<h2 class="text-[length:var(--kit-text-heading)] font-semibold">7. 状态组件</h2>
 				<div class="mt-4 grid gap-4 sm:grid-cols-2">
 					<EmptyState title="没有会话" hint="发起一次对话后会出现在这里。" />
 					<ErrorState message="无法读取服务配置" :on-retry="() => (lastAction = '重试配置')" />
