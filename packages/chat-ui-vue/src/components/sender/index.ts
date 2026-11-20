@@ -167,6 +167,27 @@ const CHIP_CLASS =
 const SVG_NS = "http://www.w3.org/2000/svg";
 const GLYPH_PATHS = ["M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z", "M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"];
 
+/** 技能图标：与资源面板同族（24 viewBox、1.5 描边、currentColor）。 */
+export const SkillGlyph = defineComponent({
+	name: "SkillGlyph",
+	props: { className: { type: String, default: undefined } },
+	setup(props) {
+		return () =>
+			h(
+				"svg",
+				{
+					"aria-hidden": "true",
+					viewBox: "0 0 24 24",
+					fill: "none",
+					stroke: "currentColor",
+					"stroke-width": "1.5",
+					class: props.className,
+				},
+				GLYPH_PATHS.map((d) => h("path", { "stroke-linecap": "round", "stroke-linejoin": "round", d })),
+			);
+	},
+});
+
 function makeChipNode(name: string): HTMLElement {
 	const chip = document.createElement("span");
 	chip.dataset.skill = name;
@@ -378,6 +399,7 @@ export const Sender = defineComponent({
 		classNames: { type: Object as () => Partial<Record<SenderSemantic, string>>, default: () => ({}) },
 		suffix: { type: Boolean, default: true },
 		strings: { type: Object as () => Partial<SenderStrings>, default: undefined },
+		onKeyDown: { type: Function as PropType<(event: KeyboardEvent) => void>, default: undefined },
 	},
 	emits: ["update:value", "change", "submit", "cancel", "selection-change", "paste-file"],
 	setup(props, { slots, emit, expose }) {
@@ -440,6 +462,7 @@ export const Sender = defineComponent({
 		};
 
 		const handleKeyDown = (event: KeyboardEvent) => {
+			props.onKeyDown?.(event);
 			// 输入法合成中的回车用于确认候选词；Safari 合成结束后会补发 keyCode 229。
 			if (event.isComposing || event.keyCode === 229 || event.defaultPrevented) return;
 			if (event.key === "Backspace" && editable.value) {

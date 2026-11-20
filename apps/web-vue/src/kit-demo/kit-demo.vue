@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import type { ChatMessage } from "@openagentkit/sdk/messages";
+import { composeSkillDirective } from "@openagentkit/sdk/protocol";
 import {
+	Chat,
 	CodeHighlighter,
 	ConfirmDialog,
 	EmptyState,
@@ -20,6 +23,26 @@ const lastAction = ref("尚未操作");
 const lastSent = ref("尚未发送");
 const skills = [{ name: "review" }];
 const senderRef = ref<{ insert: (text: string) => void } | null>(null);
+
+function textMessage(id: string, role: ChatMessage["role"], text: string): ChatMessage {
+	return { id, role, status: "done", createdAt: new Date().toISOString(), parts: [{ type: "text", text }] };
+}
+
+const chatMessages = ref<ChatMessage[]>([
+	textMessage("u1", "user", "帮我看看会话重连的逻辑"),
+	textMessage("a1", "assistant", "重连使用 `after` 游标续传，事件按 `event_id` 去重。"),
+	textMessage("u2", "user", "那工具审批呢？"),
+	textMessage("a2", "assistant", "审批走 plan → 显式确认，结果未知时不会自动重发。"),
+]);
+
+function onChatSend(text: string, skills?: string[]) {
+	const stamp = Date.now();
+	chatMessages.value = [
+		...chatMessages.value,
+		textMessage(`u-${stamp}`, "user", composeSkillDirective(text, skills ?? [])),
+		textMessage(`a-${stamp}`, "assistant", skills?.length ? `收到，使用技能：${skills.join("、")}` : `收到：${text}`),
+	];
+}
 
 function insertReview() {
 	senderRef.value?.insert("/review ");
@@ -207,7 +230,30 @@ ${diagram}
 			</section>
 
 			<section class="rounded-[var(--kit-radius)] border border-[var(--kit-border)] bg-[var(--kit-surface)] p-6">
-				<h2 class="text-[length:var(--kit-text-heading)] font-semibold">7. 状态组件</h2>
+				<h2 class="text-[length:var(--kit-text-heading)] font-semibold">7. 对话核心（Chat）</h2>
+				<p class="mt-1 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
+					消息列表 + 回合锚点栏 + 输入框 + 技能候选；发送后在本地追加一轮回显。
+				</p>
+				<div
+					class="mt-4 h-[540px] overflow-hidden rounded-[var(--kit-radius)] border border-[var(--kit-border)] bg-[var(--kit-bg)]"
+				>
+					<Chat
+						:messages="chatMessages"
+						variant="workspace"
+						:skills="skills"
+						anchor-rail
+						scroll-key="demo"
+						@send="onChatSend"
+					>
+						<template #empty>
+							<EmptyState title="开始一段对话" hint="输入 / 选择技能，或直接发送消息。" />
+						</template>
+					</Chat>
+				</div>
+			</section>
+
+			<section class="rounded-[var(--kit-radius)] border border-[var(--kit-border)] bg-[var(--kit-surface)] p-6">
+				<h2 class="text-[length:var(--kit-text-heading)] font-semibold">8. 状态组件</h2>
 				<div class="mt-4 grid gap-4 sm:grid-cols-2">
 					<EmptyState title="没有会话" hint="发起一次对话后会出现在这里。" />
 					<ErrorState message="无法读取服务配置" :on-retry="() => (lastAction = '重试配置')" />
