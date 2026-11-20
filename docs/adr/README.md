@@ -7,7 +7,7 @@
 | --- | --- |
 | [0001](./0001-self-designed-protocol.md) | 自研协议与 hooks，事件契约复用 SDK `SessionEvent` |
 | [0002](./0002-internal-first-zero-inner-deps.md) | 零内网依赖、开源前不发布 npm 包 |
-| [0003](./0003-node-sqlite-catalog-store.md) | catalog 用 SQLite（`node:sqlite`）+ store 接口抽象 |
+| [0003](./0003-node-sqlite-catalog-store.md) | 默认 SQLite，可配置 MySQL 或 PostgreSQL，共用表结构及迁移历史（见状态更新） |
 | [0004](./0004-webview-shell-strategy.md) | 桌面与移动壳复用 Web 产物（历史；原生壳已退役） |
 | [0005](./0005-copy-in-elements-registry.md) | elements 采用 copy-in registry 形态 |
 | [0006](./0006-session-snapshot-stream.md) | 会话快照流、独立变更游标与工具审批使用协议 v2 |

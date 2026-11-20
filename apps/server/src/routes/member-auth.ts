@@ -58,13 +58,13 @@ export function registerMemberAuthRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		}),
-		(c) => {
+		async (c) => {
 			const identity = c.get("identity");
 			if (!c.req.header("authorization")) throw new KitError("unauthorized", "请先登录");
 			const memberSession = c.get("memberSession");
 			if (memberSession) {
 				const token = (c.req.header("authorization") as string).slice(7);
-				return c.json({ data: c.get("services").memberAuth.resolve(token).view }, 200);
+				return c.json({ data: (await c.get("services").memberAuth.resolve(token)).view }, 200);
 			}
 			const expiresAt = c.get("authExpiresAt");
 			return c.json({ data: { identity, ...(expiresAt ? { expires_at: expiresAt } : {}) } }, 200);
@@ -77,9 +77,11 @@ export function registerMemberAuthRoutes(app: OpenAPIHono<AppEnv>) {
 			tags: ["kit"],
 			responses: { 204: { description: "当前本地登录态已撤销；过期或已退出时仍成功" } },
 		}),
-		(c) => {
+		async (c) => {
 			const authorization = c.req.header("authorization");
-			c.get("services").memberAuth.logout(authorization?.startsWith("Bearer ") ? authorization.slice(7) : undefined);
+			await c
+				.get("services")
+				.memberAuth.logout(authorization?.startsWith("Bearer ") ? authorization.slice(7) : undefined);
 			return c.body(null, 204);
 		},
 	);

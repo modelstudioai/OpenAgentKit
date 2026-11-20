@@ -29,35 +29,35 @@ export function createGroupService({ store, audit, gate }: { store: GroupStore; 
 	return {
 		get: store.get,
 		summaries: store.summaries,
-		list: (query: GroupsQuery) => store.list(validated(GroupsQuerySchema, query)),
-		groupMembers: (groupId: string, query: GroupMembershipQuery) =>
-			store.groupMembers(groupId, validated(GroupMembershipQuerySchema, query)),
-		memberGroups: (memberId: string, query: GroupMembershipQuery) =>
-			store.memberGroups(memberId, validated(GroupMembershipQuerySchema, query)),
-		create(input: GroupInput, subject: string) {
-			const group = store.create(validated(GroupInputSchema, input));
-			audit.append({ subject, action: "groups.create", target: group.group_id });
+		list: async (query: GroupsQuery) => await store.list(validated(GroupsQuerySchema, query)),
+		groupMembers: async (groupId: string, query: GroupMembershipQuery) =>
+			await store.groupMembers(groupId, validated(GroupMembershipQuerySchema, query)),
+		memberGroups: async (memberId: string, query: GroupMembershipQuery) =>
+			await store.memberGroups(memberId, validated(GroupMembershipQuerySchema, query)),
+		async create(input: GroupInput, subject: string) {
+			const group = await store.create(validated(GroupInputSchema, input));
+			await audit.append({ subject, action: "groups.create", target: group.group_id });
 			return group;
 		},
-		update(groupId: string, input: GroupInput, subject: string) {
-			const group = store.update(groupId, validated(GroupInputSchema, input));
-			audit.append({ subject, action: "groups.update", target: groupId, detail: { revision: group.revision } });
+		async update(groupId: string, input: GroupInput, subject: string) {
+			const group = await store.update(groupId, validated(GroupInputSchema, input));
+			await audit.append({ subject, action: "groups.update", target: groupId, detail: { revision: group.revision } });
 			return group;
 		},
-		updateGroupMembers(groupId: string, input: GroupMembersPatch, subject: string) {
+		async updateGroupMembers(groupId: string, input: GroupMembersPatch, subject: string) {
 			const patch = validated(GroupMembersPatchSchema, input);
-			const group = store.updateGroupMembers(groupId, patch.add_member_ids, patch.remove_member_ids);
-			audit.append({ subject, action: "groups.members.update", target: groupId, detail: patch });
+			const group = await store.updateGroupMembers(groupId, patch.add_member_ids, patch.remove_member_ids);
+			await audit.append({ subject, action: "groups.members.update", target: groupId, detail: patch });
 			return group;
 		},
-		updateMemberGroups(memberId: string, input: MemberGroupsPatch, subject: string) {
+		async updateMemberGroups(memberId: string, input: MemberGroupsPatch, subject: string) {
 			const patch = validated(MemberGroupsPatchSchema, input);
-			store.updateMemberGroups(memberId, patch.add_group_ids, patch.remove_group_ids);
-			audit.append({ subject, action: "members.groups.update", target: memberId, detail: patch });
+			await store.updateMemberGroups(memberId, patch.add_group_ids, patch.remove_group_ids);
+			await audit.append({ subject, action: "members.groups.update", target: memberId, detail: patch });
 			return { updated: true as const };
 		},
 		async planDelete(groupId: string, subject: string): Promise<PlanResponse> {
-			const group = store.get(groupId);
+			const group = await store.get(groupId);
 			// 身份、目标与快照版本由签名共同绑定；随机 nonce 保证每次确认只能消费一次。
 			const planId = `group_delete:${groupId}:${group.revision}:${randomUUID()}`;
 			const issued = await gate.issue({ planId, action: `groups.delete:${groupId}`, subject });
@@ -91,8 +91,8 @@ export function createGroupService({ store, audit, gate }: { store: GroupStore; 
 				throw new KitError("confirmation_required", "删除确认计划无效");
 			}
 			// gate.consume 会 await：数据库事务内再次检查，防止期间成员变化或另一管理员修改。
-			store.delete(groupId, revision);
-			audit.append({ subject, action: "groups.delete", target: groupId });
+			await store.delete(groupId, revision);
+			await audit.append({ subject, action: "groups.delete", target: groupId });
 			return { deleted: true as const };
 		},
 	};

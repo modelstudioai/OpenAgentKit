@@ -52,7 +52,7 @@ export function registerUsageLimitRoutes(app: OpenAPIHono<AppEnv>) {
 	});
 	app.openapi(
 		createRoute({ method: "get", path: "/api/admin/usage-limits/policy", tags: ["admin"], responses: policyResponse }),
-		(c) => c.json({ data: c.get("services").usageLimits.policy() }, 200),
+		async (c) => c.json({ data: await c.get("services").usageLimits.policy() }, 200),
 	);
 	app.openapi(
 		createRoute({
@@ -62,10 +62,10 @@ export function registerUsageLimitRoutes(app: OpenAPIHono<AppEnv>) {
 			request: { body },
 			responses: policyResponse,
 		}),
-		(c) => {
+		async (c) => {
 			const { usageLimits, config } = c.get("services");
 			const { subject } = requireAdminWrite(c, config);
-			return c.json({ data: usageLimits.setPolicy(c.req.valid("json"), subject) }, 200);
+			return c.json({ data: await usageLimits.setPolicy(c.req.valid("json"), subject) }, 200);
 		},
 		validate,
 	);
@@ -132,7 +132,11 @@ export function registerUsageLimitRoutes(app: OpenAPIHono<AppEnv>) {
 			const subjectId = c.get("identity").subjectId;
 			const { days } = c.req.valid("query");
 			return c.json(
-				{ data: usageLimits.isMember(subjectId) ? await usageLimits.member(subjectId, { dailyDays: days }) : null },
+				{
+					data: (await usageLimits.isMember(subjectId))
+						? await usageLimits.member(subjectId, { dailyDays: days })
+						: null,
+				},
 				200,
 			);
 		},
@@ -153,10 +157,10 @@ export function registerUsageLimitRoutes(app: OpenAPIHono<AppEnv>) {
 			request: { params: templateParams },
 			responses: templateResponse,
 		}),
-		(c) => {
+		async (c) => {
 			const { usageLimits, templates } = c.get("services");
-			templates.get(c.req.valid("param").templateId);
-			return c.json({ data: usageLimits.template(c.req.valid("param").templateId) }, 200);
+			await templates.get(c.req.valid("param").templateId);
+			return c.json({ data: await usageLimits.template(c.req.valid("param").templateId) }, 200);
 		},
 	);
 	app.openapi(
@@ -167,12 +171,12 @@ export function registerUsageLimitRoutes(app: OpenAPIHono<AppEnv>) {
 			request: { params: templateParams, body },
 			responses: templateResponse,
 		}),
-		(c) => {
+		async (c) => {
 			const { usageLimits, templates, config } = c.get("services");
 			const { subject } = requireAdminWrite(c, config);
-			templates.get(c.req.valid("param").templateId);
+			await templates.get(c.req.valid("param").templateId);
 			return c.json(
-				{ data: usageLimits.setTemplate(c.req.valid("param").templateId, c.req.valid("json"), subject) },
+				{ data: await usageLimits.setTemplate(c.req.valid("param").templateId, c.req.valid("json"), subject) },
 				200,
 			);
 		},
@@ -186,11 +190,11 @@ export function registerUsageLimitRoutes(app: OpenAPIHono<AppEnv>) {
 			request: { params: templateParams },
 			responses: templateResponse,
 		}),
-		(c) => {
+		async (c) => {
 			const { usageLimits, templates, config } = c.get("services");
 			const { subject } = requireAdminWrite(c, config);
-			templates.get(c.req.valid("param").templateId);
-			return c.json({ data: usageLimits.resetTemplate(c.req.valid("param").templateId, subject) }, 200);
+			await templates.get(c.req.valid("param").templateId);
+			return c.json({ data: await usageLimits.resetTemplate(c.req.valid("param").templateId, subject) }, 200);
 		},
 	);
 }

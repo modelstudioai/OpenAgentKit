@@ -76,8 +76,8 @@ HTTP、上传、下载和 SSE 统一携带 `Authorization: Bearer <access_token>
 
 | 名称 | 来源与用途 |
 | --- | --- |
-| config | SQLite 中的 YAML 文本，描述当前批次的资源配置 |
-| state | SQLite 中的 SDK state，记录声明资源对应的远端 ID、版本与内容哈希 |
+| config | 服务端数据库中的 YAML 文本，描述当前批次的资源配置 |
+| state | 服务端数据库中的 SDK state，记录声明资源对应的远端 ID、版本与内容哈希 |
 | remote | Provider 上实际存在的资源 |
 
 `plan` 返回 SDK 差异；Kit 展示计划并取得用户显式确认后，使用 `plan_id` 和一次性

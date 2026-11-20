@@ -85,7 +85,7 @@ describe("模版智能体版本绑定", () => {
 	// 文案更新不能把异步校验前的版本绑定写回；并发变更后提示重试并保留已提交的绑定。
 	it("目录文案编辑保留版本，校验期间版本变化时拒绝覆盖并可重试", async () => {
 		const { services, write } = setup();
-		const entry = services.catalog.create({
+		const entry = await services.catalog.create({
 			slug: "concurrent-agent-version",
 			display_name: "并发版本目录",
 			remote_agent_id: selected.remote_agent_id,
@@ -94,7 +94,7 @@ describe("模版智能体版本绑定", () => {
 		const url = `/api/admin/agents/${entry.slug}`;
 		const initial = await write(url, { description: "正常文案更新" }, "PUT");
 		expect(initial.status, await initial.clone().text()).toBe(200);
-		expect(services.catalog.get(entry.id)).toMatchObject({ agent_version: 1, description: "正常文案更新" });
+		expect(await services.catalog.get(entry.id)).toMatchObject({ agent_version: 1, description: "正常文案更新" });
 		const oldVersion = await services.gateway.getRemoteAgentVersion(selected.remote_agent_id, 1);
 		const entered = deferred();
 		const release = deferred();
@@ -106,16 +106,16 @@ describe("模版智能体版本绑定", () => {
 		const pending = write(url, { description: "等待校验的旧请求" }, "PUT");
 		try {
 			await entered.promise;
-			services.catalog.update(entry.id, { agent_version: 2 });
+			await services.catalog.update(entry.id, { agent_version: 2 });
 		} finally {
 			release.resolve();
 		}
 		const conflict = await pending;
 		expect(conflict.status, await conflict.clone().text()).toBe(409);
-		expect(services.catalog.get(entry.id)).toMatchObject({ agent_version: 2, description: "正常文案更新" });
+		expect(await services.catalog.get(entry.id)).toMatchObject({ agent_version: 2, description: "正常文案更新" });
 		const retry = await write(url, { description: "重新确认后的文案" }, "PUT");
 		expect(retry.status, await retry.clone().text()).toBe(200);
-		expect(services.catalog.get(entry.id)).toMatchObject({ agent_version: 2, description: "重新确认后的文案" });
+		expect(await services.catalog.get(entry.id)).toMatchObject({ agent_version: 2, description: "重新确认后的文案" });
 	});
 
 	// 保护用户选择的历史版本贯穿保存、调试、上架和员工创建；切回最新必须真正清除目录旧绑定。
@@ -125,7 +125,7 @@ describe("模版智能体版本绑定", () => {
 		expect(template).toMatchObject({ agent_version: 1, remote_agent_version: 1, version: 1 });
 		const readback = await app.request(`/api/admin/templates/${template.template_id}`, { headers });
 		expect(await readback.json()).toMatchObject({ data: { agent_version: 1 } });
-		expect(services.templates.list({ limit: 10 }).data[0]?.agent_version).toBe(1);
+		expect((await services.templates.list({ limit: 10 })).data[0]?.agent_version).toBe(1);
 		const create = vi.spyOn(services.gateway, "createSession");
 		const debug = await write("/api/admin/debug/sessions", { ...selected, agent_version: 1 });
 		expect(debug.status, await debug.clone().text()).toBe(201);
@@ -154,7 +154,7 @@ describe("模版智能体版本绑定", () => {
 		const { data: latest } = (await edited.json()) as { data: TemplateView };
 		expect(latest.agent_version).toBeUndefined();
 		expect(latest.version).toBe(2);
-		const updatedEntry = services.catalog.get(entry.id)!;
+		const updatedEntry = (await services.catalog.get(entry.id))!;
 		expect(updatedEntry).toMatchObject({ id: entry.id, status: "listed" });
 		expect(updatedEntry.agent_version ?? undefined).toBeUndefined();
 		await employeeSession(updatedEntry);
@@ -178,13 +178,13 @@ describe("模版智能体版本绑定", () => {
 			const response = await write(path, body, method);
 			expect(response.status, await response.clone().text()).toBe(400);
 		}
-		expect(services.templates.get(template.template_id)).toMatchObject({ version: 1, agent_version: 2 });
-		expect(services.templates.list({ limit: 10 }).data).toHaveLength(1);
+		expect(await services.templates.get(template.template_id)).toMatchObject({ version: 1, agent_version: 2 });
+		expect((await services.templates.list({ limit: 10 })).data).toHaveLength(1);
 		const prepared = await plan(template);
 		vi.spyOn(services.gateway, "getRemoteAgentVersion").mockResolvedValue(null);
 		const rejected = await listing(template, prepared);
 		expect(rejected.status, await rejected.clone().text()).toBe(400);
-		expect(services.catalog.all()).toEqual([]);
+		expect(await services.catalog.all()).toEqual([]);
 		expect(create).not.toHaveBeenCalled();
 	});
 

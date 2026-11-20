@@ -8,6 +8,7 @@ import { loadConfig } from "../src/config.ts";
 import { createKitServices } from "../src/services/index.ts";
 import { createCatalogStore } from "../src/store/catalog.ts";
 import { openDatabase } from "../src/store/db.ts";
+import { createSqliteDatabase } from "../src/store/sqlite.ts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => {
@@ -70,13 +71,15 @@ describe("上架目录的记忆挂载配置", () => {
 			{ memory_store_id: "memory-guide", access: "read_write", instructions: "优先查阅项目约定" },
 			{ memory_store_id: "memory-notes", access: "read_only" },
 		];
-		expect(services.catalog.getBySlug("memory-agent")?.memory_stores).toEqual(expected);
+		expect((await services.catalog.getBySlug("memory-agent"))?.memory_stores).toEqual(expected);
 		expect((await update({ description: "保留记忆配置" })).status).toBe(200);
 		const reopened = openDatabase(dataDir);
 		cleanup.push(() => reopened.close());
-		expect(createCatalogStore(reopened).getBySlug("memory-agent")?.memory_stores).toEqual(expected);
+		expect((await createCatalogStore(createSqliteDatabase(reopened)).getBySlug("memory-agent"))?.memory_stores).toEqual(
+			expected,
+		);
 		expect((await update({ memory_stores: [] })).status).toBe(200);
-		expect(services.catalog.getBySlug("memory-agent")?.memory_stores).toEqual([]);
+		expect((await services.catalog.getBySlug("memory-agent"))?.memory_stores).toEqual([]);
 	});
 
 	it("新会话采用管理员权限/说明并保留文件与环境，成员不能覆盖；公开目录不暴露配置", async () => {
@@ -84,7 +87,7 @@ describe("上架目录的记忆挂载配置", () => {
 		const file = await services.files.upload("uploader", { filename: "guide.txt", bytes: new Uint8Array([1]) });
 		const memory = { memory_store_id: "memory-guide", access: "read_only", instructions: "管理员限定的检索说明" };
 		expect((await create([memory], { files: [file], remote_environment_id: "env_mock_analysis" })).status).toBe(201);
-		services.catalog.setStatus("memory-agent", "listed");
+		await services.catalog.setStatus("memory-agent", "listed");
 		const createRemote = vi.spyOn(services.gateway, "createSession");
 		const mountRemote = vi.spyOn(services.gateway, "mountSessionResource");
 		const start = () =>
@@ -136,7 +139,7 @@ describe("上架目录的记忆挂载配置", () => {
 	it("记忆库读取失败时成员详情整体降级省略，不影响详情可用性", async () => {
 		const { app, services, create } = setup();
 		expect((await create([{ memory_store_id: "memory-guide", access: "read_only" }])).status).toBe(201);
-		services.catalog.setStatus("memory-agent", "listed");
+		await services.catalog.setStatus("memory-agent", "listed");
 		vi.spyOn(services.gateway, "getAgentMemoryStores").mockRejectedValue(
 			new KitError("provider_error", "记忆库信息查询失败，请稍后重试", { retryable: true }),
 		);
@@ -164,6 +167,6 @@ describe("上架目录的记忆挂载配置", () => {
 		expect((await update({ memory_stores: [{ memory_store_id: "memory-notes" }] })).status).toBe(400);
 		read.mockRejectedValue(new KitError("provider_error", "记忆库信息查询失败，请稍后重试"));
 		expect((await update({ memory_stores: [{ memory_store_id: "memory-notes" }] })).status).toBe(502);
-		expect(services.catalog.getBySlug("memory-agent")?.memory_stores).toEqual([original]);
+		expect((await services.catalog.getBySlug("memory-agent"))?.memory_stores).toEqual([original]);
 	});
 });

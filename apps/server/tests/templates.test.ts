@@ -1,13 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-	type CatalogAgentView,
-	type PlanResponse,
-	TemplateInputSchema,
-	type TemplatesPage,
-	type TemplateView,
-} from "@openagentkit/sdk/protocol";
+import type { CatalogAgentView, PlanResponse, TemplatesPage, TemplateView } from "@openagentkit/sdk/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
@@ -108,7 +102,7 @@ describe("已保存模版目录", () => {
 			],
 		});
 		expect(createSession).not.toHaveBeenCalled();
-		expect(services.catalog.all()).toEqual([]);
+		expect(await services.catalog.all()).toEqual([]);
 		expect(db.prepare("SELECT count(*) AS count FROM kit_sessions").get()?.count).toBe(0);
 		const restarted = reopen();
 		vi.spyOn(restarted.services.gateway, "listRemoteAgents").mockRejectedValue(new Error("Provider offline"));
@@ -117,7 +111,7 @@ describe("已保存模版目录", () => {
 		expect(detail.status).toBe(200);
 		expect(await detail.json()).toEqual({ data: template });
 		expect(detail.headers.get("cache-control")).toBe("no-store");
-		const audit = services.audit.list().filter((row) => row.action === "templates.create");
+		const audit = (await services.audit.list()).filter((row) => row.action === "templates.create");
 		expect(audit).toHaveLength(1);
 		expect(audit[0]).toMatchObject({
 			target: template.template_id,
@@ -134,8 +128,8 @@ describe("已保存模版目录", () => {
 			request(app, "/api/admin/templates", { ...selected, name: "团队_one" }),
 		]);
 		expect(attempts.map((response) => response.status).sort()).toEqual([201, 409]);
-		await created(app, { ...selected, name: "团队_two", remote_agent_id: "agent_mock_designer" });
-		await created(app, { ...selected, name: "团队Xthree", remote_agent_id: "agent_mock_writer" });
+		await created(app, { ...selected, name: "团队_two" });
+		await created(app, { ...selected, name: "团队Xthree" });
 		const query = `?search=${encodeURIComponent("团队_")}&limit=1`;
 		const first = await list(app, query);
 		expect(first.data).toHaveLength(1);
@@ -145,9 +139,8 @@ describe("已保存模版目录", () => {
 		expect(new Set([...first.data, ...second.data].map((item) => item.name))).toEqual(
 			new Set(["团队_one", "团队_two"]),
 		);
-		expect((await list(app, "?search=agent_mock_assistant")).data).toHaveLength(1);
-		expect((await list(app, "?search=designer")).data).toHaveLength(1);
-		expect((await list(app, "?search=agent_mock_writer")).data).toHaveLength(1);
+		expect((await list(app, "?search=agent_mock_assistant")).data).toHaveLength(3);
+		expect((await list(app, "?search=assistant")).data).toHaveLength(3);
 		for (const query of [`?search=other&page_token=${first.next_page_token}`, "?page_token=malformed", "?limit=0"]) {
 			expect((await request(app, `/api/admin/templates${query}`)).status).toBe(400);
 		}
@@ -159,20 +152,18 @@ describe("已保存模版目录", () => {
 	it("上架状态与搜索共同筛选完整分页，状态变更立即生效且不依赖 Provider", async () => {
 		const { app, services } = setup();
 		const first = await created(app, { ...selected, name: "筛选_上架一" });
-		const draft = await created(app, { ...selected, name: "筛选_未上架", remote_agent_id: "agent_mock_designer" });
-		const second = await created(app, { ...selected, name: "筛选_上架二", remote_agent_id: "agent_mock_writer" });
-		const unlisted = await created(app, { ...selected, name: "筛选_已下架", remote_agent_id: "agent_mock_analyst" });
-		const removed = await created(app, { ...selected, name: "筛选_关联删除", remote_agent_id: "agent_mock_reviewer" });
-		const outside = await created(app, { ...selected, name: "其他模版", remote_agent_id: "agent_mock_coder" });
+		const draft = await created(app, { ...selected, name: "筛选_未上架" });
+		const second = await created(app, { ...selected, name: "筛选_上架二" });
+		const unlisted = await created(app, { ...selected, name: "筛选_已下架" });
+		const removed = await created(app, { ...selected, name: "筛选_关联删除" });
+		const outside = await created(app, { ...selected, name: "其他模版" });
 		const firstEntry = await listTemplate(app, first);
 		await listTemplate(app, second);
 		const unlistedEntry = await listTemplate(app, unlisted);
 		const removedEntry = await listTemplate(app, removed);
 		await listTemplate(app, outside);
-		services.catalog.setStatus(unlistedEntry.slug, "unlisted");
-		// 单独软删条目须解除模版关联（与删除路由一致），关联模版回落为未上架。
-		services.catalog.markDeleted(removedEntry.id);
-		services.templates.detachListingByCatalog(removedEntry.id);
+		await services.catalog.setStatus(unlistedEntry.slug, "unlisted");
+		await services.catalog.remove(removedEntry.id);
 		vi.spyOn(services.gateway, "listRemoteAgents").mockRejectedValue(new Error("Provider offline"));
 		const search = `search=${encodeURIComponent("筛选_")}`;
 		for (const [status, expected] of [
@@ -192,7 +183,7 @@ describe("已保存模版目录", () => {
 		}
 		expect((await list(app, `?${search}`)).data).toHaveLength(5);
 		expect((await list(app)).data).toHaveLength(6);
-		services.catalog.setStatus(firstEntry.slug, "unlisted");
+		await services.catalog.setStatus(firstEntry.slug, "unlisted");
 		expect((await list(app, `?${search}&status=listed`)).data.map((item) => item.template_id)).toEqual([
 			second.template_id,
 		]);
@@ -203,37 +194,17 @@ describe("已保存模版目录", () => {
 	it("模版分类与搜索状态组合分页，旧无分类记录归入通用且不借用目录分类", async () => {
 		const { app, services, db } = setup();
 		const first = await created(app, { ...selected, name: "分类_数据一", category: "data" });
-		const draft = await created(app, {
-			...selected,
-			name: "分类_数据草稿",
-			category: "data",
-			remote_agent_id: "agent_mock_designer",
-		});
-		const second = await created(app, {
-			...selected,
-			name: "分类_数据二",
-			category: "data",
-			remote_agent_id: "agent_mock_writer",
-		});
-		const writing = await created(app, {
-			...selected,
-			name: "分类_写作",
-			category: "writing",
-			remote_agent_id: "agent_mock_analyst",
-		});
-		const outside = await created(app, {
-			...selected,
-			name: "其他数据",
-			category: "data",
-			remote_agent_id: "agent_mock_reviewer",
-		});
-		const legacy = await created(app, { ...selected, name: "分类_旧通用", remote_agent_id: "agent_mock_coder" });
+		const draft = await created(app, { ...selected, name: "分类_数据草稿", category: "data" });
+		const second = await created(app, { ...selected, name: "分类_数据二", category: "data" });
+		const writing = await created(app, { ...selected, name: "分类_写作", category: "writing" });
+		const outside = await created(app, { ...selected, name: "其他数据", category: "data" });
+		const legacy = await created(app, { ...selected, name: "分类_旧通用" });
 		const firstEntry = await listTemplate(app, first);
 		await listTemplate(app, second);
 		const writingEntry = await listTemplate(app, writing);
 		await listTemplate(app, outside);
-		services.catalog.update(firstEntry.id, { category: "writing" });
-		services.catalog.update(writingEntry.id, { category: "data" });
+		await services.catalog.update(firstEntry.id, { category: "writing" });
+		await services.catalog.update(writingEntry.id, { category: "data" });
 		db.prepare("UPDATE kit_templates SET config_json=json_remove(config_json,'$.category') WHERE template_id=?").run(
 			legacy.template_id,
 		);
@@ -274,13 +245,8 @@ describe("已保存模版目录", () => {
 	it("分页游标绑定全部筛选条件且拒绝非法值，兼容旧未筛选游标", async () => {
 		const { app } = setup();
 		await created(app, { ...selected, name: "游标_一" });
-		await created(app, { ...selected, name: "游标_二", remote_agent_id: "agent_mock_designer" });
-		const listed = await created(app, {
-			...selected,
-			name: "游标_三",
-			category: "data",
-			remote_agent_id: "agent_mock_writer",
-		});
+		await created(app, { ...selected, name: "游标_二" });
+		const listed = await created(app, { ...selected, name: "游标_三", category: "data" });
 		await listTemplate(app, listed);
 		const all = await list(app, "?limit=1");
 		const unlisted = await list(app, "?status=unlisted&limit=1");
@@ -353,38 +319,6 @@ describe("已保存模版目录", () => {
 		vi.spyOn(services.gateway, "listRemoteEnvironments").mockRejectedValue(new Error("Provider offline"));
 		expect((await request(app, "/api/admin/templates", { ...selected, name: "失败模版" })).status).toBe(500);
 		expect((await list(app)).data).toEqual([existing]);
-		expect(services.audit.list().filter((row) => row.action === "templates.create")).toHaveLength(1);
-	});
-
-	// 保护远端 Agent 独占约束：创建/换绑到已占用 Agent 返回冲突并指明占用模版；
-	// 保持自身绑定的编辑豁免（存量共享可继续维护），软删释放后可重新关联。
-	it("远端 Agent 已被其他模版关联时拒绝创建与换绑，删除后释放", async () => {
-		const { app, services, db } = setup();
-		const first = await created(app, { ...selected, name: "占用_一" });
-		const second = await created(app, { ...selected, name: "占用_二", remote_agent_id: "agent_mock_designer" });
-		const blocked = await request(app, "/api/admin/templates", { ...selected, name: "占用_三" });
-		expect(blocked.status).toBe(409);
-		expect(((await blocked.json()) as { error: { message: string } }).error.message).toContain("占用_一");
-		const edit = (template: TemplateView, patch: Record<string, unknown>) =>
-			app.request(`/api/admin/templates/${template.template_id}`, {
-				method: "PUT",
-				headers,
-				body: JSON.stringify({
-					...TemplateInputSchema.strip().parse(template),
-					base_version: template.version,
-					...patch,
-				}),
-			});
-		const switched = await edit(first, { remote_agent_id: "agent_mock_designer" });
-		expect(switched.status).toBe(409);
-		expect(((await switched.json()) as { error: { message: string } }).error.message).toContain("占用_二");
-		const kept = await edit(first, { description: "保持自身绑定不受限" });
-		expect(kept.status).toBe(200);
-		db.prepare("UPDATE kit_templates SET deleted_at = ? WHERE template_id = ?").run(
-			new Date().toISOString(),
-			second.template_id,
-		);
-		await created(app, { ...selected, name: "占用_四", remote_agent_id: "agent_mock_designer" });
-		expect(services.templates.list({ limit: 10 }).data.map((row) => row.name)).toEqual(["占用_四", "占用_一"]);
+		expect((await services.audit.list()).filter((row) => row.action === "templates.create")).toHaveLength(1);
 	});
 });

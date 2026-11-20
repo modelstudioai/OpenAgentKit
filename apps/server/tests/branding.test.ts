@@ -129,7 +129,7 @@ describe("员工端品牌配置", () => {
 			await request(app, "/api/admin/branding", { method: "PUT", body: { productName: "保留上传 Logo" } }),
 		);
 		expect(kept.logoUrl).toBe(viewAfterUpload.logoUrl);
-		expect(services.branding.getLogoMeta()).not.toBeNull();
+		expect(await services.branding.getLogoMeta()).not.toBeNull();
 
 		const echoed = await view(
 			await request(app, "/api/admin/branding", {
@@ -138,7 +138,7 @@ describe("员工端品牌配置", () => {
 			}),
 		);
 		expect(echoed.logoUrl).toBe(viewAfterUpload.logoUrl);
-		expect(services.branding.getLogoMeta()).not.toBeNull();
+		expect(await services.branding.getLogoMeta()).not.toBeNull();
 
 		const cleared = await view(
 			await request(app, "/api/admin/branding", {
@@ -193,7 +193,7 @@ describe("员工端品牌配置", () => {
 			body: { productName: "审计员品牌" },
 		});
 		expect(readOnly.status).toBe(403);
-		expect(services.branding.get().product_name).toBe("OpenAgentKit");
+		expect((await services.branding.get()).product_name).toBe("OpenAgentKit");
 
 		await request(app, "/api/admin/branding", { method: "PUT", body: { productName: "品牌" } });
 		const row = db

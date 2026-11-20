@@ -34,7 +34,7 @@ export function registerToolApprovalRoutes(app: OpenAPIHono<AppEnv>) {
 		}),
 		async (c) => {
 			const { sessionIndex, sessions } = c.get("services");
-			const row = sessionIndex.getForSubject(c.req.param("sessionId"), c.get("identity").subjectId);
+			const row = await sessionIndex.getForSubject(c.req.param("sessionId"), c.get("identity").subjectId);
 			if (!row) throw new KitError("not_found", "会话不存在");
 			return c.json({ data: await sessions.toolApprovals(row.session_id) }, 200);
 		},
@@ -60,11 +60,11 @@ export function registerToolApprovalRoutes(app: OpenAPIHono<AppEnv>) {
 		async (c) => {
 			const { sessionIndex, sessions, audit } = c.get("services");
 			const subject = c.get("identity").subjectId;
-			const row = sessionIndex.getForSubject(c.req.param("sessionId"), subject);
+			const row = await sessionIndex.getForSubject(c.req.param("sessionId"), subject);
 			if (!row) throw new KitError("not_found", "会话不存在");
 			const decision = c.req.valid("json");
 			const result = await sessions.respondToolApproval(row.session_id, decision);
-			audit.append({
+			await audit.append({
 				subject,
 				action: "session.tool_approval",
 				target: row.session_id,

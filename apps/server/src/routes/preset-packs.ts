@@ -63,7 +63,7 @@ export function registerPresetPackRoutes(app: OpenAPIHono<AppEnv>) {
 				401: { description: "管理端未认证" },
 			},
 		}),
-		(c) => c.json(c.get("services").presetPacks.list(c.req.valid("query")), 200),
+		async (c) => c.json(await c.get("services").presetPacks.list(c.req.valid("query")), 200),
 		(result) => {
 			if (!result.success) throw new KitError("invalid_request", "预设包查询参数无效");
 			return undefined;
@@ -105,7 +105,7 @@ export function registerPresetPackRoutes(app: OpenAPIHono<AppEnv>) {
 				404: { description: "预设包不存在" },
 			},
 		}),
-		(c) => c.json({ data: c.get("services").presetPacks.get(c.req.valid("param").presetId) }, 200),
+		async (c) => c.json({ data: await c.get("services").presetPacks.get(c.req.valid("param").presetId) }, 200),
 	);
 	app.openapi(
 		createRoute({

@@ -17,29 +17,30 @@ import { draftAssetsHash } from "./yaml-draft-assets.ts";
 import { digest, sections, type YamlDraftDocument } from "./yaml-draft-document.ts";
 import { type PublicationAttempt, withPublicationResult } from "./yaml-draft-execution.ts";
 
-export function draftReferences(doc: YamlDraftDocument) {
-	const { raw } = doc.snapshot();
+export async function draftReferences(doc: YamlDraftDocument) {
+	const { raw } = await doc.snapshot();
 	return (Object.keys(sections) as DeclarationType[]).flatMap((type) =>
 		Object.keys(raw[sections[type]] ?? {}).map((id) => ({ type, id })),
 	);
 }
 
 export function createYamlDraftPublisher(doc: YamlDraftDocument, publishMock?: MockDraftPublisher) {
-	const settings = () => ({
+	const settings = (references: Awaited<ReturnType<typeof draftReferences>>) => ({
 		mode: "create-only" as const,
 		resultDetail: "structured" as const,
 		refresh: !publishMock,
 		quiet: true,
 		scope: {
-			roots: draftReferences(doc).map(({ type, id }) => ({ provider: "bailian", type, name: id })),
+			roots: references.map(({ type, id }) => ({ provider: "bailian", type, name: id })),
 			includeDependencies: true,
 		},
 	});
 	const logFeedback = (feedback?: ProjectFeedback) =>
 		feedback ? (event: { type: string }) => feedback.log(event.type) : undefined;
-	async function bindings(required: boolean, references = draftReferences(doc)) {
+	async function bindings(required: boolean, input?: Awaited<ReturnType<typeof draftReferences>>) {
+		const references = input ?? (await draftReferences(doc));
 		// 先检查整个请求的声明，再读取绑定；缺失声明不能被其他项的未发布状态掩盖。
-		for (const { type, id } of references) doc.declaration(type, id);
+		for (const { type, id } of references) await doc.declaration(type, id);
 		const runtime = await doc.runtime();
 		return readProjectRuntime(runtime, (context) =>
 			references.flatMap((reference) => {
@@ -49,7 +50,7 @@ export function createYamlDraftPublisher(doc: YamlDraftDocument, publishMock?: M
 		);
 	}
 	async function snapshot(planned: ResourcePlanResult): Promise<ProjectExecutionPlan> {
-		const current = doc.snapshot();
+		const current = await doc.snapshot();
 		if (planned.refreshResult?.errors.length || planned.plan.diagnostics.some((entry) => entry.severity === "error"))
 			throw new PublicationError(
 				{ code: "publication.plan_invalid", phase: "plan", retryable: false, mutation_started: false },
@@ -83,7 +84,8 @@ export function createYamlDraftPublisher(doc: YamlDraftDocument, publishMock?: M
 		try {
 			const runtime = await doc.runtime(true);
 			return await readProjectRuntime(runtime, async (context) => {
-				if (draftReferences(doc).length) return snapshot(await planProjectContext(context, settings()));
+				const references = await draftReferences(doc);
+				if (references.length) return snapshot(await planProjectContext(context, settings(references)));
 				// SDK create-only 不接受空 scope。仅当声明和 state 都为空时生成只读空计划；
 				// 不刷新远端，也不能将残留 state 解释为待删除资源。
 				if (context.state.listResources().length)
@@ -101,8 +103,9 @@ export function createYamlDraftPublisher(doc: YamlDraftDocument, publishMock?: M
 		attempt: PublicationAttempt,
 		feedback?: ProjectFeedback,
 	) {
-		if (!draftReferences(doc).length) throw new KitError("invalid_request", "此批次没有需要发布的资源");
-		const planned = await planProjectContext(context, settings());
+		const references = await draftReferences(doc);
+		if (!references.length) throw new KitError("invalid_request", "此批次没有需要发布的资源");
+		const planned = await planProjectContext(context, settings(references));
 		const actual = await snapshot(planned);
 		if (
 			actual.project_revision !== expected.project_revision ||
@@ -112,7 +115,7 @@ export function createYamlDraftPublisher(doc: YamlDraftDocument, publishMock?: M
 			throw new KitError("conflict", "发布前配置、上传内容或计划已变化，请重新预览");
 		attempt.enteredExecutor = true;
 		if (publishMock) {
-			await executeMockYamlDraft(doc, context, publishMock, draftReferences(doc));
+			await executeMockYamlDraft(doc, context, publishMock, references);
 			attempt.execution = mockPublicationResult(planned);
 		} else {
 			try {

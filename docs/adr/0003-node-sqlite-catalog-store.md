@@ -1,5 +1,20 @@
 # ADR-0003：catalog 用 SQLite（`node:sqlite`）+ store 接口抽象
 
+状态更新（2026-11-19）。三库共用表结构定义、历史版本 ID 和执行顺序。新库从 `001_init`
+开始回放全部历史。SQLite 继续使用原有迁移。MySQL 和 PostgreSQL 用方言生成的 DDL 及显式
+数据步骤重放历史。已初始化的外部库通过旧版本标识和结构校验接续。
+原有 36 条迁移各自保存在 `schema/history/`，和 `033` 起的新版本共用
+`schema/manifest.json` 定义顺序。
+新结构变更由 `db:generate` 登记版本和快照。构建根据迁移源重新生成三库产物并随服务打包。
+服务启动时执行待处理版本。
+维护步骤见[服务端 README](../../apps/server/README.md#维护表结构)。
+
+历史状态（2026-11-18，由上方状态更新替代）。SQLite 是本地默认后端。Kit Server 在 `src/store/` 提供
+共享异步数据库接口和基于配置的连接工厂，支持 SQLite、MySQL 8.4 InnoDB 和 PostgreSQL。
+各后端分别维护结构迁移。MySQL 和 PostgreSQL 从现行结构初始化，SQLite 继续执行既有历史迁移。
+共享 Store 持有业务 SQL 和事务，驱动适配放在 Store 内。事务中的跨 Store 调用共用连接，
+进程内写入沿用单实例顺序。配置选项见[服务端 README](../../apps/server/README.md)。
+
 ## 背景
 
 管理端需要持久化 Catalog Entry、Session 本地索引、Operation 与审计日志。原计划用

@@ -20,6 +20,13 @@ module.exports = {
 			from: { path: "^apps/server/src/" },
 			to: { path: "@openagentpack/sdk/dist/project-(workspace|versions)" },
 		},
+		{
+			name: "server-database-drivers-in-store",
+			comment: "Kit 数据库驱动由服务端 Store 层持有",
+			severity: "error",
+			from: { path: "^apps/server/src/", pathNot: "^apps/server/src/store/" },
+			to: { path: "(^|/)(mysql2|pg)(/|$)|^(node:)?sqlite$", dependencyTypesNot: ["type-only"] },
+		},
 
 		{
 			name: "no-circular",

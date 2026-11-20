@@ -30,7 +30,7 @@ async function assetPath(root: string, path: string, create = false) {
 
 /** Verify the reviewed bytes, including Skill members; the YAML itself never lives on disk. */
 export async function draftAssetsHash(doc: YamlDraftDocument) {
-	const { assets } = doc.snapshot();
+	const { assets } = await doc.snapshot();
 	for (const asset of assets) {
 		const path = await assetPath(doc.assetRoot, asset.path);
 		const info = await ordinary(path, false);
@@ -58,15 +58,15 @@ async function saveAssets(doc: YamlDraftDocument, files: { path: string; bytes: 
 }
 
 export function createYamlDraftUploads(doc: YamlDraftDocument) {
-	const keys = () =>
+	const keys = async () =>
 		new Set(
-			Object.values(doc.snapshot().raw).flatMap((section) =>
+			Object.values((await doc.snapshot()).raw).flatMap((section) =>
 				section && typeof section === "object" && !Array.isArray(section) ? Object.keys(section) : [],
 			),
 		);
 	async function filePreview(input: ProjectFileUploadInput, uploads: ProjectSourceFileUpload[]) {
-		doc.assertRevision(input.base_revision);
-		const files = validateProjectFileUploads(input, uploads, keys());
+		await doc.assertRevision(input.base_revision);
+		const files = validateProjectFileUploads(input, uploads, await keys());
 		return {
 			base_revision: input.base_revision,
 			before: "{}",
@@ -77,8 +77,8 @@ export function createYamlDraftUploads(doc: YamlDraftDocument) {
 		};
 	}
 	async function skillPreview(input: ProjectSkillUploadInput, uploads: ProjectSourceSkillUpload[]) {
-		doc.assertRevision(input.base_revision);
-		const skills = await validateProjectSkillUploads(input, uploads, keys());
+		await doc.assertRevision(input.base_revision);
+		const skills = await validateProjectSkillUploads(input, uploads, await keys());
 		return {
 			base_revision: input.base_revision,
 			before: "{}",
@@ -93,7 +93,7 @@ export function createYamlDraftUploads(doc: YamlDraftDocument) {
 		skillPreview,
 		async fileCommit(input: ProjectFileUploadInput, uploads: ProjectSourceFileUpload[]) {
 			const preview = await filePreview(input, uploads);
-			const current = doc.snapshot();
+			const current = await doc.snapshot();
 			const saved = await saveAssets(
 				doc,
 				uploads.map((file) => ({ path: `${file.file_key}/${file.filename}`, bytes: file.bytes })),
@@ -111,7 +111,7 @@ export function createYamlDraftUploads(doc: YamlDraftDocument) {
 		},
 		async skillCommit(input: ProjectSkillUploadInput, uploads: ProjectSourceSkillUpload[]) {
 			const preview = await skillPreview(input, uploads);
-			const current = doc.snapshot();
+			const current = await doc.snapshot();
 			const saved = await saveAssets(
 				doc,
 				uploads.flatMap((skill) =>

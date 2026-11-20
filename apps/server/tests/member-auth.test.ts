@@ -11,24 +11,24 @@ import { createKitServices } from "../src/services/index.ts";
 import { MEMBER_SESSION_TTL_MS } from "../src/services/member-auth.ts";
 import { openDatabase } from "../src/store/db.ts";
 
-const dispose: (() => void)[] = [];
-afterEach(() => {
-	for (const close of dispose.splice(0).reverse()) close();
+const dispose: (() => void | Promise<void>)[] = [];
+afterEach(async () => {
+	for (const close of dispose.splice(0).reverse()) await close();
 });
 
-function makeApp(env: Record<string, string> = {}) {
+async function makeApp(env: Record<string, string> = {}) {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-member-auth-"));
 	dispose.push(() => rmSync(dataDir, { recursive: true, force: true }));
 	const config = loadConfig({ KIT_GATEWAY: "mock", KIT_DATA_DIR: dataDir, ADMIN_TOKEN: "admin-token", ...env });
 	const db = openDatabase(dataDir);
-	dispose.push(() => db.close());
 	const services = createKitServices(config, db);
-	services.catalog.upsert({ slug: "assistant", display_name: "助手", remote_agent_id: "agent_mock" });
-	services.catalog.setStatus("assistant", "listed");
+	dispose.push(services.close);
+	await services.catalog.upsert({ slug: "assistant", display_name: "助手", remote_agent_id: "agent_mock" });
+	await services.catalog.setStatus("assistant", "listed");
 	return { app: createApp(services), services, config, db, dataDir };
 }
 
-type TestApp = ReturnType<typeof makeApp>["app"];
+type TestApp = Awaited<ReturnType<typeof makeApp>>["app"];
 const json = { "content-type": "application/json", "x-kit-protocol-version": "2.0.0" };
 const headers = (token: string) => ({ ...json, authorization: `Bearer ${token}` });
 const password = "Private!Password2026";
@@ -76,7 +76,7 @@ async function readUntil(reader: ReadableStreamDefaultReader<Uint8Array>, marker
 
 describe("本地成员认证", () => {
 	it("默认要求登录；管理员创建后可登录、刷新恢复并保持跨设备会话归属；退出仅撤销当前凭据", async () => {
-		const { app, services, db, config, dataDir } = makeApp();
+		const { app, services, db, config, dataDir } = await makeApp();
 		expect(config.authMode).toBe("member");
 		expect((await app.request("/api/kit/agents")).status).toBe(401);
 		const publicConfig = (await (await app.request("/api/config")).json()) as { data: { auth: unknown } };
@@ -93,7 +93,7 @@ describe("本地成员认证", () => {
 			data: { session_id: string }[];
 		};
 		expect(list.data.map((entry) => entry.session_id)).toEqual([sessionId]);
-		expect(services.sessionIndex.get(sessionId)?.subject_id).toBe(first.member.member_id);
+		expect((await services.sessionIndex.get(sessionId))?.subject_id).toBe(first.member.member_id);
 		const restoredDb = openDatabase(dataDir);
 		dispose.push(() => restoredDb.close());
 		const restarted = createApp(createKitServices(config, restoredDb));
@@ -108,7 +108,7 @@ describe("本地成员认证", () => {
 		expect(stored).not.toContain(first.access_token);
 		expect(stored).not.toContain(password);
 		expect(stored).toContain(createHash("sha256").update(first.access_token).digest("hex"));
-		const audit = JSON.stringify(services.audit.list());
+		const audit = JSON.stringify(await services.audit.list());
 		expect(audit).not.toContain(first.access_token);
 		expect(audit).not.toContain(password);
 		for (let attempt = 0; attempt < 2; attempt++) {
@@ -122,7 +122,7 @@ describe("本地成员认证", () => {
 
 	// 14 次串行登录请求各跑一轮密码哈希，turbo 全量并行抢 CPU 时默认 5s 不够，显式放宽超时。
 	it("未知账号与错密码响应一致；参数错误不回显输入，匿名 cookie 不能绕过登录限流", async () => {
-		const { app } = makeApp();
+		const { app } = await makeApp();
 		await seedMember(app);
 		const wrong = async (username: string, value = "Wrong!Password2026", cookie = "") =>
 			app.request("/api/kit/auth/login", {
@@ -148,7 +148,7 @@ describe("本地成员认证", () => {
 	}, 15000);
 
 	it("成员会话/附件隔离，伪造匿名 cookie 与可信 JWT 都不能冒充 member_id", async () => {
-		const { app, config, db, services } = makeApp({ KIT_JWT_SECRET: "trusted-signing-secret" });
+		const { app, config, db, services } = await makeApp({ KIT_JWT_SECRET: "trusted-signing-secret" });
 		await seedMember(app);
 		await seedMember(app, "bob");
 		const alice = await login(app);
@@ -207,7 +207,7 @@ describe("本地成员认证", () => {
 	});
 
 	it("跨源登录使用 Bearer，无需 cookie；CORS 允许授权头且不把会话 token 返回其他端点", async () => {
-		const { app } = makeApp({ KIT_CORS_ORIGINS: "https://experience.example.com" });
+		const { app } = await makeApp({ KIT_CORS_ORIGINS: "https://experience.example.com" });
 		await seedMember(app);
 		const preflight = await app.request("/api/kit/auth/login", {
 			method: "OPTIONS",
@@ -233,7 +233,7 @@ describe("本地成员认证", () => {
 	});
 
 	it("退出会关闭已打开的 SSE 并拒绝继续请求，另一个有效设备的流可继续", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		await seedMember(app);
 		const first = await login(app);
 		const other = await login(app);
@@ -275,8 +275,44 @@ describe("本地成员认证", () => {
 		}
 	});
 
+	it("鉴权等待期间授权被取消时丢弃待发送帧", async () => {
+		const { app, services } = await makeApp();
+		await seedMember(app);
+		const signedIn = await login(app);
+		const sessionId = await createSession(app, signedIn.access_token);
+		const grant = new AbortController();
+		let finishCheck!: () => void;
+		const pendingCheck = new Promise<void>((resolve) => {
+			finishCheck = resolve;
+		});
+		const assertActive = vi.fn(() => pendingCheck);
+		vi.spyOn(services.memberAuth, "bindStream").mockResolvedValue({
+			signal: grant.signal,
+			assertActive,
+			close: vi.fn(),
+		});
+		const response = await app.request(`/api/kit/sessions/${sessionId}/stream`, {
+			headers: headers(signedIn.access_token),
+		});
+		expect(response.status).toBe(200);
+		const reader = response.body?.getReader();
+		if (!reader) throw new Error("SSE reader missing");
+		try {
+			const ended = readUntil(reader);
+			await vi.waitFor(() => expect(assertActive).toHaveBeenCalledOnce());
+			grant.abort();
+			finishCheck();
+			const text = await ended;
+			expect(text.match(/^event: .+$/gm)).toEqual(["event: error"]);
+			expect(text).toContain('"code":"unauthorized"');
+		} finally {
+			finishCheck();
+			await reader.cancel();
+		}
+	});
+
 	it("已开 SSE 在登录到期后主动关闭，过期凭据无法恢复登录", async () => {
-		const { app, db } = makeApp();
+		const { app, db } = await makeApp();
 		await seedMember(app);
 		const signedIn = await login(app);
 		const sessionId = await createSession(app, signedIn.access_token);
@@ -295,14 +331,14 @@ describe("本地成员认证", () => {
 	});
 
 	it.each(["data", "unauthorized"])("读端暂停消费 %s 帧时退出仍释放 SSE、认证绑定与上游订阅", async (blockedFrame) => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		await seedMember(app);
 		const signedIn = await login(app);
 		const sessionId = await createSession(app, signedIn.access_token);
 		const bind = services.memberAuth.bindStream;
 		const released = vi.fn();
-		vi.spyOn(services.memberAuth, "bindStream").mockImplementation((record) => {
-			const binding = bind(record);
+		vi.spyOn(services.memberAuth, "bindStream").mockImplementation(async (record) => {
+			const binding = await bind(record);
 			return {
 				...binding,
 				close() {

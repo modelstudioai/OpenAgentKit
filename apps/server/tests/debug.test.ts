@@ -112,13 +112,13 @@ describe("管理员调试合同", () => {
 			(await app.request(`${path}/tool-approvals`, { method: "POST", headers, body: JSON.stringify(decision) })).status,
 		).toBe(409);
 		expect((await app.request(`${path}/interrupt`, { method: "POST", headers })).status).toBe(200);
-		expect(services.catalog.all()).toHaveLength(0);
+		expect(await services.catalog.all()).toHaveLength(0);
 		expect(db.prepare("SELECT count(*) AS count FROM usage_turns").get()?.count).toBe(0);
 		expect(db.prepare("SELECT purpose, agent_slug FROM kit_sessions").get()).toEqual({
 			purpose: "admin_debug",
 			agent_slug: null,
 		});
-		expect(services.audit.list()).toEqual([]);
+		expect(await services.audit.list()).toEqual([]);
 	});
 
 	it("未发布拒绝且不创建 Provider Session；角色与跨管理员/跨用途隔离验证已存在资源", async () => {
@@ -207,7 +207,7 @@ describe("管理员调试合同", () => {
 		expect(resumed).toContain(`"after":"${cursor}"`);
 		expect(send).not.toHaveBeenCalled();
 		expect((await app.request(`${path}/events`, { headers })).status).toBe(200);
-		expect(services.audit.list()).toEqual([]);
+		expect(await services.audit.list()).toEqual([]);
 	});
 
 	it("上传、挂载与交付下载都按用途及管理员主体隔离，中途附件拒绝", async () => {
@@ -239,7 +239,7 @@ describe("管理员调试合同", () => {
 				})
 			).status,
 		).toBe(400);
-		expect(() => services.files.requireUploads(identity.subject, [employeeUpload], "admin_debug")).toThrow();
+		await expect(services.files.requireUploads(identity.subject, [employeeUpload], "admin_debug")).rejects.toThrow();
 		await expect(
 			services.debug.createTemplate(identity.subject, {
 				remote_agent_id: "agent_mock_assistant",
@@ -267,7 +267,7 @@ describe("管理员调试合同", () => {
 		expect(db.prepare("SELECT purpose FROM kit_uploaded_files WHERE file_id = ?").get(own.file_id)?.purpose).toBe(
 			"admin_debug",
 		);
-		expect(services.audit.list()).toEqual([]);
+		expect(await services.audit.list()).toEqual([]);
 	});
 
 	it("删除必须先确认，令牌绑定实际调试会话，不可用于另一会话", async () => {
@@ -300,6 +300,6 @@ describe("管理员调试合同", () => {
 		expect(await services.gateway.getSession(one.session_id)).toBeNull();
 		expect((await app.request(path, { headers })).status).toBe(404);
 		expect((await app.request(`/api/admin/debug/sessions/${two.session_id}`, { headers })).status).toBe(200);
-		expect(services.audit.list()).toEqual([]);
+		expect(await services.audit.list()).toEqual([]);
 	});
 });

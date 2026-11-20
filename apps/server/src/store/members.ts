@@ -1,5 +1,6 @@
-import type { DatabaseSync } from "node:sqlite";
 import { KitError, type MembersPage, type MembersQuery, type MemberView } from "@openagentkit/sdk/protocol";
+import type { StoreDatabase } from "./database.ts";
+import { likePattern } from "./sql.ts";
 
 type MemberRow = Omit<MemberView, "email"> & { email: string | null };
 interface Cursor {
@@ -40,61 +41,57 @@ function readCursor(token: string | undefined, search: string): Cursor | undefin
 }
 
 /** 成员目录与本地密码派生值；所有查询显式选择展示列，密码字段不进入视图。 */
-export function createMemberStore(db: DatabaseSync) {
+export function createMemberStore(db: StoreDatabase) {
 	return {
-		findById(memberId: string): MemberView | null {
-			const row = db.prepare(`SELECT ${VIEW_COLUMNS} FROM kit_members WHERE member_id = ?`).get(memberId) as
+		async findById(memberId: string): Promise<MemberView | null> {
+			const row = (await db.get(`SELECT ${VIEW_COLUMNS} FROM kit_members WHERE member_id = ?`, memberId)) as
 				| MemberRow
 				| undefined;
 			return row ? toView(row) : null;
 		},
 		/** 仅供服务端密码验证使用；此返回值不可用于 API 或审计。 */
-		findCredentials(username: string): { member: MemberView; passwordHash: string } | null {
-			const row = db
-				.prepare(`SELECT ${VIEW_COLUMNS}, password_hash FROM kit_members WHERE username = ?`)
-				.get(username) as (MemberRow & { password_hash: string }) | undefined;
+		async findCredentials(username: string): Promise<{ member: MemberView; passwordHash: string } | null> {
+			const row = (await db.get(
+				`SELECT ${VIEW_COLUMNS}, password_hash FROM kit_members WHERE username = ?`,
+				username,
+			)) as (MemberRow & { password_hash: string }) | undefined;
 			if (!row) return null;
 			const { password_hash: passwordHash, ...view } = row;
 			return { member: toView(view), passwordHash };
 		},
-		create(member: MemberView, passwordHash: string): MemberView {
-			const inserted = db
-				.prepare(
-					`INSERT INTO kit_members (${VIEW_COLUMNS}, password_hash)
-					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(username) DO NOTHING`,
-				)
-				.run(
-					member.member_id,
-					member.username,
-					member.display_name,
-					member.email ?? null,
-					member.auth_type,
-					member.status,
-					member.created_at,
-					member.updated_at,
-					passwordHash,
-				);
+		async create(member: MemberView, passwordHash: string): Promise<MemberView> {
+			const inserted = await db.insertIfAbsent(
+				`INSERT INTO kit_members (${VIEW_COLUMNS}, password_hash)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				"username",
+				member.member_id,
+				member.username,
+				member.display_name,
+				member.email ?? null,
+				member.auth_type,
+				member.status,
+				member.created_at,
+				member.updated_at,
+				passwordHash,
+			);
 			if (!inserted.changes) throw new KitError("conflict", "用户名已存在，请使用其他用户名");
 			return member;
 		},
-		list(options: MembersQuery): MembersPage {
+		async list(options: MembersQuery): Promise<MembersPage> {
 			const search = (options.search ?? "").toLowerCase();
 			const cursor = readCursor(options.page_token, search);
 			// LIKE 的通配符按字面搜索，避免用户名中的下划线匹配其他成员。
-			const pattern = `%${search.replace(/[\\%_]/g, "\\$&")}%`;
-			const rows = db
-				.prepare(
-					`SELECT ${VIEW_COLUMNS} FROM kit_members
-					 WHERE (username LIKE ? ESCAPE '\\' OR display_name LIKE ? ESCAPE '\\')
+			const pattern = likePattern(search);
+			const rows = (await db.all(
+				`SELECT ${VIEW_COLUMNS} FROM kit_members
+					 WHERE (LOWER(username) LIKE LOWER(?) ESCAPE '!' OR LOWER(display_name) LIKE LOWER(?) ESCAPE '!')
 					 ${cursor ? "AND (created_at < ? OR (created_at = ? AND member_id < ?))" : ""}
 					 ORDER BY created_at DESC, member_id DESC LIMIT ?`,
-				)
-				.all(
-					pattern,
-					pattern,
-					...(cursor ? [cursor.created_at, cursor.created_at, cursor.member_id] : []),
-					options.limit + 1,
-				) as unknown as MemberRow[];
+				pattern,
+				pattern,
+				...(cursor ? [cursor.created_at, cursor.created_at, cursor.member_id] : []),
+				options.limit + 1,
+			)) as unknown as MemberRow[];
 			const data = rows.slice(0, options.limit).map(toView);
 			const last = data.at(-1);
 			return {

@@ -1,5 +1,5 @@
-import type { DatabaseSync } from "node:sqlite";
 import { type OperationView, PublicationErrorDetailsSchema, PublicationReportSchema } from "@openagentkit/sdk/protocol";
+import type { StoreDatabase } from "./database.ts";
 
 interface Row {
 	operation_id: string;
@@ -41,48 +41,41 @@ function toView(row: Row): OperationView {
 	};
 }
 
-export function createOperationStore(db: DatabaseSync) {
+export function createOperationStore(db: StoreDatabase) {
 	const listeners = new Map<string, Set<(view: OperationView) => void>>();
 	const notify = (view: OperationView) => {
 		for (const listener of listeners.get(view.operation_id) ?? []) listener(view);
 	};
 	return {
-		recoverIncomplete() {
+		async create(input: { operationId: string; kind: string; subject?: string }) {
 			const now = new Date().toISOString();
-			db.prepare(
-				"UPDATE kit_operations SET error_details_json=? WHERE kind='resourceDraft.publish' AND status IN ('pending','running')",
-			).run(
-				JSON.stringify({
-					code: "publication.interrupted",
-					phase: "interrupted",
-					retryable: false,
-					mutation_started: true,
-				}),
-			);
-			db.prepare(
-				"UPDATE kit_operations SET status='failed', phase='interrupted', error=?, updated_at=? WHERE status IN ('pending','running')",
-			).run("服务已重启，操作结果待核对；请检查远端状态后重新计划，不会自动重试", now);
-		},
-		create(input: { operationId: string; kind: string; subject?: string }) {
-			const now = new Date().toISOString();
-			db.prepare(
+			await db.run(
 				`INSERT INTO kit_operations (operation_id, kind, subject, status, phase, progress, log, created_at, updated_at)
 				 VALUES (?,?,?,?,?,?,?,?,?)`,
-			).run(input.operationId, input.kind, input.subject ?? null, "pending", null, 0, "[]", now, now);
-			return this.get(input.operationId) as OperationView;
+				input.operationId,
+				input.kind,
+				input.subject ?? null,
+				"pending",
+				null,
+				0,
+				"[]",
+				now,
+				now,
+			);
+			return (await this.get(input.operationId)) as OperationView;
 		},
-		get(operationId: string): OperationView | null {
-			const row = db.prepare("SELECT * FROM kit_operations WHERE operation_id = ?").get(operationId) as unknown as
+		async get(operationId: string): Promise<OperationView | null> {
+			const row = (await db.get("SELECT * FROM kit_operations WHERE operation_id = ?", operationId)) as unknown as
 				| Row
 				| undefined;
 			return row ? toView(row) : null;
 		},
-		owns(operationId: string, subject: string): boolean {
+		async owns(operationId: string, subject: string): Promise<boolean> {
 			return Boolean(
-				db.prepare("SELECT 1 FROM kit_operations WHERE operation_id=? AND subject=?").get(operationId, subject),
+				await db.get("SELECT 1 FROM kit_operations WHERE operation_id=? AND subject=?", operationId, subject),
 			);
 		},
-		update(
+		async update(
 			operationId: string,
 			patch: {
 				status?: OperationView["status"];
@@ -95,12 +88,11 @@ export function createOperationStore(db: DatabaseSync) {
 				logLine?: string;
 			},
 		) {
-			const current = this.get(operationId);
+			const current = await this.get(operationId);
 			if (!current) return null;
 			const log = patch.logLine ? [...current.log, patch.logLine] : current.log;
-			db.prepare(
+			await db.run(
 				`UPDATE kit_operations SET status=?, phase=?, progress=?, log=?, result=?, error=?, publication_json=?, error_details_json=?, updated_at=? WHERE operation_id=?`,
-			).run(
 				patch.status ?? current.status,
 				patch.phase ?? current.phase ?? null,
 				patch.progress ?? current.progress,
@@ -115,22 +107,43 @@ export function createOperationStore(db: DatabaseSync) {
 				new Date().toISOString(),
 				operationId,
 			);
-			const view = this.get(operationId) as OperationView;
+			const view = (await this.get(operationId)) as OperationView;
 			notify(view);
 			return view;
 		},
-		list(options: { sessionId?: string; limit?: number } = {}) {
+		async list(options: { sessionId?: string; limit?: number } = {}) {
 			const limit = options.limit ?? 50;
-			const rows = db
-				.prepare("SELECT * FROM kit_operations ORDER BY created_at DESC LIMIT ?")
-				.all(limit) as unknown as Row[];
+			const rows = (await db.all(
+				"SELECT * FROM kit_operations ORDER BY created_at DESC LIMIT ?",
+				limit,
+			)) as unknown as Row[];
 			return rows.map(toView);
 		},
-		subscribe(operationId: string, listener: (view: OperationView) => void): () => void {
+		subscribe(
+			operationId: string,
+			listener: (view: OperationView) => void,
+			onError: (error: unknown) => void,
+		): () => void {
 			const set = listeners.get(operationId) ?? new Set();
-			set.add(listener);
+			let seenUpdate = false;
+			const emit = (view: OperationView) => {
+				seenUpdate = true;
+				listener(view);
+			};
+			set.add(emit);
 			listeners.set(operationId, set);
-			return () => set.delete(listener);
+
+			// 先订阅再读快照。已有更新抵达时，丢弃可能更早的读取结果。
+			void this.get(operationId)
+				.then((view) => {
+					if (!seenUpdate && view && set.has(emit)) emit(view);
+				})
+				.catch((error: unknown) => {
+					if (set.has(emit)) onError(error);
+				});
+			return () => {
+				if (set.delete(emit) && !set.size) listeners.delete(operationId);
+			};
 		},
 	};
 }

@@ -95,20 +95,20 @@ export function createSessionDeletion(deps: SessionDeletionDeps) {
 		// 与状态确认分开重新读取；不用中断前或后台刷新缓存代替本次快照。
 		const final = await beforeDeadline(gateway.getSession(attempt.sessionId), attempt.deadline);
 		if (!final || !(await stopped(final, attempt.deadline))) throw new KitError("conflict", "会话状态发生变化");
-		memberUsage.captureFinal(attempt.sessionId, final);
+		await memberUsage.captureFinal(attempt.sessionId, final);
 		// 封存新快照不能覆盖旧请求的不确定性，否则重启会丢失迟到 DELETE / interrupt 的保护。
 		if (!attempt.remoteStarted && !attempt.keepWriteProtection)
-			deletionStore.set(attempt.sessionId, attempt.subjectId, "captured");
+			await deletionStore.set(attempt.sessionId, attempt.subjectId, "captured");
 	}
 	async function removeRemote(attempt: Attempt) {
 		attempt.stage = "delete";
-		deletionStore.set(attempt.sessionId, attempt.subjectId, "deleting");
+		await deletionStore.set(attempt.sessionId, attempt.subjectId, "deleting");
 		attempt.remoteStarted = true;
 		try {
 			await beforeDeadline(gateway.deleteSession(attempt.sessionId), attempt.deadline);
 			attempt.confirmedDeleted = true;
 		} catch (error) {
-			deletionStore.set(attempt.sessionId, attempt.subjectId, "uncertain");
+			await deletionStore.set(attempt.sessionId, attempt.subjectId, "uncertain");
 			// 超时请求可能仍执行，保持封存与写保护直到下一次确认。
 			if (error instanceof DeadlineError) throw error;
 			const remaining = await beforeDeadline(gateway.getSession(attempt.sessionId), attempt.deadline);
@@ -120,11 +120,11 @@ export function createSessionDeletion(deps: SessionDeletionDeps) {
 			throw error;
 		}
 	}
-	function fail(attempt: Attempt): never {
+	async function fail(attempt: Attempt): Promise<never> {
 		if (!attempt.remoteStarted && !attempt.keepWriteProtection) {
 			try {
-				memberUsage.releaseFinal(attempt.sessionId);
-				deletionStore.clear(attempt.sessionId);
+				await memberUsage.releaseFinal(attempt.sessionId);
+				await deletionStore.clear(attempt.sessionId);
 			} catch {
 				/* 数据库不可写时保留持久阶段，恢复后再次确认；不泄露底层错误。 */
 			}
@@ -139,30 +139,30 @@ export function createSessionDeletion(deps: SessionDeletionDeps) {
 		});
 	}
 	async function execute(attempt: Attempt, drain: Promise<unknown>) {
-		deletionStore.set(attempt.sessionId, attempt.subjectId, attempt.remoteStarted ? "uncertain" : "preparing");
+		await deletionStore.set(attempt.sessionId, attempt.subjectId, attempt.remoteStarted ? "uncertain" : "preparing");
 		await beforeDeadline(drain, attempt.deadline);
 		const info = await beforeDeadline(gateway.getSession(attempt.sessionId), attempt.deadline);
 		if (info) {
 			await capture(attempt, info);
 			await removeRemote(attempt);
 		} else {
-			if (!attempt.remoteStarted || !memberUsage.hasFinalSnapshot(attempt.sessionId))
+			if (!attempt.remoteStarted || !(await memberUsage.hasFinalSnapshot(attempt.sessionId)))
 				throw new KitError("conflict", "会话已不可查询且没有可确认的删除快照");
 			attempt.confirmedDeleted = true;
 		}
 		attempt.stage = "finalize";
-		memberUsage.markDeleted(attempt.sessionId);
+		await memberUsage.markDeleted(attempt.sessionId);
 	}
 	return async (sessionId: string, drain: Promise<unknown>) => {
-		const row = sessionIndex.get(sessionId);
+		const row = await sessionIndex.get(sessionId);
 		if (!row) throw new KitError("not_found", "会话不存在");
-		if (!memberUsage.isMemberSession(sessionId)) {
+		if (!(await memberUsage.isMemberSession(sessionId))) {
 			await beforeDeadline(drain, Date.now() + timeoutMs);
 			await gateway.deleteSession(sessionId);
-			sessionIndex.remove(sessionId);
+			await sessionIndex.remove(sessionId);
 			return;
 		}
-		const previous = deletionStore.get(sessionId);
+		const previous = await deletionStore.get(sessionId);
 		const recovering = previous?.stage === "deleting" || previous?.stage === "uncertain";
 		const attempt: Attempt = {
 			sessionId,
@@ -178,7 +178,7 @@ export function createSessionDeletion(deps: SessionDeletionDeps) {
 		try {
 			await execute(attempt, drain);
 		} catch {
-			fail(attempt);
+			await fail(attempt);
 		}
 	};
 }

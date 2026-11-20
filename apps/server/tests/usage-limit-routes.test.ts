@@ -95,9 +95,13 @@ it("月度限额设置、成员覆盖与恢复默认可回读；auditor只读、
 
 it("HTTP发送使用Token/时长限额；超限不请求Provider，提额后可用，旧Credits不再限制本地成员", async () => {
 	const { app, services, member, memberHeaders, db } = await setup();
-	services.catalog.upsert({ slug: "limits-agent", display_name: "额度测试", remote_agent_id: "agent_mock_assistant" });
-	services.catalog.setStatus("limits-agent", "listed");
-	services.quota.putPolicy(0, "test-admin");
+	await services.catalog.upsert({
+		slug: "limits-agent",
+		display_name: "额度测试",
+		remote_agent_id: "agent_mock_assistant",
+	});
+	await services.catalog.setStatus("limits-agent", "listed");
+	await services.quota.putPolicy(0, "test-admin");
 	const created = await app.request("/api/kit/sessions", {
 		method: "POST",
 		headers: memberHeaders,

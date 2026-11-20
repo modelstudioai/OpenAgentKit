@@ -38,11 +38,8 @@ export function registerTemplateVersionRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		}),
-		async (c) => {
-			const services = c.get("services");
-			if (services.templates.isDeleted(c.req.valid("param").templateId)) throw new KitError("not_found", "模版不存在");
-			return c.json(services.templates.versions(c.req.valid("param").templateId, c.req.valid("query")), 200);
-		},
+		async (c) =>
+			c.json(await c.get("services").templates.versions(c.req.valid("param").templateId, c.req.valid("query")), 200),
 		rejectInvalid,
 	);
 	app.openapi(
@@ -63,8 +60,7 @@ export function registerTemplateVersionRoutes(app: OpenAPIHono<AppEnv>) {
 		}),
 		async (c) => {
 			const { templateId, version } = c.req.valid("param");
-			if (c.get("services").templates.isDeleted(templateId)) throw new KitError("not_found", "模版不存在");
-			return c.json({ data: c.get("services").templates.version(templateId, version) }, 200);
+			return c.json({ data: await c.get("services").templates.version(templateId, version) }, 200);
 		},
 		rejectInvalid,
 	);

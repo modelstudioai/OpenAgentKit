@@ -8,7 +8,7 @@ it("旧目录批次原样归档并释放活动名额，YAML 记录和磁盘文�
 	const t = await fixture();
 	const yaml = await t.create();
 	await t.agent(yaml);
-	const before = t.store.document(yaml.draft_id);
+	const before = await t.store.document(yaml.draft_id);
 	const legacyId = `draft_${"b".repeat(32)}`;
 	const legacyRoot = join(t.root, "resource-draft-projects", legacyId);
 	await mkdir(legacyRoot, { recursive: true });
@@ -35,10 +35,10 @@ it("旧目录批次原样归档并释放活动名额，YAML 记录和磁盘文�
 		yaml: "original declaration",
 		proof_json: "original proof",
 	});
-	expect(t.store.get(legacyId)).toBeNull();
-	expect(t.store.active("legacy-owner")).toBeNull();
-	expect(t.store.create(`draft_${"c".repeat(32)}`, "legacy-owner").owner).toBe("legacy-owner");
-	expect(t.store.document(yaml.draft_id)).toEqual(before);
+	expect(await t.store.get(legacyId)).toBeNull();
+	expect(await t.store.active("legacy-owner")).toBeNull();
+	expect((await t.store.create(`draft_${"c".repeat(32)}`, "legacy-owner")).owner).toBe("legacy-owner");
+	expect(await t.store.document(yaml.draft_id)).toEqual(before);
 	expect(await readFile(join(legacyRoot, "state.json"), "utf8")).toBe("original legacy state");
 	expect((await t.request(`/api/admin/resource-drafts/${legacyId}`)).status).toBe(404);
 	for (const path of [
@@ -49,7 +49,7 @@ it("旧目录批次原样归档并释放活动名额，YAML 记录和磁盘文�
 		expect((await t.request(path)).status).toBe(404);
 	t.restart();
 	expect(t.db.prepare("SELECT count(*) AS n FROM kit_retired_directory_drafts").get()?.n).toBe(1);
-	expect(t.store.document(yaml.draft_id)).toEqual(before);
+	expect(await t.store.document(yaml.draft_id)).toEqual(before);
 	expect(network).not.toHaveBeenCalled();
 });
 
@@ -59,9 +59,9 @@ it("SDK 使用显式 MA 凭据与 Vault 值，忽略全局环境且持久化记�
 	const t = await fixture("sdk");
 	const savedStates: string[] = [];
 	const writeState = t.store.writeState.bind(t.store);
-	vi.spyOn(t.store, "writeState").mockImplementation((id, state) => {
+	vi.spyOn(t.store, "writeState").mockImplementation(async (id, state) => {
 		savedStates.push(state);
-		writeState(id, state);
+		await writeState(id, state);
 	});
 	const calls: { url: string; method: string; authorization: string | null; body: Record<string, unknown> }[] = [];
 	setDefaultFetch(async (input, init) => {
@@ -97,7 +97,7 @@ it("SDK 使用显式 MA 凭据与 Vault 值，忽略全局环境且持久化记�
 			},
 		],
 	});
-	const before = JSON.stringify(t.store.document(draft.draft_id));
+	const before = JSON.stringify(await t.store.document(draft.draft_id));
 	expect(before).not.toContain(secret);
 	const confirmation = await t.plan(draft);
 	const operation = await t.publish(draft, confirmation);
@@ -136,15 +136,15 @@ it("密钥引用不能跨批次或回退全局环境，丢弃只释放本批，�
 				},
 			],
 		});
-	const docA = first.store.document(a.draft_id)!;
-	const docB = second.store.document(b.draft_id)!;
+	const docA = (await first.store.document(a.draft_id))!;
+	const docB = (await second.store.document(b.draft_id))!;
 	const refA = docA.yaml.match(/\$\{KIT_VAULT_[A-F0-9]+\}/)![0];
 	const refB = docB.yaml.match(/\$\{KIT_VAULT_[A-F0-9]+\}/)![0];
 	vi.stubEnv(refA.slice(2, -1), "global-must-not-resolve");
-	second.store.writeDocument(b.draft_id, String(docB.revision), docB.yaml.replace(refB, refA));
+	await second.store.writeDocument(b.draft_id, String(docB.revision), docB.yaml.replace(refB, refA));
 	expect((await second.request(`${second.base(b)}/plan`, "POST", { action: "publish" })).status).toBe(400);
-	const changed = second.store.document(b.draft_id)!;
-	second.store.writeDocument(b.draft_id, String(changed.revision), docB.yaml);
+	const changed = (await second.store.document(b.draft_id))!;
+	await second.store.writeDocument(b.draft_id, String(changed.revision), docB.yaml);
 	await first.value(`/api/admin/resource-drafts/${a.draft_id}/discard`, "POST");
 	await second.plan(b);
 	second.restart();

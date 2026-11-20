@@ -64,13 +64,13 @@ describe("上架目录的共享文件白名单", () => {
 		expect((await app.request(path)).status).toBe(401);
 		expect((await create([{ file_id: file.file_id, filename: "forged.txt", size: 999 }])).status).toBe(201);
 		const expected = [{ ...file, mount_path: "/mnt/session/uploads/文档_v1.txt" }];
-		expect(services.catalog.getBySlug("files-agent")?.files).toEqual(expected);
+		expect((await services.catalog.getBySlug("files-agent"))?.files).toEqual(expected);
 		expect((await update({ description: "保留文件" })).status).toBe(200);
 		const reopened = openDatabase(dataDir);
 		cleanup.push(() => reopened.close());
-		expect(createKitServices(config, reopened).catalog.getBySlug("files-agent")?.files).toEqual(expected);
+		expect((await createKitServices(config, reopened).catalog.getBySlug("files-agent"))?.files).toEqual(expected);
 		expect((await update({ files: [] })).status).toBe(200);
-		expect(services.catalog.getBySlug("files-agent")?.files).toEqual([]);
+		expect((await services.catalog.getBySlug("files-agent"))?.files).toEqual([]);
 	});
 
 	it("保存拒绝不存在/非上传/不可用文件以及重复ID和路径；失败保留原配置", async () => {
@@ -78,7 +78,7 @@ describe("上架目录的共享文件白名单", () => {
 		const first = await upload("uploader", "first.txt");
 		const second = await upload("uploader", "second.txt");
 		expect((await create([first])).status).toBe(201);
-		const original = services.catalog.getBySlug("files-agent")?.files;
+		const original = (await services.catalog.getBySlug("files-agent"))?.files;
 		for (const invalid of [
 			[{ file_id: "not-an-upload" }],
 			[first, first],
@@ -99,7 +99,7 @@ describe("上架目录的共享文件白名单", () => {
 			status: "checking",
 		});
 		expect((await update({ files: [second] })).status).toBe(409);
-		expect(services.catalog.getBySlug("files-agent")?.files).toEqual(original);
+		expect((await services.catalog.getBySlug("files-agent"))?.files).toEqual(original);
 	});
 
 	it("新会话合并目录文件与本人附件；目录授权不能被请求借用或转成直接下载权限", async () => {
@@ -108,7 +108,7 @@ describe("上架目录的共享文件白名单", () => {
 		const own = await upload("member-one");
 		const privateFile = await upload("another-uploader", "private.txt");
 		expect((await create([shared])).status).toBe(201);
-		services.catalog.setStatus("files-agent", "listed");
+		await services.catalog.setStatus("files-agent", "listed");
 		const createRemote = vi.spyOn(services.gateway, "createSession");
 		const created = await session([{ ...own, mount_path: "/mnt/session//uploads/./guide.txt" }]);
 		expect(created.status).toBe(201);
@@ -137,7 +137,7 @@ describe("上架目录的共享文件白名单", () => {
 			Array.from({ length: 10 }, (_, index) => upload("member-one", `file-${index}.txt`)),
 		);
 		expect((await create(files)).status).toBe(201);
-		services.catalog.setStatus("files-agent", "listed");
+		await services.catalog.setStatus("files-agent", "listed");
 		const createRemote = vi.spyOn(services.gateway, "createSession");
 		const mountRemote = vi.spyOn(services.gateway, "mountSessionResource");
 		expect((await session([files[0]!])).status).toBe(201);

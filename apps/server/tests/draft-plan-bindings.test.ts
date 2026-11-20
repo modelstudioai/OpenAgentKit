@@ -12,17 +12,17 @@ it.each(["mock", "sdk"] as const)(
 		setDefaultFetch(fetch);
 		const t = await fixture(mode);
 		const draft = await t.create();
-		const before = t.store.document(draft.draft_id);
+		const before = await t.store.document(draft.draft_id);
 		const confirmation = await t.value<ProjectPlan>(`${t.base(draft)}/plan`, "POST", { action: "publish" });
 		expect(confirmation).toMatchObject({ project_revision: "1", diff: [], destructive: false });
-		expect(t.store.document(draft.draft_id)).toEqual(before);
+		expect(await t.store.document(draft.draft_id)).toEqual(before);
 		const operation = await t.publish(draft, confirmation);
 		expect(await t.wait(operation.operation_id)).toMatchObject({ status: "failed" });
 		expect(await t.value(`/api/admin/resource-drafts/${draft.draft_id}`)).toMatchObject({
 			status: "draft",
 			resources: [],
 		});
-		expect(t.store.document(draft.draft_id)).toEqual(before);
+		expect(await t.store.document(draft.draft_id)).toEqual(before);
 		await t.agent(draft);
 		expect((await t.request(`${t.base(draft)}/publish`, "POST", confirmation)).status).toBe(428);
 		expect(fetch).not.toHaveBeenCalled();
@@ -36,7 +36,7 @@ it("空声明仍有 SDK state 时拒绝生成计划，避免将残留绑定规�
 	setDefaultFetch(fetch);
 	const t = await fixture("sdk");
 	const draft = await t.create();
-	t.store.writeState(
+	await t.store.writeState(
 		draft.draft_id,
 		JSON.stringify({
 			resources: [
@@ -49,9 +49,9 @@ it("空声明仍有 SDK state 时拒绝生成计划，避免将残留绑定规�
 			],
 		}),
 	);
-	const before = t.store.document(draft.draft_id);
+	const before = await t.store.document(draft.draft_id);
 	expect((await t.request(`${t.base(draft)}/plan`, "POST", { action: "publish" })).status).toBe(409);
-	expect(t.store.document(draft.draft_id)).toEqual(before);
+	expect(await t.store.document(draft.draft_id)).toEqual(before);
 	expect(fetch).not.toHaveBeenCalled();
 });
 
@@ -90,13 +90,13 @@ it("绑定严格解析先验证全部声明存在，再仅校验所选项的身�
 			},
 		],
 	};
-	t.store.writeState(draft.draft_id, JSON.stringify(state));
+	await t.store.writeState(draft.draft_id, JSON.stringify(state));
 	expect((await resolve([{ type: "agent", id: agent.id }])).status).toBe(409);
-	t.store.writeState(
+	await t.store.writeState(
 		draft.draft_id,
 		JSON.stringify({ resources: state.resources.map((resource) => ({ ...resource, version: 3 })) }),
 	);
-	const before = t.store.document(draft.draft_id);
+	const before = await t.store.document(draft.draft_id);
 	const response = await resolve([{ type: "agent", id: agent.id }]);
 	expect(response.status).toBe(200);
 	expect((await response.json()) as { data: ProjectResourceBindings }).toEqual({
@@ -110,6 +110,6 @@ it("绑定严格解析先验证全部声明存在，再仅校验所选项的身�
 			])
 		).status,
 	).toBe(409);
-	expect(t.store.document(draft.draft_id)).toEqual(before);
+	expect(await t.store.document(draft.draft_id)).toEqual(before);
 	expect(fetch).not.toHaveBeenCalled();
 });

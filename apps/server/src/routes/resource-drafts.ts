@@ -49,7 +49,7 @@ async function filterDraftResponse(context: { res: Response }) {
 export function registerResourceDraftRoutes(app: OpenAPIHono<AppEnv>) {
 	app.use("/api/admin/operations/*", async (c, next) => {
 		const id = c.req.path.split("/")[4];
-		if (id && !c.get("services").resourceDrafts.canReadOperation(id, c.get("admin").subject))
+		if (id && !(await c.get("services").resourceDrafts.canReadOperation(id, c.get("admin").subject)))
 			throw new KitError("not_found", "operation 不存在");
 		await next();
 	});
@@ -81,11 +81,11 @@ export function registerResourceDraftRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		}),
-		(c) => {
+		async (c) => {
 			c.header("Cache-Control", "no-store");
 			return c.json(
 				{
-					data: c
+					data: await c
 						.get("services")
 						.resourceDrafts.active(c.get("admin").subject, c.req.valid("header")[RESOURCE_DRAFT_KEY_HEADER]),
 				},
@@ -121,10 +121,10 @@ export function registerResourceDraftRoutes(app: OpenAPIHono<AppEnv>) {
 			request: { params },
 			responses: { 200: response, ...errors },
 		}),
-		(c) => {
+		async (c) => {
 			c.header("Cache-Control", "no-store");
 			return c.json(
-				{ data: c.get("services").resourceDrafts.get(c.req.valid("param").draftId, c.get("admin").subject) },
+				{ data: await c.get("services").resourceDrafts.get(c.req.valid("param").draftId, c.get("admin").subject) },
 				200,
 			);
 		},

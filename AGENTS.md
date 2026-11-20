@@ -48,7 +48,7 @@
 - 在 SDK 数据入口或 `src/protocol` 引入 React、DOM 或 Node-only API。
   React 仅允许位于六个功能模块的 `hooks/`、通用 `src/hooks/` 与
   `src/providers/kit/react/`（ADR-0026）。
-- 另造事件模型，或把 Provider 事件、消息正文写入 SQLite。共享事件使用上游 `SessionEvent`；
+- 另造事件模型，或把 Provider 事件、消息正文写入 Kit 数据库。共享事件使用上游 `SessionEvent`；
   临时 YAML、SDK state 与成功证明的存储例外见 ADR-0017/0018。
 - 将 Provider key、Vault credential 下发到浏览器，写入仓库、日志、错误或持久化声明。
   Provider 配置显式传入 SDK，运行链路不得改写进程全局环境变量。

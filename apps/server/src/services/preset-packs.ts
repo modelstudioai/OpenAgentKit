@@ -134,14 +134,14 @@ async function previewPreset(gateway: ProviderGateway, value: PresetPackCreateIn
 export function createPresetPackService({ store, gateway }: { store: PresetPackStore; gateway: ProviderGateway }) {
 	return {
 		get: store.get,
-		list(query: PresetPacksQuery) {
+		async list(query: PresetPacksQuery) {
 			const parsed = PresetPacksQuerySchema.safeParse(query);
 			if (!parsed.success) throw new KitError("invalid_request", "预设包查询参数无效");
-			return store.list(parsed.data);
+			return await store.list(parsed.data);
 		},
 		preview: (value: PresetPackCreateInput, signal?: AbortSignal) => previewPreset(gateway, value, signal),
 		async create(value: PresetPackCreateInput, signal?: AbortSignal) {
-			return store.create(await previewPreset(gateway, value, signal));
+			return await store.create(await previewPreset(gateway, value, signal));
 		},
 	};
 }

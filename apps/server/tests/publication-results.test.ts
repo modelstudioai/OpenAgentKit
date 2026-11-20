@@ -2,6 +2,31 @@ import { setDefaultFetch } from "@openagentpack/sdk";
 import { expect, it, vi } from "vitest";
 import { fixture } from "./helpers/yaml-draft.ts";
 
+it("发布进度写入失败后仍保存发布结果并完成批次", async () => {
+	const t = await fixture();
+	const draft = await t.create();
+	await t.agent(draft);
+	const store = t.services.operations;
+	const update = store.update.bind(store);
+	let failedProgressWrites = 0;
+	vi.spyOn(store, "update").mockImplementation(async (id, patch) => {
+		if (patch.progress === 0.1 && patch.phase === "executing") {
+			failedProgressWrites++;
+			throw new Error("injected progress write failure");
+		}
+		return update(id, patch);
+	});
+
+	const operation = await t.wait((await t.publish(draft, await t.plan(draft))).operation_id);
+	expect(failedProgressWrites).toBe(1);
+	expect(operation).toMatchObject({ status: "succeeded", publication: { outcome: "succeeded" } });
+	expect(await t.value(`/api/admin/resource-drafts/${draft.draft_id}`)).toMatchObject({
+		status: "published",
+		resources: [{ type: "agent" }],
+		cleanup_pending: false,
+	});
+});
+
 it("Vault 已创建但凭据失败时持久保留已知 ID，不将未完成资源写成完整 State 或允许重发", async () => {
 	const calls: string[] = [];
 	setDefaultFetch(async (input, init) => {
@@ -39,10 +64,10 @@ it("Vault 已创建但凭据失败时持久保留已知 ID，不将未完成资�
 	});
 	expect(JSON.stringify(operation)).not.toContain("private credential response");
 	expect(JSON.stringify(operation)).not.toContain("private fixture credential");
-	expect(JSON.parse(t.store.document(draft.draft_id)!.sdk_state_json).resources).toEqual([]);
-	expect(t.store.document(draft.draft_id)?.proof_json).toBeNull();
+	expect(JSON.parse((await t.store.document(draft.draft_id))!.sdk_state_json).resources).toEqual([]);
+	expect((await t.store.document(draft.draft_id))?.proof_json).toBeNull();
 	t.restart();
-	expect(t.services.operations.get(operation.operation_id)?.publication).toEqual(operation.publication);
+	expect((await t.services.operations.get(operation.operation_id))?.publication).toEqual(operation.publication);
 	expect(await t.value(`/api/admin/resource-drafts/${draft.draft_id}`)).toMatchObject({
 		recovery_action: "read_result",
 	});
@@ -67,9 +92,9 @@ it("SDK 成功后 StateBackend 最终保存失败仍保留逐资源结果；报�
 	const confirmation = await t.plan(draft);
 	const save = t.store.writeState.bind(t.store);
 	let saves = 0;
-	vi.spyOn(t.store, "writeState").mockImplementation((id, value) => {
+	vi.spyOn(t.store, "writeState").mockImplementation(async (id, value) => {
 		if (value.includes("agent_known") && ++saves > 1) throw new Error("private storage error");
-		save(id, value);
+		await save(id, value);
 	});
 	const operation = await t.wait((await t.publish(draft, confirmation)).operation_id);
 	expect(operation).toMatchObject({
@@ -82,10 +107,10 @@ it("SDK 成功后 StateBackend 最终保存失败仍保留逐资源结果；报�
 		error_details: { code: "publication.state_persist_failed", phase: "persist_state", mutation_started: true },
 	});
 	expect(JSON.stringify(operation)).not.toContain("private storage error");
-	expect(t.store.document(draft.draft_id)?.proof_json).toBeNull();
+	expect((await t.store.document(draft.draft_id))?.proof_json).toBeNull();
 	const persisted = operation.publication;
 	t.restart();
-	expect(t.services.operations.get(operation.operation_id)?.publication).toEqual(persisted);
+	expect((await t.services.operations.get(operation.operation_id))?.publication).toEqual(persisted);
 	expect(await t.value(`/api/admin/resource-drafts/${draft.draft_id}`)).toMatchObject({
 		recovery_action: "read_result",
 	});
@@ -97,9 +122,9 @@ it("SDK 成功后 StateBackend 最终保存失败仍保留逐资源结果；报�
 it("新增结果列兼容历史 Operation；重启保留已知结果并标记中断，不能从报告恢复成功", async () => {
 	const t = await fixture();
 	const store = t.services.operations;
-	store.create({ operationId: "legacy", kind: "resourceDraft.publish" });
-	store.update("legacy", { status: "failed", error: "legacy message" });
-	store.create({ operationId: "interrupted", kind: "resourceDraft.publish" });
+	await store.create({ operationId: "legacy", kind: "resourceDraft.publish" });
+	await store.update("legacy", { status: "failed", error: "legacy message" });
+	await store.create({ operationId: "interrupted", kind: "resourceDraft.publish" });
 	const report = {
 		outcome: "succeeded" as const,
 		mutation_started: true,
@@ -107,12 +132,12 @@ it("新增结果列兼容历史 Operation；重启保留已知结果并标记中
 			{ type: "agent" as const, id: "main", status: "succeeded" as const, remote_id: "agent_known", version: 2 },
 		],
 	};
-	store.update("interrupted", { status: "running", publication: report });
+	await store.update("interrupted", { status: "running", publication: report });
 	t.restart();
-	expect(t.services.operations.get("legacy")).toMatchObject({ status: "failed", error: "legacy message" });
-	expect(t.services.operations.get("legacy")).not.toHaveProperty("publication");
-	expect(t.services.operations.get("legacy")).not.toHaveProperty("error_details");
-	expect(t.services.operations.get("interrupted")).toMatchObject({
+	expect(await t.services.operations.get("legacy")).toMatchObject({ status: "failed", error: "legacy message" });
+	expect(await t.services.operations.get("legacy")).not.toHaveProperty("publication");
+	expect(await t.services.operations.get("legacy")).not.toHaveProperty("error_details");
+	expect(await t.services.operations.get("interrupted")).toMatchObject({
 		status: "failed",
 		phase: "interrupted",
 		publication: report,

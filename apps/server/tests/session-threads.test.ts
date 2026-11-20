@@ -29,7 +29,7 @@ describe("员工线程查询的归属与分页", () => {
 		});
 		const db = openDatabase(dataDir);
 		const services = createKitServices(config, db);
-		services.sessionIndex.create({ sessionId: "session", subjectId: "alice", agentSlug: "assistant" });
+		await services.sessionIndex.create({ sessionId: "session", subjectId: "alice", agentSlug: "assistant" });
 		const app = createApp(services);
 		const log = vi.spyOn(console, "error").mockImplementation(() => {});
 		setDefaultFetch(async () => Response.json({ message: `rejected ${secret}` }, { status: 400 }));
@@ -54,7 +54,7 @@ describe("员工线程查询的归属与分页", () => {
 		const { app, services, db } = setup();
 		try {
 			const own = await services.gateway.createSession({ agentId: "mock" });
-			services.sessionIndex.create({ sessionId: own.session_id, subjectId: "alice", agentSlug: "assistant" });
+			await services.sessionIndex.create({ sessionId: own.session_id, subjectId: "alice", agentSlug: "assistant" });
 			await services.gateway.sendMessage(own.session_id, { text: "multi-agent" });
 			// 等首个子线程收尾，分页断言才有稳定的事件全集；交错流式约 2.6s，需放宽默认超时。
 			await vi.waitFor(
@@ -98,12 +98,12 @@ describe("员工线程查询的归属与分页", () => {
 			expect(listSpy).not.toHaveBeenCalled();
 			expect(eventsSpy).not.toHaveBeenCalled();
 			const other = await services.gateway.createSession({ agentId: "mock" });
-			services.sessionIndex.create({ sessionId: other.session_id, subjectId: "alice", agentSlug: "assistant" });
+			await services.sessionIndex.create({ sessionId: other.session_id, subjectId: "alice", agentSlug: "assistant" });
 			expect(
 				(await app.request(`/api/kit/sessions/${other.session_id}/threads/${first?.id}/events`, { headers })).status,
 			).toBe(404);
 			const debug = await services.gateway.createSession({ agentId: "mock" });
-			services.sessionIndex.create({
+			await services.sessionIndex.create({
 				sessionId: debug.session_id,
 				subjectId: "alice",
 				purpose: "admin_debug",

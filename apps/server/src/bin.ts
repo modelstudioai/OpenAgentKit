@@ -1,12 +1,17 @@
 import { serve } from "@hono/node-server";
 import { createApp } from "./app.ts";
 import { loadConfig } from "./config.ts";
-import { createKitServices } from "./services/index.ts";
+import { openKitServices } from "./services/index.ts";
 
 const config = loadConfig();
-const services = createKitServices(config);
+const services = await openKitServices(config);
 const app = createApp(services);
 
-serve({ fetch: app.fetch, port: config.port }, (info) => {
-	console.warn(`[kit-server] http://localhost:${info.port} gateway=${config.resolvedGateway} data=${config.dataDir}`);
+const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
+	console.warn(
+		`[kit-server] http://localhost:${info.port} gateway=${config.resolvedGateway} db=${config.database.driver} data=${config.dataDir}`,
+	);
+});
+server.once("close", () => {
+	void services.close().catch(() => console.error("[kit-server] 关闭数据库连接失败"));
 });

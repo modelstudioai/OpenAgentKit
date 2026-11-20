@@ -8,6 +8,7 @@ import { loadConfig } from "../src/config.ts";
 import { createKitServices } from "../src/services/index.ts";
 import { openDatabase } from "../src/store/db.ts";
 import { createSessionIndex } from "../src/store/sessions.ts";
+import { createSqliteDatabase } from "../src/store/sqlite.ts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => {
@@ -69,10 +70,13 @@ describe("模版远端资源调试", () => {
 		).toBeNull();
 		const reopened = openDatabase(dataDir);
 		cleanup.push(() => reopened.close());
-		const persisted = createSessionIndex(reopened).getDebugForSubject(session.session_id, await adminSubject(app));
+		const persisted = await createSessionIndex(createSqliteDatabase(reopened)).getDebugForSubject(
+			session.session_id,
+			await adminSubject(app),
+		);
 		expect(persisted?.summary).toMatchObject({ source: "template", remote_agent_id: selected.remote_agent_id });
 		expect(persisted?.summary).not.toHaveProperty("remote_environment_id");
-		expect(services.audit.list()).toEqual([]);
+		expect(await services.audit.list()).toEqual([]);
 	});
 
 	it("复核全部选择并创建远端调试，持久回显配置且不伪造项目或授予上传归属", async () => {
@@ -114,14 +118,16 @@ describe("模版远端资源调试", () => {
 		});
 		expect(session).not.toHaveProperty("project_name");
 		expect(session).not.toHaveProperty("agent_key");
-		const subject = services.debug.requireSession(await adminSubject(app), session.session_id).subject_id;
+		const subject = (await services.debug.requireSession(await adminSubject(app), session.session_id)).subject_id;
 		const reopened = openDatabase(dataDir);
 		cleanup.push(() => reopened.close());
-		expect(createSessionIndex(reopened).getDebugForSubject(session.session_id, subject)).toMatchObject({
+		expect(
+			await createSessionIndex(createSqliteDatabase(reopened)).getDebugForSubject(session.session_id, subject),
+		).toMatchObject({
 			summary: { source: "template", ...selected },
 			runtime: { memory_stores: memories, vault_ids: ["vlt_mock_1", "vlt_mock_2"] },
 		});
-		expect(services.catalog.all()).toHaveLength(0);
+		expect(await services.catalog.all()).toHaveLength(0);
 		expect(db.prepare("SELECT count(*) AS count FROM usage_turns").get()?.count).toBe(0);
 		expect(
 			(

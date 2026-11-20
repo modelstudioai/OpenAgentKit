@@ -16,7 +16,7 @@ function fingerprint(template: TemplateView, entry: CatalogAgentView | null): st
 	return createHash("sha256").update(JSON.stringify({ template, entry })).digest("hex");
 }
 
-/** 只标记删除本地模版与关联条目（软删），不依赖 Provider，也不触碰既有 Session；用量区保留展示。 */
+/** 只删除本地配置目录和关联条目，不依赖 Provider，也不触碰既有 Session。 */
 export function createTemplateDeletionService({
 	store,
 	catalog,
@@ -28,14 +28,13 @@ export function createTemplateDeletionService({
 	gate: ConfirmGate;
 	audit: AuditLog;
 }) {
-	function catalogFor(template: TemplateView): CatalogAgentView | null {
-		return template.listing ? catalog.get(template.listing.catalog_id) : null;
+	async function catalogFor(template: TemplateView): Promise<CatalogAgentView | null> {
+		return template.listing ? await catalog.get(template.listing.catalog_id) : null;
 	}
 	return {
 		async planDelete(templateId: string, subject: string): Promise<PlanResponse> {
-			if (store.isDeleted(templateId)) throw new KitError("not_found", "模版不存在");
-			const template = store.get(templateId);
-			const entry = catalogFor(template);
+			const template = await store.get(templateId);
+			const entry = await catalogFor(template);
 			const planId = `template_delete:${fingerprint(template, entry)}:${randomUUID()}`;
 			const issued = await gate.issue({ planId, action: `templates.delete:${templateId}`, subject });
 			return {
@@ -48,7 +47,7 @@ export function createTemplateDeletionService({
 						resource: `template:${templateId}`,
 						action: "delete",
 						destructive: true,
-						summary: `删除模版「${template.name}」（标记删除）：员工不能再发起会话，配置与历史版本保留，用量区继续展示。`,
+						summary: `删除模版「${template.name}」的当前配置和全部历史版本，此操作不可恢复。`,
 					},
 					...(entry
 						? [
@@ -56,7 +55,7 @@ export function createTemplateDeletionService({
 									resource: `catalog:${entry.slug}`,
 									action: "delete" as const,
 									destructive: true,
-									summary: `同时删除${entry.status === "listed" ? "已上架" : "未上架"}条目「${entry.display_name}」（标记删除）：员工端不再展示，历史会话与用量保留。`,
+									summary: `同时移除${entry.status === "listed" ? "已上架" : "未上架"}条目「${entry.display_name}」，员工不能再通过该条目新建会话。`,
 								},
 							]
 						: []),
@@ -70,7 +69,6 @@ export function createTemplateDeletionService({
 			};
 		},
 		async remove(templateId: string, input: Partial<ApplyRequest>, subject: string) {
-			if (store.isDeleted(templateId)) throw new KitError("not_found", "模版不存在");
 			const planId = input?.plan_id ?? "";
 			await gate.consume({
 				planId,
@@ -84,20 +82,18 @@ export function createTemplateDeletionService({
 			}
 			let catalogId: string | undefined;
 			let name = "";
-			store.markDeleted(templateId, (current) => {
-				const entry = catalogFor(current);
+			await store.remove(templateId, async (current) => {
+				const entry = await catalogFor(current);
 				if (fingerprint(current, entry) !== parts[1]) {
 					throw new KitError("conflict", "模版或关联条目已变更，请重试并再次确认删除");
 				}
 				name = current.name;
 				if (entry) {
-					// 条目可能已被单独软删（历史遗留关联）；已删视为完成，避免模版卡在无法删除的状态。
-					if (!catalog.markDeleted(entry.id) && !catalog.get(entry.id)?.deleted)
-						throw new KitError("conflict", "关联条目已变更，请重试并再次确认删除");
+					if (!(await catalog.remove(entry.id))) throw new KitError("conflict", "关联条目已变更，请重试并再次确认删除");
 					catalogId = entry.id;
 				}
 			});
-			audit.append({
+			await audit.append({
 				subject,
 				action: "templates.delete",
 				target: templateId,

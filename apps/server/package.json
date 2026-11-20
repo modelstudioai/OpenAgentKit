@@ -2,7 +2,7 @@
   "name": "@openagentpack/kit-server",
   "version": "1.0.0",
   "private": true,
-  "description": "OpenAgentKit 服务端：数据面 /api/kit/* 与控制面 /api/admin/*（Hono + node:sqlite）",
+  "description": "OpenAgentKit 服务端：数据面 /api/kit/* 与控制面 /api/admin/*（Hono + SQLite / MySQL / PostgreSQL）",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/app.js",
@@ -30,12 +30,15 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "tsup",
-    "dev": "tsx watch --env-file-if-exists=../../.env src/bin.ts",
+    "build": "pnpm db:render && tsup",
+    "dev": "pnpm db:render && tsx watch --env-file-if-exists=../../.env src/bin.ts",
     "start": "node --env-file-if-exists=../../.env dist/bin.js",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "gen:openapi": "tsx src/openapi.ts",
+    "typecheck": "pnpm db:render && tsc --noEmit",
+    "test": "pnpm db:render && vitest run",
+    "db:generate": "node --import tsx src/store/schema/generate.ts",
+    "db:check": "node --import tsx src/store/schema/generate.ts --check",
+    "db:render": "node --import tsx src/store/schema/generate.ts --render",
+    "gen:openapi": "pnpm db:render && tsx src/openapi.ts",
     "clean": "rm -rf dist"
   },
   "dependencies": {
@@ -44,6 +47,8 @@
     "@openagentpack/sdk": "0.11.0",
     "hono": "^4.13.13",
     "jszip": "3.10.2",
+    "mysql2": "^3.24.6",
+    "pg": "^8.23.1",
     "zod": "^4.1.12",
     "@openagentpack/kit-eval": "workspace:*",
     "yaml": "^2.9.1",
@@ -51,6 +56,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.10.0",
+    "@types/pg": "^8.15.6",
     "openapi-typescript": "^7.13.0",
     "tsup": "^8.5.1",
     "tsx": "^4.20.6",

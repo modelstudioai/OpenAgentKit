@@ -10,6 +10,7 @@ import { createKitServices } from "../../src/services/index.ts";
 import { createResourceDraftService } from "../../src/services/resource-drafts.ts";
 import { openDatabase } from "../../src/store/db.ts";
 import { createResourceDraftStore } from "../../src/store/resource-drafts.ts";
+import { createSqliteDatabase } from "../../src/store/sqlite.ts";
 
 const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => {
@@ -36,9 +37,9 @@ export async function fixture(mode: "sdk" | "mock" = "mock", mainName = "main") 
 	});
 	let db = openDatabase(root);
 	let services = createKitServices(config, db);
-	let store = createResourceDraftStore(db);
+	let store = createResourceDraftStore(createSqliteDatabase(db));
 	function install() {
-		store = createResourceDraftStore(db);
+		store = createResourceDraftStore(createSqliteDatabase(db));
 		services.resourceDrafts = createResourceDraftService({
 			config,
 			store,
@@ -90,8 +91,10 @@ export async function fixture(mode: "sdk" | "mock" = "mock", mainName = "main") 
 		return value<{ operation_id: string }>(`${base(draft)}/publish`, "POST", confirmation);
 	}
 	async function wait(id: string) {
-		await vi.waitFor(() => expect(["succeeded", "failed"]).toContain(services.operations.get(id)?.status));
-		return services.operations.get(id)!;
+		await vi.waitFor(async () =>
+			expect(["succeeded", "failed"]).toContain((await services.operations.get(id))?.status),
+		);
+		return (await services.operations.get(id))!;
 	}
 	return {
 		root,

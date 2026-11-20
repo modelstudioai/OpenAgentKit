@@ -110,6 +110,21 @@ KIT_LIVE=1 pnpm --filter @openagentpack/kit-server exec tsx tests/live/smoke.ts
 | Skill 源 / 生成器 / 公开示例 | 检查或重新生成产物，编译示例，选择生成、链接、打包或浏览器边界回归 |
 | 架构、依赖配置或交付链路 | 检查依赖方向、工作区与任务图，按影响运行完整门禁或相应构建 |
 
+表结构改动运行 `db:check`，核对共享定义、迁移清单和逐条保存的历史，并验证三库产物可生成。
+直接运行下面的 Vitest 用例前，用 `db:render` 准备本地生成文件。服务端的 `test` 入口包含这一步。
+迁移用例 `apps/server/tests/database-migrations.test.ts` 覆盖空库回放、带数据的历史升级、旧外部库
+接续和 DDL 中途恢复。外部库用例用测试账号创建和清理独立的临时数据库。
+存储改动使用 `apps/server/tests/database-backends.test.ts` 验证登录、模版事务、会话索引、
+重复扣减、Logo 和资源发布。默认运行 SQLite。将 `KIT_TEST_MYSQL_URL` 和 `KIT_TEST_POSTGRES_URL`
+分别指向专用 MySQL 8.4 和 PostgreSQL 测试库，可对同一流程运行三种后端。测试使用 Mock Provider，
+会在指定数据库写入和保留测试记录。
+
+```bash
+pnpm --filter @openagentpack/kit-server db:check
+pnpm --filter @openagentpack/kit-server db:render
+pnpm --filter @openagentpack/kit-server exec vitest run tests/database-backends.test.ts tests/database-migrations.test.ts
+```
+
 生成物、lockfile 与构建缓存不计入手写文件规模；生产源码超过 800 行、测试或脚本超过 1000 行时，
 按变化原因评估职责拆分，不机械切文件。规范维护不能通过删去有效合同来缩短入口文件。
 记录真实执行的步骤和环境；取消、跳过或环境失败不计为通过，Mock / 离线结果不能替代 Cloud。

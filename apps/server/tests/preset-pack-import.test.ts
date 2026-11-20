@@ -8,6 +8,7 @@ import { loadConfig } from "../src/config.ts";
 import { createKitServices } from "../src/services/index.ts";
 import { openDatabase } from "../src/store/db.ts";
 import { createPresetPackStore } from "../src/store/preset-packs.ts";
+import { createSqliteDatabase } from "../src/store/sqlite.ts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => {
@@ -59,10 +60,12 @@ it("已保存预设包支持搜索和分页，返回安全摘要且不依赖 Pro
 	const created = await save(input);
 	expect(created.status).toBe(201);
 	const preset = PresetPackViewSchema.parse(((await created.json()) as { data: unknown }).data);
-	const store = createPresetPackStore(db);
+	const store = createPresetPackStore(createSqliteDatabase(db));
 	const saved = [
 		preset,
-		...Array.from({ length: 12 }, (_, index) => store.create({ ...preset, remote_agent_name: `资料%_${index + 1}` })),
+		...(await Promise.all(
+			Array.from({ length: 12 }, (_, index) => store.create({ ...preset, remote_agent_name: `资料%_${index + 1}` })),
+		)),
 	];
 	const ordered = [...saved].sort(
 		(a, b) => b.created_at.localeCompare(a.created_at) || b.preset_pack_id.localeCompare(a.preset_pack_id),

@@ -16,6 +16,7 @@
 登录 / 恢复 / 退出的 HTTP 合同见 `docs/interfaces.md`。退出或令牌到期后，已建立的成员
 SSE 发出 `error`（`code: unauthorized`、`retryable: false`）并关闭；客户端清理该身份的
 状态并重新登录，不按断流恢复重连。仅关闭订阅不会向 Provider 发送 interrupt。
+如果订阅在单帧异步鉴权期间被取消，服务端丢弃该帧。
 客户端暂停读取造成背压时，服务端最多等待 250ms 写出认证错误，之后强制释放连接与
 上游订阅；不能以保证错误帧送达为由无限保留已撤销的连接。
 
@@ -59,7 +60,7 @@ Provider 事件集合。普通 Turn 结束和等待工具批准都保留连接�
   必须在 ready 前明确失败，不能用缓冲帧无条件覆盖历史。
 - 用户消息及工具审批先等待 pump ready，再 POST 一次。SDK 的 `sendRemoteSessionEvents`
   是通用发送入口，本身不负责等待订阅就绪。
-- server 内存保存最新事件索引和有界变更日志；事件正文不落 SQLite。浏览器 `after` 只用于
+- server 内存保存最新事件索引和有界变更日志，事件正文不落 Kit 数据库。浏览器 `after` 只用于
   Kit 传输日志，不作为百炼原生游标。日志被淘汰、epoch 变化或旧游标不可识别时发送 reset。
 
 ## 快照归并与 Turn
@@ -333,6 +334,7 @@ Build、源码版本、Restore 和目录锁执行链路已经退役（ADR-0018�
 自然 EOF/45 秒静默超时重连观察流（500ms 起、最大 15 秒、8 次、±20%），不重发写请求。
 迟到的初始 GET 不能覆盖较新 SSE。服务重启后 pending/running 标为 failed/interrupted，
 提示远端结果待核对，不自动重跑。
+阶段和日志写入失败时，服务端仍尝试保存执行结果和终态。
 
 发布 Operation 额外提供可选 `publication` 与 `error_details`，HTTP GET 与 SSE 使用同一快照合同；
 旧记录缺字段时仍按原 `status/result/error` 读取，不推断历史执行结果。
@@ -369,7 +371,7 @@ SDK 完成后 StateBackend 最终保存失败仍保留已知结果；绑定、�
    主会话历史仍为 running 时，不能仅凭详情 idle 或无需审批认定结束。中断请求成功、
    单条消息完成或 SSE 断开，都不能代替执行结束确认。
 3. 确认停止后重新读取详情，获取 Provider **当次返回的最新累计值**。输入、输出 token
-   必须存在且有效；缓存与时长缺失可保留为部分统计，不补零。将该快照在 SQLite 中成功
+   必须存在且有效；缓存与时长缺失可保留为部分统计，不补零。将该快照在 Kit 数据库中成功
    提交并封存，拒绝迟到后台采集覆盖，然后才发送远端 DELETE。
 4. 删除成功后事务保存已删除标记并移除正常会话索引，保留成员归属、Agent 与数值快照，
    继续参与成员累计统计。删除前的会话内容不会因此被 Kit 留存。
@@ -541,7 +543,7 @@ SDK 恢复时避免把无分片水位的 in_progress 历史与新 delta 直接�
 - **1 个 Turn = 1 Credit**。扣减只发生在服务端接受 `sessions.messages.send` 的那一刻
   （rate-limit、订阅就绪及工具审批校验之后、gateway 发送之前）；前置校验拒绝
   （如待审批的 409 `conflict`、超限的 403 `quota_exceeded`）不写账本。
-- **幂等**：`usage_turns` 上有部分唯一索引 `(session_id, client_message_id)`
+- **幂等**：`usage_turns` 的唯一性约束覆盖 `(session_id, client_message_id)`
   （`client_message_id` 非空时）。同 id 重放不重复扣费，也不会因额度已耗尽而误拒已受理的 turn。
 - **不退费**：send 受理后 provider 侧失败（5xx/中断）v1 不退还 Credit；账本是审计依据。
 - **限额解析**：`limit = override ?? policy`（`-1` = 不限量），`remaining = limit + Σ当月 packs − used`。

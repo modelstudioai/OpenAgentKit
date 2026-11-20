@@ -36,7 +36,7 @@ async function makeServices() {
 	return { services, sessions };
 }
 
-function makeApp() {
+async function makeApp() {
 	const directory = mkdtempSync(join(tmpdir(), "kit-mount-route-"));
 	cleanup.push(() => rmSync(directory, { recursive: true, force: true }));
 	const config = loadConfig({
@@ -48,12 +48,16 @@ function makeApp() {
 	const db = openDatabase(directory);
 	cleanup.push(() => db.close());
 	const services = createKitServices(config, db);
-	services.catalog.upsert({ slug: "assistant", display_name: "Assistant", remote_agent_id: "agent_mock_assistant" });
-	services.catalog.setStatus("assistant", "listed");
+	await services.catalog.upsert({
+		slug: "assistant",
+		display_name: "Assistant",
+		remote_agent_id: "agent_mock_assistant",
+	});
+	await services.catalog.setStatus("assistant", "listed");
 	return { app: createApp(services), services };
 }
 
-async function upload(app: ReturnType<typeof makeApp>["app"], subjectId = owner, name = "private.txt") {
+async function upload(app: Awaited<ReturnType<typeof makeApp>>["app"], subjectId = owner, name = "private.txt") {
 	const form = new FormData();
 	form.append("file", new Blob(["attachment body"], { type: "text/plain" }), name);
 	const response = await app.request("/api/kit/files", {
@@ -65,7 +69,7 @@ async function upload(app: ReturnType<typeof makeApp>["app"], subjectId = owner,
 	return ((await response.json()) as { data: { file_id: string; filename: string } }).data;
 }
 
-async function createSession(app: ReturnType<typeof makeApp>["app"], subjectId = owner) {
+async function createSession(app: Awaited<ReturnType<typeof makeApp>>["app"], subjectId = owner) {
 	const response = await app.request("/api/kit/sessions", {
 		method: "POST",
 		headers: { ...json, ...headersFor(subjectId) },
@@ -97,12 +101,12 @@ describe("会话运行时挂载（挂载跟随消息发送）", () => {
 		});
 		expect(result).toEqual({ event_ids: ["e1"] });
 		expect(order).toEqual(["mount:f1", "mount:f2", "send"]);
-		expect(services.sessionIndex.get(created.session_id)?.files.map((f) => f.mount_path)).toEqual([
+		expect((await services.sessionIndex.get(created.session_id))?.files.map((f) => f.mount_path)).toEqual([
 			`${DEFAULT_MOUNT_PREFIX}/a.csv`,
 			`${DEFAULT_MOUNT_PREFIX}/a-2.csv`,
 		]);
 		// 关联以发送响应的 event_ids 为键：刷新后的历史气泡附件展示只依赖这条本地索引
-		expect(services.sessionIndex.get(created.session_id)?.messageFiles).toEqual([
+		expect((await services.sessionIndex.get(created.session_id))?.messageFiles).toEqual([
 			{
 				event_ids: ["e1"],
 				files: [
@@ -131,11 +135,11 @@ describe("会话运行时挂载（挂载跟随消息发送）", () => {
 		expect(unmount.mock.calls.map((call) => call[1])).toEqual(
 			expect.arrayContaining([expect.stringMatching(/^sesrsc_mock_/), expect.stringMatching(/^sesrsc_mock_/)]),
 		);
-		expect(services.sessionIndex.get(created.session_id)?.files).toEqual([]);
+		expect((await services.sessionIndex.get(created.session_id))?.files).toEqual([]);
 		// mock 的 getSession 在 files 为空时省略键，与 provider 行为一致
 		expect((await services.gateway.getSession(created.session_id))?.files ?? []).toEqual([]);
 		// 发送失败不落消息关联
-		expect(services.sessionIndex.get(created.session_id)?.messageFiles).toEqual([]);
+		expect((await services.sessionIndex.get(created.session_id))?.messageFiles).toEqual([]);
 	});
 
 	it("批量挂载中途失败：已挂载的资源照样回滚", async () => {
@@ -159,7 +163,7 @@ describe("会话运行时挂载（挂载跟随消息发送）", () => {
 			}),
 		).rejects.toThrow("mount boom");
 		expect(unmount).toHaveBeenCalledTimes(1);
-		expect(services.sessionIndex.get(created.session_id)?.files).toEqual([]);
+		expect((await services.sessionIndex.get(created.session_id))?.files).toEqual([]);
 	});
 
 	it("附件扫描未就绪：409 可重试且不触碰 provider 挂载与发送", async () => {
@@ -185,7 +189,7 @@ describe("会话运行时挂载（挂载跟随消息发送）", () => {
 			files: [{ file_id: "f0", filename: "a.csv" }],
 		});
 		await sessions.send(created.session_id, { text: "hi", attachments: [{ file_id: "f1", filename: "a.csv" }] });
-		expect(services.sessionIndex.get(created.session_id)?.files.map((f) => f.mount_path)).toEqual([
+		expect((await services.sessionIndex.get(created.session_id))?.files.map((f) => f.mount_path)).toEqual([
 			`${DEFAULT_MOUNT_PREFIX}/a.csv`,
 			`${DEFAULT_MOUNT_PREFIX}/a-2.csv`,
 		]);
@@ -229,7 +233,7 @@ describe("会话运行时挂载（挂载跟随消息发送）", () => {
 		vi.spyOn(services.gateway, "sendMessage").mockResolvedValue({ event_ids: ["e1"] });
 		await sessions.send(created.session_id, { text: "hi", attachments: [{ file_id: "f0", filename: "a.csv" }] });
 		expect(mount).not.toHaveBeenCalled();
-		expect(services.sessionIndex.get(created.session_id)?.messageFiles).toEqual([
+		expect((await services.sessionIndex.get(created.session_id))?.messageFiles).toEqual([
 			{
 				event_ids: ["e1"],
 				files: [{ file_id: "f0", filename: "a.csv", mount_path: `${DEFAULT_MOUNT_PREFIX}/a.csv` }],
@@ -251,8 +255,8 @@ describe("会话运行时挂载（挂载跟随消息发送）", () => {
 			sessions.send(created.session_id, { text: "hi", attachments: [{ file_id: "f0", filename: "a.csv" }] }),
 		).rejects.toThrow("provider down");
 		expect(unmount).not.toHaveBeenCalled();
-		expect(services.sessionIndex.get(created.session_id)?.messageFiles).toEqual([]);
-		expect(services.sessionIndex.get(created.session_id)?.files.map((f) => f.mount_path)).toEqual([
+		expect((await services.sessionIndex.get(created.session_id))?.messageFiles).toEqual([]);
+		expect((await services.sessionIndex.get(created.session_id))?.files.map((f) => f.mount_path)).toEqual([
 			`${DEFAULT_MOUNT_PREFIX}/a.csv`,
 		]);
 	});
@@ -260,7 +264,7 @@ describe("会话运行时挂载（挂载跟随消息发送）", () => {
 
 describe("路由：消息附件运行时挂载", () => {
 	it("上传→建会话→带 attachments 发送成功；会话详情与 provider 镜像可见", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		const file = await upload(app);
 		const sessionId = await createSession(app);
 		const sent = await app.request(`/api/kit/sessions/${sessionId}/messages`, {
@@ -294,7 +298,7 @@ describe("路由：消息附件运行时挂载", () => {
 	});
 
 	it("attachments 引用他人或未知 file_id → 404，且不触碰 provider 挂载", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		const ownFile = await upload(app);
 		const otherFile = await upload(app, other);
 		const sessionId = await createSession(app);

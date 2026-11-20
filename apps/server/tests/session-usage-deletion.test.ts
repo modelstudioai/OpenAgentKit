@@ -10,6 +10,7 @@ import { createKitServices } from "../src/services/index.ts";
 import { createSessionService } from "../src/services/sessions.ts";
 import { openDatabase } from "../src/store/db.ts";
 import { createSessionDeletionStore } from "../src/store/session-deletions.ts";
+import { createSqliteDatabase } from "../src/store/sqlite.ts";
 
 const close: (() => void)[] = [];
 afterEach(() => {
@@ -47,7 +48,7 @@ async function setup() {
 	const create = () =>
 		services.sessions.create({ subjectId: member.member_id, agentSlug: "assistant", remoteAgentId: "mock" });
 	const session = await create();
-	const deletionStore = createSessionDeletionStore(db);
+	const deletionStore = createSessionDeletionStore(createSqliteDatabase(db));
 	const sessions = createSessionService({
 		gateway: services.gateway,
 		buffers: services.buffers,
@@ -68,7 +69,7 @@ async function setup() {
 		const reopened = openDatabase(directory);
 		close.push(() => reopened.close());
 		const restored = createKitServices(config, reopened);
-		const restoredDeletionStore = createSessionDeletionStore(reopened);
+		const restoredDeletionStore = createSessionDeletionStore(createSqliteDatabase(reopened));
 		return {
 			services: restored,
 			deletionStore: restoredDeletionStore,
@@ -120,9 +121,9 @@ describe("成员会话删除前用量快照", () => {
 		stopped = true;
 		await deleting;
 		expect(remove).toHaveBeenCalledOnce();
-		expect(t.services.sessionIndex.get(t.sessionId)).toBeNull();
-		expect(t.services.memberUsage.summary(t.member.member_id).metrics.input_tokens.value).toBe(120);
-		expect(t.services.memberUsage.summary(t.member.member_id).deleted_session_count).toBe(1);
+		expect(await t.services.sessionIndex.get(t.sessionId)).toBeNull();
+		expect((await t.services.memberUsage.summary(t.member.member_id)).metrics.input_tokens.value).toBe(120);
+		expect((await t.services.memberUsage.summary(t.member.member_id)).deleted_session_count).toBe(1);
 		const reopened = openDatabase(t.config.dataDir);
 		try {
 			expect(
@@ -157,7 +158,7 @@ describe("成员会话删除前用量快照", () => {
 			expect((error as Error).message).toContain("重试");
 			expect((error as Error).message).not.toContain("private-provider-error");
 			expect(remove).not.toHaveBeenCalled();
-			expect(t.services.sessionIndex.get(t.sessionId)).not.toBeNull();
+			expect(await t.services.sessionIndex.get(t.sessionId)).not.toBeNull();
 		},
 	);
 
@@ -172,9 +173,9 @@ describe("成员会话删除前用量快照", () => {
 		});
 		expect(interrupt).not.toHaveBeenCalled();
 		expect(remove).not.toHaveBeenCalled();
-		expect(t.services.sessionIndex.get(t.sessionId)).not.toBeNull();
-		expect(t.deletionStore.get(t.sessionId)).toBeUndefined();
-		expect(t.services.memberUsage.hasFinalSnapshot(t.sessionId)).toBe(false);
+		expect(await t.services.sessionIndex.get(t.sessionId)).not.toBeNull();
+		expect(await t.deletionStore.get(t.sessionId)).toBeUndefined();
+		expect(await t.services.memberUsage.hasFinalSnapshot(t.sessionId)).toBe(false);
 		read.mockRestore();
 		await expect(t.sessions.send(t.sessionId, { text: "恢复后继续对话" })).resolves.toMatchObject({
 			event_ids: expect.arrayContaining([expect.any(String)]),
@@ -239,7 +240,7 @@ describe("成员会话删除前用量快照", () => {
 		const remove = vi.spyOn(t.services.gateway, "deleteSession");
 		await expect(t.sessions.delete(t.sessionId)).rejects.toMatchObject({ retryable: true });
 		expect(remove).not.toHaveBeenCalled();
-		expect(t.services.sessionIndex.get(t.sessionId)).not.toBeNull();
+		expect(await t.services.sessionIndex.get(t.sessionId)).not.toBeNull();
 	});
 
 	it("删除失败保留快照；再次执行重新采集，重复保存不叠加", async () => {
@@ -250,11 +251,11 @@ describe("成员会话删除前用量快照", () => {
 			.mockRejectedValueOnce(new Error("failed"))
 			.mockResolvedValueOnce();
 		await expect(t.sessions.delete(t.sessionId)).rejects.toMatchObject({ retryable: true });
-		expect(t.services.sessionIndex.get(t.sessionId)).not.toBeNull();
-		expect(t.services.memberUsage.summary(t.member.member_id).metrics.output_tokens.value).toBe(80);
+		expect(await t.services.sessionIndex.get(t.sessionId)).not.toBeNull();
+		expect((await t.services.memberUsage.summary(t.member.member_id)).metrics.output_tokens.value).toBe(80);
 		await t.sessions.delete(t.sessionId);
 		expect(remove).toHaveBeenCalledTimes(2);
-		expect(t.services.memberUsage.summary(t.member.member_id).metrics.output_tokens.value).toBe(80);
+		expect((await t.services.memberUsage.summary(t.member.member_id)).metrics.output_tokens.value).toBe(80);
 	});
 
 	it("DELETE 连接错误后即使详情仍存在也保持保护，迟到删除后可显式恢复", async () => {
@@ -264,9 +265,9 @@ describe("成员会话删除前用量快照", () => {
 			.spyOn(t.services.gateway, "deleteSession")
 			.mockRejectedValue(new TypeError("connection reset after request transmission"));
 		await expect(t.sessions.delete(t.sessionId)).rejects.toMatchObject({ details: { deletion_uncertain: true } });
-		expect(t.services.sessionIndex.get(t.sessionId)).not.toBeNull();
-		expect(t.deletionStore.get(t.sessionId)?.stage).toBe("uncertain");
-		expect(t.services.memberUsage.hasFinalSnapshot(t.sessionId)).toBe(true);
+		expect(await t.services.sessionIndex.get(t.sessionId)).not.toBeNull();
+		expect((await t.deletionStore.get(t.sessionId))?.stage).toBe("uncertain");
+		expect(await t.services.memberUsage.hasFinalSnapshot(t.sessionId)).toBe(true);
 		await expect(t.sessions.send(t.sessionId, { text: "late execution" })).rejects.toMatchObject({ code: "conflict" });
 		await expect(
 			t.sessions.respondToolApproval(t.sessionId, { batch_id: "b", call_id: "c", result: "allow" }),
@@ -280,8 +281,8 @@ describe("成员会话删除前用量快照", () => {
 		expect(remove).toHaveBeenCalledOnce();
 		await restarted.sessions.delete(t.sessionId);
 		expect(remove).toHaveBeenCalledOnce();
-		expect(restarted.services.sessionIndex.get(t.sessionId)).toBeNull();
-		expect(restarted.services.memberUsage.summary(t.member.member_id)).toMatchObject({
+		expect(await restarted.services.sessionIndex.get(t.sessionId)).toBeNull();
+		expect(await restarted.services.memberUsage.summary(t.member.member_id)).toMatchObject({
 			deleted_session_count: 1,
 			metrics: { input_tokens: { value: 120 } },
 		});
@@ -298,9 +299,9 @@ describe("成员会话删除前用量快照", () => {
 		});
 		expect(remove).toHaveBeenCalledOnce();
 		const restarted = t.restart();
-		expect(restarted.services.sessionIndex.get(t.sessionId)).not.toBeNull();
-		expect(restarted.deletionStore.get(t.sessionId)?.stage).toBe("deleting");
-		expect(restarted.services.memberUsage.hasFinalSnapshot(t.sessionId)).toBe(true);
+		expect(await restarted.services.sessionIndex.get(t.sessionId)).not.toBeNull();
+		expect((await restarted.deletionStore.get(t.sessionId))?.stage).toBe("deleting");
+		expect(await restarted.services.memberUsage.hasFinalSnapshot(t.sessionId)).toBe(true);
 		await expect(restarted.sessions.send(t.sessionId, { text: "after restart" })).rejects.toMatchObject({
 			code: "conflict",
 			message: "会话正在删除或删除结果待确认，请先重试删除",
@@ -312,9 +313,9 @@ describe("成员会话删除前用量快照", () => {
 		read.mockResolvedValue(null);
 		await restarted.sessions.delete(t.sessionId);
 		expect(remove).toHaveBeenCalledOnce();
-		expect(restarted.services.sessionIndex.get(t.sessionId)).toBeNull();
-		expect(restarted.deletionStore.get(t.sessionId)?.stage).toBe("deleted");
-		expect(restarted.services.memberUsage.summary(t.member.member_id)).toMatchObject({
+		expect(await restarted.services.sessionIndex.get(t.sessionId)).toBeNull();
+		expect((await restarted.deletionStore.get(t.sessionId))?.stage).toBe("deleted");
+		expect(await restarted.services.memberUsage.summary(t.member.member_id)).toMatchObject({
 			deleted_session_count: 1,
 			metrics: { input_tokens: { value: 120 }, output_tokens: { value: 80 } },
 		});
@@ -325,8 +326,8 @@ describe("成员会话删除前用量快照", () => {
 		async (stage) => {
 			const t = await setup();
 			// 直接恢复已发出 DELETE 的数据库，独立保护恢复边界，不依赖前一次连接错误的处理。
-			t.services.memberUsage.captureFinal(t.sessionId, t.snapshot());
-			t.deletionStore.set(t.sessionId, t.member.member_id, stage);
+			await t.services.memberUsage.captureFinal(t.sessionId, t.snapshot());
+			await t.deletionStore.set(t.sessionId, t.member.member_id, stage);
 			const read = vi.spyOn(t.services.gateway, "getSession").mockResolvedValue({
 				...t.snapshot(),
 				usage: { ...usage, output_tokens: 90 },
@@ -338,12 +339,12 @@ describe("成员会话删除前用量快照", () => {
 			await expect(recovering.sessions.delete(t.sessionId)).rejects.toMatchObject({
 				details: { stage: "delete", deletion_uncertain: true },
 			});
-			expect(recovering.deletionStore.get(t.sessionId)?.stage).toBe("uncertain");
-			expect(recovering.services.memberUsage.hasFinalSnapshot(t.sessionId)).toBe(true);
-			expect(recovering.services.memberUsage.summary(t.member.member_id).metrics.output_tokens.value).toBe(90);
+			expect((await recovering.deletionStore.get(t.sessionId))?.stage).toBe("uncertain");
+			expect(await recovering.services.memberUsage.hasFinalSnapshot(t.sessionId)).toBe(true);
+			expect((await recovering.services.memberUsage.summary(t.member.member_id)).metrics.output_tokens.value).toBe(90);
 			expect(remove).not.toHaveBeenCalled();
 			const restarted = t.restart();
-			expect(restarted.services.sessionIndex.get(t.sessionId)).not.toBeNull();
+			expect(await restarted.services.sessionIndex.get(t.sessionId)).not.toBeNull();
 			await expect(restarted.sessions.send(t.sessionId, { text: "new execution" })).rejects.toMatchObject({
 				code: "conflict",
 				message: "会话正在删除或删除结果待确认，请先重试删除",
@@ -354,9 +355,9 @@ describe("成员会话删除前用量快照", () => {
 			// 旧 DELETE 此时才完成；新进程依据封存值收尾，不能再向 Provider 发 DELETE。
 			read.mockResolvedValue(null);
 			await restarted.sessions.delete(t.sessionId);
-			expect(restarted.services.sessionIndex.get(t.sessionId)).toBeNull();
-			expect(restarted.deletionStore.get(t.sessionId)?.stage).toBe("deleted");
-			expect(restarted.services.memberUsage.summary(t.member.member_id)).toMatchObject({
+			expect(await restarted.services.sessionIndex.get(t.sessionId)).toBeNull();
+			expect((await restarted.deletionStore.get(t.sessionId))?.stage).toBe("deleted");
+			expect(await restarted.services.memberUsage.summary(t.member.member_id)).toMatchObject({
 				deleted_session_count: 1,
 				metrics: { output_tokens: { value: 90 } },
 			});
@@ -378,9 +379,9 @@ describe("成员会话删除前用量快照", () => {
 		});
 		expect(remove).toHaveBeenCalledOnce();
 		const restarted = t.restart();
-		expect(restarted.services.sessionIndex.get(t.sessionId)).not.toBeNull();
-		expect(restarted.services.memberUsage.hasFinalSnapshot(t.sessionId)).toBe(true);
-		expect(restarted.services.memberUsage.summary(t.member.member_id).deleted_session_count).toBe(0);
+		expect(await restarted.services.sessionIndex.get(t.sessionId)).not.toBeNull();
+		expect(await restarted.services.memberUsage.hasFinalSnapshot(t.sessionId)).toBe(true);
+		expect((await restarted.services.memberUsage.summary(t.member.member_id)).deleted_session_count).toBe(0);
 		await expect(restarted.sessions.send(t.sessionId, { text: "after restart" })).rejects.toMatchObject({
 			code: "conflict",
 			message: "会话正在删除或删除结果待确认，请先重试删除",
@@ -391,9 +392,9 @@ describe("成员会话删除前用量快照", () => {
 		t.db.exec("DROP TRIGGER fail_finalize");
 		await restarted.sessions.delete(t.sessionId);
 		expect(remove).toHaveBeenCalledOnce();
-		expect(restarted.services.sessionIndex.get(t.sessionId)).toBeNull();
-		expect(restarted.deletionStore.get(t.sessionId)?.stage).toBe("deleted");
-		expect(restarted.services.memberUsage.summary(t.member.member_id)).toMatchObject({
+		expect(await restarted.services.sessionIndex.get(t.sessionId)).toBeNull();
+		expect((await restarted.deletionStore.get(t.sessionId))?.stage).toBe("deleted");
+		expect(await restarted.services.memberUsage.summary(t.member.member_id)).toMatchObject({
 			deleted_session_count: 1,
 			metrics: { input_tokens: { value: 120 }, output_tokens: { value: 80 } },
 		});
@@ -405,7 +406,7 @@ describe("成员会话删除前用量快照", () => {
 		const late = deferred<void>();
 		const remove = vi.spyOn(t.services.gateway, "deleteSession").mockReturnValue(late.promise);
 		await expect(t.sessions.delete(t.sessionId)).rejects.toMatchObject({ details: { deletion_uncertain: true } });
-		expect(t.deletionStore.get(t.sessionId)?.stage).toBe("uncertain");
+		expect((await t.deletionStore.get(t.sessionId))?.stage).toBe("uncertain");
 		await expect(t.sessions.send(t.sessionId, { text: "new" })).rejects.toMatchObject({ code: "conflict" });
 		late.resolve();
 		read.mockResolvedValue(null);
@@ -414,11 +415,11 @@ describe("成员会话删除前用量快照", () => {
 			buffers: t.services.buffers,
 			sessionIndex: t.services.sessionIndex,
 			memberUsage: t.services.memberUsage,
-			deletionStore: createSessionDeletionStore(t.db),
+			deletionStore: createSessionDeletionStore(createSqliteDatabase(t.db)),
 		});
 		await restarted.delete(t.sessionId);
 		expect(remove).toHaveBeenCalledOnce();
-		expect(t.services.memberUsage.summary(t.member.member_id).deleted_session_count).toBe(1);
+		expect((await t.services.memberUsage.summary(t.member.member_id)).deleted_session_count).toBe(1);
 	});
 
 	it("中断超时后重试详情失败仍保留写保护，迟到中断不能误伤新执行", async () => {
@@ -427,14 +428,14 @@ describe("成员会话删除前用量快照", () => {
 		const late = deferred<void>();
 		vi.spyOn(t.services.gateway, "interrupt").mockReturnValue(late.promise);
 		await expect(t.sessions.delete(t.sessionId)).rejects.toMatchObject({ retryable: true });
-		expect(t.deletionStore.get(t.sessionId)?.stage).toBe("preparing");
+		expect((await t.deletionStore.get(t.sessionId))?.stage).toBe("preparing");
 		read.mockRejectedValue(new Error("unavailable"));
 		await expect(t.sessions.delete(t.sessionId)).rejects.toMatchObject({ retryable: true });
 		await expect(t.sessions.send(t.sessionId, { text: "new execution" })).rejects.toMatchObject({ code: "conflict" });
 		late.resolve();
 		read.mockResolvedValue(t.snapshot());
 		await t.sessions.delete(t.sessionId);
-		expect(t.services.sessionIndex.get(t.sessionId)).toBeNull();
+		expect(await t.services.sessionIndex.get(t.sessionId)).toBeNull();
 	});
 
 	it.each(["missing-usage", "write-failed"])(
@@ -455,7 +456,7 @@ describe("成员会话删除前用量快照", () => {
 			await expect(t.sessions.delete(t.sessionId)).rejects.toMatchObject({
 				details: { stage: "capture", execution_stopped: true },
 			});
-			expect(t.deletionStore.get(t.sessionId)?.stage).toBe("preparing");
+			expect((await t.deletionStore.get(t.sessionId))?.stage).toBe("preparing");
 			await expect(t.sessions.send(t.sessionId, { text: "before late interrupt" })).rejects.toMatchObject({
 				code: "conflict",
 			});
@@ -468,7 +469,7 @@ describe("成员会话删除前用量快照", () => {
 			await expect(
 				restarted.sessions.respondToolApproval(t.sessionId, { batch_id: "b", call_id: "c", result: "allow" }),
 			).rejects.toMatchObject({ code: "conflict", message: "会话正在删除或删除结果待确认，请先重试删除" });
-			expect(restarted.services.sessionIndex.get(t.sessionId)).not.toBeNull();
+			expect(await restarted.services.sessionIndex.get(t.sessionId)).not.toBeNull();
 			expect(interrupt).toHaveBeenCalledOnce();
 			expect(send).not.toHaveBeenCalled();
 			expect(remove).not.toHaveBeenCalled();
@@ -477,8 +478,8 @@ describe("成员会话删除前用量快照", () => {
 			read.mockResolvedValue(t.snapshot());
 			await restarted.sessions.delete(t.sessionId);
 			expect(remove).toHaveBeenCalledOnce();
-			expect(restarted.services.sessionIndex.get(t.sessionId)).toBeNull();
-			expect(restarted.services.memberUsage.summary(t.member.member_id).metrics.output_tokens.value).toBe(80);
+			expect(await restarted.services.sessionIndex.get(t.sessionId)).toBeNull();
+			expect((await restarted.services.memberUsage.summary(t.member.member_id)).metrics.output_tokens.value).toBe(80);
 		},
 	);
 
@@ -505,7 +506,7 @@ describe("成员会话删除前用量快照", () => {
 		sending.resolve({ accepted: true, event_ids: [] });
 		await first;
 		await deleting;
-		expect(t.services.memberUsage.summary(t.member.member_id).session_count).toBe(1);
+		expect((await t.services.memberUsage.summary(t.member.member_id)).session_count).toBe(1);
 	});
 
 	it("真实成员HTTP删除仍受确认闸门保护，成功后统计保留", async () => {
@@ -541,6 +542,6 @@ describe("成员会话删除前用量快照", () => {
 			(await app.request(`/api/kit/sessions/${t.sessionId}`, { method: "DELETE", headers, body: JSON.stringify(data) }))
 				.status,
 		).toBe(200);
-		expect(t.services.memberUsage.summary(t.member.member_id).deleted_session_count).toBe(1);
+		expect((await t.services.memberUsage.summary(t.member.member_id)).deleted_session_count).toBe(1);
 	});
 });

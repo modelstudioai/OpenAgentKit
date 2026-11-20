@@ -250,7 +250,7 @@ Console 模态确认保留焦点约束、显式动作与关闭后的焦点恢复
 条目快照无法完整读取时，重新通过未归档记忆库目录核验身份，展示原库名称及条目未完整读取提示，允许确认复用引用并提供重试；
 元数据不可读或库已不可用仍禁止选择，不将读取失败伪装成空条目。
 创建页抽屉使用 `PresetPackSelection`，通过 `useRemoteAgents` 查询完整远端智能体列表，
-支持名称/ID 搜索、分页单选与资源多选，不依赖 SQLite 已保存目录。
+支持名称/ID 搜索、分页单选与资源多选，不依赖 Kit 已保存目录。
 「导入」经 `presetPacks.preview` 重新核验所选资源、固定版本与元数据，只返回白名单配置，不写预设包或模版。
 创建方式选择与表单页头的抽屉直接回填当前创建页，不提供侧栏独立页面或 Shell 跨页载荷。
 已有配置或未发布资源时先确认替换，再以独立资源草稿回填；展示名称、分类和文案在当前页面内保留。
@@ -329,7 +329,7 @@ apps/server/src/
                     attachments（挂载路径解析）/ confirm-gate / rate-limit / metrics /
                     catalog / templates（本地模版资源复核、保存与上架确认）/ project / operations / members（本地账号创建与密码派生）/
                     member-usage（累计采集）/ session-deletion + session-mutations（删除协调与写入保护）
-  store/            node:sqlite + 幂等迁移 + DAO（catalog / templates / members / sessions / quota / operations / audit /
+  store/            异步数据库接口、SQLite / MySQL / PostgreSQL 适配、共享结构与迁移生成、DAO（catalog / templates / members / sessions / quota / operations / audit /
                     session-usage 数值快照 / session-deletions 阶段）
   routes/           kit/*（数据面）admin/*（控制面）config / healthz
 ```
@@ -340,7 +340,7 @@ apps/server/src/
    路径，也让上游 API 变化只影响一个文件。SDK 的形状事实（list 返回 `{data}`、会话只认
    声明键、建会话必须带 environment、apply 需走 backend 感知的 sync 等）记录在
    `docs/research/sdk-session-runtime.md`，改 gateway 前必读。
-2. **事件不落库**。SQLite 存 catalog、已保存模版配置目录与不可变配置版本、成员目录、session 本地索引、成员累计用量数值快照、
+2. **事件不落库**。Kit 数据库存 catalog、已保存模版配置目录与不可变配置版本、成员目录、session 本地索引、成员累计用量数值快照、
    删除阶段、月度限额数值增量与请求幂等索引、兼容 Credits 账本、operation 与审计。快照只含归属与运营字段，不含事件、消息正文或
    附件字节。成员密码仅存随机盐与 scrypt 派生值，不保存明文；Provider 凭据不落库。
 3. **凭据不出服务端**：`CredentialResolver` 只在 gateway 内部使用；错误与日志脱敏。
@@ -349,9 +349,20 @@ apps/server/src/
 5. **管控面角色分离**：`auditor` 只读，写方法在中间件层统一拒绝（不逐路由加判断，避免漏）。
 6. **单实例假设（v1）**：事件缓冲、限流令牌桶、确认令牌的「已消费」集合、成员刷新队列和
    会话写入 / 删除互斥都在进程内存，
-   SQLite 是单写者文件。多副本部署需要 sticky session（同一 `subjectId`/会话固定到同一副本）
+   各存储后端均按单实例使用。多副本部署需要 sticky session（同一 `subjectId`/会话固定到同一副本）
    或把这些进程内状态换成共享实现（`EventBuffer` 已接口化，预留 Redis adapter）；在此之前不要
    水平扩容，否则重连重放与限流都会失真。
+
+### 数据库接入
+
+`loadConfig` 解析 `KIT_DB_DRIVER`，启动时经 `store/connect.ts` 打开数据库并应用对应迁移。
+新库从 `001_init` 按既有顺序回放历史，再执行生成的后续版本。三库的 SQL 从共享定义和同一
+迁移顺序生成，各库独立登记执行结果。MySQL 在迁移锁下保存步骤进度并核对 DDL 执行结果。
+连接层在交给服务装配前恢复中断操作与发布批次，并应用默认 Credits 策略。
+默认 SQLite 从 `KIT_DATA_DIR/kit.sqlite` 打开。MySQL 8.4 和 PostgreSQL 从 `KIT_DATABASE_URL` 连接已创建的数据库。
+Store 共用 `database.ts` 的异步读写与事务接口，事务内跨 Store 调用绑定同一连接。
+SQLite 的读写排队保护单连接事务。MySQL 和 PostgreSQL 使用连接池并沿用单实例写入顺序。
+`server-database-drivers-in-store` 将数据库驱动限制在服务端 Store 层。
 
 ### 成员累计用量与删除协调
 
@@ -368,7 +379,7 @@ API 无取消信号，因此不能保证超时底层 HTTP 立即结束。按游�
 
 成员会话删除经过原有 plan 与显式确认后，由 `session-mutations` 拒绝新的消息、审批等
 写入，并等待已进入的写请求结束。`session-deletion` 确认执行已结束（待审批也须中断），
-重新查询用量，事务提交快照后才向 Provider 发 DELETE。远端删除与 SQLite 不是跨系统
+重新查询用量，事务提交快照后才向 Provider 发 DELETE。远端删除与本地存储不是跨系统
 事务，因此 `session-deletions` 持久化准备、封存、删除中、结果不明与已删除阶段。
 结果不明时维持写入保护；重启后仍按阶段核实，不盲目恢复发送或自动重放删除请求。
 重试采集不能覆盖此前已发出 DELETE 的持久事实，GET 仍存在不能消除网络错误带来的
@@ -437,7 +448,7 @@ Kit 仅提供 YAML 批次的资源创建、校验、Plan 与发布，不提供�
 路由按管理员和批次身份绑定独立的 DraftResourceService，ResourceDraftGateway 仅处理本批声明，无物理项目路径参数。
 ProviderGateway 不继承目录接口。server-no-directory-sdk 禁止 server 生产源码依赖 SDK 目录与源码版本入口。
 
-当前 YAML、Kit 修订号、SDK state 检查点和成功证明按 draft_id 保存到 SQLite；网络等待期间不持有事务。
+当前 YAML、Kit 修订号、SDK state 检查点和成功证明按 draft_id 保存到 Kit 数据库。网络等待期间不持有事务。
 SDK 管理 state 语义与资源差异；完整本批资源使用 create-only scope。File/Skill 字节使用独立受控暂存，
 MCP 候选只来自当前声明和显式填写、导入的官方配置，不扫描历史主项目。
 声明和 state 均为空时仅生成 SDK 只读空计划，不刷新远端；前端直接进入预览且保留空批次。
@@ -534,7 +545,7 @@ Kit Server → KitClient → createKitChatProvider ─────────�
 ProviderGateway，不改变 SDK 或 ChatProvider 合同。成员列表只读取公开资料；
 自动生成密码仅随创建响应返回一次（`Cache-Control: no-store`），不进入列表、审计或浏览器
 持久存储。自定义密码不回传。体验页默认使用本地成员登录，详见 ADR-0010 与 ADR-0011。
-密码验证和登录令牌签发在服务端执行；SQLite 存令牌哈希和有效期，每次请求校验。
+密码验证和登录令牌签发在服务端执行。Kit 数据库存令牌哈希和有效期，每次请求校验。
 独立登录之间分别撤销；退出或到期终止对应的已建立 SSE，不中断 Provider 的 Agent 执行。
 
 | 边界 | 措施 |

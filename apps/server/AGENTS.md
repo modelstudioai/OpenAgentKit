@@ -10,7 +10,7 @@
 | `src/routes/` | Hono 路由、共享 Schema、OpenAPI 与 HTTP 边界 |
 | `src/services/` | 身份、业务编排、计划确认、共享流、批次与恢复 |
 | `src/gateway/` | SDK / Mock 适配、Provider 分页、规范化与安全投影 |
-| `src/store/` | SQLite 迁移、目录/索引、数值快照和临时执行账本 |
+| `src/store/` | SQLite / MySQL / PostgreSQL 连接与迁移、目录/索引、数值快照和临时执行账本 |
 | `tests/` / `tests/live/` | 服务端与 Provider 合同 / 显式启用的 Cloud 验证 |
 
 ## 不变量
@@ -20,7 +20,7 @@
 2. Provider 凭据只在服务端解析并显式传入 SDK；Vault 明文仅存所属批次的内存。
    不写全局环境变量、YAML、SDK state、回执、响应、日志或错误。
    所有远端详情使用白名单投影及相应脱敏合同，不能整包透传 attributes/metadata。
-3. Provider 是事件与消息正文的事实源。SQLite 仅保存被允许的目录、身份哈希、
+3. Provider 是事件与消息正文的事实源。Kit 数据库仅保存被允许的目录、身份哈希、
    归属/附件索引、用量数值、删除阶段、Operation、审计及 ADR-0017 的临时账本。
    不能借缓存、审计或恢复名义持久化事件正文和凭据。
 4. 数据面按 `subjectId`，调试按 `subject + purpose` 校验归属；越权不泄露资源存在性。
@@ -47,6 +47,10 @@
     上下架和模版删除保留确认闸门，不能改变既有 Session 或删除远端引用资源。
 12. 上传路由不得使用 OpenAPI 无法渲染的文件 Schema；共享 DTO 取自 SDK `/protocol`。
     新增 op、Schema 或路由时同步登记和生成，不手改生成物。
+13. 数据库驱动归 `src/store/`，由 `server-database-drivers-in-store` 检查。业务 Store 共用
+    异步读写和事务接口，跨 Store 事务须共用连接。三库共用结构定义和迁移顺序，各库分别记账。
+    [迁移清单](src/store/schema/manifest.json) 决定完整顺序。已交付的迁移保留原 ID、内容和顺序，
+    新变更由生成命令追加到清单。
 
 ## 修改步骤
 
@@ -57,10 +61,21 @@
    上层不重复映射。确认闸门必须验证无有效 token 拒绝与有效 token 通过。
 5. 改流或恢复时同步协议，覆盖静默断流、历史/实时交叉、游标续传或未知结果路径；
    live 结果不能由 Mock 代替。
+6. 改表先编辑 [共享表结构](src/store/schema/definition.sql)。改名、改类型、删除和回填按同一
+   版本补充显式步骤。以成员表新增备注为例，从仓库根目录运行下列命令。审核生成的三库迁移，
+   提交共享定义、更新后的迁移清单、版本快照和显式步骤。
+
+   ```bash
+   pnpm --filter @openagentpack/kit-server db:generate --name add_member_remark
+   pnpm --filter @openagentpack/kit-server db:check
+   ```
+
+   服务端各开发和构建入口先运行 `db:render`，按已登记的版本写入 Git 忽略的 `schema/generated/`。
 
 ## 验收
 
 ```bash
+pnpm --filter @openagentpack/kit-server db:check
 pnpm --filter @openagentpack/kit-server typecheck
 pnpm --filter @openagentpack/kit-server test
 pnpm check:architecture

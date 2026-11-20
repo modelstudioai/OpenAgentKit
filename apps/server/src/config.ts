@@ -9,9 +9,24 @@ export interface BailianCredentials {
 	workspaceId?: string;
 }
 
+interface DatabaseAddress {
+	host: string;
+	port: number;
+	user: string;
+	password: string;
+	name: string;
+	ssl: boolean;
+}
+
+export type DatabaseConfig =
+	| { driver: "sqlite" }
+	| ({ driver: "mysql" } & DatabaseAddress)
+	| ({ driver: "postgres" } & DatabaseAddress);
+
 export interface ServerConfig {
 	port: number;
 	dataDir: string;
+	database: DatabaseConfig;
 	adminToken: string;
 	jwtSecret?: string;
 	/** 默认要求成员或可信 JWT 身份；匿名演示必须显式开启。 */
@@ -144,16 +159,60 @@ function parseQuotaDefaultMonthly(env: NodeJS.ProcessEnv): number | undefined {
 	return value;
 }
 
+const remoteDatabases = {
+	mysql: { schemes: ["mysql:"], port: 3306 },
+	postgres: { schemes: ["postgresql:", "postgres:"], port: 5432 },
+};
+
+function parseDatabaseAddress(value: string, driver: keyof typeof remoteDatabases): DatabaseAddress {
+	const { schemes, port } = remoteDatabases[driver];
+	try {
+		const url = new URL(value);
+		const name = decodeURIComponent(url.pathname.slice(1));
+		if (!schemes.includes(url.protocol) || !url.hostname || !url.username || !name || name.includes("/") || url.hash) {
+			throw new Error();
+		}
+		const ssl = url.searchParams.get("ssl");
+		if ([...url.searchParams.keys()].some((key) => key !== "ssl") || (ssl !== null && ssl !== "true")) {
+			throw new Error();
+		}
+		return {
+			host: url.hostname.replace(/^\[|\]$/g, ""),
+			port: Number(url.port || port),
+			user: decodeURIComponent(url.username),
+			password: decodeURIComponent(url.password),
+			name,
+			ssl: ssl === "true",
+		};
+	} catch {
+		throw new Error(`KIT_DATABASE_URL 必须为包含用户名和数据库名的 ${schemes[0]}// URL，可选参数为 ssl=true`);
+	}
+}
+
+function parseDatabase(env: NodeJS.ProcessEnv): DatabaseConfig {
+	const configured = env.KIT_DB_DRIVER?.trim() || "sqlite";
+	const driver = configured === "pg" ? "postgres" : configured;
+	if (driver === "sqlite") return { driver };
+	if (driver !== "mysql" && driver !== "postgres") {
+		throw new Error("KIT_DB_DRIVER 只能是 sqlite、mysql 或 postgres（pg）");
+	}
+	const value = env.KIT_DATABASE_URL?.trim();
+	if (!value) throw new Error(`选择 ${driver} 时必须配置 KIT_DATABASE_URL`);
+	return { driver, ...parseDatabaseAddress(value, driver) };
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 	const mode = parseGatewayMode(env);
 	const bailian = parseBailianCredentials(env);
 	const resolvedGateway = resolveGateway(mode, bailian);
+	const database = parseDatabase(env);
 	const dataDir = resolve(env.KIT_DATA_DIR?.trim() || ".data");
 	mkdirSync(dataDir, { recursive: true });
 
 	return {
 		port: Number(env.PORT?.trim() || 8787),
 		dataDir,
+		database,
 		adminToken: env.ADMIN_TOKEN?.trim() || "",
 		jwtSecret: env.KIT_JWT_SECRET?.trim() || undefined,
 		authMode: parseAuthMode(env),

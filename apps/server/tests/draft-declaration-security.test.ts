@@ -11,7 +11,7 @@ it("环境编辑与预览拒绝明文凭据，拒绝后声明、revision 和已�
 		base_revision: "1",
 		name: "safe environment",
 	});
-	const before = t.store.document(draft.draft_id)!;
+	const before = (await t.store.document(draft.draft_id))!;
 	const confirmation = await t.plan(draft);
 	for (const key of ["api_key", "credentials", "secret_name"]) {
 		const declaration = {
@@ -26,7 +26,7 @@ it("环境编辑与预览拒绝明文凭据，拒绝后声明、revision 和已�
 			const response = await t.request(`${base}/declarations/environment/${environment.id}${suffix}`, method, body);
 			expect(response.status).toBe(400);
 			expect(await response.text()).not.toContain("fixture-only-secret");
-			expect(t.store.document(draft.draft_id)).toEqual(before);
+			expect(await t.store.document(draft.draft_id)).toEqual(before);
 		}
 	}
 	const read = await t.value(`${base}/declarations`);
@@ -61,14 +61,14 @@ it.each([
 				).memory_store;
 	const path = `${t.base(draft)}/declarations/${type}/${created.id}`;
 	const source = await t.value<ResourceDraftDeclaration>(path);
-	const before = t.store.document(draft.draft_id);
+	const before = await t.store.document(draft.draft_id);
 	const response = await t.request(path, "PUT", {
 		base_revision: source.base_revision,
 		declaration: { ...source.declaration, ...changes },
 	});
 	expect(response.status).toBe(400);
 	expect(await response.text()).not.toContain("fixture-only-secret");
-	expect(t.store.document(draft.draft_id)).toEqual(before);
+	expect(await t.store.document(draft.draft_id)).toEqual(before);
 });
 
 it("历史声明中的敏感字段在单项、列表和预览中脱敏，安全引用及正常编辑仍可使用", async () => {
@@ -79,14 +79,14 @@ it("历史声明中的敏感字段在单项、列表和预览中脱敏，安全�
 		base_revision: "1",
 		name: "environment",
 	});
-	const row = t.store.document(draft.draft_id)!;
+	const row = (await t.store.document(draft.draft_id))!;
 	// 模拟旧版本曾接受的声明；读取不能继续将其正文交付浏览器。
 	const raw = parse(row.yaml);
 	raw.environments[environment.id].metadata = {
 		api_key: "fixture-only-secret",
 		description: 'token="fixture-text-secret"',
 	};
-	t.store.writeDocument(draft.draft_id, "2", stringify(raw));
+	await t.store.writeDocument(draft.draft_id, "2", stringify(raw));
 	const path = `${base}/declarations/environment/${environment.id}`;
 	const source = await t.value<ResourceDraftDeclaration>(path);
 	expect(source.declaration.metadata).toEqual({ api_key: "[redacted]", description: 'token="[redacted]"' });
@@ -106,7 +106,7 @@ it("历史声明中的敏感字段在单项、列表和预览中脱敏，安全�
 	expect(JSON.stringify(preview)).not.toMatch(/fixture-(?:only|text)-secret/);
 	await t.value(path, "PUT", { base_revision: "3", declaration });
 	expect((await t.value<ResourceDraftDeclaration>(path)).declaration).toEqual(declaration);
-	expect(t.store.document(draft.draft_id)!.yaml).not.toMatch(/fixture-(?:only|text)-secret/);
+	expect((await t.store.document(draft.draft_id))!.yaml).not.toMatch(/fixture-(?:only|text)-secret/);
 });
 
 it("Vault 改名保留脱敏凭据对应的内存值，普通正文和环境变量引用保持原文", async () => {
@@ -137,7 +137,7 @@ it("Vault 改名保留脱敏凭据对应的内存值，普通正文和环境变�
 		(await t.value<ResourceDraftDeclaration>(`${t.base(draft)}/declarations/agent/${created.agent.id}`)).declaration
 			.instructions,
 	).toBe(prompt);
-	expect(JSON.stringify(t.store.document(draft.draft_id))).not.toContain("fixture-vault-value");
+	expect(JSON.stringify(await t.store.document(draft.draft_id))).not.toContain("fixture-vault-value");
 	expect(JSON.stringify(await t.value(`${t.base(draft)}/declarations`))).not.toContain("fixture-vault-value");
 	const operation = await t.publish(draft, await t.plan(draft));
 	expect((await t.wait(operation.operation_id)).status).toBe("succeeded");

@@ -77,7 +77,7 @@ export async function updateCatalogResources(
 	slug: string,
 	patch: Partial<Omit<CatalogAgentInput, "slug">>,
 ) {
-	const current = catalog.getBySlug(slug);
+	const current = await catalog.getBySlug(slug);
 	if (!current) throw new KitError("not_found", "agent 不存在");
 	const changedAgent = patch.remote_agent_id !== undefined && patch.remote_agent_id !== current.remote_agent_id;
 	const versionPatch = patch.agent_version === undefined && changedAgent ? null : patch.agent_version;
@@ -86,14 +86,14 @@ export async function updateCatalogResources(
 		remote_agent_id: patch.remote_agent_id ?? current.remote_agent_id,
 		agent_version: versionPatch === undefined ? current.agent_version : versionPatch,
 	});
-	const latest = catalog.getBySlug(slug);
+	const latest = await catalog.getBySlug(slug);
 	if (
 		latest?.id !== current.id ||
 		latest.remote_agent_id !== current.remote_agent_id ||
 		latest.agent_version !== current.agent_version
 	)
 		throw new KitError("conflict", "智能体或版本绑定已变更，请刷新后重试");
-	return catalog.updateBySlug(slug, {
+	return await catalog.updateBySlug(slug, {
 		...prepared,
 		remote_agent_id: patch.remote_agent_id,
 		agent_version: versionPatch,

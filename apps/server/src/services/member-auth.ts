@@ -20,7 +20,7 @@ const unauthorized = () => new KitError("unauthorized", "登录状态无效或�
 
 export interface AuthStreamBinding {
 	signal: AbortSignal;
-	assertActive(): void;
+	assertActive(): void | Promise<void>;
 	close(): void;
 }
 
@@ -45,9 +45,9 @@ export function createMemberAuthService({
 		});
 	}
 
-	function assertActive(record: MemberSessionRecord) {
-		const current = sessions.find(record.token_hash);
-		const member = current && members.findById(current.member_id);
+	async function assertActive(record: MemberSessionRecord) {
+		const current = await sessions.find(record.token_hash);
+		const member = current && (await members.findById(current.member_id));
 		if (!current || Date.parse(current.expires_at) <= Date.now() || !member || member.status !== "active") {
 			throw unauthorized();
 		}
@@ -66,10 +66,10 @@ export function createMemberAuthService({
 			// 未鉴权入口不能无限排队消耗 scrypt 线程池和内存；匿名 cookie 不参与此限流。
 			if (checkingPasswords >= 4) failLimited(1);
 			checkingPasswords += 1;
-			let credential: ReturnType<MemberStore["findCredentials"]>;
+			let credential: Awaited<ReturnType<MemberStore["findCredentials"]>>;
 			let valid: boolean;
 			try {
-				credential = members.findCredentials(username);
+				credential = await members.findCredentials(username);
 				valid = await verifyPassword(password, credential?.passwordHash);
 			} finally {
 				checkingPasswords -= 1;
@@ -80,24 +80,24 @@ export function createMemberAuthService({
 			const accessToken = `${MEMBER_TOKEN_PREFIX}${randomBytes(32).toString("base64url")}`;
 			const now = new Date();
 			const expiresAt = new Date(now.getTime() + MEMBER_SESSION_TTL_MS).toISOString();
-			sessions.create({
+			await sessions.create({
 				token_hash: digest(accessToken),
 				member_id: credential.member.member_id,
 				created_at: now.toISOString(),
 				expires_at: expiresAt,
 			});
-			audit.append({
+			await audit.append({
 				subject: credential.member.member_id,
 				action: "member.auth.login",
 				target: credential.member.member_id,
 			});
 			return { access_token: accessToken, token_type: "Bearer", expires_at: expiresAt, member: credential.member };
 		},
-		resolve(token: string): { view: MemberAuthView; session: MemberSessionRecord } {
+		async resolve(token: string): Promise<{ view: MemberAuthView; session: MemberSessionRecord }> {
 			if (!TOKEN_PATTERN.test(token)) throw unauthorized();
-			const session = sessions.find(digest(token));
+			const session = await sessions.find(digest(token));
 			if (!session) throw unauthorized();
-			const { member } = assertActive(session);
+			const { member } = await assertActive(session);
 			return {
 				session,
 				view: {
@@ -107,19 +107,19 @@ export function createMemberAuthService({
 				},
 			};
 		},
-		logout(token: string | undefined) {
+		async logout(token: string | undefined) {
 			if (!token || !TOKEN_PATTERN.test(token)) return;
 			const tokenHash = digest(token);
-			const session = sessions.find(tokenHash);
-			sessions.revoke(tokenHash);
+			const session = await sessions.find(tokenHash);
+			await sessions.revoke(tokenHash);
 			for (const controller of streams.get(tokenHash) ?? []) controller.abort(unauthorized());
 			streams.delete(tokenHash);
 			if (session)
-				audit.append({ subject: session.member_id, action: "member.auth.logout", target: session.member_id });
+				await audit.append({ subject: session.member_id, action: "member.auth.logout", target: session.member_id });
 		},
 		/** 每条 SSE 订阅独立取消；撤销一个登录态不会中断成员另一设备或云端 Agent。 */
-		bindStream(record: MemberSessionRecord): AuthStreamBinding {
-			assertActive(record);
+		async bindStream(record: MemberSessionRecord): Promise<AuthStreamBinding> {
+			await assertActive(record);
 			const controller = new AbortController();
 			const owned = streams.get(record.token_hash) ?? new Set<AbortController>();
 			owned.add(controller);
@@ -131,7 +131,9 @@ export function createMemberAuthService({
 			timer.unref();
 			return {
 				signal: controller.signal,
-				assertActive: () => assertActive(record),
+				assertActive: async () => {
+					await assertActive(record);
+				},
 				close() {
 					clearTimeout(timer);
 					owned.delete(controller);

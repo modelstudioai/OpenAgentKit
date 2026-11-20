@@ -25,8 +25,8 @@ function makeApp(env: Record<string, string> = {}) {
 
 /** 上架一个 mock agent（数据面可见才能建会话/扣费）。 */
 async function listAgent(ctx: ReturnType<typeof makeApp>, slug: string, extra: Record<string, unknown> = {}) {
-	ctx.services.catalog.upsert({ slug, display_name: slug, remote_agent_id: "agent_mock_assistant", ...extra });
-	ctx.services.catalog.setStatus(slug, "listed");
+	await ctx.services.catalog.upsert({ slug, display_name: slug, remote_agent_id: "agent_mock_assistant", ...extra });
+	await ctx.services.catalog.setStatus(slug, "listed");
 }
 
 async function createSession(ctx: ReturnType<typeof makeApp>, subject: string, slug = "assistant") {
@@ -273,7 +273,11 @@ describe("Credits 配额与提额审批", () => {
 
 	it("历史月加油包不计入当月余额（pack 仅其 month 内有效）", async () => {
 		const ctx = makeApp();
-		ctx.services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock_assistant" });
+		await ctx.services.catalog.upsert({
+			slug: "assistant",
+			display_name: "A",
+			remote_agent_id: "agent_mock_assistant",
+		});
 		const before = (await (
 			await ctx.app.request("/api/kit/quota", { headers: { cookie: "kit_subject=carol" } })
 		).json()) as {

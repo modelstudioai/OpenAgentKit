@@ -73,7 +73,7 @@ export function createYamlDraftGateway(options: {
 		return parsed.data;
 	};
 	async function agentOptions() {
-		const current = doc.snapshot();
+		const current = await doc.snapshot();
 		return {
 			base_revision: current.revision,
 			skills: Object.entries(current.raw.skills ?? {}).map(([id, value]) => agentSkillOption(id, value)),
@@ -81,23 +81,24 @@ export function createYamlDraftGateway(options: {
 		};
 	}
 	async function add(type: DeclarationType, expected: string, declaration: Record<string, unknown>) {
-		const current = doc.snapshot();
+		const current = await doc.snapshot();
 		const id = `${type === "environment" ? "env" : type === "memory_store" ? "memory" : type}_${randomUUID().replaceAll("-", "")}`;
 		current.raw[sections[type]] = { ...current.raw[sections[type]], [id]: declaration };
 		const new_revision = await doc.commit(expected, current.raw);
 		return { new_revision, id };
 	}
-	function changes(
+	async function changes(
 		type: DeclarationType,
 		id: string,
 		input: { base_revision: string; declaration: Record<string, unknown> },
 	) {
-		doc.assertRevision(input.base_revision);
-		doc.declaration(type, id);
-		const current = doc.snapshot();
+		const current = await doc.snapshot();
+		if (current.revision !== input.base_revision) {
+			throw new KitError("conflict", "批次配置已变化，请重新加载并预览");
+		}
+		const safe = (await doc.declaration(type, id)).declaration;
 		const previous = current.raw[sections[type]]![id]!;
 		const next = structuredClone(input.declaration);
-		const safe = doc.declaration(type, id).declaration;
 		for (const key of Object.keys(next)) restoreProtectedField(type, key, previous, next, safe);
 		for (const key of ["source", "credentials", "entries_mode"])
 			if (previous[key] !== undefined && next[key] === undefined)
@@ -108,7 +109,7 @@ export function createYamlDraftGateway(options: {
 	}
 	async function validate() {
 		const diagnostics = await doc.diagnostics();
-		const raw = doc.snapshot().raw;
+		const raw = (await doc.snapshot()).raw;
 		const unreferenced = Object.keys(raw.skills ?? {}).some(
 			(id) => !Object.values(raw.agents ?? {}).some((agent) => (agent.skills as unknown[] | undefined)?.includes(id)),
 		);
@@ -123,7 +124,7 @@ export function createYamlDraftGateway(options: {
 	const gateway: ResourceDraftGateway = {
 		clearSecrets: () => doc.secrets.clear(),
 		async overview() {
-			const current = doc.snapshot();
+			const current = await doc.snapshot();
 			return {
 				name: doc.id,
 				project_revision: current.revision,
@@ -141,21 +142,21 @@ export function createYamlDraftGateway(options: {
 			};
 		},
 		async declarations() {
-			return draftReferences(doc).map(({ type, id }) => doc.declaration(type, id));
+			return Promise.all((await draftReferences(doc)).map(({ type, id }) => doc.declaration(type, id)));
 		},
 		async declaration(type, id) {
 			return doc.declaration(typeOf(type), id);
 		},
 		async declarationPreview(type, id, input) {
 			const kind = typeOf(type);
-			const before = doc.declaration(kind, id);
-			let raw = doc.snapshot().raw;
+			const before = await doc.declaration(kind, id);
+			let raw = (await doc.snapshot()).raw;
 			if (input.action === "delete") {
-				doc.assertRevision(input.base_revision);
+				await doc.assertRevision(input.base_revision);
 				delete raw[sections[kind]]![id];
 			} else {
 				if (!input.declaration) throw new KitError("invalid_request", "缺少资源声明");
-				raw = changes(kind, id, { base_revision: input.base_revision, declaration: input.declaration });
+				raw = await changes(kind, id, { base_revision: input.base_revision, declaration: input.declaration });
 			}
 			const errors = (await doc.diagnostics(raw)).filter((item) => item.severity === "error").map((item) => item.code);
 			return {
@@ -171,11 +172,11 @@ export function createYamlDraftGateway(options: {
 			};
 		},
 		async putDeclaration(type, id, input) {
-			return { new_revision: await doc.commit(input.base_revision, changes(typeOf(type), id, input)) };
+			return { new_revision: await doc.commit(input.base_revision, await changes(typeOf(type), id, input)) };
 		},
 		async deleteDeclaration(type, id, expected) {
-			const raw = doc.snapshot().raw;
-			doc.declaration(typeOf(type), id);
+			const raw = (await doc.snapshot()).raw;
+			await doc.declaration(typeOf(type), id);
 			delete raw[sections[typeOf(type)]]![id];
 			return { new_revision: await doc.commit(expected, raw) };
 		},
@@ -217,7 +218,7 @@ export function createYamlDraftGateway(options: {
 			return { new_revision: result.new_revision, memory_store: { id: result.id, name: value.name } };
 		},
 		async memoryStoreConfiguration(id) {
-			const value = doc.declaration("memory_store", id).declaration;
+			const value = (await doc.declaration("memory_store", id)).declaration;
 			return memoryStoreConfiguration(
 				id,
 				String(value.name ?? id),
