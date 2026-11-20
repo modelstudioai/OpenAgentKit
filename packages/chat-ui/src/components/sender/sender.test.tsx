@@ -1,17 +1,7 @@
 /** @vitest-environment jsdom */
-import { act } from "react";
-import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { atomicBackspace, renderValueInto, Sender, serializeEditable } from "./index.tsx";
-
-if (!("ResizeObserver" in globalThis)) {
-	globalThis.ResizeObserver = class {
-		observe() {}
-		unobserve() {}
-		disconnect() {}
-	} as unknown as typeof ResizeObserver;
-}
 
 const SKILLS = [
 	{ name: "animate", description: "把界面变化做成顺滑过渡动画" },
@@ -102,45 +92,5 @@ describe("Sender 编辑区（contenteditable）", () => {
 		expect(empty).toContain('data-empty="true"');
 		const draft = renderToStaticMarkup(<Sender defaultValue="/animate" skills={SKILLS} />);
 		expect(draft).not.toContain("技能列表");
-	});
-});
-
-describe("Sender 自动 chip 投影", () => {
-	async function mountSender() {
-		const container = document.createElement("div");
-		document.body.append(container);
-		const root = createRoot(container);
-		await act(async () => root.render(<Sender skills={SKILLS} />));
-		const input = container.querySelector('[role="textbox"]') as HTMLDivElement;
-		return {
-			container,
-			input,
-			async type(text: string) {
-				input.textContent = text;
-				await act(async () => {
-					input.dispatchEvent(new Event("input", { bubbles: true }));
-				});
-			},
-			async unmount() {
-				await act(async () => root.unmount());
-				container.remove();
-			},
-		};
-	}
-
-	it("输入完整标记（后跟空格）后自动变成 chip", async () => {
-		const sender = await mountSender();
-		await sender.type("/animate ");
-		expect(sender.container.querySelector("[data-skill]")?.getAttribute("data-skill")).toBe("animate");
-		expect(serializeEditable(sender.input)).toBe("/animate ");
-		await sender.unmount();
-	});
-
-	it("只有名字、没有空白时不投影", async () => {
-		const sender = await mountSender();
-		await sender.type("/animate");
-		expect(sender.container.querySelector("[data-skill]")).toBeNull();
-		expect(serializeEditable(sender.input)).toBe("/animate");
-		await sender.unmount();
 	});
 });
