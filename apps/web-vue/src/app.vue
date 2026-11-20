@@ -2,7 +2,7 @@
 import type { MemberAuthController } from "@openagentkit/sdk/auth";
 import { ErrorState } from "@openagentpack/kit-chat-ui-vue";
 import MemberAuthGate from "./features/auth/member-auth-gate.vue";
-import PlaceholderWorkspace from "./features/workspace/placeholder-workspace.vue";
+import WorkspaceShell from "./features/workspace/workspace-shell.vue";
 import ChatUILocaleBridge from "./i18n/chat-ui-bridge.vue";
 import type { Branding } from "./lib/branding.ts";
 
@@ -23,8 +23,15 @@ function reload() {
 			<ErrorState :message="bootstrapError" :on-retry="reload" />
 		</main>
 		<MemberAuthGate v-else-if="controller" :controller="controller">
-			<template #default="{ member, onLogout }">
-				<PlaceholderWorkspace :member="member" :branding="branding" @logout="onLogout" />
+			<template #default="{ member, onLogout, client, chatProvider }">
+				<WorkspaceShell
+					v-if="client && chatProvider"
+					:member="member"
+					:client="client"
+					:chat-provider="chatProvider"
+					:branding="branding"
+					@logout="onLogout"
+				/>
 			</template>
 		</MemberAuthGate>
 	</ChatUILocaleBridge>

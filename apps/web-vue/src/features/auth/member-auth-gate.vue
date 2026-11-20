@@ -18,7 +18,12 @@ const { snapshot, login, logout, retry } = useMemberAuth(() => props.controller)
 		<ErrorState v-if="!snapshot.chatProvider" :message="t('missingProvider')" />
 		<!-- 身份 generation 变化时整棵业务视图重挂载：旧会话、草稿、附件不进入新身份。 -->
 		<div v-else :key="snapshot.generation" class="min-h-full">
-			<slot :member="snapshot.member" :on-logout="logout" />
+			<slot
+				:member="snapshot.member"
+				:on-logout="logout"
+				:client="snapshot.client"
+				:chatProvider="snapshot.chatProvider"
+			/>
 		</div>
 	</template>
 	<MemberLoginForm
