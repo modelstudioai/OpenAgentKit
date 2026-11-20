@@ -40,8 +40,16 @@ export const MemberUsageSummarySchema = z.object({
 		active_seconds: UsageMetricSummarySchema,
 		duration_seconds: UsageMetricSummarySchema,
 	}),
-	/** 始终包含成员全部 Agent，供筛选器使用，包含保留的已删除会话。 */
-	agents: z.array(z.string()),
+	/** 始终包含成员会话关联的全部目录条目，供筛选器使用。 */
+	agents: z.array(
+		z.object({
+			slug: z.string(),
+			/** 会话绑定的目录条目 ID；没有可确认的绑定时为 null。 */
+			catalog_entry_id: z.string().nullable().optional(),
+			display_name: z.string().nullable(),
+			deleted: z.boolean().optional(),
+		}),
+	),
 	refreshed_at: z.string().optional(),
 	refresh_status: z.enum(["idle", "refreshing", "partial", "failed"]),
 	completed_sessions: z.number().int().nonnegative(),
@@ -56,6 +64,8 @@ export const TemplateUsageRowSchema = z.object({
 	/** 模版绑定的 Provider 智能体 ID；管理端用它按 agent_id 过滤模型/工具用量明细。 */
 	remote_agent_id: z.string(),
 	listing_status: z.enum(["listed", "unlisted"]),
+	/** 模版已标记删除（软删）：管理列表不再展示，用量区保留并提示。 */
+	deleted: z.boolean().optional(),
 	session_count: z.number().int().nonnegative(),
 	deleted_session_count: z.number().int().nonnegative(),
 	metrics: MemberUsageSummarySchema.shape.metrics,
@@ -78,14 +88,17 @@ export const MemberSessionUsageSchema = z.object({
 	collection_status: z.enum(["pending", "complete", "partial", "failed", "not_found"]),
 });
 export type MemberSessionUsage = z.infer<typeof MemberSessionUsageSchema>;
-export const MemberUsageQuerySchema = z.object({
+const MemberUsageFilterSchema = z.object({
 	agent_slug: z.string().min(1).max(128).optional(),
+	/** 空字符串仅筛选未绑定目录条目的会话。 */
+	catalog_entry_id: z.string().max(128).optional(),
+});
+export const MemberUsageQuerySchema = MemberUsageFilterSchema.extend({
 	refresh: z.literal("1").optional(),
 });
 export type MemberUsageQuery = z.infer<typeof MemberUsageQuerySchema>;
 export const MemberUsageResponseSchema = z.object({ data: MemberUsageSummarySchema });
-export const MemberSessionsQuerySchema = z.object({
-	agent_slug: z.string().min(1).max(128).optional(),
+export const MemberSessionsQuerySchema = MemberUsageFilterSchema.extend({
 	cursor: z.string().max(2048).optional(),
 	limit: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -125,70 +138,131 @@ export const TemplateUsageTrendSchema = z.object({
 });
 export type TemplateUsageTrend = z.infer<typeof TemplateUsageTrendSchema>;
 
-/** ---- Provider 侧用量明细（app-control usage.*），形状对齐 @openagentpack/sdk 公开契约 ---- */
+/** ---- Provider 侧用量汇总（app-control usage.summary），形状对齐 @openagentpack/sdk 公开契约 ---- */
 
+/** 指标值单元：未知指标保留 unit 且 value 为 null；已知零值为 0，不得当作未知。 */
+export const UsageMetricSchema = z.object({
+	value: z.number().nullable(),
+	unit: z.string(),
+});
+export type UsageMetric = z.infer<typeof UsageMetricSchema>;
+
+/** RFC 3339 时间窗口（带时区偏移）；响应统一 +08:00，区间左闭右开。 */
 export const UsageTimeRangeSchema = z.object({
-	start_time: z.number().int().nonnegative(),
-	end_time: z.number().int().nonnegative(),
+	start_time: z.string(),
+	end_time: z.string(),
 });
 export type UsageTimeRange = z.infer<typeof UsageTimeRangeSchema>;
 
-export const ModelUsageSortBySchema = z.enum(["call_count", "failed_count", "input_tokens", "output_tokens"]);
-export type ModelUsageSortBy = z.infer<typeof ModelUsageSortBySchema>;
-export const ToolUsageSortBySchema = z.enum(["call_count", "failed_count"]);
-export type ToolUsageSortBy = z.infer<typeof ToolUsageSortBySchema>;
-export const UsageToolSourceSchema = z.enum(["builtin", "mcp", "custom"]);
-export type UsageToolSource = z.infer<typeof UsageToolSourceSchema>;
-
-export const ModelUsageTokenStatsSchema = z.object({
-	input_tokens: z.number(),
-	output_tokens: z.number(),
-	cache_read_tokens: z.number(),
-	cache_creation_tokens: z.number(),
-	/** 输入 + 输出合计，不重复累加缓存 Token。 */
-	total_tokens: z.number(),
-	/** 取值 [0,1]；输入总量为 0 时为 0。 */
-	cache_hit_ratio: z.number(),
+/** 汇总指标（total）：模型与工具两类口径分开，不重复相加。 */
+export const UsageTotalSchema = z.object({
+	input_tokens: UsageMetricSchema,
+	output_tokens: UsageMetricSchema,
+	total_tokens: UsageMetricSchema,
+	cache_read_tokens: UsageMetricSchema,
+	cache_creation_tokens: UsageMetricSchema,
+	cache_hit_ratio: UsageMetricSchema,
+	model_call_count: UsageMetricSchema,
+	tool_call_count: UsageMetricSchema,
+	builtin_tool_call_count: UsageMetricSchema,
+	mcp_tool_call_count: UsageMetricSchema,
+	custom_tool_call_count: UsageMetricSchema,
+	turns: UsageMetricSchema,
+	steps: UsageMetricSchema,
+	interrupt_error_count: UsageMetricSchema,
+	model_failed_count: UsageMetricSchema,
+	tool_failed_count: UsageMetricSchema,
+	runtime_ms: UsageMetricSchema,
 });
-export type ModelUsageTokenStats = z.infer<typeof ModelUsageTokenStatsSchema>;
+export type UsageTotal = z.infer<typeof UsageTotalSchema>;
 
-export const ModelUsageItemSchema = z.object({
-	workspace_id: z.string(),
-	model_name: z.string(),
-	call_count: z.number().int().nonnegative(),
-	failed_count: z.number().int().nonnegative(),
-	tokens: ModelUsageTokenStatsSchema,
+/** 模型明细指标。 */
+export const UsageModelMetricsSchema = z.object({
+	input_tokens: UsageMetricSchema,
+	output_tokens: UsageMetricSchema,
+	total_tokens: UsageMetricSchema,
+	cache_read_tokens: UsageMetricSchema,
+	cache_creation_tokens: UsageMetricSchema,
+	cache_hit_ratio: UsageMetricSchema,
+	call_count: UsageMetricSchema,
+	failed_count: UsageMetricSchema,
 });
-export type ModelUsageItem = z.infer<typeof ModelUsageItemSchema>;
+export type UsageModelMetrics = z.infer<typeof UsageModelMetricsSchema>;
 
-export const ToolUsageItemSchema = z.object({
-	workspace_id: z.string(),
-	tool_name: z.string(),
-	/** builtin | mcp | custom；未知来源原样保留。 */
-	source: z.string(),
-	call_count: z.number().int().nonnegative(),
-	failed_count: z.number().int().nonnegative(),
+/** 单个模型的用量行；model_name 未知时为 null，顺序不保证。 */
+export const UsageModelRowSchema = z.object({
+	model_name: z.string().nullable(),
+	usage: UsageModelMetricsSchema,
 });
-export type ToolUsageItem = z.infer<typeof ToolUsageItemSchema>;
+export type UsageModelRow = z.infer<typeof UsageModelRowSchema>;
 
-const UsagePageShape = {
-	/** 总行数（分页计数）。 */
-	total: z.number().int().nonnegative(),
-	/** 总调用次数（标题口径，不随分页变化）。 */
-	total_call_count: z.number().int().nonnegative(),
-	page_no: z.number().int().min(1),
-	page_size: z.number().int().min(1),
-	data_updated_at: z.number(),
-} as const;
-
-export const ModelUsagePageSchema = z.object({
-	items: z.array(ModelUsageItemSchema),
-	...UsagePageShape,
+/** 工具明细指标（不含 Token 与运行时长）。 */
+export const UsageToolMetricsSchema = z.object({
+	call_count: UsageMetricSchema,
+	failed_count: UsageMetricSchema,
 });
-export type ModelUsagePage = z.infer<typeof ModelUsagePageSchema>;
+export type UsageToolMetrics = z.infer<typeof UsageToolMetricsSchema>;
 
-export const ToolUsagePageSchema = z.object({
-	items: z.array(ToolUsageItemSchema),
-	...UsagePageShape,
+/** 单个工具的用量行；按 source + tool_name 分组，同名不同来源分开。 */
+export const UsageToolRowSchema = z.object({
+	source: z.string().nullable(),
+	tool_name: z.string().nullable(),
+	usage: UsageToolMetricsSchema,
 });
-export type ToolUsagePage = z.infer<typeof ToolUsagePageSchema>;
+export type UsageToolRow = z.infer<typeof UsageToolRowSchema>;
+
+/**
+ * 「全部」模版口径合并的部分成功标注：某模版绑定智能体查询失败时不打挂整个请求，
+ * 改为返回已成功部分的合并并标注缺失来源；仅在部分失败时出现，缺省即完整。
+ */
+export const UsageCoverageSchema = z.object({
+	complete: z.boolean(),
+	missing_agent_ids: z.array(z.string()),
+});
+export type UsageCoverage = z.infer<typeof UsageCoverageSchema>;
+
+/**
+ * 一个查询维度的用量汇总：total / models / tools 是同一范围的三个视图，
+ * 不得把 total 与明细行相加；无统计记录时 data_updated_at 为 null。
+ */
+export const UsageSummarySchema = z.object({
+	/** session 维度复用会话自身窗口，上游可能不返回该字段。 */
+	query_range: UsageTimeRangeSchema.optional(),
+	data_updated_at: z.string().nullable(),
+	usage: z.object({
+		total: UsageTotalSchema,
+		models: z.array(UsageModelRowSchema),
+		tools: z.array(UsageToolRowSchema),
+	}),
+	/** 仅「全部」模版口径部分成功时出现。 */
+	coverage: UsageCoverageSchema.optional(),
+});
+export type UsageSummary = z.infer<typeof UsageSummarySchema>;
+
+/** Provider 侧用量分桶趋势（app-control usage.trend），形状对齐 @openagentpack/sdk 公开契约：
+ * 仅 workspace/agent 维度；无数据的时间桶省略而非补零；next_page_token 15 分钟过期。 */
+export const UsageGranularitySchema = z.enum(["hour", "day", "month"]);
+export type UsageGranularity = z.infer<typeof UsageGranularitySchema>;
+export const UsageTrendPointSchema = z.object({
+	start_time: z.string(),
+	end_time: z.string(),
+	usage: z.object({
+		total: UsageTotalSchema,
+		models: z.array(UsageModelRowSchema),
+		tools: z.array(UsageToolRowSchema),
+	}),
+});
+export type UsageTrendPoint = z.infer<typeof UsageTrendPointSchema>;
+export const UsageTrendSchema = z.object({
+	/** 服务端按粒度对齐后的实际窗口（UTC+8）。 */
+	query_range: UsageTimeRangeSchema,
+	data_updated_at: z.string().nullable(),
+	granularity: UsageGranularitySchema,
+	points: z.array(UsageTrendPointSchema),
+	has_more: z.boolean(),
+	/** 下一页游标；末页或已过期时为 null。 */
+	next_page_token: z.string().nullable(),
+	/** 仅「全部」模版口径部分成功时出现。 */
+	coverage: UsageCoverageSchema.optional(),
+});
+export type UsageTrend = z.infer<typeof UsageTrendSchema>;

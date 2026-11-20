@@ -7,6 +7,7 @@ import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
 import { createKitServices } from "../src/services/index.ts";
 import { openDatabase } from "../src/store/db.ts";
+import { historicalSqlite } from "./helpers/historical-sqlite.ts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => {
@@ -89,10 +90,9 @@ describe("员工端品牌配置", () => {
 	])("升级旧库时正确处理$scenario", ({ updatedBy, logoUrl, expectedName }) => {
 		const dataDir = mkdtempSync(join(tmpdir(), "kit-branding-upgrade-"));
 		cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
-		const previous = openDatabase(dataDir);
+		// 版本链要求迁移记录连续：以 033 之前的真实形状建旧库，重置品牌行后重放 033 及其后的全部版本迁移。
+		const previous = historicalSqlite(dataDir, "030_branding_logo");
 		try {
-			// 重建升级前的品牌记录，重新打开文件执行新迁移。
-			previous.prepare("DELETE FROM _kit_migrations WHERE id = ?").run("033_openagentkit_default_branding");
 			previous
 				.prepare("UPDATE kit_branding SET product_name = ?, logo_url = ?, updated_by = ? WHERE id = 1")
 				.run("OpenAgentPack Kit", logoUrl, updatedBy);

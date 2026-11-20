@@ -296,7 +296,11 @@ describe("模版版本", () => {
 		const { app, save, edited } = setup();
 		const first = await save();
 		await edited(first, { name: "第二版" });
-		const other = await save({ name: "另一个模版" });
+		const other = await save({
+			name: "另一个模版",
+			remote_agent_id: "agent_mock_designer",
+			remote_environment_id: "env_mock_default",
+		});
 		const path = `/api/admin/templates/${first.template_id}/versions`;
 		const otherPath = `/api/admin/templates/${other.template_id}/versions`;
 		const page = (await (await app.request(`${path}?limit=1`, { headers })).json()) as TemplateVersionsPage;
@@ -334,9 +338,26 @@ describe("模版版本", () => {
 		const original = db
 			.prepare("SELECT config_json,created_at FROM kit_templates WHERE template_id=?")
 			.get(template.template_id);
-		db.exec(`DROP TABLE kit_template_versions;
-			ALTER TABLE kit_templates DROP COLUMN version;
-			ALTER TABLE kit_templates DROP COLUMN updated_at;
+		// 新架构用 CHECK(version>0) 约束，SQLite 拒绝 DROP COLUMN：按 035 后形状整表重建去掉该列再触发重放。
+		db.exec(`PRAGMA foreign_keys=OFF;
+			DROP TABLE kit_template_versions;
+			CREATE TABLE kit_templates_legacy (
+				"template_id" TEXT,
+				"name" TEXT NOT NULL,
+				"remote_agent_id" TEXT NOT NULL,
+				"remote_agent_name" TEXT NOT NULL,
+				"config_json" TEXT NOT NULL,
+				"created_at" TEXT NOT NULL,
+				"deleted_at" TEXT,
+				PRIMARY KEY ("template_id")
+			);
+			INSERT INTO kit_templates_legacy ("template_id","name","remote_agent_id","remote_agent_name","config_json","created_at","deleted_at")
+				SELECT "template_id","name","remote_agent_id","remote_agent_name","config_json","created_at","deleted_at" FROM kit_templates;
+			DROP TABLE kit_templates;
+			ALTER TABLE kit_templates_legacy RENAME TO kit_templates;
+			CREATE INDEX "idx_templates_created" ON "kit_templates" ("created_at","template_id");
+			CREATE UNIQUE INDEX "idx_kit_templates_name_active" ON "kit_templates" ("name") WHERE deleted_at IS NULL;
+			PRAGMA foreign_keys=ON;
 			DELETE FROM _kit_migrations WHERE id='018_template_versions';`);
 		db.close();
 		const upgraded = reopen();
@@ -577,7 +598,11 @@ describe("模版版本", () => {
 		const entry = await publish(first);
 		const initial = await services.templates.get(first.template_id);
 		const versions = history(first.template_id);
-		const other = await save({ name: "其他模版" });
+		const other = await save({
+			name: "其他模版",
+			remote_agent_id: "agent_mock_designer",
+			remote_environment_id: "env_mock_default",
+		});
 		const occupied = await services.catalog.create({
 			slug: "occupied-name",
 			display_name: "目录占用名称",

@@ -71,12 +71,17 @@ export function createTemplateListingService({
 	audit: AuditLog;
 }) {
 	async function targetFor(templateId: string, displayName: string): Promise<ListingTarget> {
+		if (await store.isDeleted(templateId)) throw new KitError("not_found", "模版不存在");
 		const template = await store.get(templateId);
 		const entry = template.listing ? await catalog.get(template.listing.catalog_id) : null;
 		if (entry?.status === "listed") throw new KitError("conflict", "该模版已上架，请刷新模版列表查看");
 		const slug = entry?.slug ?? template.template_id;
-		if (!entry && (await catalog.getBySlug(slug))) throw new KitError("conflict", "模版的上架 ID 已被其他条目占用");
-		if ((await catalog.all()).some((item) => item.id !== entry?.id && item.display_name === displayName)) {
+		const occupant = await catalog.getBySlug(slug);
+		// slug 已被软删释放（仅剩已删行）时不再视为占用，重新上架可复用该 ID。
+		if (!entry && occupant && !occupant.deleted) throw new KitError("conflict", "模版的上架 ID 已被其他条目占用");
+		if (
+			(await catalog.all()).some((item) => item.id !== entry?.id && item.display_name === displayName && !item.deleted)
+		) {
 			throw new KitError("conflict", "展示名已存在，请使用其他展示名");
 		}
 		return { template, entry, slug };

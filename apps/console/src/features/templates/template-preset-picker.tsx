@@ -4,17 +4,19 @@ import { Button, Drawer } from "antd";
 import { useEffect, useState } from "react";
 import { PresetPackSelection } from "../preset-packs/preset-pack-selection.tsx";
 
-/** 创建页的远端智能体与资源选择；准备结果只交给当前表单，不保存预设包。 */
+/** 创建页的远端智能体与资源选择；准备结果只交给当前表单，不保存预设包；excludeAgentId 豁免当前模版自身绑定。 */
 export function TemplatePresetPicker({
 	buttonLabel = "导入预设包",
 	disabled,
 	hasConfiguration,
+	excludeAgentId,
 	onImport,
 	onPendingChange,
 }: {
 	buttonLabel?: string;
 	disabled: boolean;
 	hasConfiguration: boolean;
+	excludeAgentId?: string;
 	onImport: (preset: PresetPackPreview) => void;
 	onPendingChange: (pending: boolean) => void;
 }) {
@@ -58,6 +60,7 @@ export function TemplatePresetPicker({
 				}
 			>
 				<PresetPackSelection
+					excludeAgentId={excludeAgentId}
 					onPendingChange={setPreparing}
 					onImport={(preset) => {
 						setOpen(false);

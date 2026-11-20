@@ -47,6 +47,7 @@ describe("KitClient 两级会话目录", () => {
 				requests.push(url);
 				if (url.pathname === "/api/kit/session-agents") return json({ data: ["assistant", "writer"] });
 				expect(url.searchParams.get("include_archived")).toBe("false");
+				expect(url.searchParams.get("active_entry_only")).toBe("true");
 				const slug = url.searchParams.get("agent_slug");
 				if (slug === "writer")
 					return json({ data: [session("writer-old", "writer", "2025-01-01T00:00:00.000Z")], next_page_token: null });

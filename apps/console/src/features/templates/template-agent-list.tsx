@@ -7,6 +7,7 @@ import { TemplateAgentVersionPicker } from "./template-agent-version-picker.tsx"
 import styles from "./template-lists.module.less";
 import { type TemplateAgentSelection, useTemplateLocalResources } from "./template-local-resources.tsx";
 import { templateResourceCandidates } from "./template-resource-candidates.ts";
+import { useAgentOccupancy } from "./use-agent-occupancy.ts";
 
 /** version 是列表元数据，选择时将默认版本或手选版本写入 agent_version 运行绑定。 */
 export type { TemplateAgentSelection } from "./template-local-resources.tsx";
@@ -30,6 +31,7 @@ function TemplateAgentRow({
 	agent,
 	selected,
 	version,
+	boundTo,
 	onSelect,
 	onDefaultVersion,
 	onVersionChange,
@@ -37,22 +39,32 @@ function TemplateAgentRow({
 	agent: TemplateAgentSelection;
 	selected: boolean;
 	version?: number;
+	/** 非空表示远端 Agent 已被其他模版关联；当前已选中项豁免。 */
+	boundTo?: string;
 	onSelect: (version?: number, resources?: PresetPackAgentResources) => void;
 	onDefaultVersion: (version: number) => void;
 	onVersionChange: (version: number) => void;
 }) {
 	const name = agent.name || agent.agent_id;
+	const occupied = boundTo !== undefined && !selected;
 	return (
 		<li className={rowClass(selected)}>
-			<TemplateAgentDetailDrawer agent={agent} version={version} selected={selected} onSelect={onSelect} />
+			<TemplateAgentDetailDrawer
+				agent={agent}
+				version={version}
+				selected={selected}
+				boundTo={occupied ? boundTo : undefined}
+				onSelect={onSelect}
+			/>
 			<div className={styles.actionCell}>
-				{agent.local ? (
+				{agent.local && !occupied ? (
 					<span className={styles.metaText}>待发布</span>
 				) : (
 					<TemplateAgentVersionPicker
 						agentId={agent.agent_id}
 						agentName={name}
 						value={version}
+						disabled={occupied}
 						onDefaultVersion={onDefaultVersion}
 						onChange={onVersionChange}
 					/>
@@ -86,6 +98,7 @@ export function TemplateAgentList({
 }) {
 	const remote = useRemoteAgents();
 	const local = useTemplateLocalResources();
+	const boundAgents = useAgentOccupancy();
 	const [search, setSearch] = state.search;
 	const [page, setPage] = state.page;
 	const [versionDrafts, setVersionDrafts] = state.versionDrafts;
@@ -185,6 +198,7 @@ export function TemplateAgentList({
 								agent={agent}
 								selected={selected?.agent_id === agent.agent_id}
 								version={versionFor(agent)}
+								boundTo={boundAgents.get(agent.agent_id)}
 								onSelect={(version, resources) => selectAgent(agent, version, resources)}
 								onDefaultVersion={(version) => {
 									// 补齐候选只用于后续显式选择，不能把旧模版的浮动绑定静默固定。

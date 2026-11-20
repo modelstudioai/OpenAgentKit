@@ -3,6 +3,7 @@ import {
 	type MemberSessionsPage,
 	type MemberSessionsQuery,
 	type MemberSessionUsage,
+	type MemberUsageQuery,
 	type MemberUsageSummary,
 	SESSION_USAGE_METRICS,
 	type SessionStats,
@@ -47,13 +48,33 @@ function view(row: Row): MemberSessionUsage {
 	};
 }
 
-function readCursor(token: string | undefined, memberId: string, agentSlug?: string) {
+type MemberUsageFilter = Pick<MemberUsageQuery, "agent_slug" | "catalog_entry_id">;
+
+function memberUsageFilter(memberId: string, options: MemberUsageFilter) {
+	const clauses = ["member_id = ?"];
+	const params = [memberId];
+	if (options.agent_slug) {
+		clauses.push("agent_slug = ?");
+		params.push(options.agent_slug);
+	}
+	if (options.catalog_entry_id === "") {
+		clauses.push("catalog_entry_id IS NULL");
+	} else if (options.catalog_entry_id !== undefined) {
+		clauses.push("catalog_entry_id = ?");
+		params.push(options.catalog_entry_id);
+	}
+	return { filter: clauses.join(" AND "), params };
+}
+
+function readCursor(memberId: string, options: MemberSessionsQuery) {
+	const token = options.cursor;
 	if (!token) return undefined;
 	try {
 		const value = JSON.parse(Buffer.from(token, "base64url").toString("utf8"));
 		if (
 			value.member_id === memberId &&
-			value.agent_slug === (agentSlug ?? null) &&
+			value.agent_slug === (options.agent_slug ?? null) &&
+			value.catalog_entry_id === options.catalog_entry_id &&
 			typeof value.created_at === "string" &&
 			typeof value.session_id === "string"
 		) {
@@ -91,13 +112,14 @@ export function createSessionUsageStore(db: StoreDatabase) {
 	async function get(sessionId: string) {
 		return (await db.get("SELECT * FROM kit_session_usage WHERE session_id = ?", sessionId)) as Row | undefined;
 	}
+	// 归属键与 kit_sessions 同步：slug 软删后可复用，按条目 ID 归属才不会把新条目的会话串到旧条目。
 	async function syncMember(memberId?: string) {
 		const memberFilter = memberId === undefined ? "" : " AND m.member_id = ?";
 		const values = memberId === undefined ? [] : [memberId];
 		await db.transaction(async () => {
 			await db.run(
-				`INSERT INTO kit_session_usage (session_id, member_id, agent_slug, title, status, created_at)
-				SELECT s.session_id, s.subject_id, s.agent_slug, s.title, s.status, s.created_at
+				`INSERT INTO kit_session_usage (session_id, member_id, agent_slug, catalog_entry_id, title, status, created_at)
+				SELECT s.session_id, s.subject_id, s.agent_slug, s.catalog_entry_id, s.title, s.status, s.created_at
 				FROM kit_sessions s JOIN kit_members m ON m.member_id = s.subject_id
 				LEFT JOIN kit_session_usage u ON u.session_id = s.session_id
 				WHERE s.purpose = 'experience' AND u.session_id IS NULL${memberFilter}`,
@@ -162,13 +184,14 @@ export function createSessionUsageStore(db: StoreDatabase) {
 				: "";
 			const rows = (await db.all(
 				`SELECT t.template_id, t.name, t.remote_agent_id, t.remote_agent_name,
+				(t.deleted_at IS NOT NULL) AS deleted,
 				CASE WHEN c.status = 'listed' THEN 'listed' ELSE 'unlisted' END AS listing_status,
-				COUNT(u.session_id) AS total, COUNT(u.deleted_at) AS deleted, MAX(u.captured_at) AS refreshed,
+				COUNT(u.session_id) AS total, COUNT(u.deleted_at) AS deleted_count, MAX(u.captured_at) AS refreshed,
 				${SESSION_USAGE_METRICS.map((key) => `SUM(u.${key}) AS ${key}, COUNT(u.${key}) AS ${key}_count`).join(",")}
 				FROM kit_templates t
 				LEFT JOIN kit_template_listings l ON l.template_id = t.template_id
 				LEFT JOIN catalog_agents c ON c.id = l.catalog_id
-				LEFT JOIN kit_session_usage u ON u.agent_slug = c.slug
+				LEFT JOIN kit_session_usage u ON u.catalog_entry_id = c.id
 				${filter}
 				GROUP BY t.template_id, c.status ORDER BY t.created_at, t.template_id`,
 				...(search ? [pattern, pattern, pattern] : []),
@@ -179,7 +202,7 @@ export function createSessionUsageStore(db: StoreDatabase) {
 				remote_agent_name: string;
 				listing_status: "listed" | "unlisted";
 				total: number;
-				deleted: number;
+				deleted_count: number;
 				refreshed: string | null;
 			})[];
 			return rows.map((row) => ({
@@ -188,8 +211,9 @@ export function createSessionUsageStore(db: StoreDatabase) {
 				remote_agent_id: row.remote_agent_id,
 				remote_agent_name: row.remote_agent_name,
 				listing_status: row.listing_status,
+				...(row.deleted ? { deleted: true as const } : {}),
 				session_count: row.total,
-				deleted_session_count: row.deleted,
+				deleted_session_count: row.deleted_count,
 				...(row.refreshed ? { refreshed_at: row.refreshed } : {}),
 				metrics: metricSummary(row, row.total),
 			}));
@@ -202,7 +226,7 @@ export function createSessionUsageStore(db: StoreDatabase) {
 				COALESCE(SUM(u.cache_read_input_tokens), 0) AS cache_read_tokens,
 				COALESCE(SUM(u.cache_creation_input_tokens), 0) AS cache_creation_tokens
 				FROM kit_session_usage u
-				JOIN catalog_agents c ON c.slug = u.agent_slug
+				JOIN catalog_agents c ON c.id = u.catalog_entry_id
 				JOIN kit_template_listings l ON l.catalog_id = c.id
 				JOIN kit_templates t ON t.template_id = l.template_id
 				GROUP BY t.remote_agent_id`)) as {
@@ -234,6 +258,26 @@ export function createSessionUsageStore(db: StoreDatabase) {
 				  }
 				| undefined;
 			return row?.sessions ? row : null;
+		},
+		/** mock 遥测数据源：UTC 小时键（created_at 前 13 位）×模版绑定智能体，供 mock trend 重分桶到 UTC+8。 */
+		async telemetryByAgentHour() {
+			return (await db.all(`SELECT t.remote_agent_id AS agent_key, substr(u.created_at, 1, 13) AS hour, COUNT(*) AS sessions,
+				COALESCE(SUM(u.input_tokens), 0) AS input_tokens, COALESCE(SUM(u.output_tokens), 0) AS output_tokens,
+				COALESCE(SUM(u.cache_read_input_tokens), 0) AS cache_read_tokens,
+				COALESCE(SUM(u.cache_creation_input_tokens), 0) AS cache_creation_tokens
+				FROM kit_session_usage u
+				JOIN catalog_agents c ON c.id = u.catalog_entry_id
+				JOIN kit_template_listings l ON l.catalog_id = c.id
+				JOIN kit_templates t ON t.template_id = l.template_id
+				GROUP BY t.remote_agent_id, hour`)) as {
+				agent_key: string;
+				hour: string;
+				sessions: number;
+				input_tokens: number;
+				output_tokens: number;
+				cache_read_tokens: number;
+				cache_creation_tokens: number;
+			}[];
 		},
 		async isMemberSession(sessionId: string) {
 			return Boolean(
@@ -331,9 +375,12 @@ export function createSessionUsageStore(db: StoreDatabase) {
 				);
 			});
 		},
-		async summary(memberId: string, agentSlug?: string, refreshStartedAt?: string): Promise<MemberUsageSummary> {
-			const filter = `member_id = ?${agentSlug ? " AND agent_slug = ?" : ""}`;
-			const params = agentSlug ? [memberId, agentSlug] : [memberId];
+		async summary(
+			memberId: string,
+			options: MemberUsageFilter = {},
+			refreshStartedAt?: string,
+		): Promise<MemberUsageSummary> {
+			const { filter, params } = memberUsageFilter(memberId, options);
 			const counts = (await db.get(
 				`SELECT COUNT(*) AS total, COUNT(deleted_at) AS deleted,
 				SUM(CASE WHEN collection_status IN ('failed','not_found') THEN 1 ELSE 0 END) AS failed,
@@ -357,31 +404,39 @@ export function createSessionUsageStore(db: StoreDatabase) {
 				...params,
 			)) as Record<string, number | null>;
 			const metrics = metricSummary(totals, counts.total);
-			const agents = (
-				(await db.all(
-					"SELECT DISTINCT agent_slug FROM kit_session_usage WHERE member_id = ? ORDER BY agent_slug",
-					memberId,
-				)) as { agent_slug: string }[]
-			).map((row) => row.agent_slug);
+			// 同一 slug 可对应多个条目，按会话绑定拆分筛选项并解析名称。
+			const agents = (await db.all(
+				`SELECT DISTINCT u.agent_slug AS slug, u.catalog_entry_id, c.display_name,
+					(c.deleted_at IS NOT NULL) AS deleted
+				FROM kit_session_usage u
+				LEFT JOIN catalog_agents c ON c.id = u.catalog_entry_id
+				WHERE u.member_id = ?
+				ORDER BY slug, u.catalog_entry_id`,
+				memberId,
+			)) as { slug: string; catalog_entry_id: string | null; display_name: string | null; deleted: boolean | number }[];
 			return {
 				session_count: counts.total,
 				deleted_session_count: counts.deleted,
 				metrics,
-				agents,
+				agents: agents.map((agent) => ({
+					slug: agent.slug,
+					catalog_entry_id: agent.catalog_entry_id,
+					display_name: agent.display_name,
+					...(agent.deleted ? { deleted: true as const } : {}),
+				})),
 				...(counts.refreshed ? { refreshed_at: counts.refreshed } : {}),
 				completed_sessions: counts.completed ?? 0,
 				refresh_status: refreshStatus(counts, Boolean(refreshStartedAt)),
 			};
 		},
 		async list(memberId: string, options: MemberSessionsQuery): Promise<MemberSessionsPage> {
-			const cursor = readCursor(options.cursor, memberId, options.agent_slug);
+			const cursor = readCursor(memberId, options);
+			const { filter, params } = memberUsageFilter(memberId, options);
 			const rows = (await db.all(
-				`SELECT * FROM kit_session_usage WHERE member_id = ?
-				${options.agent_slug ? "AND agent_slug = ?" : ""}
+				`SELECT * FROM kit_session_usage WHERE ${filter}
 				${cursor ? "AND (created_at < ? OR (created_at = ? AND session_id < ?))" : ""}
 				ORDER BY created_at DESC, session_id DESC LIMIT ?`,
-				memberId,
-				...(options.agent_slug ? [options.agent_slug] : []),
+				...params,
 				...(cursor ? [cursor.created_at, cursor.created_at, cursor.session_id] : []),
 				options.limit + 1,
 			)) as Row[];
@@ -395,6 +450,7 @@ export function createSessionUsageStore(db: StoreDatabase) {
 								JSON.stringify({
 									member_id: memberId,
 									agent_slug: options.agent_slug ?? null,
+									catalog_entry_id: options.catalog_entry_id,
 									session_id: last.session_id,
 									created_at: last.created_at,
 								}),
@@ -429,7 +485,7 @@ export function createSessionUsageStore(db: StoreDatabase) {
 				`SELECT u.*, m.display_name AS member_display_name, m.username AS member_username
 				FROM kit_template_listings l
 				JOIN catalog_agents c ON c.id = l.catalog_id
-				JOIN kit_session_usage u ON u.agent_slug = c.slug
+				JOIN kit_session_usage u ON u.catalog_entry_id = c.id
 				JOIN kit_members m ON m.member_id = u.member_id
 				WHERE l.template_id = ?
 				${cursor ? "AND (u.created_at < ? OR (u.created_at = ? AND u.session_id < ?))" : ""}

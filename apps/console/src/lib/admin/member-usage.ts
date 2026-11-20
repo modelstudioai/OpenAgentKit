@@ -2,11 +2,23 @@ import type { MemberSessionUsage, MemberUsageSummary } from "@openagentkit/sdk/p
 import { createObservable } from "@openagentkit/sdk/state";
 import type { AdminClient } from "./client.ts";
 
+type UsageAgent = MemberUsageSummary["agents"][number];
+
+export function memberUsageAgentKey(agent?: UsageAgent): string {
+	return agent ? JSON.stringify([agent.slug, agent.catalog_entry_id === undefined ? "" : agent.catalog_entry_id]) : "";
+}
+
+function usageFilter(agent?: UsageAgent) {
+	return agent
+		? { agent_slug: agent.slug, catalog_entry_id: agent.catalog_entry_id === null ? "" : agent.catalog_entry_id }
+		: {};
+}
+
 export interface MemberUsageSnapshot {
 	summary: MemberUsageSummary | undefined;
 	sessions: MemberSessionUsage[];
-	agentSlug: string;
-	agents: string[];
+	agent: UsageAgent | undefined;
+	agents: MemberUsageSummary["agents"];
 	page: number;
 	hasNext: boolean;
 	loading: boolean;
@@ -18,7 +30,7 @@ export function createMemberUsageController(client: Pick<AdminClient, "members">
 	const store = createObservable<MemberUsageSnapshot>({
 		summary: undefined,
 		sessions: [],
-		agentSlug: "",
+		agent: undefined,
 		agents: [],
 		page: 1,
 		hasNext: false,
@@ -40,19 +52,19 @@ export function createMemberUsageController(client: Pick<AdminClient, "members">
 		active = controller;
 		const turn = ++generation;
 		const current = () => turn === generation && !controller.signal.aborted;
-		const agent_slug = store.getSnapshot().agentSlug || undefined;
+		const filter = usageFilter(store.getSnapshot().agent);
 		update({ loading: true, error: null });
 		try {
 			const [summary, sessions] = await Promise.all([
-				client.members.usage(memberId, { agent_slug, refresh }, controller.signal),
+				client.members.usage(memberId, { ...filter, refresh }, controller.signal),
 				client.members.sessions(
 					memberId,
-					{ agent_slug, cursor: cursors.at(-1) || undefined, limit: 20 },
+					{ ...filter, cursor: cursors.at(-1) || undefined, limit: 20 },
 					controller.signal,
 				),
 			]);
 			if (!current()) return;
-			nextCursor = sessions.next_cursor ?? undefined;
+			nextCursor = sessions.next_cursor;
 			update({
 				summary,
 				agents: summary.agents,
@@ -71,11 +83,11 @@ export function createMemberUsageController(client: Pick<AdminClient, "members">
 		subscribe: store.subscribe,
 		start: () => load(),
 		refresh: () => load(true),
-		setAgent(agentSlug: string) {
-			if (agentSlug === store.getSnapshot().agentSlug) return;
+		setAgent(agent?: UsageAgent) {
+			if (memberUsageAgentKey(agent) === memberUsageAgentKey(store.getSnapshot().agent)) return;
 			cursors = [""];
 			nextCursor = undefined;
-			update({ agentSlug, summary: undefined, sessions: [], page: 1, hasNext: false });
+			update({ agent, summary: undefined, sessions: [], page: 1, hasNext: false });
 			void load();
 		},
 		next() {

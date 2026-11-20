@@ -1,5 +1,5 @@
 import type { PresetPackAgentResources } from "@openagentkit/sdk/protocol";
-import { Alert, Button, Drawer, Spin } from "antd";
+import { Alert, Button, Drawer, Spin, Tag } from "antd";
 import { useState } from "react";
 import { usePresetPackResources } from "../preset-packs/preset-pack-session-resources.tsx";
 import { AgentVersionConfigurationView } from "./agent-version-configuration-view.tsx";
@@ -127,31 +127,37 @@ function AgentDetailContent({
 	);
 }
 
-/** 打开当前候选版本配置，只有确认后才改变 Agent 选择。 */
+/** 打开当前候选版本配置，只有确认后才改变 Agent 选择；boundTo 非空表示该候选已被其他模版占用。 */
 export function TemplateAgentDetailDrawer({
 	agent,
 	version,
 	selected,
 	onSelect,
+	boundTo,
 }: {
 	agent: TemplateAgentSelection;
 	version?: number;
 	selected: boolean;
 	onSelect: (version?: number, resources?: PresetPackAgentResources) => void;
+	boundTo?: string;
 }) {
 	const [open, setOpen] = useState(false);
 	const name = agent.name || agent.agent_id;
+	const occupied = boundTo !== undefined && !selected;
 	return (
 		<>
 			<button
 				type="button"
 				aria-label={`选择智能体 ${name}（${agent.agent_id}）`}
 				aria-pressed={selected}
-				disabled={!agent.local && version === undefined}
+				disabled={occupied || (!agent.local && version === undefined)}
+				title={occupied ? `已被模版「${boundTo}」关联，不可选择` : undefined}
 				onClick={() => setOpen(true)}
 				className={styles.pickButton}
 			>
-				<span className={styles.pickName}>{name}</span>
+				<span className={styles.pickName}>
+					{name} {occupied ? <Tag>已被「{boundTo}」关联</Tag> : null}
+				</span>
 				<span className={styles.pickId}>{agent.local?.id ?? agent.agent_id}</span>
 			</button>
 			{open ? (

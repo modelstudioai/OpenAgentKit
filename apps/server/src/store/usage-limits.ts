@@ -66,78 +66,81 @@ export function createUsageLimitStore(db: StoreDatabase) {
 				| undefined) ?? { tokens: 0, active_seconds: 0, tokens_unknown: 0, active_seconds_unknown: 0 }
 		);
 	}
-	/** 会话的记账条目：优先用量账本行（保留已删除会话），退回会话索引。 */
-	async function agentSlugOf(sessionId: string): Promise<string | null> {
+	/** 会话的记账条目（目录条目 ID，036 起落列）：优先用量账本行（保留已删除会话），退回会话索引。 */
+	async function catalogEntryOf(sessionId: string): Promise<string | null> {
 		return (
 			(
-				(await db.get("SELECT agent_slug FROM kit_session_usage WHERE session_id = ?", sessionId)) as
-					| { agent_slug: string | null }
+				(await db.get("SELECT catalog_entry_id FROM kit_session_usage WHERE session_id = ?", sessionId)) as
+					| { catalog_entry_id: string | null }
 					| undefined
-			)?.agent_slug ??
+			)?.catalog_entry_id ??
 			(
-				(await db.get("SELECT agent_slug FROM kit_sessions WHERE session_id = ?", sessionId)) as
-					| { agent_slug: string | null }
+				(await db.get("SELECT catalog_entry_id FROM kit_sessions WHERE session_id = ?", sessionId)) as
+					| { catalog_entry_id: string | null }
 					| undefined
-			)?.agent_slug ??
+			)?.catalog_entry_id ??
 			null
 		);
 	}
-	async function agentTotals(slug: string, month: string) {
+	async function agentTotals(entryId: string, month: string) {
 		return (
 			((await db.get(
-				"SELECT tokens, active_seconds, tokens_unknown, active_seconds_unknown FROM kit_usage_limit_agent_months WHERE agent_slug = ? AND month = ?",
-				slug,
+				"SELECT tokens, active_seconds, tokens_unknown, active_seconds_unknown FROM kit_usage_limit_agent_months WHERE catalog_entry_id = ? AND month = ?",
+				entryId,
 				month,
 			)) as
 				| { tokens: number; active_seconds: number; tokens_unknown: number; active_seconds_unknown: number }
 				| undefined) ?? { tokens: 0, active_seconds: 0, tokens_unknown: 0, active_seconds_unknown: 0 }
 		);
 	}
-	async function addAgentMonthly(slug: string, month: string, tokenDelta: number, secondsDelta: number) {
-		if (!Number.isSafeInteger((await agentTotals(slug, month)).tokens + tokenDelta))
+	async function addAgentMonthly(entryId: string, month: string, tokenDelta: number, secondsDelta: number) {
+		if (!Number.isSafeInteger((await agentTotals(entryId, month)).tokens + tokenDelta))
 			throw new KitError("conflict", "用量数值超出可统计范围", { retryable: true });
 		await db.upsert(
-			`INSERT INTO kit_usage_limit_agent_months (agent_slug, month, tokens, active_seconds) VALUES (?, ?, ?, ?)`,
-			"agent_slug, month",
+			`INSERT INTO kit_usage_limit_agent_months (catalog_entry_id, month, tokens, active_seconds) VALUES (?, ?, ?, ?)`,
+			"catalog_entry_id, month",
 			`tokens = excluded.tokens, active_seconds = excluded.active_seconds`,
-			slug,
+			entryId,
 			month,
-			(await agentTotals(slug, month)).tokens + tokenDelta,
-			(await agentTotals(slug, month)).active_seconds + secondsDelta,
+			(await agentTotals(entryId, month)).tokens + tokenDelta,
+			(await agentTotals(entryId, month)).active_seconds + secondsDelta,
 		);
 	}
 	/** 条目日账：与成员逐日账（020）同构；日账无未知标记，跨月丢失维度由月账闸门兜底。 */
-	async function agentDayTotals(slug: string, day: string) {
+	async function agentDayTotals(entryId: string, day: string) {
 		return (
 			((await db.get(
-				"SELECT tokens, active_seconds FROM kit_usage_limit_agent_days WHERE agent_slug = ? AND day = ?",
-				slug,
+				"SELECT tokens, active_seconds FROM kit_usage_limit_agent_days WHERE catalog_entry_id = ? AND day = ?",
+				entryId,
 				day,
-			)) as { tokens: number; active_seconds: number } | undefined) ?? { tokens: 0, active_seconds: 0 }
+			)) as { tokens: number; active_seconds: number } | undefined) ?? {
+				tokens: 0,
+				active_seconds: 0,
+			}
 		);
 	}
-	async function addAgentDaily(slug: string, day: string, tokenDelta: number, secondsDelta: number) {
+	async function addAgentDaily(entryId: string, day: string, tokenDelta: number, secondsDelta: number) {
 		if (tokenDelta === 0 && secondsDelta === 0) return;
-		const previous = await agentDayTotals(slug, day);
+		const previous = await agentDayTotals(entryId, day);
 		if (!Number.isSafeInteger(previous.tokens + tokenDelta) || !Number.isFinite(previous.active_seconds + secondsDelta))
 			throw new KitError("conflict", "用量数值超出可统计范围", { retryable: true });
 		await db.upsert(
-			`INSERT INTO kit_usage_limit_agent_days (agent_slug, day, tokens, active_seconds) VALUES (?, ?, ?, ?)`,
-			"agent_slug, day",
+			`INSERT INTO kit_usage_limit_agent_days (catalog_entry_id, day, tokens, active_seconds) VALUES (?, ?, ?, ?)`,
+			"catalog_entry_id, day",
 			`tokens = excluded.tokens, active_seconds = excluded.active_seconds`,
-			slug,
+			entryId,
 			day,
 			previous.tokens + tokenDelta,
 			previous.active_seconds + secondsDelta,
 		);
 	}
-	async function markAgentUnknown(slug: string, month: string, tokens: boolean, seconds: boolean) {
+	async function markAgentUnknown(entryId: string, month: string, tokens: boolean, seconds: boolean) {
 		await db.upsert(
-			`INSERT INTO kit_usage_limit_agent_months (agent_slug, month, tokens_unknown, active_seconds_unknown) VALUES (?, ?, ?, ?)`,
-			"agent_slug, month",
+			`INSERT INTO kit_usage_limit_agent_months (catalog_entry_id, month, tokens_unknown, active_seconds_unknown) VALUES (?, ?, ?, ?)`,
+			"catalog_entry_id, month",
 			`tokens_unknown = (kit_usage_limit_agent_months.tokens_unknown | excluded.tokens_unknown),
 		active_seconds_unknown = (kit_usage_limit_agent_months.active_seconds_unknown | excluded.active_seconds_unknown)`,
-			slug,
+			entryId,
 			month,
 			Number(tokens),
 			Number(seconds),
@@ -215,16 +218,16 @@ export function createUsageLimitStore(db: StoreDatabase) {
 		);
 	}
 	async function prepareAgentAdmission(
-		slug: string,
+		entryId: string,
 		row: UsageLimitSession,
 		month: string,
 		crossing: boolean,
 		lostTokens: boolean,
 		lostSeconds: boolean,
 	) {
-		if (crossing && row.admission_month) await markAgentUnknown(slug, row.admission_month, lostTokens, lostSeconds);
+		if (crossing && row.admission_month) await markAgentUnknown(entryId, row.admission_month, lostTokens, lostSeconds);
 		await markAgentUnknown(
-			slug,
+			entryId,
 			month,
 			lostTokens || row.input_tokens === null || row.output_tokens === null,
 			lostSeconds || row.active_seconds === null,
@@ -242,27 +245,31 @@ export function createUsageLimitStore(db: StoreDatabase) {
 		if (crossing && row.admission_month) await markUnknown(row.member_id, row.admission_month, lostTokens, lostSeconds);
 		await resetBaseline(row, month, lostTokens, lostSeconds);
 		// 条目月账与成员账同月同规则：跨月丢失维度标记未知，基线缺失亦然。
-		const slug = await agentSlugOf(row.session_id);
-		if (slug) await prepareAgentAdmission(slug, row, month, crossing, lostTokens, lostSeconds);
+		const entryId = await catalogEntryOf(row.session_id);
+		if (entryId) await prepareAgentAdmission(entryId, row, month, crossing, lostTokens, lostSeconds);
 	}
 	/** begin 的条目月账快照：prepareAdmission 前后各固定一份。回滚用它识别「本次 begin 引入的未知标记」，
-	 * 数值列不参与（begin 不写数值，覆盖反而会抹掉其他成员的入账）。 */
+	 * 数值列不参与（begin 不写数值，覆盖反而会抹掉其他成员的入账）。
+	 * 成员侧基线（受理月、跨月未知标记）不依赖条目：条目缺失（无目录归属）也要推进 prepareAdmission，
+	 * 否则 observe 因 admission_month 为空不入账。 */
 	async function beginAgentMonths(
-		slug: string | null,
+		entryId: string | null,
 		month: string,
 		row: UsageLimitSession,
 		available: { tokens: boolean; active_seconds: boolean },
 	) {
-		if (slug === null) return [];
-		const entry = slug;
+		if (entryId === null) {
+			await prepareAdmission(row, month, available);
+			return [];
+		}
 		const months = [...new Set([month, row.admission_month])].filter((value): value is string => value !== null);
-		const before = await Promise.all(months.map((value) => agentTotals(entry, value)));
+		const before = await Promise.all(months.map((value) => agentTotals(entryId, value)));
 		await prepareAdmission(row, month, available);
 		return Promise.all(
 			months.map(async (value, index) => ({
 				month: value,
 				before: before[index]!,
-				after: await agentTotals(entry, value),
+				after: await agentTotals(entryId, value),
 			})),
 		);
 	}
@@ -285,7 +292,7 @@ export function createUsageLimitStore(db: StoreDatabase) {
 	/** 共享条目月账不能整行快照覆盖：begin 之后其他成员可能已入账。数值列不动，仅当未知标记
 	 * 仍停留在本次 begin 提升后的值时回退；期间别人的保守提升（MAX 语义）一律保留。 */
 	async function restoreAgentUnknown(
-		slug: string,
+		entryId: string,
 		month: string,
 		before: Awaited<ReturnType<typeof agentTotals>>,
 		after: Awaited<ReturnType<typeof agentTotals>>,
@@ -294,12 +301,12 @@ export function createUsageLimitStore(db: StoreDatabase) {
 			`UPDATE kit_usage_limit_agent_months SET
 			tokens_unknown = CASE WHEN tokens_unknown = ? THEN ? ELSE tokens_unknown END,
 			active_seconds_unknown = CASE WHEN active_seconds_unknown = ? THEN ? ELSE active_seconds_unknown END
-			WHERE agent_slug = ? AND month = ?`,
+			WHERE catalog_entry_id = ? AND month = ?`,
 			after.tokens_unknown,
 			before.tokens_unknown,
 			after.active_seconds_unknown,
 			before.active_seconds_unknown,
-			slug,
+			entryId,
 			month,
 		);
 	}
@@ -307,7 +314,7 @@ export function createUsageLimitStore(db: StoreDatabase) {
 		input: { sessionId: string; key: string },
 		row: UsageLimitSession,
 		previousMonths: { month: string; totals: Awaited<ReturnType<typeof totals>> }[],
-		slug: string | null,
+		entryId: string | null,
 		previousAgentMonths: {
 			month: string;
 			before: Awaited<ReturnType<typeof agentTotals>>;
@@ -329,15 +336,15 @@ export function createUsageLimitStore(db: StoreDatabase) {
 			row.session_id,
 		);
 		for (const previous of previousMonths) await restoreMemberMonth(row.member_id, previous.month, previous.totals);
-		if (!slug) return;
+		if (!entryId) return;
 		for (const previous of previousAgentMonths)
-			await restoreAgentUnknown(slug, previous.month, previous.before, previous.after);
+			await restoreAgentUnknown(entryId, previous.month, previous.before, previous.after);
 	}
 	function revertBegin(
 		input: { sessionId: string; key: string },
 		row: UsageLimitSession,
 		previousMonths: { month: string; totals: Awaited<ReturnType<typeof totals>> }[],
-		slug: string | null,
+		entryId: string | null,
 		previousAgentMonths: {
 			month: string;
 			before: Awaited<ReturnType<typeof agentTotals>>;
@@ -345,18 +352,19 @@ export function createUsageLimitStore(db: StoreDatabase) {
 		}[],
 	) {
 		// 闭包不落库；进程在 POST 后退出时，持久 sending 继续保护未知结果。
-		return () => db.transaction(() => revertCommitted(input, row, previousMonths, slug, previousAgentMonths));
+		return () => db.transaction(() => revertCommitted(input, row, previousMonths, entryId, previousAgentMonths));
 	}
 	/** 一次采集观测的全部记账：月账、条目月账、成员与条目逐日账（同事务），再由调用方推进会话基线。 */
 	async function applyObservation(row: UsageLimitSession, next: ReturnType<typeof observation>, now: string) {
-		const slug = await agentSlugOf(row.session_id);
+		const entryId = await catalogEntryOf(row.session_id);
 		await addMonthly(row, next.tokenDelta, next.secondsDelta);
 		// 模版月账与成员账同月同增量；会话条目缺失（不可归属）时不写模版账。
-		if (slug && row.admission_month)
-			await addAgentMonthly(slug, row.admission_month, next.tokenDelta, next.secondsDelta);
+		if (entryId && row.admission_month)
+			await addAgentMonthly(entryId, row.admission_month, next.tokenDelta, next.secondsDelta);
 		// 逐日账与成员月账同规则（无受理月不计），归因到采集确认日；条目日账同步双写。
 		if (row.admission_month) await addMemberDaily(row.member_id, now.slice(0, 10), next.tokenDelta, next.secondsDelta);
-		if (slug && row.admission_month) await addAgentDaily(slug, now.slice(0, 10), next.tokenDelta, next.secondsDelta);
+		if (entryId && row.admission_month)
+			await addAgentDaily(entryId, now.slice(0, 10), next.tokenDelta, next.secondsDelta);
 	}
 	return {
 		async policy(): Promise<UsageLimitPolicy> {
@@ -423,13 +431,12 @@ export function createUsageLimitStore(db: StoreDatabase) {
 			);
 		},
 		/** 发送准入按会话条目反查模版覆盖；未上架或未设置的条目返回 null（不限量）。 */
-		async templateOverrideBySlug(slug: string): Promise<UsageLimitConfig | null> {
+		async templateOverrideByEntry(entryId: string): Promise<UsageLimitConfig | null> {
 			return (
 				((await db.get(
 					`SELECT o.monthly_tokens, o.monthly_active_seconds, o.daily_tokens, o.daily_active_seconds FROM kit_usage_limit_templates o
-				JOIN kit_template_listings l ON l.template_id = o.template_id
-				JOIN catalog_agents c ON c.id = l.catalog_id WHERE c.slug = ?`,
-					slug,
+				JOIN kit_template_listings l ON l.template_id = o.template_id WHERE l.catalog_id = ?`,
+					entryId,
 				)) as UsageLimitConfig | undefined) ?? null
 			);
 		},
@@ -453,14 +460,14 @@ export function createUsageLimitStore(db: StoreDatabase) {
 		async resetTemplateOverride(templateId: string) {
 			await db.run("DELETE FROM kit_usage_limit_templates WHERE template_id = ?", templateId);
 		},
-		async templateSlug(templateId: string): Promise<string | null> {
+		async templateEntryId(templateId: string): Promise<string | null> {
 			return (
 				(
 					(await db.get(
-						"SELECT c.slug AS slug FROM kit_template_listings l JOIN catalog_agents c ON c.id = l.catalog_id WHERE l.template_id = ?",
+						"SELECT catalog_id AS entry_id FROM kit_template_listings WHERE template_id = ?",
 						templateId,
-					)) as { slug: string } | undefined
-				)?.slug ?? null
+					)) as { entry_id: string } | undefined
+				)?.entry_id ?? null
 			);
 		},
 		/** 模版条目逐日账趋势：与 summaryByTemplate 同一 join 口径（模版上架条目），自 fromDay 起逐日合计；
@@ -473,8 +480,7 @@ export function createUsageLimitStore(db: StoreDatabase) {
 				`SELECT d.day AS day, SUM(d.tokens) AS tokens, SUM(d.active_seconds) AS active_seconds
 			FROM kit_usage_limit_agent_days d
 			JOIN kit_template_listings l ON ${templateId ? "l.template_id = ?" : "1 = 1"}
-			JOIN catalog_agents c ON c.id = l.catalog_id
-			WHERE d.agent_slug = c.slug AND d.day >= ?
+			WHERE l.catalog_id = d.catalog_entry_id AND d.day >= ?
 			GROUP BY d.day ORDER BY d.day ASC`,
 				...(templateId ? [templateId] : []),
 				fromDay,
@@ -491,8 +497,7 @@ export function createUsageLimitStore(db: StoreDatabase) {
 					(await db.get(
 						`SELECT MIN(d.day) AS since FROM kit_usage_limit_agent_days d
 			JOIN kit_template_listings l ON ${templateId ? "l.template_id = ?" : "1 = 1"}
-			JOIN catalog_agents c ON c.id = l.catalog_id
-			WHERE d.agent_slug = c.slug`,
+			WHERE l.catalog_id = d.catalog_entry_id`,
 						...(templateId ? [templateId] : []),
 					)) as { since: string | null } | undefined
 				)?.since ?? null
@@ -531,16 +536,16 @@ export function createUsageLimitStore(db: StoreDatabase) {
 		agentTotals,
 		memberDayTotals,
 		agentDayTotals,
-		/** 模版准入的跨成员只读清单：该条目当月入账的全部会话（含其他成员，归属反查与 agentSlugOf 同口径）。 */
-		async templateSessions(slug: string, month: string) {
+		/** 模版准入的跨成员只读清单：该条目当月入账的全部会话（含其他成员，归属反查与 catalogEntryOf 同口径）。 */
+		async templateSessions(entryId: string, month: string) {
 			return (await db.all(
 				`SELECT s.* FROM kit_usage_limit_sessions s
-				WHERE s.admission_month = ? AND (s.session_id IN (SELECT session_id FROM kit_session_usage WHERE agent_slug = ?)
-					OR s.session_id IN (SELECT session_id FROM kit_sessions WHERE agent_slug = ? AND purpose = 'experience'))
+				WHERE s.admission_month = ? AND (s.session_id IN (SELECT session_id FROM kit_session_usage WHERE catalog_entry_id = ?)
+					OR s.session_id IN (SELECT session_id FROM kit_sessions WHERE catalog_entry_id = ? AND purpose = 'experience'))
 				ORDER BY s.session_id`,
 				month,
-				slug,
-				slug,
+				entryId,
+				entryId,
 			)) as unknown as UsageLimitSession[];
 		},
 		/** 模版准入补采的只读预览：按会话基线计算未入账增量与维度可用性，不写任何账本。 */
@@ -624,11 +629,11 @@ export function createUsageLimitStore(db: StoreDatabase) {
 						.map(async (value) => ({ month: value, totals: await totals(row.member_id, value) })),
 				);
 				// 条目月账是跨成员共享账本：begin 前后各固定一份快照，回滚只回退未知标记（restoreAgentUnknown）。
-				const slug = await agentSlugOf(input.sessionId);
-				const previousAgentMonths = await beginAgentMonths(slug, month, row, input.available);
+				const entryId = await catalogEntryOf(input.sessionId);
+				const previousAgentMonths = await beginAgentMonths(entryId, month, row, input.available);
 				// 成员锁覆盖 POST；仅明确未受理时恢复本次 begin 改动，不撤销此前采集的增量。
 				// 闭包不落库；进程在 POST 后退出时，持久 sending 继续保护未知结果。
-				return revertBegin(input, row, previousMonths, slug, previousAgentMonths);
+				return revertBegin(input, row, previousMonths, entryId, previousAgentMonths);
 			});
 		},
 		async accepted(sessionId: string, key: string, eventIds: string[]) {

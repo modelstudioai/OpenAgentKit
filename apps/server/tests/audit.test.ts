@@ -180,7 +180,7 @@ describe("操作日志", () => {
 		const created = await app.request("/api/admin/templates", {
 			method: "POST",
 			headers: otherHeaders,
-			body: JSON.stringify({ ...config, name: "其他管理员的助手" }),
+			body: JSON.stringify({ ...config, name: "其他管理员的助手", remote_agent_id: "agent_mock_designer" }),
 		});
 		expect(created.status).toBe(201);
 		const { data: other } = (await created.json()) as { data: TemplateView };

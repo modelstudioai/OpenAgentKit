@@ -45,7 +45,14 @@ export function createLegacyKitClient(options: LegacyKitClientOptions) {
 	const sessions = (query: SessionListQuery = {}, signal?: AbortSignal) =>
 		transport
 			.request<{ data: SessionSummary[]; next_page_token: string | null }>(
-				`/api/kit/sessions${qs({ agent_slug: query.agentSlug, limit: query.limit, page_token: query.pageToken, include_archived: query.includeArchived === undefined ? undefined : String(query.includeArchived), q: query.q })}`,
+				`/api/kit/sessions${qs({
+					agent_slug: query.agentSlug,
+					active_entry_only: query.activeEntryOnly ? "true" : undefined,
+					limit: query.limit,
+					page_token: query.pageToken,
+					include_archived: query.includeArchived === undefined ? undefined : String(query.includeArchived),
+					q: query.q,
+				})}`,
 				{ signal },
 			)
 			.then((r) => ({ sessions: r.data, nextPageToken: r.next_page_token }));

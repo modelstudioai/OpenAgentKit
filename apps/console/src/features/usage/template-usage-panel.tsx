@@ -1,17 +1,15 @@
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import type {
-	ModelUsageItem,
-	ModelUsagePage,
 	TemplateSessionUsage,
 	TemplateUsageRow,
-	ToolUsageItem,
-	ToolUsagePage,
+	UsageModelRow,
+	UsageSummary,
+	UsageToolRow,
 } from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
-import { Button, DatePicker, Empty, Result, Select, Table } from "antd";
+import { Button, DatePicker, Empty, Popover, Result, Select, Table, Tag } from "antd";
 import dayjs from "dayjs";
 import { useEffect, useMemo, useState } from "react";
-import type { ToolUsageQuery } from "../../lib/admin/index.ts";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import { StatCard, StatCell } from "../../lib/stat-card.tsx";
@@ -23,8 +21,25 @@ import { TemplateUsageLimits } from "./usage-limit-panels.tsx";
 
 const PAGE_SIZE = 20;
 
+const { RangePicker } = DatePicker;
+
+/** useAdminQuery 的派生加载态：请求进行中，或尚未拿到数据且没有错误（初次加载与刷新间隙）。 */
+function isQueryPending(query: { loading: boolean; data: unknown; error: string | null }) {
+	return query.loading || (!query.data && !query.error);
+}
+
 function captureTime(value?: string) {
 	return value ? new Date(value).toLocaleString("zh-CN", { hour12: false }) : "尚未采集";
+}
+
+/** 「全部」口径部分成功提示：coverage 仅在部分模版绑定智能体查询失败时出现。 */
+function CoverageNote({ coverage }: { coverage: UsageSummary["coverage"] }) {
+	if (!coverage || coverage.complete) return null;
+	return (
+		<p role="status" className={styles.metaText}>
+			部分智能体用量缺失（{coverage.missing_agent_ids.join("、")}），以下统计为已成功部分的合计。
+		</p>
+	);
 }
 
 function refreshedAt(row: TemplateUsageRow) {
@@ -37,12 +52,15 @@ function TemplateUsageCards({
 	onSelect,
 	onLimits,
 	aggregateCount,
+	providerTotal,
 }: {
 	row: TemplateUsageRow;
 	onSelect?: (row: TemplateUsageRow) => void;
 	onLimits?: (row: TemplateUsageRow) => void;
 	/** 「全部」视角传入模版总数；此时身份行不展示智能体与上架状态。 */
 	aggregateCount?: number;
+	/** Provider 侧轮数/步骤汇总（统计时间内，按选中模版智能体过滤或全部模版口径求和）；缺省表示尚未加载。 */
+	providerTotal?: UsageSummary["usage"]["total"];
 }) {
 	const hintOf = (key: keyof TemplateUsageRow["metrics"]) =>
 		`覆盖 ${row.metrics[key].covered_sessions} / ${row.session_count} 个会话`;
@@ -50,7 +68,10 @@ function TemplateUsageCards({
 		<div className={styles.cardStack}>
 			<div className={styles.identityRow}>
 				<div className={styles.identityMeta}>
-					<h3 className={styles.sectionTitle}>{row.name}</h3>
+					<h3 className={styles.sectionTitle}>
+						{row.name}
+						{row.deleted ? <Tag>已删除</Tag> : null}
+					</h3>
 					<p className={styles.identitySub}>
 						{aggregateCount === undefined ? (
 							<>
@@ -82,26 +103,6 @@ function TemplateUsageCards({
 					<StatCell label="会话数" value={row.session_count} unit="个" hint={`含已删除 ${row.deleted_session_count}`} />
 				</StatCard>
 				<StatCard tone="subtle" className={styles.statCardSpan2}>
-					<div className={styles.statPair}>
-						<StatCell label="输入 Token" value={row.metrics.input_tokens.value} hint={hintOf("input_tokens")} />
-						<StatCell label="输出 Token" value={row.metrics.output_tokens.value} hint={hintOf("output_tokens")} />
-					</div>
-				</StatCard>
-				<StatCard tone="tint" className={styles.statCardSpan2}>
-					<div className={styles.statPair}>
-						<StatCell
-							label="缓存读取 Token"
-							value={row.metrics.cache_read_input_tokens.value}
-							hint={hintOf("cache_read_input_tokens")}
-						/>
-						<StatCell
-							label="缓存写入 Token"
-							value={row.metrics.cache_creation_input_tokens.value}
-							hint={hintOf("cache_creation_input_tokens")}
-						/>
-					</div>
-				</StatCard>
-				<StatCard tone="subtle" className={styles.statCardSpan3}>
 					<StatCell
 						label="执行时长"
 						value={row.metrics.active_seconds.value}
@@ -109,12 +110,30 @@ function TemplateUsageCards({
 						hint={hintOf("active_seconds")}
 					/>
 				</StatCard>
-				<StatCard tone="tint" className={styles.statCardSpan3}>
+				<StatCard tone="tint" className={styles.statCardSpan2}>
 					<StatCell
 						label="会话时长"
 						value={row.metrics.duration_seconds.value}
 						unit="秒"
 						hint={hintOf("duration_seconds")}
+					/>
+				</StatCard>
+				<StatCard tone="subtle" className={styles.statCardSpan2}>
+					<StatCell
+						label="用户交互轮数"
+						value={providerTotal ? providerTotal.turns.value : null}
+						unit="轮"
+						hint="Provider 侧统计时间内"
+						missingText={providerTotal ? "未返回" : "待获取"}
+					/>
+				</StatCard>
+				<StatCard tone="tint" className={styles.statCardSpan2}>
+					<StatCell
+						label="总执行步骤"
+						value={providerTotal ? providerTotal.steps.value : null}
+						unit="步"
+						hint="Provider 侧统计时间内"
+						missingText={providerTotal ? "未返回" : "待获取"}
 					/>
 				</StatCard>
 			</dl>
@@ -214,7 +233,7 @@ export function TemplateUsageDetail({
 			signal,
 		),
 	);
-	const loading = list.loading || (!list.data && !list.error);
+	const loading = isQueryPending(list);
 	const rows = list.data?.data ?? [];
 	const hasNext = Boolean(list.data?.next_cursor);
 	return (
@@ -226,6 +245,7 @@ export function TemplateUsageDetail({
 				<div>
 					<h2 id="template-usage-detail-heading" className={styles.detailTitle}>
 						{template.name}的会话用量
+						{template.deleted ? <Tag>已删除</Tag> : null}
 					</h2>
 					<p className={styles.detailSub}>全部成员从该模版上架条目发起的会话，包含已删除会话保存的用量。</p>
 				</div>
@@ -293,9 +313,33 @@ export function TemplateUsageDetail({
 	);
 }
 
+/** 面板顶部统计时间选择器：分钟精度本地时间区间，选定完整区间后才提交变更。 */
+function StatRangePicker({
+	value,
+	onChange,
+}: {
+	value: { start: string; end: string };
+	onChange: (next: { start: string; end: string }) => void;
+}) {
+	return (
+		<RangePicker
+			aria-label="统计时间"
+			showTime={{ format: "HH:mm" }}
+			format="YYYY-MM-DD HH:mm"
+			allowClear={false}
+			value={[dayjs(value.start), dayjs(value.end)]}
+			onChange={(values) => {
+				const [start, end] = values ?? [];
+				if (start && end) onChange({ start: start.format("YYYY-MM-DDTHH:mm"), end: end.format("YYYY-MM-DDTHH:mm") });
+			}}
+		/>
+	);
+}
+
 /** 模版用量主面板：rows 为单个选中模版时逐模版展示，为全量模版行（「全部」视角）时聚合求和；查询状态与明细导航均由用量页持有。 */
 export function TemplateUsagePanel({
 	rows,
+	allTemplates,
 	loading,
 	error,
 	onRetry,
@@ -303,20 +347,52 @@ export function TemplateUsagePanel({
 	onLimits,
 }: {
 	rows: TemplateUsageRow[];
+	allTemplates: boolean;
 	loading: boolean;
 	error: string | null;
 	onRetry: () => void;
 	onSelect: (row: TemplateUsageRow) => void;
 	onLimits: (row: TemplateUsageRow) => void;
 }) {
+	const client = useMemo(getAdminClient, []);
 	const aggregate = rows.length > 1 ? aggregateTemplateRows(rows) : null;
 	const selected = aggregate ? null : (rows[0] ?? null);
+	const agentId = allTemplates ? undefined : selected?.remote_agent_id;
+	/** 面板顶部统计时间（分钟精度）：统一驱动轮数/步骤卡、趋势卡与模型/工具明细。 */
+	const [statRange, setStatRange] = useState(() => ({
+		start: toLocalMinuteInput(Date.now() - 7 * 24 * 60 * 60 * 1000),
+		end: toLocalMinuteInput(Date.now()),
+	}));
+	const telemetry = useAdminQuery(
+		`usage:telemetry:${scopeKeyOf(selected?.template_id, agentId)}:${statRange.start}:${statRange.end}`,
+		(signal) => client.usage.summary(telemetryQuery(statRange, agentId), signal),
+	);
+	const summary = telemetry.data;
+	const telemetryLoading = isQueryPending(telemetry);
 	return (
 		<div className={styles.panelStack}>
-			<p className={styles.metaText} style={{ marginTop: "10px" }}>
-				按模版统计从其上架条目发起的体验会话模型用量，包含已删除会话保存的用量；各项 Token 独立展示，缺失值不按 0
-				计算，「全部」为各模版求和。
-			</p>
+			<div className={styles.rangeRow}>
+				<Popover
+					content={
+						<span className={styles.preLine}>
+							用量按模版绑定的智能体汇总，包含该智能体的全部调用（体验会话、调试与 Kit 外调用都计入）；
+							下方明细仅列体验会话，保留已删除会话的用量记录。「全部」为所有模版绑定智能体的去重汇总，
+							单个智能体查询失败时仅标注缺失来源，不影响其余数据。 各项 Token 独立展示，未知值不按 0 计算。
+						</span>
+					}
+					title="口径说明"
+					trigger="click"
+				>
+					<button type="button" className={styles.popLink}>
+						口径说明
+					</button>
+				</Popover>
+				<div className={styles.pickerInline}>
+					<span className={styles.inlineLabel}>统计时间</span>
+					<StatRangePicker value={statRange} onChange={setStatRange} />
+				</div>
+			</div>
+			<CoverageNote coverage={summary?.coverage} />
 			{loading ? (
 				<p role="status" className={styles.loadingNote}>
 					正在加载模版用量…
@@ -336,22 +412,38 @@ export function TemplateUsagePanel({
 			{!loading && !error && !rows.length ? (
 				<Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="在模版管理中保存模版后，即可在此查看各模版的用量。" />
 			) : null}
-			{!loading && !error && aggregate ? <TemplateUsageCards row={aggregate} aggregateCount={rows.length} /> : null}
+			{!loading && !error && aggregate ? (
+				<TemplateUsageCards row={aggregate} aggregateCount={rows.length} providerTotal={summary?.usage.total} />
+			) : null}
 			{!loading && !error && selected ? (
-				<TemplateUsageCards row={selected} onSelect={onSelect} onLimits={onLimits} />
+				<TemplateUsageCards
+					row={selected}
+					onSelect={onSelect}
+					onLimits={onLimits}
+					providerTotal={summary?.usage.total}
+				/>
 			) : null}
 			{!loading && !error && (aggregate || selected) ? (
-				<TemplateUsageTrendCard templateId={selected?.template_id} />
+				<TemplateUsageTrendCard
+					agentId={agentId}
+					range={{ start: minuteInputMs(statRange.start), end: minuteInputMs(statRange.end) }}
+				/>
 			) : null}
 			<ModelUsageSection
 				templateId={selected?.template_id}
-				agentId={selected?.remote_agent_id}
+				agentId={agentId}
 				templateName={selected?.name}
+				summary={summary}
+				loading={telemetryLoading}
+				error={telemetry.error}
 			/>
 			<ToolUsageSection
 				templateId={selected?.template_id}
-				agentId={selected?.remote_agent_id}
+				agentId={agentId}
 				templateName={selected?.name}
+				summary={summary}
+				loading={telemetryLoading}
+				error={telemetry.error}
 			/>
 		</div>
 	);
@@ -359,12 +451,12 @@ export function TemplateUsagePanel({
 
 const TELEMETRY_PAGE_SIZE = 20;
 
-function usageNumber(value: number) {
-	return value.toLocaleString("zh-CN", { maximumFractionDigits: 2 });
+function usageNumber(value: number | null) {
+	return value === null ? "—" : value.toLocaleString("zh-CN", { maximumFractionDigits: 2 });
 }
 
-function hitRatioText(value: number) {
-	return `${(value * 100).toFixed(1)}%`;
+function hitRatioText(value: number | null) {
+	return value === null ? "—" : `${(value * 100).toFixed(1)}%`;
 }
 
 /** datetime-local 值（YYYY-MM-DDTHH:mm，本地时区）↔ 毫秒时间戳。 */
@@ -385,13 +477,13 @@ function telemetryQuery(filters: { start: string; end: string }, agentId: string
 	};
 }
 
-/** 明细区作用域说明：选中模版时按其绑定智能体过滤；「全部」视角不过滤，展示工作空间全量调用。 */
+/** 明细区作用域说明：选中模版时按其绑定智能体过滤；「全部」视角为各模版绑定智能体求和（模版口径）。 */
 function TelemetryScopeNote({ templateName }: { templateName?: string }) {
 	return (
 		<p className={styles.metaText}>
 			{templateName
 				? `已按选中模版「${templateName}」绑定的智能体（agent_id）过滤 Provider 侧调用。`
-				: "未按模版过滤：展示工作空间内全部智能体的 Provider 侧调用。"}
+				: "统计全部模版绑定智能体（含已删除模版）的 Provider 侧调用，未绑定模版的智能体不计入。"}
 		</p>
 	);
 }
@@ -465,75 +557,91 @@ function TelemetryPagination({
 	);
 }
 
-const modelTelemetryColumns: TableColumnsType<ModelUsageItem> = [
-	{ title: "模型名", dataIndex: "model_name" },
+const modelTelemetryColumns: TableColumnsType<UsageModelRow> = [
 	{
-		title: "工作空间",
-		dataIndex: "workspace_id",
-		render: (value: string) => <span className={styles.workspaceText}>{value}</span>,
+		title: "模型名",
+		dataIndex: "model_name",
+		render: (value: string | null) => <span className={styles.workspaceText}>{value ?? "未归因"}</span>,
 	},
-	{ title: "调用次数", dataIndex: "call_count", align: "right", render: (value: number) => usageNumber(value) },
-	{ title: "失败次数", dataIndex: "failed_count", align: "right", render: (value: number) => usageNumber(value) },
+	{ title: "调用次数", align: "right", render: (_, row) => usageNumber(row.usage.call_count.value) },
+	{ title: "失败次数", align: "right", render: (_, row) => usageNumber(row.usage.failed_count.value) },
 	{
 		title: "输入",
 		align: "right",
-		render: (_, row) => <span className={styles.tabularNum}>{usageNumber(row.tokens.input_tokens)}</span>,
+		render: (_, row) => <span className={styles.tabularNum}>{usageNumber(row.usage.input_tokens.value)}</span>,
 	},
 	{
 		title: "输出",
 		align: "right",
-		render: (_, row) => <span className={styles.tabularNum}>{usageNumber(row.tokens.output_tokens)}</span>,
+		render: (_, row) => <span className={styles.tabularNum}>{usageNumber(row.usage.output_tokens.value)}</span>,
 	},
 	{
 		title: "缓存读取",
 		align: "right",
-		render: (_, row) => <span className={styles.tabularNum}>{usageNumber(row.tokens.cache_read_tokens)}</span>,
+		render: (_, row) => <span className={styles.tabularNum}>{usageNumber(row.usage.cache_read_tokens.value)}</span>,
 	},
 	{
 		title: "缓存创建",
 		align: "right",
-		render: (_, row) => <span className={styles.tabularNum}>{usageNumber(row.tokens.cache_creation_tokens)}</span>,
+		render: (_, row) => <span className={styles.tabularNum}>{usageNumber(row.usage.cache_creation_tokens.value)}</span>,
 	},
 	{
 		title: "缓存命中率",
 		align: "right",
-		render: (_, row) => <span className={styles.tabularNum}>{hitRatioText(row.tokens.cache_hit_ratio)}</span>,
+		render: (_, row) => <span className={styles.tabularNum}>{hitRatioText(row.usage.cache_hit_ratio.value)}</span>,
 	},
 ];
 
-const toolTelemetryColumns: TableColumnsType<ToolUsageItem> = [
-	{ title: "工具名", dataIndex: "tool_name" },
-	{ title: "来源", dataIndex: "source", render: (value: string) => sourceLabels[value] ?? value },
+const toolTelemetryColumns: TableColumnsType<UsageToolRow> = [
+	{ title: "工具名", dataIndex: "tool_name", render: (value: string | null) => value ?? "未知" },
 	{
-		title: "工作空间",
-		dataIndex: "workspace_id",
-		render: (value: string) => <span className={styles.workspaceText}>{value}</span>,
+		title: "来源",
+		dataIndex: "source",
+		render: (value: string | null) => (value ? (sourceLabels[value] ?? value) : "未知"),
 	},
-	{ title: "调用次数", dataIndex: "call_count", align: "right", render: (value: number) => usageNumber(value) },
-	{ title: "失败次数", dataIndex: "failed_count", align: "right", render: (value: number) => usageNumber(value) },
+	{ title: "调用次数", align: "right", render: (_, row) => usageNumber(row.usage.call_count.value) },
+	{ title: "失败次数", align: "right", render: (_, row) => usageNumber(row.usage.failed_count.value) },
 ];
 
 const sourceLabels: Record<string, string> = { builtin: "内置", mcp: "MCP", custom: "自定义" };
 
+/** 明细区头部行内失败数字：0 次时整段省略。 */
+function failedSuffix(failed: number | null) {
+	return failed ? ` · 失败 ${usageNumber(failed)} 次` : "";
+}
+
+/** 工具分源行内数字（调用数口径，与来源列一致）：0 值的源省略，全为 0 时整段省略。 */
+function toolSourceSuffix(total: UsageSummary["usage"]["total"]) {
+	const parts = (["builtin", "mcp", "custom"] as const)
+		.map((source) => ({ label: sourceLabels[source], count: total[`${source}_tool_call_count`].value ?? 0 }))
+		.filter((part) => part.count > 0)
+		.map((part) => `${part.label} ${usageNumber(part.count)}`);
+	return parts.length ? `（${parts.join(" · ")}）` : "";
+}
+
 function ModelUsageSection({
+	summary,
+	loading,
+	error,
 	templateId,
 	agentId,
 	templateName,
 }: {
+	/** 面板顶部统计时间内的 Provider 汇总（total + 模型/工具明细），由面板统一查询。 */
+	summary?: UsageSummary;
+	loading: boolean;
+	error: string | null;
 	templateId?: string;
 	agentId?: string;
 	templateName?: string;
 }) {
-	const client = useMemo(getAdminClient, []);
-	/** 日期与模型变更即触发查询（page_no 归 1）；scope 记录所属模版作用域，跨模版切换时由下方 effect 归位。 */
+	/** 模型与分页为本地筛选；切换选中模版（含进入/离开「全部」）即归位，统计时间由面板统一控制。 */
 	const [filters, setFilters] = useState(() => ({
 		scope: scopeKeyOf(templateId, agentId),
-		start: toLocalMinuteInput(Date.now() - 7 * 24 * 60 * 60 * 1000),
-		end: toLocalMinuteInput(Date.now()),
 		model_name: "",
 		page_no: 1,
 	}));
-	/** 切换选中模版（含进入/离开「全部」）即归位分页与模型筛选，保留时间区间。 */
+	/** 切换选中模版（含进入/离开「全部」）即归位分页与模型筛选。 */
 	useEffect(() => {
 		const scope = scopeKeyOf(templateId, agentId);
 		setFilters((current) =>
@@ -542,64 +650,28 @@ function ModelUsageSection({
 				: { ...current, scope, page_no: 1, model_name: "" },
 		);
 	}, [templateId, agentId]);
-	/** 模型名下拉选项：按当前模版绑定智能体与时间区间拉一页全量（不带模型筛选）去重聚合；模型种类超过 100 时选项可能不全。 */
-	const optionsQuery = useAdminQuery(
-		`usage:model-options:${scopeKeyOf(templateId, agentId)}:${filters.start}:${filters.end}`,
-		(signal) => client.usage.modelUsage({ ...telemetryQuery(filters, agentId), page_no: 1, page_size: 100 }, signal),
-	);
-	const modelOptions = [...new Set((optionsQuery.data?.items ?? []).map((row) => row.model_name))];
-	const list = useAdminQuery(
-		`usage:model-usage:${scopeKeyOf(templateId, agentId)}:${JSON.stringify(filters)}`,
-		(signal) =>
-			client.usage.modelUsage(
-				{
-					...telemetryQuery(filters, agentId),
-					...(filters.model_name ? { model_name: filters.model_name } : {}),
-					page_no: filters.page_no,
-					page_size: TELEMETRY_PAGE_SIZE,
-				},
-				signal,
-			),
-	);
-	const page: ModelUsagePage | undefined = list.data;
-	const rows: ModelUsageItem[] = page?.items ?? [];
-	const hasNext = page ? filters.page_no * TELEMETRY_PAGE_SIZE < page.total : false;
-	const loading = list.loading || (!list.data && !list.error);
+	const allModels = summary?.usage.models ?? [];
+	const modelOptions = [
+		...new Set(allModels.map((row) => row.model_name).filter((name): name is string => Boolean(name))),
+	];
+	const filtered = filters.model_name ? allModels.filter((row) => row.model_name === filters.model_name) : allModels;
+	const rows = filtered.slice((filters.page_no - 1) * TELEMETRY_PAGE_SIZE, filters.page_no * TELEMETRY_PAGE_SIZE);
+	const hasNext = filters.page_no * TELEMETRY_PAGE_SIZE < filtered.length;
 	return (
 		<section aria-labelledby="model-usage-heading" className={styles.telemetrySection}>
 			<div className={styles.sectionHeader}>
 				<h3 id="model-usage-heading" className={styles.sectionTitle}>
 					模型用量
 				</h3>
-				{page ? (
+				{summary ? (
 					<span className={styles.metaText}>
-						全部模型调用 {usageNumber(page.total_call_count)} 次 · 共 {usageNumber(page.total)} 行
+						全部模型调用 {usageNumber(summary.usage.total.model_call_count.value)} 次
+						{failedSuffix(summary.usage.total.model_failed_count.value)} · 共 {usageNumber(filtered.length)} 行
 					</span>
 				) : null}
 			</div>
 			<TelemetryScopeNote templateName={templateName} />
 			<div className={styles.filterRow}>
-				<DatePicker
-					aria-label="统计开始时间"
-					showTime={{ format: "HH:mm" }}
-					format="YYYY-MM-DD HH:mm"
-					className={styles.datePicker}
-					value={dayjs(filters.start)}
-					onChange={(value) => {
-						if (value) setFilters({ ...filters, start: value.format("YYYY-MM-DDTHH:mm"), page_no: 1 });
-					}}
-				/>
-				<span className={styles.metaText}>至</span>
-				<DatePicker
-					aria-label="统计结束时间"
-					showTime={{ format: "HH:mm" }}
-					format="YYYY-MM-DD HH:mm"
-					className={styles.datePicker}
-					value={dayjs(filters.end)}
-					onChange={(value) => {
-						if (value) setFilters({ ...filters, end: value.format("YYYY-MM-DDTHH:mm"), page_no: 1 });
-					}}
-				/>
 				<Select
 					aria-label="模型名筛选"
 					className={styles.selectName}
@@ -608,11 +680,11 @@ function ModelUsageSection({
 					options={[{ value: "", label: "全部模型" }, ...modelOptions.map((name) => ({ value: name, label: name }))]}
 				/>
 			</div>
-			{list.error ? (
+			{error ? (
 				<TelemetryUnavailable />
 			) : (
 				<Table
-					rowKey={(row) => `${row.workspace_id}/${row.model_name}`}
+					rowKey={(row) => row.model_name ?? "unknown"}
 					size="small"
 					loading={loading}
 					columns={modelTelemetryColumns}
@@ -624,7 +696,7 @@ function ModelUsageSection({
 					}}
 				/>
 			)}
-			{page && (page.total > TELEMETRY_PAGE_SIZE || filters.page_no > 1) ? (
+			{filtered.length > TELEMETRY_PAGE_SIZE || filters.page_no > 1 ? (
 				<TelemetryPagination
 					pageNo={filters.page_no}
 					hasNext={hasNext}
@@ -637,25 +709,28 @@ function ModelUsageSection({
 }
 
 function ToolUsageSection({
+	summary,
+	loading,
+	error,
 	templateId,
 	agentId,
 	templateName,
 }: {
+	summary?: UsageSummary;
+	loading: boolean;
+	error: string | null;
 	templateId?: string;
 	agentId?: string;
 	templateName?: string;
 }) {
-	const client = useMemo(getAdminClient, []);
-	/** 日期、来源与工具变更即触发查询（page_no 归 1）；scope 记录所属模版作用域，跨模版切换时由下方 effect 归位。 */
+	/** 来源/工具与分页为本地筛选；切换选中模版（含进入/离开「全部」）即归位，统计时间由面板统一控制。 */
 	const [filters, setFilters] = useState(() => ({
 		scope: scopeKeyOf(templateId, agentId),
-		start: toLocalMinuteInput(Date.now() - 7 * 24 * 60 * 60 * 1000),
-		end: toLocalMinuteInput(Date.now()),
 		source: "",
 		tool_name: "",
 		page_no: 1,
 	}));
-	/** 切换选中模版（含进入/离开「全部」）即归位分页与来源/工具筛选，保留时间区间。 */
+	/** 切换选中模版（含进入/离开「全部」）即归位分页与来源/工具筛选。 */
 	useEffect(() => {
 		const scope = scopeKeyOf(templateId, agentId);
 		setFilters((current) =>
@@ -664,74 +739,30 @@ function ToolUsageSection({
 				: { ...current, scope, page_no: 1, source: "", tool_name: "" },
 		);
 	}, [templateId, agentId]);
-	/** 工具名下拉选项：按当前模版绑定智能体、时间区间与来源拉一页全量去重聚合；工具种类超过 100 时选项可能不全。 */
-	const optionsQuery = useAdminQuery(
-		`usage:tool-options:${scopeKeyOf(templateId, agentId)}:${filters.start}:${filters.end}:${filters.source}`,
-		(signal) =>
-			client.usage.toolUsage(
-				{
-					...telemetryQuery(filters, agentId),
-					...(filters.source ? { source: filters.source as ToolUsageQuery["source"] } : {}),
-					page_no: 1,
-					page_size: 100,
-				},
-				signal,
-			),
-	);
-	const toolOptions = [...new Set((optionsQuery.data?.items ?? []).map((row) => row.tool_name))];
-	const list = useAdminQuery(
-		`usage:tool-usage:${scopeKeyOf(templateId, agentId)}:${JSON.stringify(filters)}`,
-		(signal) =>
-			client.usage.toolUsage(
-				{
-					...telemetryQuery(filters, agentId),
-					...(filters.source ? { source: filters.source as ToolUsageQuery["source"] } : {}),
-					...(filters.tool_name ? { tool_name: filters.tool_name } : {}),
-					page_no: filters.page_no,
-					page_size: TELEMETRY_PAGE_SIZE,
-				},
-				signal,
-			),
-	);
-	const page: ToolUsagePage | undefined = list.data;
-	const rows: ToolUsageItem[] = page?.items ?? [];
-	const hasNext = page ? filters.page_no * TELEMETRY_PAGE_SIZE < page.total : false;
-	const loading = list.loading || (!list.data && !list.error);
+	const allTools = summary?.usage.tools ?? [];
+	const bySource = filters.source ? allTools.filter((row) => row.source === filters.source) : allTools;
+	const toolOptions = [
+		...new Set(bySource.map((row) => row.tool_name).filter((name): name is string => Boolean(name))),
+	];
+	const filtered = filters.tool_name ? bySource.filter((row) => row.tool_name === filters.tool_name) : bySource;
+	const rows = filtered.slice((filters.page_no - 1) * TELEMETRY_PAGE_SIZE, filters.page_no * TELEMETRY_PAGE_SIZE);
+	const hasNext = filters.page_no * TELEMETRY_PAGE_SIZE < filtered.length;
 	return (
 		<section aria-labelledby="tool-usage-heading" className={styles.telemetrySection}>
 			<div className={styles.sectionHeader}>
 				<h3 id="tool-usage-heading" className={styles.sectionTitle}>
 					工具调用
 				</h3>
-				{page ? (
+				{summary ? (
 					<span className={styles.metaText}>
-						全部工具调用 {usageNumber(page.total_call_count)} 次 · 共 {usageNumber(page.total)} 行
+						全部工具调用 {usageNumber(summary.usage.total.tool_call_count.value)} 次
+						{toolSourceSuffix(summary.usage.total)}
+						{failedSuffix(summary.usage.total.tool_failed_count.value)} · 共 {usageNumber(filtered.length)} 行
 					</span>
 				) : null}
 			</div>
 			<TelemetryScopeNote templateName={templateName} />
 			<div className={styles.filterRow}>
-				<DatePicker
-					aria-label="统计开始时间"
-					showTime={{ format: "HH:mm" }}
-					format="YYYY-MM-DD HH:mm"
-					className={styles.datePicker}
-					value={dayjs(filters.start)}
-					onChange={(value) => {
-						if (value) setFilters({ ...filters, start: value.format("YYYY-MM-DDTHH:mm"), page_no: 1 });
-					}}
-				/>
-				<span className={styles.metaText}>至</span>
-				<DatePicker
-					aria-label="统计结束时间"
-					showTime={{ format: "HH:mm" }}
-					format="YYYY-MM-DD HH:mm"
-					className={styles.datePicker}
-					value={dayjs(filters.end)}
-					onChange={(value) => {
-						if (value) setFilters({ ...filters, end: value.format("YYYY-MM-DDTHH:mm"), page_no: 1 });
-					}}
-				/>
 				<Select
 					aria-label="工具来源筛选"
 					className={styles.selectSource}
@@ -752,11 +783,11 @@ function ToolUsageSection({
 					options={[{ value: "", label: "全部工具" }, ...toolOptions.map((name) => ({ value: name, label: name }))]}
 				/>
 			</div>
-			{list.error ? (
+			{error ? (
 				<TelemetryUnavailable />
 			) : (
 				<Table
-					rowKey={(row) => `${row.workspace_id}/${row.source}/${row.tool_name}`}
+					rowKey={(row) => `${row.source ?? "unknown"}/${row.tool_name ?? "unknown"}`}
 					size="small"
 					loading={loading}
 					columns={toolTelemetryColumns}
@@ -768,7 +799,7 @@ function ToolUsageSection({
 					}}
 				/>
 			)}
-			{page && (page.total > TELEMETRY_PAGE_SIZE || filters.page_no > 1) ? (
+			{filtered.length > TELEMETRY_PAGE_SIZE || filters.page_no > 1 ? (
 				<TelemetryPagination
 					pageNo={filters.page_no}
 					hasNext={hasNext}

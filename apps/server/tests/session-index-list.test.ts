@@ -43,25 +43,53 @@ describe("会话索引列表", () => {
 	it("先查本人完整智能体目录，再按组分页；归档在截取前排除，游标绑定身份和筛选", async () => {
 		const db = setupDb();
 		const index = createSessionIndex(createSqliteDatabase(db));
+		const assistant = { subjectId: "owner", agentSlug: "assistant", catalogEntryId: "cat-assistant" };
 		for (let i = 0; i < 205; i++) {
-			await index.create({ sessionId: `a-${String(i).padStart(3, "0")}`, subjectId: "owner", agentSlug: "assistant" });
-			stamp(db, `a-${String(i).padStart(3, "0")}`, "2026-01-01T00:00:00.000Z", null);
-			await index.create({ sessionId: `archived-${i}`, subjectId: "owner", agentSlug: "assistant" });
+			const sessionId = `a-${String(i).padStart(3, "0")}`;
+			await index.create({ sessionId, ...assistant });
+			stamp(db, sessionId, "2026-01-01T00:00:00.000Z", null);
+			await index.create({ sessionId: `archived-${i}`, ...assistant });
 			await index.setStatus(`archived-${i}`, "archived");
 		}
-		await index.create({ sessionId: "writer-old", subjectId: "owner", agentSlug: "writer" });
-		await index.create({ sessionId: "foreign", subjectId: "another", agentSlug: "private-agent" });
+		await index.create({
+			sessionId: "writer-old",
+			subjectId: "owner",
+			agentSlug: "writer",
+			catalogEntryId: "cat-writer",
+		});
+		await index.create({
+			sessionId: "foreign",
+			subjectId: "another",
+			agentSlug: "private-agent",
+			catalogEntryId: "cat-private-agent",
+		});
 		await index.create({
 			sessionId: "debug",
 			subjectId: "owner",
 			purpose: "admin_debug",
 			debug: { project_name: "p", agent_key: "a", remote_agent_id: "r" },
 		});
-		await index.create({ sessionId: "only-archived", subjectId: "owner", agentSlug: "archived-agent" });
+		// 会话分组校验会话绑定的目录行。
+		const insertEntry = (slug: string) =>
+			db
+				.prepare(
+					"INSERT INTO catalog_agents (id, slug, display_name, remote_agent_id, created_at, updated_at) VALUES (?, ?, ?, 'agent-a', ?, ?)",
+				)
+				.run(`cat-${slug}`, slug, slug, "2026-01-01T00:00:00.000Z", "2026-01-01T00:00:00.000Z");
+		insertEntry("assistant");
+		insertEntry("writer");
+		insertEntry("private-agent");
+		insertEntry("archived-agent");
+		await index.create({
+			sessionId: "only-archived",
+			subjectId: "owner",
+			agentSlug: "archived-agent",
+			catalogEntryId: "cat-archived-agent",
+		});
 		await index.setStatus("only-archived", "archived");
 		expect(new Set(await index.listAgentsForSubject("owner"))).toEqual(new Set(["assistant", "writer"]));
 		expect(await index.listAgentsForSubject("another")).toEqual(["private-agent"]);
-		const query = { agentSlug: "assistant", limit: 200, includeArchived: false };
+		const query = { agentSlug: "assistant", activeEntryOnly: true, limit: 200, includeArchived: false };
 		const first = await index.pageForSubject("owner", query);
 		expect(first.data).toHaveLength(200);
 		expect(first.data.every((row) => row.status !== "archived")).toBe(true);
@@ -79,11 +107,61 @@ describe("会话索引列表", () => {
 			["another", query],
 			["owner", { ...query, agentSlug: "writer" }],
 			["owner", { ...query, includeArchived: true }],
+			["owner", { ...query, activeEntryOnly: false }],
 		] as const)
 			await expect(
 				index.pageForSubject(subject, { ...options, pageToken: first.next_page_token as string }),
 			).rejects.toThrow("游标无效");
 		await expect(index.pageForSubject("owner", { pageToken: "invalid" })).rejects.toThrow("游标无效");
+	});
+
+	it("同 slug 重建后，分组和游标跟随新条目，历史会话仍可从列表和搜索读取", async () => {
+		const db = setupDb();
+		const index = createSessionIndex(createSqliteDatabase(db));
+		const now = new Date().toISOString();
+		const insertEntry = (id: string, slug: string) =>
+			db
+				.prepare(
+					"INSERT INTO catalog_agents (id, slug, display_name, remote_agent_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+				)
+				.run(id, slug, slug, "agent-a", now, now);
+		insertEntry("cat-del", "deleted-agent");
+		insertEntry("cat-live", "live-agent");
+		const old = { subjectId: "owner", agentSlug: "deleted-agent", catalogEntryId: "cat-del" };
+		await index.create({ ...old, sessionId: "s-deleted", title: "历史标题" });
+		await index.create({ ...old, sessionId: "s-another-deleted" });
+		await index.create({
+			sessionId: "s-live",
+			subjectId: "owner",
+			agentSlug: "live-agent",
+			catalogEntryId: "cat-live",
+		});
+		await index.create({ sessionId: "s-legacy", subjectId: "owner", agentSlug: "deleted-agent" });
+		expect(new Set(await index.listAgentsForSubject("owner"))).toEqual(new Set(["deleted-agent", "live-agent"]));
+		const query = { agentSlug: "deleted-agent", activeEntryOnly: true, includeArchived: false, limit: 1 };
+		const first = await index.pageForSubject("owner", query);
+		expect(first.next_page_token).toBeTruthy();
+		db.prepare("UPDATE catalog_agents SET deleted_at = ? WHERE id = ?").run(now, "cat-del");
+		insertEntry("cat-new", "deleted-agent");
+		expect(await index.listAgentsForSubject("owner")).toEqual(["live-agent"]);
+		expect((await index.pageForSubject("owner", query)).data).toEqual([]);
+		await index.create({ ...old, sessionId: "s-new", catalogEntryId: "cat-new" });
+		expect(new Set(await index.listAgentsForSubject("owner"))).toEqual(new Set(["deleted-agent", "live-agent"]));
+		expect(await index.pageForSubject("owner", query)).toMatchObject({
+			data: [{ session_id: "s-new" }],
+			next_page_token: null,
+		});
+		await expect(index.pageForSubject("owner", { ...query, pageToken: first.next_page_token! })).rejects.toThrow(
+			"游标无效",
+		);
+		const history = await index.pageForSubject("owner", { agentSlug: "deleted-agent" });
+		expect(history.data.map((row) => row.session_id).sort()).toEqual([
+			"s-another-deleted",
+			"s-deleted",
+			"s-legacy",
+			"s-new",
+		]);
+		expect((await index.pageForSubject("owner", { q: "历史标题" })).data).toMatchObject([{ session_id: "s-deleted" }]);
 	});
 
 	it("按最近活动排序：last_event_at 优先，缺失时回落 created_at", async () => {
@@ -131,7 +209,13 @@ describe("会话索引列表", () => {
 		const db = setupDb();
 		const index = createSessionIndex(createSqliteDatabase(db));
 		await index.create({ sessionId: "s1", subjectId: "owner", agentSlug: "assistant", title: "年度复盘" });
-		await index.create({ sessionId: "s2", subjectId: "owner", agentSlug: "writer", title: "周报" });
+		await index.create({
+			sessionId: "s2",
+			subjectId: "owner",
+			agentSlug: "writer",
+			catalogEntryId: "cat-writer",
+			title: "周报",
+		});
 		await index.create({ sessionId: "s3", subjectId: "owner", agentSlug: "assistant", title: "年度归档" });
 		await index.create({ sessionId: "s4", subjectId: "owner", agentSlug: "writer", title: "年度计划" });
 		await index.create({ sessionId: "foreign", subjectId: "another", agentSlug: "assistant", title: "年度复盘" });
@@ -146,8 +230,12 @@ describe("会话索引列表", () => {
 		expect(await ids({ q: "年度", includeArchived: true })).toEqual(["s4", "s1", "s3"]);
 		expect(await ids({ q: "ASSISTANT", includeArchived: false })).toEqual(["s1"]);
 		expect(await ids({ q: "writer", includeArchived: false })).toEqual(["s4", "s2"]);
-		// Catalog 展示名命中的智能体由路由解析为 slug 列表，与标题/slug 命中取并集。
-		expect(await ids({ q: "年度", includeArchived: false, agentSlugs: ["writer"] })).toEqual(["s4", "s1", "s2"]);
+		// 展示名命中的目录条目与标题、slug 命中取并集。
+		expect(await ids({ q: "年度", includeArchived: false, catalogEntryIds: ["cat-writer"] })).toEqual([
+			"s4",
+			"s1",
+			"s2",
+		]);
 		const first = await index.pageForSubject("owner", { q: "年度", includeArchived: true, limit: 2 });
 		expect(first.data.map((row) => row.session_id)).toEqual(["s4", "s1"]);
 		expect(first.next_page_token).not.toBeNull();
@@ -203,7 +291,24 @@ describe("会话索引列表", () => {
 			},
 			"admin:test",
 		);
-		await services.sessions.create({ subjectId: member.member_id, agentSlug: "assistant", remoteAgentId: "mock" });
+		await services.sessions.create({
+			subjectId: member.member_id,
+			agentSlug: "assistant",
+			catalogEntryId: "cat-assistant",
+			remoteAgentId: "mock",
+		});
+		await services.catalog.insert(
+			CatalogAgentViewSchema.parse({
+				id: "cat-assistant",
+				slug: "assistant",
+				display_name: "助理",
+				capabilities: {},
+				remote_agent_id: "mock",
+				status: "listed",
+				created_at: "2026-01-01T00:00:00.000Z",
+				updated_at: "2026-01-01T00:00:00.000Z",
+			}),
+		);
 		const app = createApp(services);
 		const login = await app.request("/api/kit/auth/login", {
 			method: "POST",
@@ -226,7 +331,11 @@ describe("会话索引列表", () => {
 		const agents = await app.request("/api/kit/session-agents?subject_id=another", { headers });
 		expect(agents.status).toBe(200);
 		expect(await agents.json()).toEqual({ data: ["assistant"] });
-		const filtered = await app.request("/api/kit/sessions?agent_slug=assistant&include_archived=false", { headers });
+		expect((await app.request("/api/kit/sessions?active_entry_only=true", { headers })).status).toBe(400);
+		const filtered = await app.request(
+			"/api/kit/sessions?agent_slug=assistant&active_entry_only=true&include_archived=false",
+			{ headers },
+		);
 		expect(filtered.status).toBe(200);
 		expect(((await filtered.json()) as { data: { agent_slug: string }[] }).data.map((row) => row.agent_slug)).toEqual([
 			"assistant",
@@ -250,7 +359,13 @@ describe("会话索引列表", () => {
 			sessionId: "display-name-session",
 			subjectId: member.member_id,
 			agentSlug: "year-assistant",
+			catalogEntryId: "cat-year-assistant",
 			title: "不相关标题",
+		});
+		await services.sessionIndex.create({
+			sessionId: "unbound-same-slug",
+			subjectId: member.member_id,
+			agentSlug: "year-assistant",
 		});
 		const byDisplayName = await app.request("/api/kit/sessions?q=年度&include_archived=false", { headers });
 		expect(byDisplayName.status).toBe(200);

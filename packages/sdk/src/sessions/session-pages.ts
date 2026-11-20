@@ -60,6 +60,7 @@ export function createSessionPages(
 			.sessions(
 				{
 					agentSlug: slug || undefined,
+					activeEntryOnly: Boolean(slug),
 					q: options.query,
 					limit: options.limit ?? 10,
 					includeArchived: false,

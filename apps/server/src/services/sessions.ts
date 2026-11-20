@@ -264,6 +264,8 @@ export function createSessionService(deps: SessionServiceDeps) {
 				| {
 						purpose?: "experience";
 						agentSlug: string;
+						/** 会话落下的目录条目 ID：slug 软删后可复用，用量归属与闸门判定以它为准。 */
+						catalogEntryId?: string;
 						remoteAgentId: string;
 						remoteAgentVersion?: number;
 						remoteEnvironmentId?: string;

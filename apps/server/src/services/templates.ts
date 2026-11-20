@@ -65,6 +65,8 @@ export function createTemplateService({
 	return {
 		...createTemplateListingService({ store, gateway, audit, catalog, gate }),
 		...createTemplateDeletionService({ store, audit, catalog, gate }),
+		isDeleted: store.isDeleted,
+		boundAgentIds: store.boundAgentIds,
 		get: store.get,
 		versions: async (templateId: string, query: TemplateVersionsQuery) =>
 			await store.versions(templateId, validated(TemplateVersionsQuerySchema, query)),

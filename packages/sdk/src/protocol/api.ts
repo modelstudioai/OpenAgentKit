@@ -441,6 +441,8 @@ export type CatalogAgentUpdateInput = Partial<Omit<CatalogAgentCreateInput, "slu
 export const CatalogAgentViewSchema = CatalogAgentInputSchema.extend({
 	id: z.string(),
 	status: z.enum(["unlisted", "listed"]),
+	/** 条目已标记删除（软删）：员工端不可见、不可新建会话；历史会话与用量保留。 */
+	deleted: z.boolean().optional(),
 	created_at: z.string(),
 	updated_at: z.string(),
 });

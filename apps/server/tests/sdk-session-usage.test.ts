@@ -1,4 +1,4 @@
-import { setDefaultFetch } from "@openagentpack/sdk";
+import { setDefaultFetch, type UsageTrendRequest } from "@openagentpack/sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createMockGateway } from "../src/gateway/mock.ts";
 import { createSdkGateway } from "../src/gateway/sdk.ts";
@@ -104,5 +104,92 @@ describe("MockGateway 累计用量与停止合同", () => {
 		const stopped = await mock.listEvents(id);
 		await vi.runAllTimersAsync();
 		expect(await mock.listEvents(id)).toEqual(stopped);
+	});
+});
+
+describe("MockGateway 用量趋势合同", () => {
+	const day = (start: string, end: string): UsageTrendRequest["time_range"] => ({ start_time: start, end_time: end });
+
+	it("内存来源按 UTC+8 天分桶：缺省粒度 day，窗口内单点携带演示指标，无匹配智能体与窗口外省略", async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-11-17T10:30:00+08:00"));
+		const mock = createMockGateway();
+		const { session_id: id } = await mock.createSession({ agentId: "agent_mock_assistant" });
+		await mock.sendMessage(id, { text: "first" });
+		await vi.runAllTimersAsync();
+		const trend = await mock.getUsageTrend({
+			dimension: "workspace",
+			time_range: day("2026-11-17T00:00:00+08:00", "2026-11-18T00:00:00+08:00"),
+		});
+		expect(trend.data.granularity).toBe("day");
+		expect(trend.data.query_range).toEqual(day("2026-11-17T00:00:00+08:00", "2026-11-18T00:00:00+08:00"));
+		expect(trend.data.has_more).toBe(false);
+		expect(trend.data.next_page_token).toBeNull();
+		expect(trend.data.points).toHaveLength(1);
+		expect(trend.data.points[0]).toMatchObject({
+			start_time: "2026-11-17T00:00:00+08:00",
+			end_time: "2026-11-18T00:00:00+08:00",
+			usage: {
+				total: {
+					input_tokens: { value: 120, unit: "tokens" },
+					total_tokens: { value: 200, unit: "tokens" },
+					model_call_count: { value: 1, unit: "count" },
+				},
+			},
+		});
+		const otherAgent = await mock.getUsageTrend({
+			dimension: "agent",
+			agent_id: "agent_designer",
+			time_range: day("2026-11-17T00:00:00+08:00", "2026-11-18T00:00:00+08:00"),
+		});
+		expect(otherAgent.data.points).toEqual([]);
+		expect(otherAgent.data.data_updated_at).toBeNull();
+		const outside = await mock.getUsageTrend({
+			dimension: "workspace",
+			time_range: day("2026-11-01T00:00:00+08:00", "2026-11-02T00:00:00+08:00"),
+		});
+		expect(outside.data.points).toEqual([]);
+	});
+
+	it("账本来源按 UTC 小时行重分桶到 UTC+8 天桶，agent 维度按 remote_agent_id 过滤", async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-11-17T12:00:00+08:00"));
+		const mock = createMockGateway({
+			telemetry: {
+				byAgent: async () => new Map(),
+				bySession: async () => null,
+				byAgentHour: async () => [
+					{
+						agent_key: "agent-a",
+						hour: "2026-11-16T17",
+						sessions: 1,
+						input_tokens: 10,
+						output_tokens: 5,
+						cache_read_tokens: 0,
+						cache_creation_tokens: 0,
+					},
+				],
+			},
+		});
+		const trend = await mock.getUsageTrend({
+			dimension: "workspace",
+			time_range: day("2026-11-17T00:00:00+08:00", "2026-11-18T00:00:00+08:00"),
+		});
+		expect(trend.data.points).toHaveLength(1);
+		expect(trend.data.points[0]).toMatchObject({
+			start_time: "2026-11-17T00:00:00+08:00",
+			usage: {
+				total: {
+					input_tokens: { value: 10, unit: "tokens" },
+					model_call_count: { value: 1, unit: "count" },
+				},
+			},
+		});
+		const filtered = await mock.getUsageTrend({
+			dimension: "agent",
+			agent_id: "agent-b",
+			time_range: day("2026-11-17T00:00:00+08:00", "2026-11-18T00:00:00+08:00"),
+		});
+		expect(filtered.data.points).toEqual([]);
 	});
 });

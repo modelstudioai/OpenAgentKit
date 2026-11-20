@@ -146,8 +146,26 @@ export function createTemplateStore(db: StoreDatabase) {
 		if (!row) throw new KitError("not_found", "模版不存在");
 		return row.version;
 	}
+	/** 同一远端 Agent 同时只能被一个未删除模版关联；保持自身绑定的编辑豁免，存量共享逐步收敛。 */
+	async function assertAgentAvailable(remoteAgentId: string, excludeTemplateId?: string): Promise<void> {
+		if (!remoteAgentId) return;
+		const row = (await db.get(
+			`SELECT name FROM kit_templates WHERE remote_agent_id = ? AND deleted_at IS NULL
+			${excludeTemplateId ? "AND template_id <> ?" : ""} ORDER BY template_id LIMIT 1`,
+			...(excludeTemplateId ? [remoteAgentId, excludeTemplateId] : [remoteAgentId]),
+		)) as { name: string } | undefined;
+		if (row) throw new KitError("conflict", `该智能体已被模版「${row.name}」关联，请选择其他智能体`);
+	}
+	/** 管理面（详情/编辑/版本/上架/删除）对已删模版按不存在处理；用量区读取不受限。 */
+	async function isDeleted(templateId: string): Promise<boolean> {
+		const row = (await db.get("SELECT deleted_at FROM kit_templates WHERE template_id=?", templateId)) as
+			| { deleted_at: string | null }
+			| undefined;
+		return Boolean(row?.deleted_at);
+	}
 	return {
 		get,
+		isDeleted,
 		async versions(templateId: string, query: TemplateVersionsQuery): Promise<TemplateVersionsPage> {
 			const version = await currentVersion(templateId);
 			const before = versionCursor(query.page_token, templateId);
@@ -193,15 +211,29 @@ export function createTemplateStore(db: StoreDatabase) {
 				created_at: row.created_at,
 			});
 		},
-		/** 删除前在同一事务重新检查计划；显式清理子表，不依赖部署的外键开关。 */
-		async remove(templateId: string, beforeDelete: (template: TemplateView) => void | Promise<void>): Promise<void> {
+		/** 软删：同一事务里先校验计划快照并标记关联条目，再标记模版；版本与上架关联行保留。 */
+		async markDeleted(
+			templateId: string,
+			beforeDelete: (template: TemplateView) => void | Promise<void>,
+		): Promise<void> {
 			await db.transaction(async () => {
 				await beforeDelete(await get(templateId));
-				await db.run("DELETE FROM kit_template_versions WHERE template_id=?", templateId);
-				await db.run("DELETE FROM kit_template_listings WHERE template_id=?", templateId);
-				const removed = await db.run("DELETE FROM kit_templates WHERE template_id=?", templateId);
-				if (!removed.changes) throw new KitError("conflict", "模版已变更，请重试并再次确认删除");
+				const now = new Date().toISOString();
+				const marked = await db.run(
+					"UPDATE kit_templates SET deleted_at = ?, updated_at = ? WHERE template_id = ? AND deleted_at IS NULL",
+					now,
+					now,
+					templateId,
+				);
+				if (!marked.changes) throw new KitError("conflict", "模版已变更，请重试并再次确认删除");
 			});
+		},
+		/** 全部模版（含已删）绑定的远端智能体 ID，去重；供「全部」视角用量按模版口径扇出聚合。 */
+		async boundAgentIds(): Promise<string[]> {
+			const rows = (await db.all(
+				"SELECT DISTINCT remote_agent_id FROM kit_templates WHERE remote_agent_id <> ''",
+			)) as unknown as { remote_agent_id: string }[];
+			return [...new Set(rows.map((row) => row.remote_agent_id))];
 		},
 		/** 确认后的目录写入与来源关联一起提交；回调在事务内重读并校验计划快照。 */
 		async saveListing(templateId: string, commit: () => Promise<CatalogAgentView>): Promise<CatalogAgentView> {
@@ -222,13 +254,15 @@ export function createTemplateStore(db: StoreDatabase) {
 		},
 		async create(input: TemplateRecord): Promise<TemplateView> {
 			return await db.transaction(async () => {
+				await assertAgentAvailable(input.remote_agent_id);
 				const id = `template_${randomUUID()}`;
 				const now = new Date().toISOString();
 				const result = await db.insertIfAbsent(
 					`INSERT INTO kit_templates
 					(template_id,name,remote_agent_id,remote_agent_name,config_json,created_at,updated_at,version)
 					VALUES (?,?,?,?,?,?,?,1)`,
-					"name",
+					// name 唯一性来自排除已删行的部分唯一索引，冲突目标用全量兜底。
+					"",
 					id,
 					input.name,
 					input.remote_agent_id,
@@ -242,7 +276,8 @@ export function createTemplateStore(db: StoreDatabase) {
 				return await get(id);
 			});
 		},
-		/** 历史只追加；当前配置、版本和关联目录同步必须在同一事务提交。 */
+		/** 历史只追加；当前配置、版本和关联目录同步必须在同一事务提交。
+		 *  事务内复核 deleted_at：编辑的 Provider 校验是异步窗口，删除可能在窗口内提交，不能覆盖已删模版。 */
 		async update(
 			templateId: string,
 			baseVersion: number,
@@ -250,10 +285,13 @@ export function createTemplateStore(db: StoreDatabase) {
 			syncCatalog: (template: TemplateView) => void | Promise<void>,
 		): Promise<TemplateView> {
 			return await db.transaction(async () => {
+				if (await isDeleted(templateId)) throw new KitError("not_found", "模版不存在");
 				const current = await get(templateId);
 				if (current.version !== baseVersion) throw new KitError("conflict", "模版已有新版本，请刷新后重新编辑");
+				if (input.remote_agent_id !== current.remote_agent_id)
+					await assertAgentAvailable(input.remote_agent_id, templateId);
 				const duplicate = await db.get(
-					"SELECT 1 FROM kit_templates WHERE name = ? AND template_id <> ?",
+					"SELECT 1 FROM kit_templates WHERE name = ? AND template_id <> ? AND deleted_at IS NULL",
 					input.name,
 					templateId,
 				);
@@ -285,7 +323,8 @@ export function createTemplateStore(db: StoreDatabase) {
 			const pattern = likePattern(search);
 			const rows = (await db.all(
 				`${TEMPLATE_SELECT}
-				WHERE (LOWER(t.name) LIKE LOWER(?) ESCAPE '!' OR LOWER(t.remote_agent_id) LIKE LOWER(?) ESCAPE '!' OR LOWER(t.remote_agent_name) LIKE LOWER(?) ESCAPE '!')
+				WHERE t.deleted_at IS NULL
+				AND (LOWER(t.name) LIKE LOWER(?) ESCAPE '!' OR LOWER(t.remote_agent_id) LIKE LOWER(?) ESCAPE '!' OR LOWER(t.remote_agent_name) LIKE LOWER(?) ESCAPE '!')
 				${query.status ? "AND COALESCE(c.status, 'unlisted') = ?" : ""}
 				${query.category ? `AND COALESCE(${jsonText(db, "t.config_json", "category")}, 'general') = ?` : ""}
 				${cursor ? "AND (t.created_at < ? OR (t.created_at=? AND t.template_id<?))" : ""}

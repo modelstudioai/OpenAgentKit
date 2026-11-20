@@ -39,6 +39,29 @@ async function setup(text = "approval") {
 }
 
 describe("工具审批协议与归属", () => {
+	it("目录软删后不能通过审批恢复旧会话，同 slug 重建也不能恢复", async () => {
+		const { app, path, services, list, decide } = await setup();
+		const state = await list();
+		const entry = await services.catalog.getBySlug("assistant");
+		expect(entry).not.toBeNull();
+		expect(await services.catalog.markDeleted(entry!.id)).toBe(true);
+		const replacement = await services.catalog.create({
+			slug: "assistant",
+			display_name: "新的 Assistant",
+			remote_agent_id: "mock-new",
+		});
+		expect(replacement.id).not.toBe(entry!.id);
+		const submit = vi.spyOn(services.gateway, "respondToolApproval");
+		for (const result of ["allow", "deny"]) {
+			const response = await decide({ batch_id: state.batch_id, call_id: "call_read", result });
+			expect(response.status).toBe(403);
+			expect(await response.json()).toMatchObject({ error: { code: "forbidden" } });
+		}
+		expect(submit).not.toHaveBeenCalled();
+		expect((await list()).pending_call_ids).toEqual(state.pending_call_ids);
+		expect((await app.request(`${path}/events`, { headers })).status).toBe(200);
+	});
+
 	it("同批逐项批准/无原因拒绝，保留子线程；完成前普通发送被拒且不扣 Credits", async () => {
 		const { app, path, services, list, decide } = await setup("approval thread");
 		const usedCredits = async () => {
