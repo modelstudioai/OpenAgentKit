@@ -149,6 +149,18 @@
 			"deps": ["kit-i18n", "session-list"],
 			"extraFiles": ["src/components/session-sidebar/strings.ts"],
 			"npmDependencies": ["@openagentkit/sdk"]
+		},
+		"category-tabs": {
+			"file": "src/components/category-tabs/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/category-tabs/strings.ts"],
+			"npmDependencies": ["@openagentkit/sdk"]
+		},
+		"plaza-card": {
+			"file": "src/components/plaza-card/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/plaza-card/strings.ts"],
+			"npmDependencies": ["@openagentkit/sdk"]
 		}
 	},
 	"theme": "src/theme.css"

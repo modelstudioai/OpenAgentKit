@@ -1,3 +1,9 @@
+export {
+	CategoryTabs,
+	type CategoryTabsStrings,
+	categoryTabsStrings,
+	type PlazaTabId,
+} from "./components/category-tabs/index.ts";
 export { Chat, type ChatStrings, chatStrings } from "./components/chat/index.ts";
 export {
 	CodeHighlighter,
@@ -35,6 +41,13 @@ export {
 	type MessageListStrings,
 	messageListStrings,
 } from "./components/message-list/index.ts";
+export {
+	isIconImageSource,
+	PlazaCard,
+	type PlazaCardStrings,
+	plazaCardStrings,
+	relativeUsedLabel,
+} from "./components/plaza-card/index.ts";
 export {
 	ExecutionGroup,
 	type ExecutionGroupStrings,
