@@ -1,11 +1,15 @@
 import { setKitErrorMessageResolver } from "@openagentkit/sdk/state";
 import i18n from "i18next";
 import { computed, ref } from "vue";
-// 产品文案只有一份：auth / common 直接复用 apps/web；本 app 只保留自己的 workspace 命名空间。
+// 产品文案只有一份：auth / common / layout / plaza 直接复用 apps/web；本 app 只保留自己的 workspace 命名空间。
 import enAuth from "../../../web/src/i18n/locales/en/auth.ts";
 import enCommon from "../../../web/src/i18n/locales/en/common.ts";
+import enLayout from "../../../web/src/i18n/locales/en/layout.ts";
+import enPlaza from "../../../web/src/i18n/locales/en/plaza.ts";
 import zhAuth from "../../../web/src/i18n/locales/zh-CN/auth.ts";
 import zhCommon from "../../../web/src/i18n/locales/zh-CN/common.ts";
+import zhLayout from "../../../web/src/i18n/locales/zh-CN/layout.ts";
+import zhPlaza from "../../../web/src/i18n/locales/zh-CN/plaza.ts";
 import enWorkspace from "./locales/en/workspace.ts";
 import zhWorkspace from "./locales/zh-CN/workspace.ts";
 import { resolveServerErrorMessage } from "./server-error.ts";
@@ -64,11 +68,11 @@ export async function initI18n() {
 		fallbackLng: "zh-CN",
 		supportedLngs: [...SUPPORTED_LOCALES],
 		defaultNS: "common",
-		ns: ["common", "auth", "workspace"],
+		ns: ["common", "auth", "layout", "plaza", "workspace"],
 		interpolation: { escapeValue: false },
 		resources: {
-			"zh-CN": { common: zhCommon, auth: zhAuth, workspace: zhWorkspace },
-			en: { common: enCommon, auth: enAuth, workspace: enWorkspace },
+			"zh-CN": { common: zhCommon, auth: zhAuth, layout: zhLayout, plaza: zhPlaza, workspace: zhWorkspace },
+			en: { common: enCommon, auth: enAuth, layout: enLayout, plaza: enPlaza, workspace: enWorkspace },
 		},
 	});
 	setKitErrorMessageResolver(resolveServerErrorMessage);
