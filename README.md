@@ -298,7 +298,6 @@ pnpm gate        # typecheck + lint + test + build + 架构检查 + 文档检查
 pnpm verify:push # pre-push hook 跑的就是这套
 ```
 
-提交信息使用简体中文 Conventional Commits，例如 `fix(server): 修复会话恢复`。
 Issue 与反馈：https://github.com/modelstudioai/OpenAgentPack-Kit/issues
 
 ## License
