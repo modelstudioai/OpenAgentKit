@@ -204,22 +204,20 @@ export const SessionList = defineComponent({
 										onFinish: (next: string | null) => finishEditing(session, title, next),
 									})
 								: h(
-										Tooltip,
-										{ className: "block truncate", overflowOnly: true },
+										"button",
 										{
-											default: () =>
-												h(
-													"button",
-													{
-														type: "button",
-														"aria-current": active ? "true" : undefined,
-														class: itemClasses.select,
-														onClick: () => emit("select", session),
-													},
-													[title],
-												),
-											content: () => title,
+											type: "button",
+											"aria-current": active ? "true" : undefined,
+											class: itemClasses.select,
+											onClick: () => emit("select", session),
 										},
+										[
+											h(
+												Tooltip,
+												{ className: "block truncate", overflowOnly: true },
+												{ default: () => title, content: () => title },
+											),
+										],
 									),
 							markNode,
 							!editing && slots.menu ? h("div", { class: itemClasses.actions }, [slots.menu({ session })]) : null,

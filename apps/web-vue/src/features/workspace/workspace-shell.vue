@@ -53,9 +53,7 @@ const selectedAgent = ref("");
 const selectedFrom = ref<{ sessionId: string; section: SessionSidebarSection } | null>(null);
 const editing = ref<{ id: string; section: SessionSidebarSection } | null>(null);
 const actionError = ref<string | null>(null);
-const creating = ref(false);
 const sending = ref(false);
-const createError = ref<string | null>(null);
 const sendError = ref<string | null>(null);
 const chat = useChat(() => ({ sessionId: sessionId.value, provider: props.chatProvider }));
 
@@ -79,6 +77,9 @@ const groups = computed<SessionSidebarGroup[]>(() => {
 		loading: group.loading,
 		loadingMore: group.loadingMore,
 		hasMore: group.hasMore,
+		onLoad: group.load,
+		onRetry: group.retry,
+		onLoadMore: group.loadMore,
 	}));
 });
 const recent = computed<SessionSidebarPage>(() => ({
@@ -88,6 +89,8 @@ const recent = computed<SessionSidebarPage>(() => ({
 	loadingMore: directory.snapshot.value.recent.loadingMore,
 	hasMore: directory.snapshot.value.recent.hasMore,
 	error: directory.snapshot.value.recent.error,
+	onRetry: directory.snapshot.value.recent.retry,
+	onLoadMore: directory.snapshot.value.recent.loadMore,
 }));
 const activeSection = computed<SessionSidebarSection>(() =>
 	selectedFrom.value?.sessionId === sessionId.value ? selectedFrom.value.section : "groups",
@@ -116,17 +119,6 @@ const dialogConfirmLabel = computed(() => {
 	if (actionBusy.value) return t("chat:sessionDialog.processing");
 	return pendingAction.value?.plan ? t("chat:sessionDialog.confirm") : t("chat:sessionDialog.refetchPlan");
 });
-
-// 目录只加载智能体与最近页；分组在首次出现后按需拉取，避免初始化时并发请求全部历史。
-watch(
-	() => directory.snapshot.value.groups.map((group) => `${group.slug}:${group.initialized}`),
-	() => {
-		for (const group of directory.snapshot.value.groups) {
-			if (!group.initialized && !group.loading) group.load();
-		}
-	},
-	{ immediate: true },
-);
 
 watch(
 	agentSlug,
@@ -214,20 +206,10 @@ function confirmAction() {
 	if (!actionBusy.value) void directory.confirmAction();
 }
 
-async function createSession() {
+function startNewChat(closeSidebar: () => void) {
 	const slug = currentAgent.value?.slug ?? selectedAgent.value;
-	if (!slug || creating.value) return;
-	creating.value = true;
-	createError.value = null;
-	try {
-		const created = await props.client.createSession({ agentSlug: slug });
-		navigate({ view: "chat", agent: slug, session: created.session_id }, { replace: true });
-		await directory.reload();
-	} catch (error) {
-		createError.value = error instanceof Error ? error.message : String(error);
-	} finally {
-		creating.value = false;
-	}
+	if (!slug) return;
+	void newSessionForAgent(slug).then((opened) => opened && closeSidebar());
 }
 
 async function send(text: string, skills?: string[]) {
@@ -311,36 +293,47 @@ async function send(text: string, skills?: string[]) {
 					</Menu>
 				</template>
 				<template #header>
-					<div class="flex flex-col gap-2 px-3 py-2">
-						<div class="flex min-h-10 items-center justify-between gap-2">
-							<span class="min-w-0 truncate text-[length:var(--kit-text-label)] font-semibold">
-								{{ branding.productName }}
-							</span>
-							<button
-								type="button"
-								class="rounded-[var(--kit-radius-sm)] border border-[var(--kit-border)] px-2 py-1 text-[length:var(--kit-text-caption)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
-								@click="emit('logout')"
-							>
-								{{ t("auth:logout") }}
-							</button>
+					<div class="flex min-h-14 shrink-0 items-center gap-3 px-5 py-3">
+						<div
+							data-testid="brand-logo-fallback"
+							aria-hidden="true"
+							class="grid size-8 shrink-0 place-items-center rounded-[var(--kit-radius-sm)] bg-[var(--kit-fg)] text-[length:var(--kit-text-label)] font-semibold text-[var(--kit-bg)]"
+						>
+							{{ (branding.productName.trim() || "K").charAt(0).toUpperCase() }}
 						</div>
+						<span
+							data-testid="brand-name"
+							:title="branding.productName"
+							class="min-w-0 flex-1 truncate text-[length:var(--kit-text-base)] leading-tight font-semibold"
+						>
+							{{ branding.productName }}
+						</span>
 						<button
 							type="button"
-							data-testid="sidebar-usage"
-							:aria-label="t('layout:views.usage')"
-							:title="t('layout:views.usage')"
-							:aria-pressed="view === 'usage'"
-							class="flex min-h-9 w-full items-center gap-2 rounded-[var(--kit-radius-sm)] px-2.5 py-1.5 text-left text-[length:var(--kit-text-label)] transition-colors hover:bg-[var(--kit-nav-active)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
-							:class="view === 'usage' ? 'bg-[var(--kit-nav-active)] font-medium' : 'text-[var(--kit-fg-muted)]'"
-							@click="
-								() => {
-									goToUsage();
-									closeSidebar();
-								}
-							"
+							:aria-label="t('workspace:sidebarLabel')"
+							class="grid size-8 shrink-0 place-items-center rounded-[var(--kit-radius-sm)] text-[var(--kit-fg-muted)] hover:bg-[var(--kit-bg-subtle)] hover:text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] md:hidden"
+							@click="closeSidebar"
 						>
-							{{ t("layout:views.usage") }}
+							<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-4">
+								<path d="m6 6 12 12M6 18 18 6" />
+							</svg>
 						</button>
+					</div>
+					<div class="shrink-0 px-3 pb-1">
+						<button
+							type="button"
+							data-testid="sidebar-new-chat"
+							:disabled="agents.agents.value.length === 0"
+							class="flex w-full cursor-pointer items-center gap-2 rounded-[var(--kit-radius)] bg-[var(--kit-accent)] px-3 py-2 text-left text-[length:var(--kit-text-label)] font-medium text-[var(--kit-accent-fg)] transition-[opacity,transform] duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none hover:opacity-90 active:scale-[0.985] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] disabled:cursor-not-allowed disabled:opacity-50"
+							@click="startNewChat(closeSidebar)"
+						>
+							<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-3.5">
+								<path d="M12 5v14M5 12h14" stroke-linecap="round" />
+							</svg>
+							{{ t("layout:newChat") }}
+						</button>
+					</div>
+					<nav :aria-label="t('layout:navAria')" class="shrink-0 px-3 pt-1 pb-1">
 						<button
 							type="button"
 							data-testid="sidebar-nav-plaza"
@@ -369,33 +362,63 @@ async function send(text: string, skills?: string[]) {
 							</svg>
 							{{ t("layout:plaza") }}
 						</button>
-						<div class="flex items-center gap-2">
-							<select
-								v-model="selectedAgent"
-								:aria-label="t('workspace:selectAgent')"
-								class="min-h-8 min-w-0 flex-1 rounded-[var(--kit-radius-sm)] border border-[var(--kit-border)] bg-[var(--kit-surface)] px-2 text-[length:var(--kit-text-caption)]"
+					</nav>
+				</template>
+				<template #footer>
+					<div class="flex shrink-0 items-center gap-1 border-t border-[var(--kit-border-subtle)] px-3 py-2">
+						<div class="flex min-w-0 items-center gap-2">
+							<span
+								aria-hidden="true"
+								class="grid size-7 shrink-0 place-items-center rounded-full border border-[var(--kit-border)] bg-[var(--kit-surface)] text-[length:var(--kit-text-meta)] font-semibold text-[var(--kit-fg-muted)]"
 							>
-								<option v-for="agent in agents.agents.value" :key="agent.slug" :value="agent.slug">
-									{{ agent.display_name }}
-								</option>
-							</select>
-							<button
-								type="button"
-								data-testid="sidebar-new-chat"
-								class="shrink-0 rounded-[var(--kit-radius-sm)] bg-[var(--kit-accent)] px-2 py-1 text-[length:var(--kit-text-caption)] text-[var(--kit-accent-fg)] disabled:opacity-50"
-								:disabled="creating || agents.agents.value.length === 0"
-								@click="createSession"
-							>
-								{{ creating ? t("workspace:creating") : t("layout:newChat") }}
-							</button>
+								{{ (member?.display_name ?? "U").charAt(0).toUpperCase() }}
+							</span>
+							<span class="min-w-0 max-w-28 truncate text-[length:var(--kit-text-label)] font-medium">
+								{{ member?.display_name ?? branding.productName }}
+							</span>
 						</div>
-						<p
-							v-if="createError"
-							role="alert"
-							class="text-[length:var(--kit-text-caption)] text-[var(--kit-danger)]"
+						<button
+							type="button"
+							:aria-label="t('auth:logout')"
+							:title="t('auth:logout')"
+							class="grid size-8 shrink-0 place-items-center rounded-[var(--kit-radius-sm)] text-[var(--kit-fg-muted)] hover:bg-[var(--kit-nav-active)] hover:text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
+							@click="emit('logout')"
 						>
-							{{ createError }}
-						</p>
+							<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-4">
+								<path d="M9 18l6-6-6-6M15 12H3" stroke-linecap="round" stroke-linejoin="round" />
+								<path d="M14 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5" stroke-linecap="round" />
+							</svg>
+						</button>
+						<span class="min-w-0 flex-1" />
+						<button
+							type="button"
+							data-testid="sidebar-usage"
+							:aria-label="t('layout:views.usage')"
+							:title="t('layout:views.usage')"
+							:aria-pressed="view === 'usage'"
+							class="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[var(--kit-radius-sm)] px-2.5 py-1.5 text-[length:var(--kit-text-label)] transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none hover:bg-[var(--kit-nav-active)] hover:text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
+							:class="view === 'usage' ? 'bg-[var(--kit-nav-active)] text-[var(--kit-fg)]' : 'text-[var(--kit-fg-muted)]'"
+							@click="
+								() => {
+									goToUsage();
+									closeSidebar();
+								}
+							"
+						>
+							<svg
+								aria-hidden="true"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								class="size-4"
+							>
+								<path d="M3 12h4l3-8 4 16 3-8h4" />
+							</svg>
+							{{ t("layout:views.usage") }}
+						</button>
 					</div>
 				</template>
 			</SessionSidebar>

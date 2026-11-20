@@ -4,8 +4,6 @@ export default {
 	next: "Current phase: login and identity lifecycle",
 	sidebarLabel: "Session navigation",
 	backToPlaza: "Back to plaza",
-	selectAgent: "Choose agent",
-	creating: "Creating…",
 	closeError: "Dismiss error notice",
 	chatWith: "Start chatting with {{name}}",
 	chatHint: "Send your first message to create a session.",

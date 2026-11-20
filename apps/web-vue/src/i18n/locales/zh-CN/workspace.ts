@@ -4,8 +4,6 @@ export default {
 	next: "当前阶段：登录与身份生命周期",
 	sidebarLabel: "会话导航",
 	backToPlaza: "返回广场",
-	selectAgent: "选择智能体",
-	creating: "创建中…",
 	closeError: "关闭错误提示",
 	chatWith: "和 {{name}} 开始对话",
 	chatHint: "发送第一条消息即会创建会话。",
