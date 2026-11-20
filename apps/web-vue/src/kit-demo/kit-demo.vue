@@ -19,6 +19,11 @@ const confirmOpen = ref(false);
 const lastAction = ref("尚未操作");
 const lastSent = ref("尚未发送");
 const skills = [{ name: "review" }];
+const senderRef = ref<{ insert: (text: string) => void } | null>(null);
+
+function insertReview() {
+	senderRef.value?.insert("/review ");
+}
 
 const codeSample = `type Session = {
   id: string;
@@ -166,17 +171,32 @@ ${diagram}
 			<section class="rounded-[var(--kit-radius)] border border-[var(--kit-border)] bg-[var(--kit-surface)] p-6">
 				<h2 class="text-[length:var(--kit-text-heading)] font-semibold">6. 对话输入框（Sender）</h2>
 				<p class="mt-1 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
-					合同：<code>role="textbox"</code> + contenteditable；chip 一次退格整体删除；Enter 提交、Shift+Enter 换行。
+					合同：<code>role="textbox"</code> + contenteditable；chip 由调用方插入技能标记（Suggestion 选中后
+					<code>replaceRange</code>），手打 <code>/review</code> 仍是普通文本；Enter 提交、Shift+Enter 换行。
 				</p>
-				<div class="mt-4">
+				<div class="mt-4 flex flex-wrap items-center gap-2">
+					<span class="text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">技能候选：</span>
+					<button
+						type="button"
+						data-testid="insert-skill"
+						class="rounded-[var(--kit-radius-chip)] bg-[var(--kit-skill-chip-bg)] px-2 py-1 text-[length:var(--kit-text-label)] font-medium text-[var(--kit-skill-chip-fg)]"
+						@click="insertReview"
+					>
+						review
+					</button>
+					<span class="text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)]">
+						点击等价于 Suggestion 选中后插入
+					</span>
+				</div>
+				<div class="mt-3">
 					<Sender
+						ref="senderRef"
 						:skills="skills"
-						default-value="/review 帮我看看这段代码"
 						@submit="(text) => (lastSent = text)"
 					>
 						<template #footer>
 							<span class="text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
-								输入 /review 会投影成技能 chip；退格一次整体删除。
+								chip 是原子内联块：退格一次整体删除（含尾随空格）。
 							</span>
 						</template>
 					</Sender>
