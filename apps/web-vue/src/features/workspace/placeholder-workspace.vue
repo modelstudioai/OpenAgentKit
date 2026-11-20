@@ -13,7 +13,7 @@ const { t } = useTranslation(["workspace", "auth"]);
 </script>
 
 <template>
-	<div class="flex min-h-full flex-col bg-[var(--kit-bg-subtle)]">
+	<div class="flex min-h-dvh flex-col bg-[var(--kit-bg-subtle)]">
 		<header
 			class="flex min-h-14 items-center justify-between gap-3 border-b border-[var(--kit-border-subtle)] bg-[var(--kit-surface)] px-4 sm:px-6"
 		>
