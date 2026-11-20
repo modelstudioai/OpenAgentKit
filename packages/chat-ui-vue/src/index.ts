@@ -78,6 +78,15 @@ export {
 	type SessionListStrings,
 	sessionListStrings,
 } from "./components/session-list/index.ts";
+export {
+	SessionSidebar,
+	type SessionSidebarEditing,
+	type SessionSidebarGroup,
+	type SessionSidebarPage,
+	type SessionSidebarSection,
+	type SessionSidebarStrings,
+	sessionSidebarStrings,
+} from "./components/session-sidebar/index.ts";
 export { EmptyState, ErrorState } from "./components/states/index.ts";
 export { Suggestion, type SuggestionItem, type SuggestionSelectContext } from "./components/suggestion/index.ts";
 export {

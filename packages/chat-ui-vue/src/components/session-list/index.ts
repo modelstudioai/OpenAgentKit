@@ -129,7 +129,6 @@ export const SessionList = defineComponent({
 			}
 			emit("edit-end", session.session_id);
 		};
-		// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: 行渲染按状态标记与编辑态平铺，拆分反而割裂阅读顺序
 		return () => {
 			return h(
 				"nav",
@@ -145,6 +144,7 @@ export const SessionList = defineComponent({
 								strings.value.empty,
 							)
 						: null,
+					// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: 行渲染按状态标记与编辑态平铺，拆分反而割裂阅读顺序
 					...props.sessions.map((session) => {
 						const active = session.session_id === props.activeId;
 						const editing = session.session_id === props.editingId;

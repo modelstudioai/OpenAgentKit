@@ -143,6 +143,12 @@
 			"file": "src/components/session-list/index.ts",
 			"deps": ["kit-i18n", "tooltip", "process-step"],
 			"extraFiles": ["src/components/session-list/strings.ts"]
+		},
+		"session-sidebar": {
+			"file": "src/components/session-sidebar/index.ts",
+			"deps": ["kit-i18n", "session-list"],
+			"extraFiles": ["src/components/session-sidebar/strings.ts"],
+			"npmDependencies": ["@openagentkit/sdk"]
 		}
 	},
 	"theme": "src/theme.css"
