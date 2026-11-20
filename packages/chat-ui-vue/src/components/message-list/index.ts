@@ -1,3 +1,4 @@
+import type { ChatMultiAgent } from "@openagentkit/sdk/chat";
 import type { ChatMessage } from "@openagentkit/sdk/messages";
 import { computed, defineComponent, h, nextTick, onMounted, onScopeDispose, type PropType, ref, watch } from "vue";
 import { resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
@@ -71,6 +72,7 @@ export const MessageList = defineComponent({
 		anchorRail: { type: Boolean, default: false },
 		virtualize: { type: Boolean, default: true },
 		skills: { type: Array as () => string[], default: undefined },
+		multiAgent: { type: Object as () => ChatMultiAgent, default: undefined },
 		strings: { type: Object as () => Partial<MessageListStrings>, default: undefined },
 	},
 	setup(props, { slots }) {
@@ -229,6 +231,7 @@ export const MessageList = defineComponent({
 						variant: props.variant,
 						onCopy: props.onCopy,
 						skills: props.skills,
+						multiAgent: props.multiAgent,
 					},
 					{
 						attachment: slots.attachment,

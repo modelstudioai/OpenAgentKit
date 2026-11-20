@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import type { ChatMultiAgent } from "@openagentkit/sdk/chat";
 import type {
 	AgentMemoryStore,
 	AgentSummary,
 	ArtifactDescriptor,
 	RemoteAgentResources,
 } from "@openagentkit/sdk/protocol";
-import { Tooltip } from "@openagentpack/kit-chat-ui-vue";
+import { SubAgentPanel, Tooltip } from "@openagentpack/kit-chat-ui-vue";
 import { computed } from "vue";
 import { useTranslation } from "../../i18n/index.ts";
 
@@ -14,6 +15,7 @@ const props = defineProps<{
 	resources: RemoteAgentResources | null;
 	memories: AgentMemoryStore[] | null;
 	artifacts: ArtifactDescriptor[];
+	multiAgent?: ChatMultiAgent;
 	onClose: () => void;
 	onArtifactOpen: (fileId: string, contentType?: string) => void;
 	onArtifactDownload: (fileId: string) => void;
@@ -70,6 +72,8 @@ function artifactBadge(name: string | undefined, type: string | undefined): stri
 					</p>
 				</div>
 			</details>
+
+			<SubAgentPanel :multi-agent="multiAgent" />
 
 			<details v-if="resourceRows.length > 0" open class="kit-collapse group/res mt-6 min-w-0">
 				<summary class="-mx-2 flex min-w-0 cursor-pointer list-none select-none items-center gap-2 rounded-[var(--kit-radius-sm)] px-2 py-1 [&::-webkit-details-marker]:hidden">

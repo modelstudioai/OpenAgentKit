@@ -1,9 +1,11 @@
+import type { ChatMultiAgent } from "@openagentkit/sdk/chat";
 import type { ChatMessage, MessagePart } from "@openagentkit/sdk/messages";
 import { parseSkillDirective } from "@openagentkit/sdk/protocol";
 import { computed, defineComponent, h, type PropType, type VNode } from "vue";
 import { resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
 import { Markdown } from "../markdown/index.ts";
 import { ExecutionGroup, isProcessPart, type ProcessPart } from "../process/execution-group/index.ts";
+import { SubAgentCard } from "../process/sub-agent-card/index.ts";
 import { ProcessingIndicator } from "../processing-indicator/index.ts";
 import { SkillGlyph } from "../sender/index.ts";
 import messageStrings, { type MessageStrings } from "./strings.ts";
@@ -85,18 +87,32 @@ function renderPart(
 	skills: string[] | undefined,
 	strings: MessageStrings,
 	slots: Record<string, ((props: Record<string, unknown>) => VNode[]) | undefined>,
+	multiAgent?: ChatMultiAgent,
+	onArtifactOpen?: (fileId: string, contentType?: string) => void,
+	onArtifactDownload?: (fileId: string) => void,
 ): VNode[] {
 	if (part.type === "text")
 		return [role === "user" ? renderUserText(part.text, skills) : h(Markdown, null, () => part.text)];
-	if (part.type === "attachment" || part.type === "artifact" || part.type === "sub-agent") {
+	if (part.type === "sub-agent") {
+		const slot = slots["sub-agent"];
+		if (slot) return slot({ part });
+		if (!multiAgent) return [];
+		return [
+			h(SubAgentCard, {
+				threadId: part.threadId,
+				multiAgent,
+				onArtifactOpen,
+				onArtifactDownload,
+			}),
+		];
+	}
+	if (part.type === "attachment" || part.type === "artifact") {
 		const slot = slots[part.type];
 		if (slot) return slot({ part });
 		const label =
-			part.type === "sub-agent"
-				? part.threadId
-				: part.type === "artifact"
-					? (part.artifact.filename ?? part.artifact.file_id)
-					: (part.file.filename ?? part.file.file_id);
+			part.type === "artifact"
+				? (part.artifact.filename ?? part.artifact.file_id)
+				: (part.file.filename ?? part.file.file_id);
 		return [
 			h(
 				"div",
@@ -226,7 +242,18 @@ export const Message = defineComponent({
 							}),
 						);
 				} else {
-					nodes.push(...renderPart(item.part, message.role, props.skills, strings.value, slots as never));
+					nodes.push(
+						...renderPart(
+							item.part,
+							message.role,
+							props.skills,
+							strings.value,
+							slots as never,
+							props.multiAgent as ChatMultiAgent | undefined,
+							props.onArtifactOpen,
+							props.onArtifactDownload,
+						),
+					);
 				}
 			}
 			if (streaming && message.role === "assistant") {

@@ -352,6 +352,7 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 				:resources="resources"
 				:memories="memories"
 				:artifacts="chat.artifacts.value"
+				:multi-agent="chat.multiAgent.value"
 				:on-close="() => (asideOpen = false)"
 				:on-artifact-open="openArtifact"
 				:on-artifact-download="downloadArtifact"
@@ -611,6 +612,7 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 				:sending="sending"
 				:can-send="sessionId ? chat.canSend.value : true"
 				:scroll-key="sessionId"
+				:multi-agent="chat.multiAgent.value"
 				@stop="() => void chat.stop()"
 			>
 				<template #sender>

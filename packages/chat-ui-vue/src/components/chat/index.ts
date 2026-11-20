@@ -1,3 +1,4 @@
+import type { ChatMultiAgent } from "@openagentkit/sdk/chat";
 import type { ChatMessage } from "@openagentkit/sdk/messages";
 import { skillInputTokens } from "@openagentkit/sdk/protocol";
 import { computed, defineComponent, h, type PropType, ref } from "vue";
@@ -29,6 +30,7 @@ export const Chat = defineComponent({
 		anchorRail: { type: Boolean, default: false },
 		virtualize: { type: Boolean, default: true },
 		skills: { type: Array as () => Array<{ name: string; description?: string }>, default: undefined },
+		multiAgent: { type: Object as () => ChatMultiAgent, default: undefined },
 		strings: { type: Object as () => Partial<ChatStrings>, default: undefined },
 	},
 	setup(props, { slots }) {
@@ -75,6 +77,7 @@ export const Chat = defineComponent({
 						anchorRail: props.anchorRail,
 						virtualize: props.virtualize,
 						skills: skillNames.value,
+						multiAgent: props.multiAgent,
 					},
 					{
 						empty: slots.empty,

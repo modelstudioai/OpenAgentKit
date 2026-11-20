@@ -75,6 +75,15 @@ export {
 } from "./components/process/reasoning-block/index.ts";
 export { ProcessStep, ProcessValue, ProcessValueCode } from "./components/process/step/index.ts";
 export {
+	type SubAgentCardStrings,
+	subAgentCardStrings,
+} from "./components/process/sub-agent-card/strings.ts";
+export {
+	SubAgentPanel,
+	type SubAgentPanelStrings,
+	subAgentPanelStrings,
+} from "./components/process/sub-agent-panel/index.ts";
+export {
 	ToolCallCard,
 	type ToolCallCardStrings,
 	toolCallCardStrings,
