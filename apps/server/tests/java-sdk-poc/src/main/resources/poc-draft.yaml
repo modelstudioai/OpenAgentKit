@@ -1,0 +1,14 @@
+version: "1"
+providers:
+  bailian: {}
+environments:
+  poc-env:
+    name: PoC Environment
+    config:
+      type: cloud
+agents:
+  poc-agent:
+    name: PoC Agent
+    model: auto
+    instructions: 仅用于本地 SDK 发布验收。
+    environment: poc-env

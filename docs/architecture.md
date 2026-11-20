@@ -5,6 +5,8 @@
 | 形态 | 产物 | 运行时 | 说明 |
 | --- | --- | --- | --- |
 | `apps/server` | Node ESM | Node ≥ 24 | Hono 应用工厂 `createKitServer()`，数据面 + 控制面 |
+| `apps/server-java` | Spring Boot JAR | JDK 11 | Kit 数据面、控制面、公开 SSE 与数据库单写 |
+| `apps/server/src/sdk-gateway` | Node ESM | Node ≥ 24 | Java 部署的 SDK 网关，提供内部 HTTP/SSE 与发布回写 |
 | `apps/web` | 纯静态 CSR | 浏览器 | 体验页，支持 Web / H5 |
 | `apps/console` | 纯静态 CSR | 浏览器 | 管理端 |
 | `apps/storybook` | Next.js 静态导出（`out/`） | 构建使用 Node ≥24；部署为静态托管 | Fumadocs 文档站与组件预览 |
@@ -25,12 +27,25 @@ API Key 输入隐藏回显，凭据和管理员令牌不写启动日志。已有
 ```text
 apps/server ──► @openagentpack/sdk（上游主入口，仅服务端 runtime import）
      └───────► @openagentkit/sdk/protocol 与 SDK 功能数据入口
+apps/server-java ── HTTP/SSE ──► apps/server/src/sdk-gateway ──► @openagentpack/sdk
 apps/web / apps/console / packages/chat-ui
      ├───────► @openagentkit/sdk/<功能>/hooks 与 @openagentkit/sdk/providers/kit/react
      │                    └──────► SDK 功能数据入口
      ├───────► @openagentkit/sdk/hooks（屏幕判断）
      └───────► SDK 功能数据入口与 @openagentkit/sdk/protocol
 ```
+
+Spring Boot 拥有 Kit 身份鉴权、会话目录、公开 SSE、确认、审计、用量与发布 Operation。
+它用生成的 OpenAPI 校验公开路由清单。Node SDK 网关复用 `src/gateway/` 的 Provider 适配，
+经回环 HTTP/SSE 提供数据分页、实时快照和发布能力。两条内部通道分别校验服务身份。
+网关持有 Provider 凭据和受控暂存目录，通过 Java 回写检查点与结果。
+`sdk-gateway-no-kit-business` 禁止网关依赖 Hono 公开路由、启动入口和持久业务 Store。
+SDK 版本和现有 Web / Console 调用合同由两套入口共用。见 [ADR-0028](adr/0028-spring-boot-kit-server.md)。
+
+Java 进程内遵循 `controller → service → dao → store`。Controller 校验 HTTP 请求并输出按 Kit
+协议编码的响应和 SSE。Service 执行业务规则，定义事务范围并连接 SDK 网关。DAO 按业务域封装
+SQL 和查询参数。Store 提供 JDBC、事务执行和共享迁移。`apps/server-java/check-layers.mjs`
+随 Maven 构建运行，校验 Java 分层的导入方向。
 
 自定义宿主注入的能力由体验页本地适配，不经过 SDK：
 `apps/web/src/lib/host.ts` 读取 `window.__OPENAGENTPACK_KIT_BRIDGE__`，缺失时回退浏览器实现。
@@ -309,6 +324,12 @@ Turbopack 编译进程的临时监听端口；文档站自身的开发及默认�
 
 发布产物不复制根 `.env` 或本地数据库；凭据由部署环境仅向后端注入。
 数据目录与本地资源必须位于持久化磁盘，独立于可替换的代码产物，并避免并发启动多个写实例。
+
+`pnpm build:release:java` 生成 `.scratch/kit-java-release.tgz`，包含 Java JAR、Node SDK 网关、
+同版本 Hono 和三个静态站点。解包后用 `node server-java/start.mjs` 共同启动 Java 与网关。
+Java 发布使用根锁文件安装后的生产依赖清单，打包时沿用已安装版本。
+同版本回切入口为 `node server/dist/bin.js`，先停当前后端，再用原配置与数据启动另一个入口。
+本地入口与数据库配置见 [Java Server 启动说明](../apps/server-java/README.md)。
 
 ## Server 内部结构
 

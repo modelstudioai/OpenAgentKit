@@ -2,7 +2,7 @@ import { copyFile, mkdir, readdir } from "node:fs/promises";
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-	entry: { app: "src/app.ts", bin: "src/bin.ts" },
+	entry: { app: "src/app.ts", bin: "src/bin.ts", "sdk-gateway": "src/sdk-gateway/bin.ts" },
 	format: ["esm"],
 	dts: true,
 	sourcemap: true,

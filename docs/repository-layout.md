@@ -3,7 +3,7 @@
 ## 顶层
 
 ```
-apps/            可运行应用（server / web / console / storybook）
+apps/            可运行应用（server / server-java / web / console / storybook）
 packages/        可复用包（sdk / chat-ui / eval）
 assets/          生成产物（当前为 assets/skills；dist 不入库）
 docs/            权威文档（见 AGENTS.md 权威顺序）+ adr/ research/
@@ -249,6 +249,12 @@ assets/skills/
 
 ## app 内
 
+- Spring Boot 源码位于 `apps/server-java/src/main/java/`，运行配置位于 `src/main/resources/`。
+  `org/openagentkit/server/` 下的 `controller/` 放 HTTP 和 SSE 入口，`service/` 放业务流程，
+  `dao/` 放业务查询与写入，`store/` 放 JDBC 和迁移，`support/` 放共用工具。
+  Maven 构建从 Hono 的公开 OpenAPI 和共享迁移生成 Java 资源，写入被忽略的 `target/`。
+  Node 内部网关位于 `apps/server/src/sdk-gateway/`。跨进程验收脚本位于 `apps/server-java/`，
+  用例输出放在被忽略的 `.scratch/java-server-tests/`。
 - JDK 11 与 Node SDK 的跨进程验收 PoC 位于 [apps/server/tests/java-sdk-poc/](../apps/server/tests/java-sdk-poc/README.md)，
   通过独立 Maven 工程和验收脚本显式运行。工具链、构建产物与实测证据放在 `.scratch/java-sdk-poc/`。
 - 体验页品牌由 console 的 `features/branding/` 经管理端品牌接口维护；server 的

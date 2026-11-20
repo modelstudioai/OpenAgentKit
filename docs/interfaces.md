@@ -6,6 +6,9 @@
 生成，两者都不允许手改。改完路由跑 `pnpm gen:openapi`（已串起两步生成）；
 `apps/server/tests/openapi.test.ts` 会校验文档可渲染且仓库内 openapi.json 未漂移。
 
+Spring Boot 与 Hono 共享下表与同一份 OpenAPI。Spring Boot 启动时逐条校验公开路由的方法与路径；
+修改公开能力时同时核对两套实现及其客户端回归。Java 与 Node SDK 网关之间的回环接口随同一产物发版。
+
 > **生成链路红线**：路由 schema 不得使用 zod-openapi 渲染不了的类型
 > （`z.instanceof(File)` → custom、`z.file()` → file），否则**整份** openapi.json 退化为
 > `{ message: "Unknown zod object type…" }`。二进制上传用

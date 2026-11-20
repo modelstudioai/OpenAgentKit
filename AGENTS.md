@@ -23,6 +23,7 @@
 | 目录 | 职责 |
 | --- | --- |
 | `apps/server` | Hono 服务端、Provider gateway、身份、确认与本地索引 |
+| `apps/server-java` | JDK 11 Spring Boot 入口、Kit 业务与 JDBC 持久化 |
 | `apps/web` | Web / H5 体验页，静态 CSR |
 | `apps/console` | 管理端，控制面客户端及业务 hooks |
 | `apps/storybook` | Fumadocs 文档站、真实组件预览与静态下载 |

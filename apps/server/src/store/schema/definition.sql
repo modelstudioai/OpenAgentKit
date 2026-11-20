@@ -448,6 +448,50 @@ CREATE TABLE "usage_turns" (
   "created_at" TEXT NOT NULL
 );
 
+CREATE TABLE "kit_confirmation_consumptions" (
+  "token_hash" TEXT NOT NULL,
+  "expires_at" TEXT NOT NULL,
+  PRIMARY KEY ("token_hash")
+);
+
+CREATE TABLE "kit_resource_publish_plans" (
+  "draft_id" TEXT NOT NULL,
+  "plan_id" TEXT NOT NULL,
+  "plan_json" TEXT NOT NULL,
+  "expires_at" TEXT NOT NULL,
+  PRIMARY KEY ("draft_id"),
+  FOREIGN KEY ("draft_id") REFERENCES "kit_resource_drafts" ("draft_id") ON DELETE CASCADE
+);
+
+CREATE TABLE "kit_sdk_operation_claims" (
+  "operation_id" TEXT NOT NULL,
+  "draft_id" TEXT NOT NULL,
+  "node_instance" TEXT,
+  "plan_json" TEXT NOT NULL,
+  "mutation_granted" INTEGER NOT NULL DEFAULT 0,
+  "updated_at" TEXT NOT NULL,
+  PRIMARY KEY ("operation_id"),
+  FOREIGN KEY ("operation_id") REFERENCES "kit_operations" ("operation_id") ON DELETE CASCADE
+);
+
+CREATE TABLE "kit_sdk_checkpoints" (
+  "operation_id" TEXT NOT NULL,
+  "sequence" INTEGER NOT NULL,
+  "payload_hash" TEXT NOT NULL,
+  PRIMARY KEY ("operation_id", "sequence"),
+  FOREIGN KEY ("operation_id") REFERENCES "kit_sdk_operation_claims" ("operation_id") ON DELETE CASCADE
+);
+
+CREATE TABLE "kit_session_send_receipts" (
+  "session_id" TEXT NOT NULL,
+  "client_message_id" TEXT NOT NULL,
+  "request_hash" TEXT NOT NULL,
+  "event_ids" TEXT,
+  "created_at" TEXT NOT NULL,
+  PRIMARY KEY ("session_id", "client_message_id"),
+  FOREIGN KEY ("session_id") REFERENCES "kit_sessions" ("session_id") ON DELETE CASCADE
+);
+
 CREATE UNIQUE INDEX "idx_usage_turns_idempotency" ON "usage_turns" ("session_id", "client_message_id") WHERE client_message_id IS NOT NULL;
 
 CREATE INDEX "idx_usage_turns_month_agent" ON "usage_turns" ("month", "agent_slug");

@@ -32,3 +32,4 @@
 | [0025](./0025-console-owns-admin-client.md) | 管理端持有控制面客户端，SDK 仅公开通用调用状态 |
 | [0026](./0026-sdk-feature-modules.md) | SDK 按功能划分公开入口与 hooks |
 | [0027](./0027-skills-source-and-generated-output.md) | Skill 改为源目录 + 生成物，不再作为 workspace 包；状态更新改用中文内容 |
+| [0028](./0028-spring-boot-kit-server.md) | JDK 11 Spring Boot 承载 Kit 业务，同主机 Node 网关运行上游 SDK |

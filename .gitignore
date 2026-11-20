@@ -26,6 +26,7 @@ coverage/
 
 # 临时探针、个人计划（见 AGENTS.md「文档与工作记录」）
 .scratch/
+/apps/server-java/target/
 
 .DS_Store
 .idea/

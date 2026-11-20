@@ -60,6 +60,12 @@ CREATE TABLE `kit_branding_logo` (
   CHECK (id = 1)
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
+CREATE TABLE `kit_confirmation_consumptions` (
+  `token_hash` VARCHAR(128) NOT NULL,
+  `expires_at` VARCHAR(32) NOT NULL,
+  PRIMARY KEY (`token_hash`)
+) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+
 CREATE TABLE `kit_groups` (
   `group_id` VARCHAR(128) NOT NULL,
   `name` VARCHAR(255) NOT NULL,
@@ -163,12 +169,40 @@ CREATE TABLE `kit_resource_draft_documents` (
   FOREIGN KEY (`draft_id`) REFERENCES `kit_resource_drafts` (`draft_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
+CREATE TABLE `kit_resource_publish_plans` (
+  `draft_id` VARCHAR(128) NOT NULL,
+  `plan_id` TEXT NOT NULL,
+  `plan_json` LONGTEXT NOT NULL,
+  `expires_at` VARCHAR(32) NOT NULL,
+  PRIMARY KEY (`draft_id`),
+  FOREIGN KEY (`draft_id`) REFERENCES `kit_resource_drafts` (`draft_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+
 CREATE TABLE `kit_retired_directory_drafts` (
   `draft_id` VARCHAR(128) NOT NULL,
   `record_json` LONGTEXT NOT NULL,
   `document_json` LONGTEXT,
   `retired_at` VARCHAR(32) NOT NULL,
   PRIMARY KEY (`draft_id`)
+) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+
+CREATE TABLE `kit_sdk_operation_claims` (
+  `operation_id` VARCHAR(128) NOT NULL,
+  `draft_id` VARCHAR(128) NOT NULL,
+  `node_instance` TEXT,
+  `plan_json` LONGTEXT NOT NULL,
+  `mutation_granted` BIGINT NOT NULL DEFAULT 0,
+  `updated_at` VARCHAR(32) NOT NULL,
+  PRIMARY KEY (`operation_id`),
+  FOREIGN KEY (`operation_id`) REFERENCES `kit_operations` (`operation_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+
+CREATE TABLE `kit_sdk_checkpoints` (
+  `operation_id` VARCHAR(128) NOT NULL,
+  `sequence` BIGINT NOT NULL,
+  `payload_hash` TEXT NOT NULL,
+  PRIMARY KEY (`operation_id`, `sequence`),
+  FOREIGN KEY (`operation_id`) REFERENCES `kit_sdk_operation_claims` (`operation_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 CREATE TABLE `kit_session_deletions` (
@@ -230,6 +264,16 @@ CREATE TABLE `kit_sessions` (
         OR (debug_source = 'template' AND project_name IS NULL AND agent_key IS NULL)))),
   INDEX `idx_debug_sessions_project` (`purpose`, `subject_id`, `project_name`(64), `agent_key`(64), `created_at`),
   INDEX `idx_sessions_subject` (`purpose`, `subject_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+
+CREATE TABLE `kit_session_send_receipts` (
+  `session_id` VARCHAR(255) NOT NULL,
+  `client_message_id` VARCHAR(255) NOT NULL,
+  `request_hash` VARCHAR(128) NOT NULL,
+  `event_ids` LONGTEXT,
+  `created_at` VARCHAR(32) NOT NULL,
+  PRIMARY KEY (`session_id`, `client_message_id`),
+  FOREIGN KEY (`session_id`) REFERENCES `kit_sessions` (`session_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 CREATE TABLE `kit_templates` (

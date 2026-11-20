@@ -10,6 +10,7 @@
 | `src/routes/` | Hono 路由、共享 Schema、OpenAPI 与 HTTP 边界 |
 | `src/services/` | 身份、业务编排、计划确认、共享流、批次与恢复 |
 | `src/gateway/` | SDK / Mock 适配、Provider 分页、规范化与安全投影 |
+| `src/sdk-gateway/` | Spring Boot 部署使用的回环 HTTP/SSE 网关，SDK 执行、受控暂存及结果回写 |
 | `src/store/` | SQLite / MySQL / PostgreSQL 连接与迁移、目录/索引、数值快照和临时执行账本 |
 | `tests/` / `tests/live/` | 服务端与 Provider 合同 / 显式启用的 Cloud 验证 |
 
@@ -50,6 +51,8 @@
 13. 数据库驱动归 `src/store/`，由 `server-database-drivers-in-store` 检查。业务 Store 共用
     异步读写和事务接口，跨 Store 事务须共用连接。三库共用结构定义和迁移顺序，各库分别记账。
     已交付的迁移保留原 ID、内容和顺序，新变更追加版本。
+14. Spring Boot 部署中由 Java 持有 Kit 状态。Node 网关通过回环通道验证服务令牌并回写 SDK 执行结果；
+    `sdk-gateway-no-kit-business` 约束网关到公开路由、应用入口及 Store 的依赖方向。
 
 ## 修改步骤
 

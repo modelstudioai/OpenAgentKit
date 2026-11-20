@@ -334,6 +334,10 @@ Build、源码版本、Restore 和目录锁执行链路已经退役（ADR-0018�
 迟到的初始 GET 不能覆盖较新 SSE。服务重启后 pending/running 标为 failed/interrupted，
 提示远端结果待核对，不自动重跑。
 
+Spring Boot 通过持久认领和 Node 网关实例身份核对正在执行的发布。Java 重启后，存活的原网关仍可
+回写同一 Operation。写入许可已发出且执行实例消失时，发布结果为 `unknown`，保留已知检查点并进入
+只读核对。检查点以 `operation_id` 和单调序号去重，回写结果与执行请求的响应独立传输。
+
 发布 Operation 额外提供可选 `publication` 与 `error_details`，HTTP GET 与 SSE 使用同一快照合同；
 旧记录缺字段时仍按原 `status/result/error` 读取，不推断历史执行结果。
 `publication.outcome` 为 `succeeded | failed | partial | unknown`，`mutation_started` 表示是否已调用 Provider 写方法。

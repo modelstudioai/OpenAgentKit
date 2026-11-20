@@ -4,6 +4,7 @@
  * 分层：sdk/protocol ← sdk ← chat-ui；server 只依赖 sdk/protocol 与 sdk 数据入口；
  * sdk 数据入口禁 React；React 仅限共享 hooks/、Kit React 接入与指定功能的 hooks/；chat-ui 禁 server；
  * antd 仅限 apps/console（ADR-0015）。
+ * Java 分层由 Maven 构建中的 apps/server-java/check-layers.mjs 检查。
  */
 const sdkReact = "^packages/sdk/src/(hooks/|providers/kit/react/|(chat|sessions|files|agents|usage|auth)/hooks/)";
 const sdkEntryModules =
@@ -26,6 +27,13 @@ module.exports = {
 			severity: "error",
 			from: { path: "^apps/server/src/", pathNot: "^apps/server/src/store/" },
 			to: { path: "(^|/)(mysql2|pg)(/|$)|^(node:)?sqlite$", dependencyTypesNot: ["type-only"] },
+		},
+		{
+			name: "sdk-gateway-no-kit-business",
+			comment: "Node SDK 网关复用 Provider 适配，Kit 路由和数据由 Java 持有",
+			severity: "error",
+			from: { path: "^apps/server/src/sdk-gateway/" },
+			to: { path: "^apps/server/src/(routes/|store/|(app|bin|listener)\\.ts$)" },
 		},
 
 		{

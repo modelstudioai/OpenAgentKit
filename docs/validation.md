@@ -11,6 +11,7 @@
 | SDK 数据层 | `pnpm --filter @openagentkit/sdk test` | SSE 帧编解码、快照归并、`event_id` 去重、重连与 `after` 续传、工具审批、确认令牌 |
 | chat-ui | `pnpm --filter @openagentpack/kit-chat-ui test` | 消息渲染、执行过程、附件与快捷指令、审批交互、空态与禁用态 |
 | server | `pnpm --filter @openagentpack/kit-server test` | 路由与权限、身份归属、确认闸门、事件不落库、OpenAPI 一致性 |
+| Spring Boot + Node SDK | `pnpm test:java` | 真实进程的两类 SSE 断线、发布响应中断与 Java / Node 重启、三库迁移及同版本 Hono 回切 |
 | gateway 合同 | 同上（`tests/fixtures/`） | Provider HTTP/SSE 映射；Mock 与 SdkGateway 跑同一套契约 |
 | Console | `pnpm --filter console test` | 管理客户端、导航、草稿所有权、资源表单与恢复 |
 | Web | `pnpm --filter web test` | 配置、身份隔离、宿主适配及页面纯逻辑 |
@@ -38,6 +39,13 @@ pnpm verify:push   # pre-push hook 子集
 文档站由 GitHub Actions 检查、构建并发布到 GitHub Pages，配置见[文档站部署说明](../apps/storybook/README.md#github-pages-部署)。
 完整验收在本地执行 `pnpm gate` 与 `pnpm e2e`，结果记录在 PR 描述中。
 本地 hook 可被 `--no-verify` 绕过。
+
+### Spring Boot 发布门禁
+
+用 JDK 11、Maven 3.9.11 和 Node 24 执行 `pnpm build:java`，再执行 `pnpm test:java`。
+提供 `KIT_TEST_MYSQL_URL` 和 `KIT_TEST_POSTGRES_URL` 才能验收对应引擎；使用回环地址和能创建、
+删除临时数据库的本地测试账号。用例生成独立库名与凭据，覆盖空库、历史升级、兼容回切和 MySQL 的 DDL 断点。
+切换入口前另验收 Web 成员登录、消息 SSE 及 Console 管理流程。
 
 ### 环境与文档站准备
 
