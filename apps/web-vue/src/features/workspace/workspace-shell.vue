@@ -6,7 +6,7 @@ import { useAgentCatalog } from "@openagentkit/sdk/agents/hooks-vue";
 import { useChat } from "@openagentkit/sdk/chat/hooks-vue";
 import { useSessions } from "@openagentkit/sdk/sessions/hooks-vue";
 import { Chat, EmptyState, Layout, SessionSidebar, type SessionSidebarGroup } from "@openagentpack/kit-chat-ui-vue";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useTranslation } from "../../i18n/index.ts";
 import type { Branding } from "../../lib/branding.ts";
 
@@ -42,6 +42,14 @@ const groups = computed<SessionSidebarGroup[]>(() => {
 		loading: sessions.loading.value,
 	}));
 });
+
+watch(
+	() => agents.agents.value,
+	(list) => {
+		if (!selectedAgent.value && list[0]) selectedAgent.value = list[0].slug;
+	},
+	{ immediate: true },
+);
 
 function select(session: { session_id: string }) {
 	sessionId.value = session.session_id;
