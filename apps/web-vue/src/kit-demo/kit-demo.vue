@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ChatToolApproval } from "@openagentkit/sdk/chat";
 import type { ChatMessage } from "@openagentkit/sdk/messages";
 import { composeSkillDirective } from "@openagentkit/sdk/protocol";
 import {
@@ -14,6 +15,7 @@ import {
 	MenuTrigger,
 	Mermaid,
 	Sender,
+	ToolApprovalGroup,
 	Tooltip,
 } from "@openagentpack/kit-chat-ui-vue";
 import { ref } from "vue";
@@ -60,6 +62,41 @@ function onChatSend(text: string, skills?: string[]) {
 		textMessage(`u-${stamp}`, "user", composeSkillDirective(text, skills ?? [])),
 		textMessage(`a-${stamp}`, "assistant", skills?.length ? `收到，使用技能：${skills.join("、")}` : `收到：${text}`),
 	];
+}
+
+const approvals = ref<ChatToolApproval[]>([
+	{
+		batch_id: "batch-1",
+		call_id: "call-1",
+		request_event_id: null,
+		name: "write_file",
+		arguments: { path: "src/app.ts", content: "export const value = 1;" },
+		tool_type: "function",
+		actionable: true,
+		status: "pending",
+	},
+	{
+		batch_id: "batch-1",
+		call_id: "call-2",
+		request_event_id: null,
+		name: "bash",
+		arguments: { command: "pnpm --filter web test" },
+		tool_type: "function",
+		actionable: true,
+		status: "pending",
+	},
+]);
+const approvalNote = ref("等待处理");
+
+async function onDecision(decision: { batch_id: string; call_id: string; result: "allow" | "deny" }) {
+	approvalNote.value = `${decision.call_id} → ${decision.result === "allow" ? "允许" : "拒绝"}`;
+	approvals.value = approvals.value.map((approval) =>
+		approval.call_id === decision.call_id ? { ...approval, status: "submitted" } : approval,
+	);
+}
+
+async function onRefreshApproval() {
+	approvalNote.value = "已刷新";
 }
 
 function insertReview() {
@@ -271,7 +308,18 @@ ${diagram}
 			</section>
 
 			<section class="rounded-[var(--kit-radius)] border border-[var(--kit-border)] bg-[var(--kit-surface)] p-6">
-				<h2 class="text-[length:var(--kit-text-heading)] font-semibold">8. 状态组件</h2>
+				<h2 class="text-[length:var(--kit-text-heading)] font-semibold">8. 工具审批</h2>
+				<p class="mt-1 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
+					多个待审批横向翻页；允许与拒绝都是一步直提，提交后状态由服务端再次校验。
+				</p>
+				<p data-testid="approval-note" class="mt-3 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
+					最近操作：{{ approvalNote }}
+				</p>
+				<ToolApprovalGroup :approvals="approvals" :on-decision="onDecision" :on-refresh="onRefreshApproval" />
+			</section>
+
+			<section class="rounded-[var(--kit-radius)] border border-[var(--kit-border)] bg-[var(--kit-surface)] p-6">
+				<h2 class="text-[length:var(--kit-text-heading)] font-semibold">9. 状态组件</h2>
 				<div class="mt-4 grid gap-4 sm:grid-cols-2">
 					<EmptyState title="没有会话" hint="发起一次对话后会出现在这里。" />
 					<ErrorState message="无法读取服务配置" :on-retry="() => (lastAction = '重试配置')" />

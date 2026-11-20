@@ -73,4 +73,14 @@ export {
 } from "./components/sender/index.ts";
 export { EmptyState, ErrorState } from "./components/states/index.ts";
 export { Suggestion, type SuggestionItem, type SuggestionSelectContext } from "./components/suggestion/index.ts";
+export {
+	ToolApprovalCard,
+	type ToolApprovalCardStrings,
+	toolApprovalCardStrings,
+} from "./components/tool-approval-card/index.ts";
+export {
+	ToolApprovalGroup,
+	type ToolApprovalGroupStrings,
+	toolApprovalGroupStrings,
+} from "./components/tool-approval-group/index.ts";
 export { Tooltip, type TooltipSide } from "./components/tooltip/index.ts";

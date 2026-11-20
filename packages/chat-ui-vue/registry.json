@@ -120,6 +120,18 @@
 			"file": "src/components/processing-indicator/index.ts",
 			"deps": ["kit-i18n", "process-step"],
 			"extraFiles": ["src/components/processing-indicator/strings.ts"]
+		},
+		"tool-approval-card": {
+			"file": "src/components/tool-approval-card/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/tool-approval-card/strings.ts"],
+			"npmDependencies": ["@openagentkit/sdk"]
+		},
+		"tool-approval-group": {
+			"file": "src/components/tool-approval-group/index.ts",
+			"deps": ["kit-i18n", "tool-approval-card"],
+			"extraFiles": ["src/components/tool-approval-group/strings.ts"],
+			"npmDependencies": ["@openagentkit/sdk"]
 		}
 	},
 	"theme": "src/theme.css"
