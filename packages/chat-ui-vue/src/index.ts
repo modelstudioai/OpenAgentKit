@@ -19,6 +19,7 @@ export {
 	useKitLocale,
 	useKitStrings,
 } from "./components/kit-i18n/index.ts";
+export { Layout, type LayoutStrings, layoutStrings } from "./components/layout/index.ts";
 export { Markdown, type MarkdownStrings, markdownStrings } from "./components/markdown/index.ts";
 export { Menu, MenuContent, MenuItem, MenuTrigger } from "./components/menu/index.ts";
 export { Mermaid, type MermaidStrings, mermaidStrings } from "./components/mermaid/index.ts";
@@ -71,6 +72,12 @@ export {
 	SkillGlyph,
 	senderStrings,
 } from "./components/sender/index.ts";
+export {
+	filterSessions,
+	SessionList,
+	type SessionListStrings,
+	sessionListStrings,
+} from "./components/session-list/index.ts";
 export { EmptyState, ErrorState } from "./components/states/index.ts";
 export { Suggestion, type SuggestionItem, type SuggestionSelectContext } from "./components/suggestion/index.ts";
 export {

@@ -132,6 +132,17 @@
 			"deps": ["kit-i18n", "tool-approval-card"],
 			"extraFiles": ["src/components/tool-approval-group/strings.ts"],
 			"npmDependencies": ["@openagentkit/sdk"]
+		},
+		"layout": {
+			"file": "src/components/layout/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/layout/strings.ts"],
+			"npmDependencies": ["reka-ui", "@openagentkit/sdk"]
+		},
+		"session-list": {
+			"file": "src/components/session-list/index.ts",
+			"deps": ["kit-i18n", "tooltip", "process-step"],
+			"extraFiles": ["src/components/session-list/strings.ts"]
 		}
 	},
 	"theme": "src/theme.css"
