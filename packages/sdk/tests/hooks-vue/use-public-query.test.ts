@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { flushPromises, mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
-import { defineComponent, nextTick, ref, type Ref } from "vue";
+import { defineComponent, nextTick, type Ref, ref } from "vue";
 import { usePublicQuery } from "../../src/hooks-vue/shared.ts";
 
 function mountHarness(loader: (signal: AbortSignal) => Promise<number>, enabled: Ref<boolean>) {

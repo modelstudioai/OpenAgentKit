@@ -20,6 +20,43 @@
 			"file": "src/components/error-state/index.vue",
 			"deps": ["kit-i18n"],
 			"extraFiles": ["src/components/error-state/strings.ts"]
+		},
+		"menu": {
+			"file": "src/components/menu/index.ts",
+			"deps": [],
+			"npmDependencies": ["reka-ui"]
+		},
+		"tooltip": {
+			"file": "src/components/tooltip/index.ts",
+			"deps": []
+		},
+		"confirm-dialog": {
+			"file": "src/components/confirm-dialog/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/confirm-dialog/strings.ts"],
+			"npmDependencies": ["reka-ui"]
+		},
+		"code-highlighter": {
+			"file": "src/components/code-highlighter/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/code-highlighter/strings.ts", "src/components/slot-text.ts"],
+			"npmDependencies": ["lowlight"]
+		},
+		"mermaid": {
+			"file": "src/components/mermaid/index.ts",
+			"deps": ["kit-i18n", "code-highlighter"],
+			"extraFiles": ["src/components/mermaid/strings.ts", "src/components/slot-text.ts"],
+			"npmDependencies": ["mermaid"]
+		},
+		"markdown": {
+			"file": "src/components/markdown/index.ts",
+			"deps": ["kit-i18n", "code-highlighter", "mermaid"],
+			"extraFiles": [
+				"src/components/markdown/strings.ts",
+				"src/components/slot-text.ts",
+				"src/components/markdown/index.ts"
+			],
+			"npmDependencies": ["rehype-sanitize", "remark-gfm", "remark-parse", "remark-rehype", "unified"]
 		}
 	},
 	"theme": "src/theme.css"
