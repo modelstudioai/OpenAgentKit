@@ -94,11 +94,17 @@
 		color: var(--ink); transition: background-color 160ms ease-out;
 	}
 	.icon-round:hover { background: #f6f7fb; }
-	.pill-stub {
+	.pill {
 		display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
-		border: 1px solid var(--card-border); border-radius: 999px; background: #fff;
-		font-size: 13px; color: var(--ink-2); cursor: not-allowed; user-select: none;
+		border: 1px solid var(--card-border); border-radius: 999px; background: #ffffff;
+		font-size: 13px; line-height: 20px; color: var(--ink); cursor: pointer; user-select: none;
+		padding: 0 12px; font-family: inherit; transition: background-color 160ms ease-out;
 	}
+	.pill:hover { background: #f6f7fb; }
+	.pill.static { cursor: not-allowed; color: var(--ink-2); }
+	.pill.static:hover { background: #ffffff; }
+	.pill .trail { display: grid; place-items: center; color: var(--ink-2); }
+	.pill .count { font-size: 13px; font-weight: 500; line-height: 20px; color: var(--ink); }
 	.model-stub {
 		display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px;
 		border-radius: 999px; background: transparent; border: 0;
@@ -130,6 +136,8 @@
 		--m-row-h: 36px;
 		--sw-on: #4f46e5;
 		--sw-off: #d5d9e4;
+		--m-accent: #4f46e5;
+		--m-active-fill: #f6f7fb;
 	}
 	body[data-skin="design"] {
 		--m-panel-radius: 16px;
@@ -148,6 +156,8 @@
 		--m-row-h: 36px;
 		--sw-on: #2564f8;
 		--sw-off: rgb(20 21 28 / 24%);
+		--m-accent: #2564f8;
+		--m-active-fill: #f0f7ff;
 	}
 	.menu {
 		position: fixed; z-index: 60; background: #ffffff;
@@ -173,7 +183,7 @@
 		color: var(--m-muted); font-size: 13px;
 	}
 	.m-item .trail { flex: 0 0 auto; margin-left: auto; display: grid; place-items: center; color: var(--m-muted); }
-	.m-item .check { flex: 0 0 auto; display: none; color: var(--m-fg); }
+	.m-item .check { flex: 0 0 auto; display: none; color: var(--m-accent); }
 	.m-item[data-active] .check { display: grid; place-items: center; }
 	.m-item .grow { flex: 1 1 auto; }
 	.m-item.more { font-size: 12px; color: var(--m-muted); }
@@ -192,10 +202,13 @@
 	/* ---------- 连接器 ---------- */
 	.m-scroll.conn-viewport { max-height: 216px; }
 	.m-title {
+		display: flex; align-items: center; gap: 8px;
 		padding: var(--m-item-pad); color: var(--m-muted);
 		font-size: var(--m-title-size); font-weight: var(--m-title-weight);
 		line-height: 22px; user-select: none;
 	}
+	.m-title .grow { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.m-title-meta { flex: 0 0 auto; font-size: 13px; font-weight: 400; line-height: 20px; color: var(--m-muted); }
 	[data-skin="design"] .m-sep.soft { background: #f2f2f4; }
 	.conn-row { min-height: var(--m-row-h); }
 	.conn-row .ic { width: 20px; height: 20px; }
@@ -222,6 +235,15 @@
 	}
 	.conn-row[aria-checked="true"] .sw { background: var(--sw-on); }
 	.conn-row[aria-checked="true"] .sw::after { transform: translateX(12px); }
+
+	/* ---------- 知识库 ---------- */
+	.m-scroll.kb-viewport { max-height: 280px; }
+	.kb-row { min-height: 56px; }
+	.kb-row .ic { width: 20px; height: 20px; }
+	.kb-row[data-active] { background: var(--m-active-fill); }
+	.kb-info { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0; }
+	.kb-name { font-size: 13px; font-weight: 600; line-height: 20px; color: var(--m-fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.kb-meta { font-size: 12px; line-height: 18px; color: var(--m-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	@media (prefers-reduced-motion: no-preference) {
 		.menu { animation: menu-in 140ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 		@keyframes menu-in { from { opacity: 0; transform: translateY(4px) scale(0.98); } to { opacity: 1; transform: none; } }
@@ -257,13 +279,14 @@
 </head>
 <body data-skin="design">
 <div class="wrap">
-	<h1>业务输入框工具栏组件 · 交互原型<span class="tag">已拍板：添加菜单 + 连接器</span></h1>
+	<h1>业务输入框工具栏组件 · 交互原型<span class="tag">已拍板：添加菜单 + 连接器 + 知识库</span></h1>
 	<p class="lead">
 		演示 chat-ui 组件组合出业务输入框工具栏的效果。「添加」菜单 = Menu 包装层扩展
 		（<code>MenuSeparator</code> / <code>MenuSub</code> / <code>MenuSubTrigger</code> /
 		<code>MenuSubContent</code> + MenuItem 结构化插槽）；连接器 =
 		<code>MenuLabel</code> / <code>IconStack</code> / <code>Switch</code> 三个新导出的组合，
-		触发钮空态圆钮 ↔ 已选堆叠胶囊的形态派生全在业务侧。
+		触发钮空态圆钮 ↔ 已选堆叠胶囊的形态派生全在业务侧；知识库 = 新导出
+		<code>PillButton</code> 触发钮（计数接管右侧）+ MenuLabel 计数标题行 + MenuItem 两行组合。
 	</p>
 
 	<h2>交互演示</h2>
@@ -275,7 +298,7 @@
 			</div>
 			<span class="demo-note">
 				默认态 = 组件自带 token 皮肤（radius-sm 等）；还原态 = 业务侧 className 覆盖（演示原则 3）。
-				同一份业务组合代码，两种皮都成立。点「连接器」钮看形态切换与开关行。
+				同一份业务组合代码，两种皮都成立。点「连接器」钮看形态切换与开关行，点「知识」钮看计数态与两行行。
 			</span>
 		</div>
 		<div class="stage">
@@ -292,9 +315,21 @@
 						<button type="button" class="icon-round" id="conn-btn" aria-label="连接器" aria-haspopup="menu" aria-expanded="false">
 							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3v4m6-4v4M7 7h10v3a5 5 0 0 1-5 5 5 5 0 0 1-5-5V7Zm5 8v6"/></svg>
 						</button>
-						<span class="pill-stub">知识</span>
-						<span class="pill-stub">记忆</span>
-						<span class="pill-stub">联网搜</span>
+						<button type="button" class="pill" id="kb-btn" aria-label="知识库" aria-haspopup="menu" aria-expanded="false">
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path stroke-linecap="round" stroke-linejoin="round" d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
+							知识
+							<span class="trail" id="kb-trail"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg></span>
+						</button>
+						<span class="pill static" aria-disabled="true">
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18h6m-5 3h4M12 3a6 6 0 0 0-3.7 10.7c.7.6.7 1.4.7 2.3h6c0-.9 0-1.7.7-2.3A6 6 0 0 0 12 3z"/></svg>
+							记忆
+							<span class="trail"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg></span>
+						</span>
+						<span class="pill static" aria-disabled="true">
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M3 12h18M12 3c2.7 2.6 4 5.6 4 9s-1.3 6.4-4 9c-2.7-2.6-4-5.6-4-9s1.3-6.4 4-9z"/></svg>
+							联网搜
+							<span class="trail"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg></span>
+						</span>
 					</div>
 					<div class="tool-right">
 						<span class="model-stub">旗舰
@@ -440,6 +475,60 @@
 }</code></pre>
 	</div>
 
+	<div class="card" style="margin-top:16px">
+		<p style="margin:0;color:var(--ink-2);font-size:13px">
+			知识库：触发钮计数态由业务选中列表派生；两行行复用 MenuItem，勾色统一 accent，切换不关菜单。
+		</p>
+<pre><code><span class="k">import</span> {
+  Menu, MenuTrigger, MenuContent, MenuItem, MenuSeparator, MenuLabel, PillButton,
+} <span class="k">from</span> <span class="s">"@openagentpack/kit-chat-ui"</span>;
+
+<span class="k">function</span> <span class="f">KnowledgeMenu</span>({ knowledgeBases, picked, toggle, createKb }: {
+  knowledgeBases: Array&lt;{ id: string; name: string; meta: string }&gt;;
+  picked: string[];
+  toggle: (id: string) =&gt; void;
+  createKb: () =&gt; void;
+}) {
+  <span class="k">const</span> on = (id: string) =&gt; picked.includes(id);
+  <span class="k">return</span> (
+    &lt;<span class="f">Menu</span>&gt;
+      &lt;<span class="f">MenuTrigger</span> asChild&gt;
+        <span class="c">{'/* 无选中时内置 chevron-down；有选中时计数接管右侧（右侧插槽唯一规则） */'}</span>
+        &lt;<span class="f">PillButton</span> icon={&lt;BookIcon /&gt;}
+          trailing={picked.length &gt; 0 ? &lt;span&gt;{picked.length}&lt;/span&gt; : undefined}&gt;
+          {t(<span class="s">"kb.title"</span>)}
+        &lt;/<span class="f">PillButton</span>&gt;
+      &lt;/<span class="f">MenuTrigger</span>&gt;
+      &lt;<span class="f">MenuContent</span> side=<span class="s">"top"</span> className=<span class="s">"w-[310px]"</span>&gt;
+        <span class="c">{'/* MenuLabel 是 flex 行：标题 + 计数都在 children 里组合 */'}</span>
+        &lt;<span class="f">MenuLabel</span>&gt;
+          &lt;span className=<span class="s">"grow"</span>&gt;{t(<span class="s">"kb.pick"</span>)}&lt;/span&gt;
+          &lt;span className=<span class="s">"text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)]"</span>&gt;
+            {t(<span class="s">"kb.pickedCount"</span>, { count: picked.length })}
+          &lt;/span&gt;
+        &lt;/<span class="f">MenuLabel</span>&gt;
+        &lt;<span class="f">MenuSeparator</span> /&gt;
+        &lt;div className=<span class="s">"max-h-[280px] overflow-y-auto overscroll-contain"</span>&gt;
+          {knowledgeBases.map((kb) =&gt; (
+            &lt;<span class="f">MenuItem</span> key={kb.id} icon={&lt;BookIcon /&gt;} active={on(kb.id)}
+              className=<span class="s">"min-h-14 data-[active]:bg-[#F0F7FF]"</span>
+              onSelect={(e) =&gt; { e.preventDefault(); toggle(kb.id); }}&gt;
+              <span class="c">{'/* 两行块业务在 children 里 flex-col 组合，不新增 MenuRow */'}</span>
+              &lt;span className=<span class="s">"flex flex-col gap-0.5"</span>&gt;
+                &lt;span className=<span class="s">"font-semibold"</span>&gt;{kb.name}&lt;/span&gt;
+                &lt;span className=<span class="s">"text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)]"</span>&gt;{kb.meta}&lt;/span&gt;
+              &lt;/span&gt;
+            &lt;/<span class="f">MenuItem</span>&gt;
+          ))}
+        &lt;/div&gt;
+        &lt;<span class="f">MenuSeparator</span> dashed /&gt;
+        &lt;<span class="f">MenuItem</span> icon={&lt;PlusIcon /&gt;} onSelect={createKb}&gt;{t(<span class="s">"kb.create"</span>)}&lt;/<span class="f">MenuItem</span>&gt;
+      &lt;/<span class="f">MenuContent</span>&gt;
+    &lt;/<span class="f">Menu</span>&gt;
+  );
+}</code></pre>
+	</div>
+
 	<h2>组件协议</h2>
 	<div class="card">
 		<p style="margin:0 0 4px;font-weight:600">新增导出（定型薄包装，Radix 能力原样透传）</p>
@@ -461,6 +550,14 @@
 				<tr><td><code>IconStack</code></td><td>重叠堆叠展示：24px 圆形条目、负间距重叠、1px 白描边、溢出渲染 <code>+N</code>（13px/500）；纯展示，不感知业务</td><td><code>items: ReactNode[]</code> <code>max?=3</code> <code>className</code></td></tr>
 				<tr><td><code>Switch</code></td><td>自研受控开关（零新增依赖）：<code>role="switch"</code> + <code>aria-checked</code> 的 button；on 色 <code>--kit-accent</code>，过渡消费动效 token，RM 降级</td><td><code>checked</code> <code>onCheckedChange?</code> <code>disabled?</code></td></tr>
 				<tr><td><code>MenuLabel</code></td><td>面板标题区（连接器标题）；Beta 角标等附加物业务塞 children</td><td>Radix Label 透传，默认 <code>--kit-text-label</code></td></tr>
+			</tbody>
+		</table>
+
+		<p style="margin:20px 0 0;font-weight:600">工具栏触发钮（已拍板）</p>
+		<table>
+			<thead><tr><th>导出</th><th>职责</th><th>关键 props</th></tr></thead>
+			<tbody>
+				<tr><td><code>PillButton</code></td><td>工具栏胶囊触发钮（32px）：icon + 主文案 + 右侧指示；独立 button，作为 <code>MenuTrigger asChild</code> 的子元素使用</td><td><code>icon?</code> <code>children</code> <code>trailing?</code> <code>chevron?=true</code> <code>className</code></td></tr>
 			</tbody>
 		</table>
 
@@ -497,10 +594,13 @@
 			<li>键盘导航、typeahead、Escape、焦点圈由 Radix 提供；本原型演示鼠标路径 + Escape。</li>
 			<li>「查看更多 (N)」「管理技能」与普通条目同构（anatomy 相同），钉底是分区组合的结果。</li>
 			<li>SubTrigger 内置 chevron 只是 <code>trailing</code> 缺席时的默认值：业务传 <code>trailing</code> 即接管右侧（换图标、换形态都走这一个插槽）；<code>chevron={false}</code> 用于既不传 trailing 也不要指示。</li>
-			<li><code>MenuItem</code> 的 <code>active?</code> 是业务派生的选中态（如从 sender 草稿扫描 <code>/name </code> 标记），组件不感知 sender；选中勾同样是 trailing 缺席时的默认值，样式经 <code>data-active</code> 钩子覆盖；定义 active 后角色升级为 <code>menuitemcheckbox</code> + <code>aria-checked</code>。</li>
+			<li><code>MenuItem</code> 的 <code>active?</code> 是业务派生的选中态（如从 sender 草稿扫描 <code>/name </code> 标记），组件不感知 sender；选中勾同样是 trailing 缺席时的默认值，颜色统一 <code>--kit-accent</code>（连动添加菜单 active 勾），选中底色业务经 <code>data-[active]</code> 钩子覆盖；定义 active 后角色升级为 <code>menuitemcheckbox</code> + <code>aria-checked</code>。</li>
 			<li><code>Switch</code> 在菜单行内是纯视觉指示（业务传 <code>aria-hidden</code> + <code>pointer-events-none</code> + <code>tabIndex={-1}</code>，守「不得嵌套交互元素」），点击整行切换、状态业务持有；独立使用时自身可交互（Space/Enter）。</li>
 			<li>多选行切换不关菜单：Radix Item 选中默认关闭，业务在 <code>onSelect</code> 里 <code>preventDefault</code>（文档化模式，组件不加开关 prop）。</li>
 			<li>连接器触发钮空态（圆钮）/ 已选（IconStack 胶囊）形态由业务派生，组件不做形态枚举；堆叠条目 <code>aria-hidden</code>，名称靠按钮 <code>aria-label</code> 表达。</li>
+			<li><code>PillButton</code> 右侧同规则：内置 chevron-down 只是 trailing 缺席时的默认值，计数展示 = 业务 <code>trailing={&lt;span&gt;3&lt;/span&gt;}</code> 接管，不设 count prop；无 active 态（设计稿无选中视觉证据，真出现单开形态再加）。</li>
+			<li><code>MenuLabel</code> 为 flex 行：「标题 + 已选 N 个」等附加物业务在 children 里组合（grow 标题 + 计数 span），不加 trailing prop。</li>
+			<li>知识库两行行 = <code>MenuItem</code> 复用：名称/元信息堆叠块业务在 children 里 flex-col 组合，<code>active</code> 提供 aria-checked / 内置勾 / <code>data-active</code> 钩子；单一调用方不新增 MenuRow，第二形态出现再提（同 Dock 条目逻辑）。</li>
 		</ul>
 	</div>
 
@@ -517,6 +617,9 @@
 			<li>连接器行 hover 与圆角设计稿未标注，取与 Dropdown 条目一致的值示意；标题色 <code>#14151CCC</code> 同按可读性替换为 <code>#5f656e</code>。</li>
 			<li>钉底分隔线演示 <code>MenuSeparator dashed</code>（虚线轻分组，协议新增；设计稿未见虚线用例）。</li>
 			<li>kit 默认皮 Switch on 色 = <code>--kit-accent</code> <code>#4f46e5</code>（theme.css）；关态轨道色 kit 无冻结 token，取 <code>#d5d9e4</code> 示意，落码时随 Switch 定稿补充。plug 图标为中性示意。</li>
+			<li>知识库：面板 310px、两行行高 56px（名称 13/600 + 元信息 12px/18px）、选中底 <code>#F0F7FF</code>、勾 18px <code>#2564F8</code> 来自节点 53:13944；触发钮胶囊 32px、计数替代 chevron 来自 53:11910 / 53:11909。元信息色 <code>#14151C99</code> 按可读性替换为 <code>#5f656e</code>；kit 皮选中底无冻结 token，取 <code>--kit-bg-subtle</code> <code>#f6f7fb</code> 示意。</li>
+			<li>知识库名称与文档数仅「产品文档库 / 客服问答库」两行取自设计稿文案，其余三行为示意数据。记忆/联网搜钮为静态示意（同 PillButton 形态，未接演示数据）。</li>
+			<li>内置勾色统一 accent：kit 皮 = <code>--kit-accent</code> <code>#4f46e5</code>（theme.css，连动添加菜单 active 勾），设计皮 = <code>#2564F8</code>。</li>
 		</ul>
 	</div>
 </div>
@@ -650,6 +753,43 @@
 	</div>
 </div>
 
+<div class="menu" id="menu-kb" role="menu" aria-label="知识库" hidden>
+	<div class="m-title"><span class="grow">选择知识库</span><span class="m-title-meta" id="kb-count">已选 3 个</span></div>
+	<div class="m-sep soft" role="separator"></div>
+	<div class="m-scroll kb-viewport">
+		<div class="m-item kb-row" role="menuitemcheckbox" tabindex="-1" data-kb="产品文档库" aria-checked="false">
+			<span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path stroke-linecap="round" stroke-linejoin="round" d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg></span>
+			<span class="kb-info"><span class="kb-name">产品文档库</span><span class="kb-meta">128 个文档 · 更新于 2 天前</span></span>
+			<span class="check"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20 6 9 17l-5-5"/></svg></span>
+		</div>
+		<div class="m-item kb-row" role="menuitemcheckbox" tabindex="-1" data-kb="客服问答库" aria-checked="false">
+			<span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path stroke-linecap="round" stroke-linejoin="round" d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg></span>
+			<span class="kb-info"><span class="kb-name">客服问答库</span><span class="kb-meta">356 个文档 · 更新于 5 小时前</span></span>
+			<span class="check"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20 6 9 17l-5-5"/></svg></span>
+		</div>
+		<div class="m-item kb-row" role="menuitemcheckbox" tabindex="-1" data-kb="帮助中心库" aria-checked="false">
+			<span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path stroke-linecap="round" stroke-linejoin="round" d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg></span>
+			<span class="kb-info"><span class="kb-name">帮助中心库</span><span class="kb-meta">96 个文档 · 更新于 1 周前</span></span>
+			<span class="check"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20 6 9 17l-5-5"/></svg></span>
+		</div>
+		<div class="m-item kb-row" role="menuitemcheckbox" tabindex="-1" data-kb="API 参考库" aria-checked="false">
+			<span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path stroke-linecap="round" stroke-linejoin="round" d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg></span>
+			<span class="kb-info"><span class="kb-name">API 参考库</span><span class="kb-meta">210 个文档 · 更新于 3 天前</span></span>
+			<span class="check"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20 6 9 17l-5-5"/></svg></span>
+		</div>
+		<div class="m-item kb-row" role="menuitemcheckbox" tabindex="-1" data-kb="内部培训库" aria-checked="false">
+			<span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path stroke-linecap="round" stroke-linejoin="round" d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg></span>
+			<span class="kb-info"><span class="kb-name">内部培训库</span><span class="kb-meta">54 个文档 · 更新于 1 个月前</span></span>
+			<span class="check"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20 6 9 17l-5-5"/></svg></span>
+		</div>
+	</div>
+	<div class="m-sep dashed" role="separator"></div>
+	<div class="m-item" role="menuitem" tabindex="-1" data-action="createKb">
+		<span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg></span>
+		<span class="label">新建知识库</span>
+	</div>
+</div>
+
 <script>
 	(function () {
 		"use strict";
@@ -738,6 +878,7 @@
 
 		function openMain() {
 			if (window.__composerCloseConnector) window.__composerCloseConnector();
+			if (window.__composerCloseKb) window.__composerCloseKb();
 			placeMain();
 			addBtn.setAttribute("aria-expanded", "true");
 			lastFocus = document.activeElement;
@@ -891,6 +1032,7 @@
 			e.stopPropagation();
 			if (panel.hidden) {
 				if (window.__composerCloseMain) window.__composerCloseMain();
+				if (window.__composerCloseKb) window.__composerCloseKb();
 				place();
 				btn.setAttribute("aria-expanded", "true");
 			} else { close(); }
@@ -915,6 +1057,99 @@
 
 		panel.querySelector("[data-action='manageConnectors']").addEventListener("click", function () {
 			say("管理连接器（业务行为：跳转连接器管理页）");
+			close();
+		});
+
+		document.addEventListener("mousedown", function (e) {
+			if (!panel.hidden && !panel.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+				close();
+			}
+		});
+
+		document.addEventListener("keydown", function (e) {
+			if (e.key === "Escape" && !panel.hidden) {
+				close();
+				btn.focus();
+			}
+		});
+
+		render();
+	})();
+
+	// 知识库演示：PillButton 触发钮计数态 + MenuLabel 计数标题行 + 两行行 active + 切换不关菜单
+	(function () {
+		"use strict";
+		var btn = document.getElementById("kb-btn");
+		var panel = document.getElementById("menu-kb");
+		var log = document.getElementById("log");
+		var trail = document.getElementById("kb-trail");
+		var countEl = document.getElementById("kb-count");
+		var rows = Array.prototype.slice.call(panel.querySelectorAll("[data-kb]"));
+		var CHEVRON_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg>';
+		var picked = ["客服问答库", "帮助中心库", "API 参考库"];
+
+		function say(text) { log.innerHTML = "最近动作：<b></b>"; log.querySelector("b").textContent = text; }
+
+		function render() {
+			rows.forEach(function (r) {
+				var on = picked.indexOf(r.dataset.kb) !== -1;
+				if (on) { r.setAttribute("data-active", "true"); r.setAttribute("aria-checked", "true"); }
+				else { r.removeAttribute("data-active"); r.setAttribute("aria-checked", "false"); }
+			});
+			countEl.textContent = "已选 " + picked.length + " 个";
+			trail.innerHTML = picked.length > 0
+				? '<span class="count">' + picked.length + "</span>"
+				: CHEVRON_SVG;
+		}
+
+		function close() {
+			panel.hidden = true;
+			btn.setAttribute("aria-expanded", "false");
+		}
+		window.__composerCloseKb = close;
+
+		function place() {
+			panel.style.visibility = "hidden";
+			panel.hidden = false;
+			var r = btn.getBoundingClientRect();
+			var h = panel.offsetHeight, w = panel.offsetWidth;
+			var top = r.top - h - 8;
+			if (top < 8) top = 8;
+			var left = Math.min(Math.max(8, r.left), window.innerWidth - w - 8);
+			panel.style.top = top + "px";
+			panel.style.left = left + "px";
+			panel.style.visibility = "";
+		}
+
+		btn.addEventListener("click", function (e) {
+			e.stopPropagation();
+			if (panel.hidden) {
+				if (window.__composerCloseMain) window.__composerCloseMain();
+				if (window.__composerCloseConnector) window.__composerCloseConnector();
+				place();
+				btn.setAttribute("aria-expanded", "true");
+			} else { close(); }
+		});
+
+		panel.addEventListener("click", function (e) { e.stopPropagation(); });
+
+		rows.forEach(function (r) {
+			r.addEventListener("click", function () {
+				var name = r.dataset.kb;
+				var i = picked.indexOf(name);
+				if (i === -1) {
+					picked.push(name);
+					say("onSelect preventDefault → 选中「" + name + "」，触发钮计数与标题行同步");
+				} else {
+					picked.splice(i, 1);
+					say("onSelect preventDefault → 取消「" + name + "」，触发钮计数与标题行同步");
+				}
+				render();
+			});
+		});
+
+		panel.querySelector("[data-action='createKb']").addEventListener("click", function () {
+			say("新建知识库（业务行为：跳转创建流程）");
 			close();
 		});
 

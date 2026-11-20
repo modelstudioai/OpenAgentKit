@@ -46,7 +46,7 @@
 | 项 | 决策 | 状态 |
 | --- | --- | --- |
 | 工具栏行布局 | 复用现有 `Sender` workspace variant（`packages/chat-ui/src/components/sender/index.tsx`），不新增布局 | 已拍板 |
-| 胶囊触发钮 | 新 primitive，**命名 `PillButton`**（形态命名不绑宿主；与未来 `IconButton` 成族；否决 SenderPill/CapabilityButton） | 待定（下一个拍板） |
+| 胶囊触发钮 | 新 primitive，**命名 `PillButton`**（形态命名不绑宿主；与未来 `IconButton` 成族；否决 SenderPill/CapabilityButton），协议见下节 | 已拍板 |
 | 圆形图标钮（32×32） | 不做组件：普通 button + 现有 ACTION 类，业务 6 行组合；复用出现再提 `IconButton` | 已拍板 |
 | 底部附加条 | 新增 `Sender.Dock`（对齐 `Sender.Header` 先例）：渲染为 form 的兄弟区域（叠层几何要求 dock 在 form 元素外），组件固定 z 顺序（form 在上）+ 默认间距，业务经 `classNames.dock` 负 margin 实现设计稿「压边叠层」 | 待定 |
 | Dock 条目 / 模型选择器 | 不预抽：形态单一且无第二调用方，业务组合现有 chip/Menu；等第二形态出现再提 `DockItem` | 已拍板 |
@@ -143,7 +143,34 @@ Switch 自研（不用 Radix）的理由：形态就是一个 button + 两段 CS
 钉底「管理连接器」（settings 图标 + 文字，与「管理技能」同款组合）。
 
 
-## 视觉策略
+## PillButton 协议（已拍板）
+
+| 场景 | 形态 |
+| --- | --- |
+| 默认 | `[icon 16] [主文案 13px] [chevron-down 14]`，32px 胶囊，border/hover 走 token |
+| 已选计数 | trailing 从 chevron 变为计数（如 `3`）——右侧插槽唯一规则的直接应用 |
+
+- props：`icon?: ReactNode` `children: ReactNode`（主文案，业务 i18n）`trailing?: ReactNode`
+  `chevron?: boolean = true` `className`。
+- 右侧插槽唯一规则与 MenuItem 相同：内置 chevron-down 只是 trailing 缺席时的默认值；
+  计数展示 = 业务 `trailing={<span>3</span>}` 接管，不设 `count` prop（避免与 trailing 平行两条通道）。
+- **无 active 态**：设计稿没有任何选中视觉证据（按钮无底色变化），按不预建原则不做；
+  真出现单开形态（如联网搜开关亮起）再加。
+- 工具栏触发钮角色：作为 `MenuTrigger asChild` 的子元素使用；与 `MenuSubTrigger` 的区别是
+  SubTrigger 是面板内的行，PillButton 是独立 button。
+
+## 知识库面板（已拍板）
+
+- 分区公式同前两例：标题 → 分隔线 → 滚动行区 → 分隔线（dashed）→ 钉底「新建知识库」。
+- 标题行计数：「选择知识库 + 已选 3 个」= `MenuLabel` 定为 flex 行，业务在 children 里组合
+  （grow 标题 + 计数 span），不给 MenuLabel 加 trailing prop。
+- 两行行（56px：icon 20 + 名称 13/600 + 元信息 12px 堆叠 + 勾）= **MenuItem 复用**：
+  两行块业务在 children 里 flex-col 组合；`active` 提供 `aria-checked` / 内置勾 /
+  `data-active` 钩子。不新增 MenuRow——单一调用方，第二形态出现再提（同 Dock 条目逻辑）。
+- **内置勾颜色统一 `--kit-accent`**（kit 皮 #4f46e5；连动添加菜单 active 勾，由 --kit-fg 改
+  accent）；选中行底色业务经 `data-[active]` 钩子覆盖（设计值 `#F0F7FF`）。
+- 切换不关菜单：`onSelect` 里 `preventDefault`，模式同连接器。
+
 
 - 面板默认 kit token（`--kit-radius-sm` 9px、`--kit-shadow` 等）；设计稿的 16px 圆角、
   32px 行高等由业务 className 覆盖。同一份业务组合代码，两种皮都成立。
@@ -161,12 +188,15 @@ Switch 自研（不用 Radix）的理由：形态就是一个 button + 两段 CS
 - 连接器演示：触发钮空态圆钮 ↔ 已选堆叠胶囊形态切换（IconStack 溢出 `+1`）；
   行内 Switch 纯视觉、点整行切换且菜单保持打开（preventDefault 模式）；
   钉底「管理连接器」。
+- 知识库演示：PillButton 触发钮（无选中时 chevron、有选中时计数接管右侧）；
+  MenuLabel 计数标题行（已选 N 个随勾选实时变）；两行行 active（勾 + 选中底色）；
+  勾色统一 accent（连动添加菜单 active 勾）。
 - 设计还原态 ↔ kit 默认态皮肤切换（演示原则 3：同一组合两种皮）。
 - 交付前 impeccable detect 通过（0 问题）。
 
 ## 落码清单（拍板完成后）
 
-1. chat-ui：Menu 导出族 + MenuItem anatomy + `active`；新增 `IconStack`、`Switch`（自研，零新增依赖）、
+1. chat-ui：Menu 导出族 + MenuItem anatomy + `active`；新增 `PillButton`、`IconStack`、`Switch`（自研，零新增依赖）、
    `MenuLabel`；strings 无新增（菜单词条全业务）。
 2. chat-ui-vue：ADR-0028 同合同镜像，公开注入点同名插槽；`pnpm gen:chat-ui-vue` 同步主题/文案。
 3. registry.json 依赖闭包、`src/index.ts` 公开导出、开发 Skill catalog 同步（`pnpm gen:skills`）。
@@ -174,8 +204,5 @@ Switch 自研（不用 Radix）的理由：形态就是一个 button + 两段 CS
 
 ## 待拍板队列
 
-1. PillButton（知识/记忆/联网搜）：形态协议草案已在讨论中给出
-   （`icon?/label/active?/chevron?/classNames` 四段 anatomy），待逐个确认；
-   知识钮已选时 trailing 显示计数（如 `3`）= 右侧插槽接管规则的直接应用。
-2. Sender.Dock（溢出行为：换行 or 横滚未定）。
-3. 流光边框/玻璃拟态的业务加层示例文档化。
+1. Sender.Dock（溢出行为：换行 or 横滚未定）。
+2. 流光边框/玻璃拟态的业务加层示例文档化。
