@@ -13,6 +13,10 @@
 6. [`adr/`](./adr/)：已接受的架构决策与背景。
 7. [`research/`](./research/)：Provider/SDK 公开合同与上游 API 证据。
 
+开发工作流 Skill：[`skills/react-to-vue/SKILL.md`](./skills/react-to-vue/SKILL.md)，
+用于按 L2 等价标准把 React 组件或页面移植到 Vue 3（贡献者工具，不是
+`scripts/skills` 生成的产品 Skill）。
+
 ## 维护约定
 
 - 新增后端操作同步 `interfaces.md` 的 op 对照表；改协议同步 `protocol.md`；改分层同步
