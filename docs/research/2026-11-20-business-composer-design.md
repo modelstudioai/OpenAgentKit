@@ -66,7 +66,7 @@
 
 | 导出 | 职责 | 关键 props |
 | --- | --- | --- |
-| `MenuSeparator` | 分组线，1px token 分隔 | Radix Separator 透传 |
+| `MenuSeparator` | 分组线，1px token 分隔 | Radix Separator 透传 + `dashed?: boolean`（默认实线，虚线用于轻分组） |
 | `MenuSub` | 二级菜单根 | Radix Sub 透传 |
 | `MenuSubTrigger` | 二级触发行 | `icon?` `children` `description?` `trailing?` `chevron?=true` |
 | `MenuSubContent` | 二级面板，自动避让翻面 | Radix SubContent 透传 |
