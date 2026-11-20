@@ -4,6 +4,14 @@ export {
 	activityHeatmapStrings,
 } from "./components/activity-heatmap/index.ts";
 export {
+	AttachmentFileCard,
+	type AttachmentItem,
+	Attachments,
+	type AttachmentsPlaceholder,
+	type AttachmentsStrings,
+	attachmentsStrings,
+} from "./components/attachments/index.ts";
+export {
 	CategoryTabs,
 	type CategoryTabsStrings,
 	categoryTabsStrings,

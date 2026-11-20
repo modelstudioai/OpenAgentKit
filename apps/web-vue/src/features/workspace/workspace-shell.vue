@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { useAgentCatalog } from "@openagentkit/sdk/agents/hooks-vue";
+import { useAgentCatalog, useAgentResources } from "@openagentkit/sdk/agents/hooks-vue";
 import { useChat } from "@openagentkit/sdk/chat/hooks-vue";
+import { useArtifactActions, useAttachments } from "@openagentkit/sdk/files/hooks-vue";
+import { useIsMobile } from "@openagentkit/sdk/hooks-vue";
 import type { MemberView, SessionSummary } from "@openagentkit/sdk/protocol";
 import type { ChatProvider } from "@openagentkit/sdk/providers";
 import type { KitClient } from "@openagentkit/sdk/providers/kit";
 import type { SessionAction } from "@openagentkit/sdk/sessions";
-import { useSessionDirectory } from "@openagentkit/sdk/sessions/hooks-vue";
+import { useSessionDetails, useSessionDirectory } from "@openagentkit/sdk/sessions/hooks-vue";
 import {
+	type AttachmentItem,
 	Chat,
 	ConfirmDialog,
 	EmptyState,
@@ -24,7 +27,10 @@ import {
 import { computed, ref, watch } from "vue";
 import { useTranslation } from "../../i18n/index.ts";
 import type { Branding } from "../../lib/branding.ts";
+import { createArtifactHost, resolveHostCapabilities } from "../../lib/host.ts";
 import { useRoute } from "../../lib/use-route.ts";
+import AsidePanel from "../chat/aside-panel.vue";
+import ExperienceSender from "../chat/experience-sender.vue";
 import PlazaView from "../plaza/plaza-view.vue";
 import UsageView from "../usage/usage-view.vue";
 
@@ -66,6 +72,61 @@ const mobileTitle = computed(() => {
 	if (view.value === "usage") return t("layout:views.usage");
 	return currentAgent.value?.display_name ?? props.branding.productName;
 });
+
+const isMobile = useIsMobile();
+const asideOpen = ref(!isMobile.value);
+watch(isMobile, (mobile) => {
+	asideOpen.value = !mobile;
+});
+
+const attachments = useAttachments({ client: props.client });
+const stagedFiles = computed(() => attachments.snapshot.value.files);
+const failedFiles = computed(() => attachments.snapshot.value.failures);
+const pendingFiles = computed(() => attachments.snapshot.value.pending);
+const processingFiles = attachments.processing;
+const attachmentItems = computed<AttachmentItem[]>(() => [
+	...stagedFiles.value.map((file) => ({
+		uid: file.file_id,
+		name: file.filename,
+		size: file.size,
+		status: file.timedOut ? ("error" as const) : ("done" as const),
+		description: file.available
+			? undefined
+			: file.timedOut
+				? t("chat:attachment.scanTimeout")
+				: t("chat:attachment.scanning"),
+	})),
+	...failedFiles.value.map((file) => ({
+		uid: file.uid,
+		name: file.name,
+		size: file.size,
+		status: "error" as const,
+		description: file.message,
+	})),
+	...pendingFiles.value.map((file) => ({
+		uid: file.uid,
+		name: file.name,
+		size: file.size,
+		status: "uploading" as const,
+	})),
+]);
+
+const currentAgentSlug = computed(() => currentAgent.value?.slug ?? null);
+const agentResources = useAgentResources(currentAgentSlug, { client: props.client });
+const resources = computed(() => agentResources.resources.value);
+const memories = computed(() => resources.value?.memory_stores ?? null);
+const artifactHost = createArtifactHost(resolveHostCapabilities());
+const artifactActions = useArtifactActions(() => ({
+	client: props.client,
+	host: artifactHost,
+	sessionId: sessionId.value ?? undefined,
+	artifacts: chat.artifacts.value,
+}));
+useSessionDetails(() => ({
+	client: props.client,
+	sessionId: sessionId.value,
+	setMessageFiles: chat.setMessageFiles,
+}));
 
 const agentName = (slug: string) => agents.agents.value.find((agent) => agent.slug === slug)?.display_name ?? slug;
 const groups = computed<SessionSidebarGroup[]>(() => {
@@ -212,24 +273,64 @@ function startNewChat(closeSidebar: () => void) {
 	void newSessionForAgent(slug).then((opened) => opened && closeSidebar());
 }
 
-async function send(text: string, skills?: string[]) {
-	if (sending.value) return;
+async function uploadFiles(files: File[]) {
+	if (files.length === 0) return;
+	try {
+		await attachments.upload(files);
+	} catch (error) {
+		sendError.value = error instanceof Error ? error.message : String(error);
+	}
+}
+
+function removeAttachment(fileId: string) {
+	attachments.remove(fileId);
+}
+
+async function openArtifact(fileId: string, contentType?: string) {
+	try {
+		await artifactActions.open(fileId, contentType);
+	} catch (error) {
+		sendError.value = error instanceof Error ? error.message : t("chat:errors.previewFailed");
+	}
+}
+
+async function downloadArtifact(fileId: string) {
+	try {
+		await artifactActions.download(fileId);
+	} catch (error) {
+		sendError.value = error instanceof Error ? error.message : t("chat:errors.downloadFailed");
+	}
+}
+
+async function send(text: string, skills?: string[]): Promise<boolean> {
+	if (sending.value) return false;
 	sending.value = true;
 	sendError.value = null;
 	try {
 		let activeSessionId = sessionId.value;
 		if (!activeSessionId) {
 			const slug = currentAgent.value?.slug;
-			if (!slug) return;
+			if (!slug) return false;
 			const created = await props.client.createSession({ agentSlug: slug });
 			activeSessionId = created.session_id;
 			navigate({ view: "chat", agent: slug, session: activeSessionId }, { replace: true });
 			await directory.reload();
 		}
+		const readyFiles = stagedFiles.value.filter((file) => file.available);
 		// 先建会话再发送：useChat.send 显式接收 sessionId，不依赖路由更新后的 watcher 时序。
-		await chat.send(text, { sessionId: activeSessionId, skills });
+		await chat.send(text, {
+			sessionId: activeSessionId,
+			...(readyFiles.length
+				? { attachments: readyFiles.map((file) => ({ file_id: file.file_id, filename: file.filename })) }
+				: {}),
+			skills,
+		});
+		attachments.consume(readyFiles.map((file) => file.file_id));
+		directory.refreshStatuses();
+		return true;
 	} catch (error) {
 		sendError.value = error instanceof Error ? error.message : String(error);
+		return false;
 	} finally {
 		sending.value = false;
 	}
@@ -237,7 +338,25 @@ async function send(text: string, skills?: string[]) {
 </script>
 
 <template>
-	<Layout :mobile-title="mobileTitle" :sidebar-label="t('workspace:sidebarLabel')">
+	<Layout
+		:mobile-title="mobileTitle"
+		:sidebar-label="t('workspace:sidebarLabel')"
+		:aside-open="asideOpen"
+		:aside-label="t('chat:header.asideLabel')"
+		@aside-open-change="(open) => (asideOpen = open)"
+	>
+		<template #aside>
+			<AsidePanel
+				v-if="currentAgent"
+				:agent="currentAgent"
+				:resources="resources"
+				:memories="memories"
+				:artifacts="chat.artifacts.value"
+				:on-close="() => (asideOpen = false)"
+				:on-artifact-open="openArtifact"
+				:on-artifact-download="downloadArtifact"
+			/>
+		</template>
 		<template #sidebar="{ closeSidebar }">
 			<SessionSidebar
 				:groups="groups"
@@ -442,6 +561,20 @@ async function send(text: string, skills?: string[]) {
 				<span class="min-w-0 flex-1 truncate text-[length:var(--kit-text-base)] font-semibold">
 					{{ currentAgent?.display_name ?? member?.display_name ?? branding.productName }}
 				</span>
+				<button
+					type="button"
+					:aria-pressed="asideOpen"
+					:aria-label="asideOpen ? t('chat:header.asideCollapse') : t('chat:header.asideExpand')"
+					:title="asideOpen ? t('chat:header.asideCollapse') : t('chat:header.asideExpand')"
+					class="grid size-9 shrink-0 place-items-center rounded-[var(--kit-radius-sm)] transition-colors hover:bg-[var(--kit-bg-subtle)] hover:text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
+					:class="asideOpen ? 'bg-[var(--kit-bg-subtle)] text-[var(--kit-fg)]' : 'text-[var(--kit-fg-muted)]'"
+					@click="asideOpen = !asideOpen"
+				>
+					<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-4">
+						<rect x="3" y="4" width="18" height="16" rx="2" />
+						<path d="M15 4v16" />
+					</svg>
+				</button>
 				<span class="text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">Vue</span>
 			</header>
 		</template>
@@ -478,9 +611,23 @@ async function send(text: string, skills?: string[]) {
 				:sending="sending"
 				:can-send="sessionId ? chat.canSend.value : true"
 				:scroll-key="sessionId"
-				@send="send"
 				@stop="() => void chat.stop()"
 			>
+				<template #sender>
+					<ExperienceSender
+						:items="attachmentItems"
+						:skills="resources?.skills ?? []"
+						:turn-running="chat.turnRunning.value"
+						:sending="sending"
+						:can-send="sessionId ? chat.canSend.value : true"
+						:disabled="!currentAgent || attachmentItems.some((item) => item.status === 'uploading')"
+						:processing="processingFiles"
+						:on-drop="uploadFiles"
+						:on-remove="removeAttachment"
+						:on-send="send"
+						:on-stop="() => void chat.stop()"
+					/>
+				</template>
 				<template #empty>
 					<div class="flex min-w-0 flex-1 items-center justify-center py-6">
 						<EmptyState

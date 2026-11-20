@@ -18,6 +18,7 @@ const files = [
 	"src/lib/chat-backend.ts",
 	"src/lib/kit.ts",
 	"src/lib/branding.ts",
+	"src/lib/host.ts",
 	"src/lib/beijing-time.ts",
 	"src/lib/format-token-count.ts",
 	"src/i18n/server-error.ts",
