@@ -21,9 +21,9 @@ export function registerAuditRoutes(app: OpenAPIHono<AppEnv>) {
 				403: { description: "令牌无效", content: { "application/json": { schema: errorSchema } } },
 			},
 		},
-		(c) => {
+		async (c) => {
 			c.header("Cache-Control", "no-store");
-			return c.json(c.get("services").audit.page(c.get("admin").subject, c.req.valid("query")), 200);
+			return c.json(await c.get("services").audit.page(c.get("admin").subject, c.req.valid("query")), 200);
 		},
 	);
 }

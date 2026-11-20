@@ -15,8 +15,8 @@ async function setup(text = "approval") {
 		loadConfig({ KIT_GATEWAY: "mock", KIT_AUTH_MODE: "anonymous", KIT_DATA_DIR: dataDir, ADMIN_TOKEN: "test" }),
 		openDatabase(dataDir),
 	);
-	services.catalog.upsert({ slug: "assistant", display_name: "Assistant", remote_agent_id: "mock" });
-	services.catalog.setStatus("assistant", "listed");
+	await services.catalog.upsert({ slug: "assistant", display_name: "Assistant", remote_agent_id: "mock" });
+	await services.catalog.setStatus("assistant", "listed");
 	const app = createApp(services);
 	const created = await app.request("/api/kit/sessions", {
 		method: "POST",

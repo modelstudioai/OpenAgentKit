@@ -28,9 +28,9 @@ function logoUrl(logo: BrandingLogoMeta | null, fallback: string | null): string
 	return fallback ?? undefined;
 }
 
-function viewOf(services: KitServices): BrandingView {
-	const row = services.branding.get();
-	const uploaded = services.branding.getLogoMeta();
+async function viewOf(services: KitServices): Promise<BrandingView> {
+	const row = await services.branding.get();
+	const uploaded = await services.branding.getLogoMeta();
 	const url = logoUrl(uploaded, row.logo_url);
 	return {
 		productName: row.product_name,
@@ -55,7 +55,7 @@ export function registerBrandingRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		},
-		(c) => c.json({ data: viewOf(c.get("services")) }, 200),
+		async (c) => c.json({ data: await viewOf(c.get("services")) }, 200),
 	);
 
 	app.openapi(
@@ -102,14 +102,14 @@ export function registerBrandingRoutes(app: OpenAPIHono<AppEnv>) {
 				throw new KitError("invalid_request", "Logo 仅支持 PNG、JPEG、WebP 或 SVG");
 			const bytes = new Uint8Array(await file.arrayBuffer());
 			const hash = createHash("sha256").update(bytes).digest("hex").slice(0, 16);
-			services.branding.saveLogo({ contentType: file.type, bytes, hash, updatedBy: subject });
-			services.audit.append({
+			await services.branding.saveLogo({ contentType: file.type, bytes, hash, updatedBy: subject });
+			await services.audit.append({
 				subject,
 				action: "branding.update",
 				target: "employee-web",
 				detail: { logoUploaded: true, contentType: file.type, bytes: file.size },
 			});
-			return c.json({ data: viewOf(services) }, 201);
+			return c.json({ data: await viewOf(services) }, 201);
 		},
 	);
 
@@ -129,22 +129,22 @@ export function registerBrandingRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		},
-		(c) => {
+		async (c) => {
 			const services = c.get("services");
 			const { subject } = requireAdmin(c, services.config);
 			const body = c.req.valid("json");
-			services.branding.update({
+			await services.branding.update({
 				productName: body.productName,
 				...(body.logoUrl !== undefined ? { logoUrl: body.logoUrl } : {}),
 				updatedBy: subject,
 			});
-			services.audit.append({
+			await services.audit.append({
 				subject,
 				action: "branding.update",
 				target: "employee-web",
 				detail: { productName: body.productName, logoUrlChanged: body.logoUrl !== undefined },
 			});
-			return c.json({ data: viewOf(services) }, 200);
+			return c.json({ data: await viewOf(services) }, 200);
 		},
 	);
 
@@ -162,8 +162,8 @@ export function registerBrandingRoutes(app: OpenAPIHono<AppEnv>) {
 				404: { description: "Logo 不存在", content: { "application/json": { schema: errorBody } } },
 			},
 		},
-		(c) => {
-			const logo = c.get("services").branding.getLogo();
+		async (c) => {
+			const logo = await c.get("services").branding.getLogo();
 			if (!logo) return c.json({ error: { code: "not_found", message: "Logo 不存在", retryable: false } }, 404);
 			return new Response(new Uint8Array(logo.bytes), {
 				status: 200,

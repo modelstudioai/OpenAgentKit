@@ -8,10 +8,10 @@ import { initialDraftYaml } from "./yaml-draft-document.ts";
 export function createResourceDraftYamlFiles(
 	dataDir: string,
 	storage: {
-		read(id: string): { proof_json: string | null } | undefined;
-		initialize(id: string, yaml: string): void;
-		proof(id: string, proof: string): void;
-		clear(id: string): void;
+		read(id: string): Promise<{ proof_json: string | null } | undefined>;
+		initialize(id: string, yaml: string): Promise<void>;
+		proof(id: string, proof: string): Promise<void>;
+		clear(id: string): Promise<void>;
 		release(id: string): void;
 	},
 ) {
@@ -29,17 +29,17 @@ export function createResourceDraftYamlFiles(
 		}
 	}
 	return {
-		exists: async (id: string) => Boolean(storage.read(id)),
+		exists: async (id: string) => Boolean(await storage.read(id)),
 		assertSafe,
 		async initialize(id: string) {
 			await assertSafe(id);
-			storage.initialize(id, initialDraftYaml);
+			await storage.initialize(id, initialDraftYaml);
 		},
 		async writeProof(proof: ResourceDraftProof) {
-			storage.proof(proof.draft_id, JSON.stringify(ResourceDraftProofSchema.parse(proof)));
+			await storage.proof(proof.draft_id, JSON.stringify(ResourceDraftProofSchema.parse(proof)));
 		},
 		async readProof(id: string, owner: string): Promise<ResourceDraftProof | null> {
-			const text = storage.read(id)?.proof_json;
+			const text = (await storage.read(id))?.proof_json;
 			if (!text) return null;
 			const result = ResourceDraftProofSchema.safeParse(JSON.parse(text));
 			if (!result.success || result.data.draft_id !== id || result.data.owner !== owner)
@@ -50,7 +50,7 @@ export function createResourceDraftYamlFiles(
 			await assertSafe(id);
 			await beforeRemove?.();
 			await rm(assets(id), { recursive: true, force: true });
-			storage.clear(id);
+			await storage.clear(id);
 			storage.release(id);
 		},
 	};

@@ -110,7 +110,7 @@ export function createDraftResourceService({
 					(parsed.data.skills ?? []).filter((skill) => typeof skill !== "string"),
 				);
 				const result = await gateway.createAgent(parsed.data);
-				audit.append({ subject, action: "resourceDraft.agents.create", target: `${name}/${result.agent.id}` });
+				await audit.append({ subject, action: "resourceDraft.agents.create", target: `${name}/${result.agent.id}` });
 				return result;
 			});
 		},
@@ -128,7 +128,7 @@ export function createDraftResourceService({
 			requireDraft(name);
 			return mutate("memory_store", async () => {
 				const result = await gateway.createMemoryStore(parsed.data);
-				audit.append({
+				await audit.append({
 					subject,
 					action: "resourceDraft.memoryStores.create",
 					target: `${name}/${result.memory_store.id}`,
@@ -142,7 +142,7 @@ export function createDraftResourceService({
 			requireDraft(name);
 			return mutate("vault", async () => {
 				const result = await gateway.createVault(parsed.data);
-				audit.append({ subject, action: "resourceDraft.vaults.create", target: `${name}/${result.vault.id}` });
+				await audit.append({ subject, action: "resourceDraft.vaults.create", target: `${name}/${result.vault.id}` });
 				return result;
 			});
 		},
@@ -152,7 +152,7 @@ export function createDraftResourceService({
 			requireDraft(name);
 			return mutate("environment", async () => {
 				const result = await gateway.createEnvironment(parsed.data);
-				audit.append({
+				await audit.append({
 					subject,
 					action: "resourceDraft.environments.create",
 					target: `${name}/${result.environment.id}`,
@@ -173,7 +173,7 @@ export function createDraftResourceService({
 			requireDraft(name);
 			await assertRevision(baseRevision);
 			const result = uploads.stage({ name, baseRevision, subject }, input.filename, input.bytes);
-			audit.append({
+			await audit.append({
 				subject,
 				action: "resourceDraft.file.stage",
 				target: name,
@@ -199,7 +199,7 @@ export function createDraftResourceService({
 					const result = await gateway.commitFileUploads(input, claim.uploads);
 					committed = true;
 					invalidate();
-					audit.append({
+					await audit.append({
 						subject,
 						action: "resourceDraft.files.commit",
 						target: name,
@@ -226,7 +226,7 @@ export function createDraftResourceService({
 				skillUploads.cancel({ name, subject }, result.upload_id);
 				throw error;
 			}
-			audit.append({
+			await audit.append({
 				subject,
 				action: "resourceDraft.skill.stage",
 				target: name,
@@ -252,7 +252,7 @@ export function createDraftResourceService({
 					const result = await gateway.commitSkillUploads(input, claim.uploads);
 					committed = true;
 					invalidate();
-					audit.append({
+					await audit.append({
 						subject,
 						action: "resourceDraft.skills.commit",
 						target: name,
@@ -274,7 +274,7 @@ export function createDraftResourceService({
 			requireDraft(name);
 			return mutate("declaration", async () => {
 				const result = await gateway.putDeclaration(type, id, input);
-				audit.append({
+				await audit.append({
 					subject,
 					action: `resourceDraft.declaration.put:${type}`,
 					target: `${name}/${id}`,
@@ -287,7 +287,7 @@ export function createDraftResourceService({
 			requireDraft(name);
 			return mutate("declaration", async () => {
 				const result = await gateway.deleteDeclaration(type, id, baseRevision);
-				audit.append({
+				await audit.append({
 					subject,
 					action: `resourceDraft.declaration.delete:${type}`,
 					target: `${name}/${id}`,

@@ -74,7 +74,7 @@ describe("成员创建与凭据隔离", () => {
 		expect(listBody).not.toContain(data.initial_password);
 		expect(listBody).not.toContain("password");
 		expect(JSON.parse(listBody).data).toEqual([expect.objectContaining(data.member)]);
-		expect(services.audit.list()).toEqual([]);
+		expect(await services.audit.list()).toEqual([]);
 	});
 
 	it("成员深链按 ID 读取公开资料，拒绝未认证访问并区分不存在的成员", async () => {
@@ -126,8 +126,8 @@ describe("成员创建与凭据隔离", () => {
 		expect(JSON.parse(body).error.code).toBe("invalid_request");
 		expect(JSON.parse(body).error.details).toBeUndefined();
 		if ("password" in patch) expect(body).not.toContain(patch.password);
-		expect(services.members.list({ limit: 20 }).data).toEqual([]);
-		expect(services.audit.list()).toEqual([]);
+		expect((await services.members.list({ limit: 20 })).data).toEqual([]);
+		expect(await services.audit.list()).toEqual([]);
 	});
 
 	it("auditor 可读取真实存在的成员但不能创建，缺令牌 401、未知令牌 403", async () => {

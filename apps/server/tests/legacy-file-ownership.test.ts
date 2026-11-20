@@ -8,6 +8,8 @@ import { createFileService } from "../src/services/files.ts";
 import { openDatabase } from "../src/store/db.ts";
 import { createFileStore } from "../src/store/files.ts";
 import { createSessionIndex } from "../src/store/sessions.ts";
+import { createSqliteDatabase } from "../src/store/sqlite.ts";
+import { historicalSqlite } from "./helpers/historical-sqlite.ts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => {
@@ -18,15 +20,10 @@ afterEach(() => {
 function legacyDatabase(version: "004" | "005") {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-legacy-files-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
-	let db = openDatabase(dataDir);
-	cleanup.push(() => db.close());
-	db.prepare("DELETE FROM _kit_migrations WHERE id = '006_legacy_file_ownership'").run();
-	if (version === "004") {
-		db.exec("DROP TABLE kit_uploaded_files; DROP TABLE kit_member_sessions;");
-		// 本测试回退成员/文件 schema；007 也必须重跑，为重建的上传表添加用途域。
-		db.prepare("DELETE FROM _kit_migrations WHERE id = '007_admin_debug_scope'").run();
-		db.prepare("DELETE FROM _kit_migrations WHERE id = '005_member_auth'").run();
-	}
+	let db = historicalSqlite(dataDir, version === "004" ? "004_members" : "005_member_auth");
+	cleanup.push(() => {
+		if (db.isOpen) db.close();
+	});
 	return {
 		get db() {
 			return db;
@@ -40,12 +37,13 @@ function legacyDatabase(version: "004" | "005") {
 }
 
 function mount(db: DatabaseSync, sessionId: string, subjectId: string, fileId: string) {
-	createSessionIndex(db).create({
+	db.prepare(`INSERT INTO kit_sessions (session_id, subject_id, agent_slug, files_json, created_at)
+		VALUES (?, ?, 'assistant', ?, ?)`).run(
 		sessionId,
 		subjectId,
-		agentSlug: "assistant",
-		files: [{ file_id: fileId, filename: "old.txt" }],
-	});
+		JSON.stringify([{ file_id: fileId, filename: "old.txt" }]),
+		"2026-10-20",
+	);
 }
 
 const owner = "anon_legacy_owner";
@@ -60,18 +58,26 @@ describe("历史附件归属升级", () => {
 		mount(legacy.db, "session_same_owner", owner, file.file_id);
 		// 负向检查前先证明 Provider 文件和原有 Session 归属确实存在。
 		expect(new TextDecoder().decode((await gateway.downloadFile(file.file_id)).body)).toBe("old contents");
-		expect(createSessionIndex(legacy.db).getForSubject("session_before_upgrade", owner)).not.toBeNull();
+		expect(
+			legacy.db
+				.prepare("SELECT 1 FROM kit_sessions WHERE session_id = ? AND subject_id = ?")
+				.get("session_before_upgrade", owner),
+		).not.toBeNull();
 		const db = legacy.reopen();
-		const files = createFileService({ gateway, store: createFileStore(db), sessionIndex: createSessionIndex(db) });
+		const files = createFileService({
+			gateway,
+			store: createFileStore(createSqliteDatabase(db)),
+			sessionIndex: createSessionIndex(createSqliteDatabase(db)),
+		});
 		expect(new TextDecoder().decode((await files.download(owner, file.file_id)).body)).toBe("old contents");
-		expect(() => files.requireUploads(owner, [file])).not.toThrow();
-		expect(() => files.requireUploads(other, [file])).toThrow("文件不存在");
+		await files.requireUploads(owner, [file]);
+		await expect(files.requireUploads(other, [file])).rejects.toThrow("文件不存在");
 		await expect(files.download(other, file.file_id, "session_before_upgrade")).rejects.toMatchObject({ status: 404 });
 		// 重开不重复迁移；删掉会话索引也不会丢掉已恢复的上传归属。
-		createSessionIndex(db).remove("session_before_upgrade");
-		createSessionIndex(db).remove("session_same_owner");
+		await createSessionIndex(createSqliteDatabase(db)).remove("session_before_upgrade");
+		await createSessionIndex(createSqliteDatabase(db)).remove("session_same_owner");
 		const reopened = legacy.reopen();
-		expect(createFileStore(reopened).isUploadedBy(file.file_id, owner)).toBe(true);
+		expect(await createFileStore(createSqliteDatabase(reopened)).isUploadedBy(file.file_id, owner)).toBe(true);
 		expect(reopened.prepare("SELECT COUNT(*) AS count FROM kit_uploaded_files").get()?.count).toBe(1);
 	});
 
@@ -84,7 +90,9 @@ describe("历史附件归属升级", () => {
 		mount(legacy.db, "shared_a", owner, ambiguous.file_id);
 		mount(legacy.db, "shared_b", other, ambiguous.file_id);
 		mount(legacy.db, "recorded_old_index", other, recorded.file_id);
-		createFileStore(legacy.db).recordUpload(recorded.file_id, owner);
+		legacy.db
+			.prepare("INSERT INTO kit_uploaded_files (file_id, subject_id, created_at) VALUES (?, ?, ?)")
+			.run(recorded.file_id, owner, "2026-10-20");
 		for (const [i, value] of [
 			"invalid json",
 			'{"file_id":"not-an-array"}',
@@ -94,13 +102,17 @@ describe("历史附件归属升级", () => {
 			legacy.db.prepare("UPDATE kit_sessions SET files_json = ? WHERE session_id = ?").run(value, `malformed_${i}`);
 		}
 		const db = legacy.reopen();
-		const files = createFileService({ gateway, store: createFileStore(db), sessionIndex: createSessionIndex(db) });
+		const files = createFileService({
+			gateway,
+			store: createFileStore(createSqliteDatabase(db)),
+			sessionIndex: createSessionIndex(createSqliteDatabase(db)),
+		});
 		for (const subjectId of [owner, other]) {
-			expect(() => files.requireUploads(subjectId, [ambiguous])).toThrow("文件不存在");
+			await expect(files.requireUploads(subjectId, [ambiguous])).rejects.toThrow("文件不存在");
 			await expect(files.download(subjectId, ambiguous.file_id)).rejects.toMatchObject({ status: 404 });
 		}
-		expect(() => files.requireUploads(owner, [recorded])).not.toThrow();
-		expect(() => files.requireUploads(other, [recorded])).toThrow("文件不存在");
+		await files.requireUploads(owner, [recorded]);
+		await expect(files.requireUploads(other, [recorded])).rejects.toThrow("文件不存在");
 		await expect(files.download(owner, unattached.file_id)).rejects.toMatchObject({ status: 404 });
 		expect(db.prepare("SELECT file_id, subject_id FROM kit_uploaded_files").all()).toEqual([
 			{ file_id: recorded.file_id, subject_id: owner },

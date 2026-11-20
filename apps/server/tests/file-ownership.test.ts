@@ -18,7 +18,7 @@ const other = "anon_file_other";
 const json = { "content-type": "application/json", "x-kit-protocol-version": "2.0.0" };
 const headersFor = (subjectId: string) => ({ cookie: `kit_subject=${subjectId}` });
 
-function makeApp() {
+async function makeApp() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-file-ownership-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
 	const config = loadConfig({
@@ -30,12 +30,12 @@ function makeApp() {
 	const db = openDatabase(dataDir);
 	cleanup.push(() => db.close());
 	const services = createKitServices(config, db);
-	services.catalog.upsert({ slug: "assistant", display_name: "Assistant", remote_agent_id: "agent_mock" });
-	services.catalog.setStatus("assistant", "listed");
+	await services.catalog.upsert({ slug: "assistant", display_name: "Assistant", remote_agent_id: "agent_mock" });
+	await services.catalog.setStatus("assistant", "listed");
 	return { app: createApp(services), services, db, dataDir, config };
 }
 
-async function upload(app: ReturnType<typeof makeApp>["app"], subjectId = owner) {
+async function upload(app: Awaited<ReturnType<typeof makeApp>>["app"], subjectId = owner) {
 	const form = new FormData();
 	form.append("file", new Blob(["private file content"], { type: "text/plain" }), "private.txt");
 	const response = await app.request("/api/kit/files", {
@@ -48,7 +48,7 @@ async function upload(app: ReturnType<typeof makeApp>["app"], subjectId = owner)
 }
 
 function createSession(
-	app: ReturnType<typeof makeApp>["app"],
+	app: Awaited<ReturnType<typeof makeApp>>["app"],
 	subjectId = owner,
 	files: { file_id: string; filename?: string }[] = [],
 ) {
@@ -66,7 +66,7 @@ async function sessionIdOf(response: Response) {
 
 describe("文件授权与成员隔离", () => {
 	it("上传归属持久化且不保存内容；本人下载成功，其他身份与未知 ID 均为 404", async () => {
-		const { app, db, config, dataDir } = makeApp();
+		const { app, db, config, dataDir } = await makeApp();
 		const file = await upload(app);
 		const url = `/api/kit/files/${file.file_id}/download`;
 		const downloaded = await app.request(url, { headers: headersFor(owner) });
@@ -93,7 +93,7 @@ describe("文件授权与成员隔离", () => {
 	});
 
 	it("非 ASCII 文件名按 RFC 5987 编码进下载响应头，不使响应构造失败", async () => {
-		const { app } = makeApp();
+		const { app } = await makeApp();
 		const form = new FormData();
 		form.append("file", new Blob(["报告内容"], { type: "application/pdf" }), "使用指南.pdf");
 		const created = await app.request("/api/kit/files", { method: "POST", headers: headersFor(owner), body: form });
@@ -107,7 +107,7 @@ describe("文件授权与成员隔离", () => {
 	});
 
 	it("建会话只允许挂载本人上传的文件，混入其他人的文件在扫描或创建 Provider Session 前被拒", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		const ownFile = await upload(app);
 		const otherFile = await upload(app, other);
 		const sessionId = await sessionIdOf(await createSession(app, owner, [ownFile]));
@@ -120,11 +120,11 @@ describe("文件授权与成员隔离", () => {
 		expect((await createSession(app, owner, [{ file_id: "file_unknown" }])).status).toBe(404);
 		expect(scan).not.toHaveBeenCalled();
 		expect(create).not.toHaveBeenCalled();
-		expect(services.sessionIndex.listForSubject(owner)).toHaveLength(1);
+		expect(await services.sessionIndex.listForSubject(owner)).toHaveLength(1);
 	});
 
 	it("交付文件须出现在本人指定会话完整分页历史中；仅知道文件 ID 或本人其他会话均不能下载", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		const sessionId = await sessionIdOf(await createSession(app));
 		const otherSessionId = await sessionIdOf(await createSession(app, other));
 		// Provider 文件真实存在，但不是经任何 Kit 成员上传。

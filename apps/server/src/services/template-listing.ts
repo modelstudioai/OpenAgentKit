@@ -70,13 +70,13 @@ export function createTemplateListingService({
 	gate: ConfirmGate;
 	audit: AuditLog;
 }) {
-	function targetFor(templateId: string, displayName: string): ListingTarget {
-		const template = store.get(templateId);
-		const entry = template.listing ? catalog.get(template.listing.catalog_id) : null;
+	async function targetFor(templateId: string, displayName: string): Promise<ListingTarget> {
+		const template = await store.get(templateId);
+		const entry = template.listing ? await catalog.get(template.listing.catalog_id) : null;
 		if (entry?.status === "listed") throw new KitError("conflict", "该模版已上架，请刷新模版列表查看");
 		const slug = entry?.slug ?? template.template_id;
-		if (!entry && catalog.getBySlug(slug)) throw new KitError("conflict", "模版的上架 ID 已被其他条目占用");
-		if (catalog.all().some((item) => item.id !== entry?.id && item.display_name === displayName)) {
+		if (!entry && (await catalog.getBySlug(slug))) throw new KitError("conflict", "模版的上架 ID 已被其他条目占用");
+		if ((await catalog.all()).some((item) => item.id !== entry?.id && item.display_name === displayName)) {
 			throw new KitError("conflict", "展示名已存在，请使用其他展示名");
 		}
 		return { template, entry, slug };
@@ -103,7 +103,7 @@ export function createTemplateListingService({
 	return {
 		async planListing(templateId: string, input: TemplateListingInput, subject: string): Promise<PlanResponse> {
 			const { display_name: displayName } = listingInput(input);
-			const target = targetFor(templateId, displayName);
+			const target = await targetFor(templateId, displayName);
 			const config = await configFor(target, displayName);
 			const planId = `template_listing:${fingerprint(target, config)}:${randomUUID()}`;
 			const issued = await gate.issue({ planId, action: `templates.listing:${templateId}`, subject });
@@ -141,25 +141,25 @@ export function createTemplateListingService({
 			if (parts.length !== 3 || parts[0] !== "template_listing" || !/^[a-f0-9]{64}$/.test(parts[1] ?? "")) {
 				throw new KitError("confirmation_required", "上架确认计划无效，请重新预览计划");
 			}
-			const target = targetFor(templateId, displayName);
+			const target = await targetFor(templateId, displayName);
 			const config = await configFor(target, displayName);
-			const entry = store.saveListing(templateId, () => {
+			const entry = await store.saveListing(templateId, async () => {
 				// Provider 校验和确认验签均会 await；事务内再次读取完整目标，拒绝期间的任何目录变化。
-				const current = targetFor(templateId, displayName);
+				const current = await targetFor(templateId, displayName);
 				if (fingerprint(current, config) !== parts[1]) {
 					throw new KitError("conflict", "模版、上架信息或资源已变更，请重新预览上架计划");
 				}
 				if (current.entry) {
-					const updated = catalog.update(current.entry.id, { ...config, status: "listed" });
+					const updated = await catalog.update(current.entry.id, { ...config, status: "listed" });
 					if (!updated) throw new KitError("conflict", "上架条目已变更，请重新预览上架计划");
 					return updated;
 				}
-				const created = catalog.create(config);
-				const listed = catalog.setStatus(created.slug, "listed");
+				const created = await catalog.create(config);
+				const listed = await catalog.setStatus(created.slug, "listed");
 				if (!listed) throw new KitError("conflict", "上架条目已变更，请重新预览上架计划");
 				return listed;
 			});
-			audit.append({
+			await audit.append({
 				subject,
 				action: "templates.listing",
 				target: templateId,

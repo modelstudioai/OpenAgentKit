@@ -43,16 +43,17 @@ async function forwardFrames(
 ) {
 	for await (const frame of frames) {
 		if (signal.aborted) break;
-		grant.assertActive();
+		await grant.assertActive();
+		if (signal.aborted) break;
 		await stream.write(encodeFrame(frame));
 		if (frame.type === "done") break;
 	}
 }
 
 /** 归属检查在调用方完成；此处负责认证到期/撤销与 HTTP 连接的共同生命周期。 */
-export function streamSession(c: Context<AppEnv>, sessionId: string, after?: string): Response {
+export async function streamSession(c: Context<AppEnv>, sessionId: string, after?: string): Promise<Response> {
 	const { sessions, memberAuth } = c.get("services");
-	const grant = createAuthStreamGuard(memberAuth, c.get("memberSession"), c.get("authExpiresAt"));
+	const grant = await createAuthStreamGuard(memberAuth, c.get("memberSession"), c.get("authExpiresAt"));
 	return streamSSE(c, async (stream) => {
 		const connection = bindCancellation(stream, c.req.raw.signal, grant.signal);
 		try {

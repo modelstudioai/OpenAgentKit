@@ -92,9 +92,9 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		},
-		(c) => {
+		async (c) => {
 			const { catalog } = c.get("services");
-			return c.json({ data: catalog.all() }, 200);
+			return c.json({ data: await catalog.all() }, 200);
 		},
 	);
 
@@ -123,8 +123,8 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 			const { catalog, gateway, audit } = c.get("services");
 			const { subject } = requireAdmin(c, c.get("services").config);
 			const body = c.req.valid("json");
-			const entry = catalog.create(await prepareCatalogResources(gateway, body));
-			audit.append({
+			const entry = await catalog.create(await prepareCatalogResources(gateway, body));
+			await audit.append({
 				subject,
 				action: "catalog.create",
 				target: entry.slug,
@@ -164,7 +164,7 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 			const { catalog, gate } = c.get("services");
 			const { subject } = requireAdmin(c, c.get("services").config);
 			const slug = c.req.param("slug") ?? "";
-			const entry = catalog.getBySlug(slug);
+			const entry = await catalog.getBySlug(slug);
 			if (!entry) throw new KitError("not_found", "agent 不存在");
 			const body = c.req.valid("json");
 			const isDelete = body.action === "delete";
@@ -228,9 +228,9 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 			const slug = c.req.param("slug") ?? "";
 			const body = c.req.valid("json");
 			await gate.consume({ planId: body.plan_id, action: LISTING_ACTION, subject, token: body.confirm_token });
-			const entry = catalog.setStatus(slug, body.status);
+			const entry = await catalog.setStatus(slug, body.status);
 			if (!entry) throw new KitError("not_found", "agent 不存在");
-			audit.append({
+			await audit.append({
 				subject,
 				action: `catalog.${body.status === "listed" ? "list" : "unlist"}`,
 				target: slug,
@@ -268,7 +268,7 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 			const body = c.req.valid("json");
 			const entry = await updateCatalogResources(gateway, catalog, slug, body);
 			if (!entry) throw new KitError("not_found", "agent 不存在");
-			audit.append({
+			await audit.append({
 				subject,
 				action: "catalog.update",
 				target: slug,
@@ -305,12 +305,12 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 			const { catalog, gate, audit } = c.get("services");
 			const { subject } = requireAdmin(c, c.get("services").config);
 			const slug = c.req.param("slug") ?? "";
-			const entry = catalog.getBySlug(slug);
+			const entry = await catalog.getBySlug(slug);
 			if (!entry) throw new KitError("not_found", "agent 不存在");
 			const body = c.req.valid("json");
 			await gate.consume({ planId: body.plan_id, action: DELETE_ACTION, subject, token: body.confirm_token });
-			const deleted = catalog.remove(entry.id);
-			audit.append({
+			const deleted = await catalog.remove(entry.id);
+			await audit.append({
 				subject,
 				action: "catalog.delete",
 				target: slug,
@@ -382,21 +382,19 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		},
-		(c) => {
+		async (c) => {
 			const { operations } = c.get("services");
 			const query = c.req.valid("query");
-			const rows = operations.list({
+			const rows = await operations.list({
 				...(query.session_id ? { sessionId: query.session_id } : {}),
 				...(query.limit ? { limit: query.limit } : {}),
 			});
-			return c.json(
-				{
-					data: rows.filter((row) =>
-						c.get("services").resourceDrafts.canReadOperation(row.operation_id, c.get("admin").subject),
-					),
-				},
-				200,
-			);
+			const owner = c.get("admin").subject;
+			const data = [];
+			for (const row of rows) {
+				if (await c.get("services").resourceDrafts.canReadOperation(row.operation_id, owner)) data.push(row);
+			}
+			return c.json({ data }, 200);
 		},
 	);
 
@@ -417,7 +415,7 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		},
-		(c) => c.json({ data: c.get("services").memberUsage.summaryByTemplate(c.req.valid("query")) }, 200),
+		async (c) => c.json({ data: await c.get("services").memberUsage.summaryByTemplate(c.req.valid("query")) }, 200),
 	);
 
 	app.openapi(
@@ -445,11 +443,11 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		},
-		(c) => {
+		async (c) => {
 			const { templates, usageLimits } = c.get("services");
 			const query = c.req.valid("query");
-			if (query.template_id) templates.get(query.template_id);
-			return c.json({ data: usageLimits.templateDailyTrend(query.template_id ?? null, query.days) }, 200);
+			if (query.template_id) await templates.get(query.template_id);
+			return c.json({ data: await usageLimits.templateDailyTrend(query.template_id ?? null, query.days) }, 200);
 		},
 	);
 
@@ -473,10 +471,10 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		},
-		(c) => {
+		async (c) => {
 			const { templates, memberUsage } = c.get("services");
-			templates.get(c.req.valid("param").templateId);
-			return c.json(memberUsage.listByTemplate(c.req.valid("param").templateId, c.req.valid("query")), 200);
+			await templates.get(c.req.valid("param").templateId);
+			return c.json(await memberUsage.listByTemplate(c.req.valid("param").templateId, c.req.valid("query")), 200);
 		},
 	);
 
@@ -708,9 +706,9 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		},
-		(c) => {
+		async (c) => {
 			requireAdmin(c, c.get("services").config);
-			return c.json({ data: c.get("services").quota.policy() }, 200);
+			return c.json({ data: await c.get("services").quota.policy() }, 200);
 		},
 	);
 
@@ -728,10 +726,10 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		},
-		(c) => {
+		async (c) => {
 			const { subject } = requireAdminWrite(c, c.get("services").config);
 			const body = c.req.valid("json");
-			return c.json({ data: c.get("services").quota.putPolicy(body.monthly_credits, subject) }, 200);
+			return c.json({ data: await c.get("services").quota.putPolicy(body.monthly_credits, subject) }, 200);
 		},
 	);
 
@@ -748,9 +746,9 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		},
-		(c) => {
+		async (c) => {
 			requireAdmin(c, c.get("services").config);
-			return c.json({ data: c.get("services").quota.overrides() }, 200);
+			return c.json({ data: await c.get("services").quota.overrides() }, 200);
 		},
 	);
 
@@ -771,10 +769,10 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		},
-		(c) => {
+		async (c) => {
 			const { subject } = requireAdminWrite(c, c.get("services").config);
 			const body = c.req.valid("json");
-			const view = c.get("services").quota.putOverride(
+			const view = await c.get("services").quota.putOverride(
 				{
 					subjectId: c.req.param("subjectId") ?? "",
 					monthlyCredits: body.monthly_credits,
@@ -800,9 +798,9 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		},
-		(c) => {
+		async (c) => {
 			const { subject } = requireAdminWrite(c, c.get("services").config);
-			const deleted = c.get("services").quota.deleteOverride(c.req.param("subjectId") ?? "", subject);
+			const deleted = await c.get("services").quota.deleteOverride(c.req.param("subjectId") ?? "", subject);
 			if (!deleted) throw new KitError("not_found", "该 subject 没有 override");
 			return c.json({ data: { deleted } }, 200);
 		},
@@ -822,10 +820,10 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		},
-		(c) => {
+		async (c) => {
 			const { subject } = requireAdminWrite(c, c.get("services").config);
 			const body = c.req.valid("json");
-			const view = c.get("services").quota.createPack(
+			const view = await c.get("services").quota.createPack(
 				{
 					subjectId: body.subject_id,
 					credits: body.credits,
@@ -851,9 +849,9 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		},
-		(c) => {
+		async (c) => {
 			const { subject } = requireAdminWrite(c, c.get("services").config);
-			const deleted = c.get("services").quota.deletePack(c.req.param("packId") ?? "", subject);
+			const deleted = await c.get("services").quota.deletePack(c.req.param("packId") ?? "", subject);
 			if (!deleted) throw new KitError("not_found", "加油包不存在");
 			return c.json({ data: { deleted } }, 200);
 		},
@@ -873,10 +871,10 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		},
-		(c) => {
+		async (c) => {
 			requireAdmin(c, c.get("services").config);
 			const status = c.req.valid("query").status;
-			return c.json({ data: c.get("services").quota.requests(status) }, 200);
+			return c.json({ data: await c.get("services").quota.requests(status) }, 200);
 		},
 	);
 
@@ -897,10 +895,10 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		},
-		(c) => {
+		async (c) => {
 			const { subject } = requireAdminWrite(c, c.get("services").config);
 			const body = c.req.valid("json");
-			const view = c.get("services").quota.review(
+			const view = await c.get("services").quota.review(
 				c.req.param("id") ?? "",
 				{
 					action: body.action,
@@ -935,10 +933,10 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		},
-		(c) => {
+		async (c) => {
 			requireAdmin(c, c.get("services").config);
 			const month = c.req.valid("query").month;
-			return c.json({ data: c.get("services").quota.usage(month) }, 200);
+			return c.json({ data: await c.get("services").quota.usage(month) }, 200);
 		},
 	);
 }

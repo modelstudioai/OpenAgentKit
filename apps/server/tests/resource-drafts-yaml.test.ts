@@ -28,7 +28,7 @@ it("早期 029 批次缺少上传清单列时可升级，保留已有声明并�
 	const t = await fixture();
 	const draft = await t.create();
 	const created = await t.agent(draft);
-	const before = t.store.document(draft.draft_id);
+	const before = await t.store.document(draft.draft_id);
 	// 开发服务曾应用不含 assets_json 的 029；同一迁移 ID 不会再次执行。
 	t.db.exec("ALTER TABLE kit_resource_draft_documents DROP COLUMN assets_json");
 	t.db.prepare("DELETE FROM _kit_migrations WHERE id=?").run("030_resource_draft_assets");
@@ -37,9 +37,9 @@ it("早期 029 批次缺少上传清单列时可升级，保留已有声明并�
 		expect.objectContaining({ type: "agent", id: created.agent.id }),
 	);
 	expect(await t.value(`${t.base(draft)}/resource-bindings`)).toEqual({ resources: [] });
-	expect(t.store.document(draft.draft_id)).toEqual(before);
+	expect(await t.store.document(draft.draft_id)).toEqual(before);
 	t.restart();
-	expect(t.store.document(draft.draft_id)).toEqual(before);
+	expect(await t.store.document(draft.draft_id)).toEqual(before);
 	expect(await t.value(`${t.base(draft)}/declarations`)).toHaveLength(1);
 });
 
@@ -78,8 +78,8 @@ it("YAML 草稿支持五类资源、原文和修订校验，不创建源码目�
 		base_revision: await t.revision(draft),
 		upload_ids: [upload.data.upload_id],
 	});
-	expect(t.store.document(draft.draft_id)?.yaml).toContain("./literal memory");
-	expect(t.store.document(draft.draft_id)?.yaml).toContain("/literal prompt");
+	expect((await t.store.document(draft.draft_id))?.yaml).toContain("./literal memory");
+	expect((await t.store.document(draft.draft_id))?.yaml).toContain("/literal prompt");
 	expect(existsSync(join(t.root, "resource-draft-projects"))).toBe(false);
 	const confirmation = await t.plan(draft);
 	expect(
@@ -110,11 +110,11 @@ it("YAML 草稿支持五类资源、原文和修订校验，不创建源码目�
 	);
 	expect(detail.configuration.multiagent).toEqual(multiagent);
 	expect(await t.value("/api/admin/remote/files")).toContainEqual(expect.objectContaining({ filename: "brief.txt" }));
-	expect(t.store.document(draft.draft_id)).toBeUndefined();
+	expect(await t.store.document(draft.draft_id)).toBeUndefined();
 	expect(existsSync(join(t.root, "resource-draft-uploads", draft.draft_id))).toBe(false);
 	expect(await readFile(join(t.main, "keep.txt"), "utf8")).toBe("main must remain");
 	const next = await t.create();
-	expect(JSON.parse(t.store.document(next.draft_id)!.sdk_state_json)).toEqual({ resources: [] });
+	expect(JSON.parse((await t.store.document(next.draft_id))!.sdk_state_json)).toEqual({ resources: [] });
 	expect(await t.value(`${t.base(next)}/declarations`)).toEqual([]);
 });
 
@@ -136,14 +136,14 @@ it("临时 Vault 值仅在批次内存中，配置变化使旧计划失效且丢
 			},
 		],
 	});
-	expect(JSON.stringify(t.store.document(draft.draft_id))).not.toContain("private-fixture-value");
+	expect(JSON.stringify(await t.store.document(draft.draft_id))).not.toContain("private-fixture-value");
 	expect(JSON.stringify(await t.value(`${t.base(draft)}/declarations`))).not.toContain("private-fixture-value");
 	expect(Object.keys(process.env).filter((key) => key.startsWith("KIT_VAULT_"))).toEqual(before);
 	const confirmation = await t.plan(draft);
 	await t.value(`${t.base(draft)}/environments`, "POST", { base_revision: await t.revision(draft), name: "changed" });
 	expect((await t.request(`${t.base(draft)}/publish`, "POST", confirmation)).status).toBe(428);
 	await t.value(`/api/admin/resource-drafts/${draft.draft_id}/discard`, "POST");
-	expect(t.store.document(draft.draft_id)).toBeUndefined();
+	expect(await t.store.document(draft.draft_id)).toBeUndefined();
 });
 
 it("真实 SDK 对象发布保留原文和 state；回执写入失败后重启收尾不重复远端创建", async () => {
@@ -171,9 +171,9 @@ it("真实 SDK 对象发布保留原文和 state；回执写入失败后重启�
 	await t.agent(draft, text);
 	const savedStates: string[] = [];
 	const original = t.store.writeState.bind(t.store);
-	vi.spyOn(t.store, "writeState").mockImplementation((id, state) => {
+	vi.spyOn(t.store, "writeState").mockImplementation(async (id, state) => {
 		savedStates.push(state);
-		original(id, state);
+		await original(id, state);
 	});
 	vi.spyOn(t.store, "receipt").mockImplementationOnce(() => {
 		throw new Error("receipt write failed");
@@ -192,18 +192,18 @@ it("真实 SDK 对象发布保留原文和 state；回执写入失败后重启�
 	expect(savedStates.some((state) => state.includes("agent_fixture"))).toBe(true);
 	expect(savedStates.join("")).not.toContain("fixture-provider-secret");
 	expect(existsSync(join(t.root, "resource-draft-projects"))).toBe(false);
-	expect(t.store.document(draft.draft_id)?.proof_json).toContain("agent_fixture");
-	const persisted = t.store.document(draft.draft_id);
+	expect((await t.store.document(draft.draft_id))?.proof_json).toContain("agent_fixture");
+	const persisted = await t.store.document(draft.draft_id);
 	t.db.exec("ALTER TABLE kit_resource_draft_documents DROP COLUMN assets_json");
 	t.db.prepare("DELETE FROM _kit_migrations WHERE id=?").run("030_resource_draft_assets");
 	t.restart();
-	expect(t.store.document(draft.draft_id)).toEqual(persisted);
+	expect(await t.store.document(draft.draft_id)).toEqual(persisted);
 	const saved = await t.value<ResourceDraftView>(`/api/admin/resource-drafts/${draft.draft_id}/finalize`, "POST");
 	expect(saved).toMatchObject({ status: "published", cleanup_pending: false });
 	expect(saved.resources).toEqual([expect.objectContaining({ remote_id: "agent_fixture", version: 1 })]);
 	await t.value(`/api/admin/resource-drafts/${draft.draft_id}/finalize`, "POST");
 	expect(calls.filter((call) => call.method === "POST")).toHaveLength(1);
-	expect(t.store.document(draft.draft_id)).toBeUndefined();
+	expect(await t.store.document(draft.draft_id)).toBeUndefined();
 });
 
 it("上传 Skill 必须绑定后才能发布；暂存文件变化阻断已确认计划且尚未执行远端", async () => {
@@ -238,9 +238,9 @@ it("上传 Skill 必须绑定后才能发布；暂存文件变化阻断已确认
 	const before = await t.services.gateway.listRemoteAgents();
 	const op = await t.publish(draft, confirmation);
 	expect((await t.wait(op.operation_id)).status).toBe("failed");
-	expect(t.store.get(draft.draft_id)?.phase).toBe("editable");
+	expect((await t.store.get(draft.draft_id))?.phase).toBe("editable");
 	expect(await t.services.gateway.listRemoteAgents()).toEqual(before);
-	expect(JSON.parse(t.store.document(draft.draft_id)!.sdk_state_json).resources).toEqual([]);
+	expect(JSON.parse((await t.store.document(draft.draft_id))!.sdk_state_json).resources).toEqual([]);
 });
 
 it("部分 SDK 成功保留 state，重启后只允许读取核对，不能重新发布或伪造成功", async () => {
@@ -287,16 +287,16 @@ it("部分 SDK 成功保留 state，重启后只允许读取核对，不能重�
 		}),
 	);
 	expect(JSON.stringify(result)).not.toContain("private-provider-error-body");
-	expect(t.store.document(draft.draft_id)?.sdk_state_json).toContain("env_created");
-	expect(t.store.document(draft.draft_id)?.proof_json).toBeNull();
+	expect((await t.store.document(draft.draft_id))?.sdk_state_json).toContain("env_created");
+	expect((await t.store.document(draft.draft_id))?.proof_json).toBeNull();
 	const count = posts;
 	t.restart();
 	expect(await t.value(`/api/admin/resource-drafts/${draft.draft_id}`)).toMatchObject({
 		recovery_action: "read_result",
 	});
-	expect(t.services.operations.get(op.operation_id)?.publication).toEqual(result.publication);
+	expect((await t.services.operations.get(op.operation_id))?.publication).toEqual(result.publication);
 	expect((await t.request(`${t.base(draft)}/plan`, "POST", { action: "publish" })).status).toBe(409);
 	expect((await t.request(`/api/admin/resource-drafts/${draft.draft_id}/finalize`, "POST")).status).toBe(409);
 	expect(posts).toBe(count);
-	expect(t.store.get(draft.draft_id)?.phase).toBe("uncertain");
+	expect((await t.store.get(draft.draft_id))?.phase).toBe("uncertain");
 });

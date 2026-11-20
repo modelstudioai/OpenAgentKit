@@ -12,6 +12,7 @@ import { openDatabase } from "../src/store/db.ts";
 import { createMemberStore } from "../src/store/members.ts";
 import { createSessionUsageStore } from "../src/store/session-usage.ts";
 import { createSessionIndex } from "../src/store/sessions.ts";
+import { createSqliteDatabase } from "../src/store/sqlite.ts";
 import { createTemplateStore } from "../src/store/templates.ts";
 import { createUsageLimitStore } from "../src/store/usage-limits.ts";
 
@@ -26,11 +27,11 @@ const unlimited: UsageLimitConfig = {
 	daily_active_seconds: null,
 };
 /** 模版条目 fixture：catalog slug 与 setup 的会话 agentSlug 同名，限额外部数据最少。 */
-function listing(db: ReturnType<typeof openDatabase>) {
-	const catalog = createCatalogStore(db);
-	const templates = createTemplateStore(db);
-	catalog.create({ slug: "agent", display_name: "模版条目", remote_agent_id: "remote-x" });
-	const created = templates.create({
+async function listing(db: ReturnType<typeof openDatabase>) {
+	const catalog = createCatalogStore(createSqliteDatabase(db));
+	const templates = createTemplateStore(createSqliteDatabase(db));
+	await catalog.create({ slug: "agent", display_name: "模版条目", remote_agent_id: "remote-x" });
+	const created = await templates.create({
 		name: "客服模版",
 		remote_agent_id: "remote-x",
 		remote_agent_name: "xktest",
@@ -44,7 +45,7 @@ function listing(db: ReturnType<typeof openDatabase>) {
 		vault_ids: [],
 		category: "general",
 	});
-	templates.saveListing(created.template_id, () => catalog.getBySlug("agent")!);
+	await templates.saveListing(created.template_id, async () => (await catalog.getBySlug("agent"))!);
 	return created.template_id;
 }
 function detail(id: string, input = 0, output = 0, seconds = 0): GatewaySessionInfo {
@@ -55,15 +56,15 @@ function detail(id: string, input = 0, output = 0, seconds = 0): GatewaySessionI
 		stats: { active_seconds: seconds },
 	};
 }
-function setup() {
+async function setup() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-usage-limits-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
 	const db = openDatabase(dataDir);
 	cleanup.push(() => db.close());
-	const members = createMemberStore(db);
-	const index = createSessionIndex(db);
-	const snapshots = createSessionUsageStore(db);
-	const store = createUsageLimitStore(db);
+	const members = createMemberStore(createSqliteDatabase(db));
+	const index = createSessionIndex(createSqliteDatabase(db));
+	const snapshots = createSessionUsageStore(createSqliteDatabase(db));
+	const store = createUsageLimitStore(createSqliteDatabase(db));
 	const gateway = createMockGateway();
 	const details = new Map<string, GatewaySessionInfo>();
 	const events = new Map<string, SessionEvent[]>();
@@ -74,8 +75,8 @@ function setup() {
 		events: events.get(id) ?? [],
 		next_page_token: null,
 	}));
-	function member(id = "member_a") {
-		members.create(
+	async function member(id = "member_a") {
+		await members.create(
 			{
 				member_id: id,
 				username: id,
@@ -88,8 +89,8 @@ function setup() {
 			"unused",
 		);
 	}
-	function session(id = "s", owner = "member_a") {
-		index.create({ sessionId: id, subjectId: owner, agentSlug: "agent" });
+	async function session(id = "s", owner = "member_a") {
+		await index.create({ sessionId: id, subjectId: owner, agentSlug: "agent" });
 		details.set(id, detail(id));
 		events.set(id, []);
 	}
@@ -119,17 +120,17 @@ function setup() {
 	}
 	const make = (database = db, timeoutMs = 50) =>
 		createUsageLimitService({
-			store: createUsageLimitStore(database),
-			members: createMemberStore(database),
-			sessionIndex: createSessionIndex(database),
-			snapshots: createSessionUsageStore(database),
+			store: createUsageLimitStore(createSqliteDatabase(database)),
+			members: createMemberStore(createSqliteDatabase(database)),
+			sessionIndex: createSessionIndex(createSqliteDatabase(database)),
+			snapshots: createSessionUsageStore(createSqliteDatabase(database)),
 			gateway,
-			audit: createAuditLog(database),
+			audit: createAuditLog(createSqliteDatabase(database)),
 			now: () => current,
 			timeoutMs,
 		});
-	member();
-	session();
+	await member();
+	await session();
 	const service = make();
 	return {
 		db,
@@ -162,9 +163,9 @@ describe("成员月度 Session 用量准入", () => {
 		{ monthly_tokens: null, monthly_active_seconds: 2, daily_tokens: null, daily_active_seconds: null },
 		{ monthly_tokens: 500, monthly_active_seconds: 2, daily_tokens: null, daily_active_seconds: null },
 	])("首次基线不追溯、增量不重计，任一启用维度达限拒绝下一轮 %#", async (limits) => {
-		const f = setup();
+		const f = await setup();
 		f.details.set("s", detail("s", 1000, 1000, 100));
-		f.service.setPolicy(limits, "admin");
+		await f.service.setPolicy(limits, "admin");
 		expect((await f.service.member("member_a")).tokens.used).toBe(0);
 		await f.run("first");
 		f.complete("s", 1120, 1080, 102);
@@ -181,8 +182,8 @@ describe("成员月度 Session 用量准入", () => {
 	});
 
 	it("零额度阻止首轮，override取消限制与恢复默认均保留已记用量", async () => {
-		const f = setup();
-		f.service.setPolicy(
+		const f = await setup();
+		await f.service.setPolicy(
 			{ monthly_tokens: 0, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 			"admin",
 		);
@@ -197,8 +198,8 @@ describe("成员月度 Session 用量准入", () => {
 	});
 
 	it("跨月完成归受理月，切月新轮只记新增量，重开数据库不重计", async () => {
-		const f = setup();
-		f.service.setPolicy(
+		const f = await setup();
+		await f.service.setPolicy(
 			{ monthly_tokens: 1000, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 			"admin",
 		);
@@ -206,7 +207,7 @@ describe("成员月度 Session 用量准入", () => {
 		f.time("2026-11-01T00:01:00.000Z");
 		f.complete();
 		expect(await f.service.member("member_a")).toMatchObject({ month: "2026-11", tokens: { used: 0 } });
-		expect(f.store.totals("member_a", "2026-10").tokens).toBe(200);
+		expect((await f.store.totals("member_a", "2026-10")).tokens).toBe(200);
 		await f.run("november");
 		f.complete("s", 300, 200, 5);
 		expect((await f.service.member("member_a")).tokens.used).toBe(300);
@@ -221,19 +222,19 @@ describe("成员月度 Session 用量准入", () => {
 	});
 
 	it("采集增量同事务写逐日账，视图返回近 30 天零值补全序列，零增量不重复落行", async () => {
-		const f = setup();
+		const f = await setup();
 		f.time("2026-10-30T10:00:00.000Z");
 		await f.run("day1");
 		f.complete();
 		await f.service.member("member_a");
-		expect(f.store.dailyUsage("member_a", "2026-10-01")).toEqual([
+		expect(await f.store.dailyUsage("member_a", "2026-10-01")).toEqual([
 			{ day: "2026-10-30", tokens: 200, active_seconds: 2 },
 		]);
 		f.time("2026-10-31T10:00:00.000Z");
 		await f.run("day2");
 		f.complete("s", 300, 200, 5);
 		const view = await f.service.member("member_a");
-		expect(f.store.dailyUsage("member_a", "2026-10-01")).toEqual([
+		expect(await f.store.dailyUsage("member_a", "2026-10-01")).toEqual([
 			{ day: "2026-10-30", tokens: 200, active_seconds: 2 },
 			{ day: "2026-10-31", tokens: 300, active_seconds: 3 },
 		]);
@@ -242,11 +243,11 @@ describe("成员月度 Session 用量准入", () => {
 		expect(view.daily.at(0)).toEqual({ day: "2026-10-02", tokens: 0, active_seconds: 0 });
 		// 重复采集零增量：日账不新增、不重计
 		await f.service.member("member_a");
-		expect(f.store.dailyUsage("member_a", "2026-10-01")).toHaveLength(2);
+		expect(await f.store.dailyUsage("member_a", "2026-10-01")).toHaveLength(2);
 	});
 
 	it("022 重建逐日账：月账增量按当日调用次数分摊，总和与月账一致", async () => {
-		const f = setup();
+		const f = await setup();
 		f.time("2026-10-30T10:00:00.000Z");
 		await f.run("legacy");
 		f.complete();
@@ -281,8 +282,8 @@ describe("成员月度 Session 用量准入", () => {
 	});
 
 	it("缺失、回退、超时不放行启用维度，也不让迟到旧结果覆盖基线", async () => {
-		const f = setup();
-		f.service.setPolicy(
+		const f = await setup();
+		await f.service.setPolicy(
 			{ monthly_tokens: 500, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 			"admin",
 		);
@@ -306,13 +307,13 @@ describe("成员月度 Session 用量准入", () => {
 		await Promise.resolve();
 		f.details.set("s", { session_id: "s", status: "idle", usage: { input_tokens: 120, output_tokens: 80 } });
 		await f.run("valid-token-only");
-		expect(f.store.totals("member_a", "2026-10").tokens).toBe(200);
+		expect((await f.store.totals("member_a", "2026-10")).tokens).toBe(200);
 		expect(f.send).toHaveBeenCalledTimes(2);
 	});
 
 	it("同成员并发单飞、相同请求持久回放，旧idle不能误认为受理后已完成", async () => {
-		const f = setup();
-		f.service.setPolicy(
+		const f = await setup();
+		await f.service.setPolicy(
 			{ monthly_tokens: 1000, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 			"admin",
 		);
@@ -322,7 +323,7 @@ describe("成员月度 Session 用量准入", () => {
 		await expect(
 			f.service.runSend("s", { text: "changed", clientMessageId: "same" }, undefined, () => f.send()),
 		).rejects.toMatchObject({ code: "conflict" });
-		f.session("second");
+		await f.session("second");
 		f.details.set("s", detail("s")); // Provider GET 暂时仍是受理前的 idle，历史仍有 running。
 		await expect(f.run("concurrent", "second")).rejects.toMatchObject({ code: "conflict" });
 		f.complete();
@@ -334,8 +335,8 @@ describe("成员月度 Session 用量准入", () => {
 		{ monthly_tokens: 1000, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 		unlimited,
 	])("结果不明跨重启不重发，删除封存后直接恢复其他会话且月累计不丢 %#", async (limits) => {
-		const f = setup();
-		f.service.setPolicy(limits, "admin");
+		const f = await setup();
+		await f.service.setPolicy(limits, "admin");
 		const failing = vi.fn(async () => {
 			throw new Error("provider-secret");
 		});
@@ -349,19 +350,19 @@ describe("成员月度 Session 用量准入", () => {
 			recovered.runSend("s", { text: "private prompt", clientMessageId: "uncertain" }, undefined, failing),
 		).rejects.toMatchObject({ code: "conflict" });
 		expect(failing).toHaveBeenCalledTimes(1);
-		expect(JSON.stringify(f.store.pending("member_a"))).not.toContain("private prompt");
-		f.snapshots.syncMember("member_a");
-		f.snapshots.finalize("s", { input_tokens: 120, output_tokens: 80, active_seconds: 2 }, "idle");
-		f.snapshots.markDeleted("s");
+		expect(JSON.stringify(await f.store.pending("member_a"))).not.toContain("private prompt");
+		await f.snapshots.syncMember("member_a");
+		await f.snapshots.finalize("s", { input_tokens: 120, output_tokens: 80, active_seconds: 2 }, "idle");
+		await f.snapshots.markDeleted("s");
 		f.details.delete("s");
-		f.session("new");
+		await f.session("new");
 		await recovered.runSend("new", { text: "new", clientMessageId: "new" }, undefined, () => f.send("new"));
 		expect((await recovered.member("member_a")).tokens.used).toBe(200);
 	});
 
 	it("审批允许继续执行也检查限额，拒绝不受额度阻挡", async () => {
-		const f = setup();
-		f.service.setPolicy(
+		const f = await setup();
+		await f.service.setPolicy(
 			{ monthly_tokens: 200, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 			"admin",
 		);
@@ -377,7 +378,7 @@ describe("成员月度 Session 用量准入", () => {
 	});
 
 	it("无基线时受理过的维度保留当月未知，不在稍后首次可读时伪装零消费", async () => {
-		const f = setup();
+		const f = await setup();
 		f.details.set("s", { session_id: "s", status: "idle", stats: { active_seconds: 0 } });
 		await f.run("unlimited");
 		f.complete();
@@ -390,12 +391,12 @@ describe("成员月度 Session 用量准入", () => {
 		await expect(f.run("blocked")).rejects.toMatchObject({ details: { usage_unavailable: true } });
 		f.time("2026-11-01T00:01:00.000Z");
 		await f.run("next-month");
-		expect(f.store.totals("member_a", "2026-10").tokens_unknown).toBe(1);
-		expect(f.store.totals("member_a", "2026-11").tokens_unknown).toBe(0);
+		expect((await f.store.totals("member_a", "2026-10")).tokens_unknown).toBe(1);
+		expect((await f.store.totals("member_a", "2026-11")).tokens_unknown).toBe(0);
 	});
 
 	it("发送前重读政策，异步检查期间收紧到0也不能放行", async () => {
-		const f = setup();
+		const f = await setup();
 		let release!: (value: GatewaySessionInfo) => void;
 		f.get.mockImplementationOnce(
 			() =>
@@ -409,7 +410,7 @@ describe("成员月度 Session 用量准入", () => {
 		);
 		const rejected = expect(pending).rejects.toMatchObject({ code: "quota_exceeded" });
 		await vi.waitFor(() => expect(f.get).toHaveBeenCalled(), { interval: 1 });
-		f.service.setPolicy(
+		await f.service.setPolicy(
 			{ monthly_tokens: 0, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 			"admin",
 		);
@@ -417,12 +418,12 @@ describe("成员月度 Session 用量准入", () => {
 		await rejected;
 		expect(beforeSend).not.toHaveBeenCalled();
 		expect(f.send).not.toHaveBeenCalled();
-		expect(f.store.pending("member_a")).toHaveLength(0);
+		expect(await f.store.pending("member_a")).toHaveLength(0);
 	});
 
 	it("跨月审批沿用原受理月限额，当前月余额不能放行已耗尽的旧轮", async () => {
-		const f = setup();
-		f.service.setPolicy(
+		const f = await setup();
+		await f.service.setPolicy(
 			{ monthly_tokens: 200, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 			"admin",
 		);
@@ -442,14 +443,14 @@ describe("成员月度 Session 用量准入", () => {
 	});
 
 	it("旧月缺失不污染本月读数，但旧轮必须结束且复用目标仍须新鲜基线", async () => {
-		const f = setup();
-		f.service.setPolicy(
+		const f = await setup();
+		await f.service.setPolicy(
 			{ monthly_tokens: 1000, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 			"admin",
 		);
 		await f.run("october");
 		f.complete();
-		f.session("fresh");
+		await f.session("fresh");
 		f.time("2026-11-01T00:01:00.000Z");
 		f.details.delete("s");
 		expect((await f.service.member("member_a")).tokens).toMatchObject({ used: 0, status: "ok" });
@@ -465,8 +466,8 @@ describe("成员月度 Session 用量准入", () => {
 	});
 
 	it("跨月时缺失的未限额维度保留两月未知，恢复累计不能伪装为本月已知消费", async () => {
-		const f = setup();
-		f.service.setPolicy(
+		const f = await setup();
+		await f.service.setPolicy(
 			{ monthly_tokens: null, monthly_active_seconds: 10, daily_tokens: null, daily_active_seconds: null },
 			"admin",
 		);
@@ -485,22 +486,22 @@ describe("成员月度 Session 用量准入", () => {
 			tokens: { used: null, status: "unavailable" },
 			active_seconds: { used: 2, status: "ok" },
 		});
-		expect(f.store.totals("member_a", "2026-10").tokens_unknown).toBe(1);
-		expect(f.store.totals("member_a", "2026-11").tokens_unknown).toBe(1);
+		expect((await f.store.totals("member_a", "2026-10")).tokens_unknown).toBe(1);
+		expect((await f.store.totals("member_a", "2026-11")).tokens_unknown).toBe(1);
 		await expect(f.run("unknown-month")).rejects.toMatchObject({ details: { usage_unavailable: true } });
 	});
 
 	it("不限量受理后启用限额，空event_ids也不能把受理前旧idle当完成", async () => {
-		const f = setup();
+		const f = await setup();
 		f.complete("s", 0, 0, 0);
 		await f.service.runSend("s", { text: "hello", clientMessageId: "empty-ids" }, undefined, async () => ({
 			event_ids: [],
 		}));
-		f.service.setPolicy(
+		await f.service.setPolicy(
 			{ monthly_tokens: 1000, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 			"admin",
 		);
-		f.session("second");
+		await f.session("second");
 		await expect(f.run("after-policy", "second")).rejects.toMatchObject({ code: "conflict" });
 		expect(f.send).not.toHaveBeenCalled();
 		f.complete();
@@ -509,8 +510,8 @@ describe("成员月度 Session 用量准入", () => {
 	});
 
 	it("功能启用前的审批恢复首次建立受理月，后续增量进入该月", async () => {
-		const f = setup();
-		f.service.setPolicy(
+		const f = await setup();
+		await f.service.setPolicy(
 			{ monthly_tokens: 1000, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 			"admin",
 		);
@@ -520,16 +521,16 @@ describe("成员月度 Session 用量准入", () => {
 		}));
 		f.complete("s", 130, 90, 3);
 		expect((await f.service.member("member_a")).tokens.used).toBe(200);
-		expect(f.store.session("s")?.admission_month).toBe("2026-10");
+		expect((await f.store.session("s"))?.admission_month).toBe("2026-10");
 	});
 
 	it("全量成员会话采集不截断为100条；其他成员、匿名及管理员调试不计入", async () => {
-		const f = setup();
-		for (let i = 0; i < 105; i++) f.session(`history-${i}`);
-		f.member("member_b");
-		f.session("other", "member_b");
-		f.session("anon", "anon");
-		f.index.create({
+		const f = await setup();
+		for (let i = 0; i < 105; i++) await f.session(`history-${i}`);
+		await f.member("member_b");
+		await f.session("other", "member_b");
+		await f.session("anon", "anon");
+		await f.index.create({
 			sessionId: "debug",
 			subjectId: "member_a",
 			purpose: "admin_debug",
@@ -537,19 +538,19 @@ describe("成员月度 Session 用量准入", () => {
 		});
 		await f.service.member("member_a");
 		expect(f.get).toHaveBeenCalledTimes(106);
-		expect(f.store.sessions("member_a")).toHaveLength(106);
+		expect(await f.store.sessions("member_a")).toHaveLength(106);
 		expect(f.get.mock.calls.flat()).not.toContain("other");
 		expect(f.get.mock.calls.flat()).not.toContain("anon");
 		expect(f.get.mock.calls.flat()).not.toContain("debug");
 	});
 
 	it("不限量发送仅等待目标基线，不读取无关历史或其他已受理会话", async () => {
-		const f = setup();
-		f.session("old");
+		const f = await setup();
+		await f.session("old");
 		f.get.mockImplementation(async (id) => (id === "old" ? new Promise(() => {}) : (f.details.get(id) ?? null)));
 		await f.run("first");
 		f.complete();
-		f.session("fresh");
+		await f.session("fresh");
 		f.get.mockClear();
 		await expect(f.run("second", "fresh")).resolves.toHaveProperty("event_ids");
 		expect(f.get.mock.calls.map(([id]) => id)).toEqual(["fresh"]);
@@ -557,14 +558,14 @@ describe("成员月度 Session 用量准入", () => {
 	});
 
 	it("启用限额仍采集本月其他会话的新增消耗，不能通过新会话绕过", async () => {
-		const f = setup();
-		f.service.setPolicy(
+		const f = await setup();
+		await f.service.setPolicy(
 			{ monthly_tokens: 200, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 			"admin",
 		);
 		await f.run("first");
 		f.complete();
-		f.session("fresh");
+		await f.session("fresh");
 		await expect(f.run("second", "fresh")).rejects.toMatchObject({
 			code: "quota_exceeded",
 			details: { used: 200 },
@@ -573,29 +574,29 @@ describe("成员月度 Session 用量准入", () => {
 	});
 
 	it("已确认结束的旧月会话不可读，不拖慢本月发送", async () => {
-		const f = setup();
-		f.service.setPolicy(
+		const f = await setup();
+		await f.service.setPolicy(
 			{ monthly_tokens: 1000, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 			"admin",
 		);
 		await f.run("october");
 		f.complete();
 		f.time("2026-11-01T00:01:00.000Z");
-		f.session("fresh");
+		await f.session("fresh");
 		await f.run("november", "fresh"); // 先确认旧月请求已结束。
 		f.complete("fresh");
 		f.get.mockImplementation(async (id) => (id === "s" ? new Promise(() => {}) : (f.details.get(id) ?? null)));
 		f.get.mockClear();
 		await expect(f.run("again", "fresh")).resolves.toHaveProperty("event_ids");
 		expect(f.get.mock.calls.map(([id]) => id)).toEqual(["fresh"]);
-		expect(f.store.totals("member_a", "2026-10").tokens).toBe(200);
+		expect((await f.store.totals("member_a", "2026-10")).tokens).toBe(200);
 	});
 
 	it("采集目标期间启用限额，补查本月其他会话后再决定是否发送", async () => {
-		const f = setup();
+		const f = await setup();
 		await f.run("unlimited");
 		f.complete();
-		f.session("fresh");
+		await f.session("fresh");
 		let release!: (value: GatewaySessionInfo) => void;
 		f.get.mockImplementationOnce(
 			() =>
@@ -607,7 +608,7 @@ describe("成员月度 Session 用量准入", () => {
 		const pending = f.run("policy-race", "fresh");
 		const rejected = expect(pending).rejects.toMatchObject({ code: "quota_exceeded", details: { used: 200 } });
 		await vi.waitFor(() => expect(f.get).toHaveBeenCalledWith("fresh"), { interval: 1 });
-		f.service.setPolicy(
+		await f.service.setPolicy(
 			{ monthly_tokens: 100, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 			"admin",
 		);
@@ -618,16 +619,16 @@ describe("成员月度 Session 用量准入", () => {
 	});
 
 	it("模版限额准入补采其他成员未入账消耗，共享超限时拒绝且不调用发送", async () => {
-		const f = setup();
-		f.service.setTemplate(
-			listing(f.db),
+		const f = await setup();
+		await f.service.setTemplate(
+			await listing(f.db),
 			{ monthly_tokens: 100, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 			"admin",
 		);
 		await f.run("a-first"); // A 基线 0；随后 Provider 累计 150，无人触发采集。
 		f.complete("s", 150, 0, 0);
-		f.member("member_b");
-		f.session("sb", "member_b");
+		await f.member("member_b");
+		await f.session("sb", "member_b");
 		await expect(f.run("b-first", "sb")).rejects.toMatchObject({
 			code: "quota_exceeded",
 			details: { scope: "template", metric: "tokens", used: 150 },
@@ -636,9 +637,9 @@ describe("成员月度 Session 用量准入", () => {
 	});
 
 	it("仅启用模版限额时，本次采集失败不得凭旧账本放行；恢复后可重新准入", async () => {
-		const f = setup();
-		f.service.setTemplate(
-			listing(f.db),
+		const f = await setup();
+		await f.service.setTemplate(
+			await listing(f.db),
 			{ monthly_tokens: 100, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 			"admin",
 		);
@@ -656,8 +657,8 @@ describe("成员月度 Session 用量准入", () => {
 	});
 
 	it("日限额按 UTC 日键拦截后续发送，跨日后恢复；月账未启用不受影响", async () => {
-		const f = setup();
-		f.service.setPolicy(
+		const f = await setup();
+		await f.service.setPolicy(
 			{ monthly_tokens: null, monthly_active_seconds: null, daily_tokens: 200, daily_active_seconds: null },
 			"admin",
 		);
@@ -673,16 +674,16 @@ describe("成员月度 Session 用量准入", () => {
 	});
 
 	it("模版日限额基于条目日账（observe 与成员逐日账同事务双写），共享超限拒绝后续发送", async () => {
-		const f = setup();
-		f.service.setTemplate(
-			listing(f.db),
+		const f = await setup();
+		await f.service.setTemplate(
+			await listing(f.db),
 			{ monthly_tokens: null, monthly_active_seconds: null, daily_tokens: 200, daily_active_seconds: null },
 			"admin",
 		);
 		await f.run("first");
 		f.complete();
 		await f.service.member("member_a"); // 触发采集：条目日账与成员日账同步入账。
-		expect(f.store.agentDayTotals("agent", "2026-10-31")).toEqual({ tokens: 200, active_seconds: 2 });
+		expect(await f.store.agentDayTotals("agent", "2026-10-31")).toEqual({ tokens: 200, active_seconds: 2 });
 		await expect(f.run("second")).rejects.toMatchObject({
 			code: "quota_exceeded",
 			details: { scope: "template", period: "day", day: "2026-10-31", limit: 200 },
@@ -691,37 +692,39 @@ describe("成员月度 Session 用量准入", () => {
 	});
 
 	it("日维度上限不得高于月维度：policy/member/template 三个设置入口统一校验，日未设置视为跟随月", async () => {
-		const f = setup();
-		const templateId = listing(f.db);
+		const f = await setup();
+		const templateId = await listing(f.db);
 		const badTokens = {
 			monthly_tokens: 100,
 			monthly_active_seconds: null,
 			daily_tokens: 500,
 			daily_active_seconds: null,
 		};
-		expect(() => f.service.setPolicy(badTokens, "admin")).toThrow("日 Token 上限不能高于月度 Token 上限");
+		await expect(f.service.setPolicy(badTokens, "admin")).rejects.toThrow("日 Token 上限不能高于月度 Token 上限");
 		await expect(f.service.setMember("member_a", badTokens, "admin")).rejects.toThrow(
 			"日 Token 上限不能高于月度 Token 上限",
 		);
-		expect(() => f.service.setTemplate(templateId, badTokens, "admin")).toThrow("日 Token 上限不能高于月度 Token 上限");
+		await expect(f.service.setTemplate(templateId, badTokens, "admin")).rejects.toThrow(
+			"日 Token 上限不能高于月度 Token 上限",
+		);
 		const badSeconds = {
 			monthly_tokens: null,
 			monthly_active_seconds: 100,
 			daily_tokens: null,
 			daily_active_seconds: 7200,
 		};
-		expect(() => f.service.setPolicy(badSeconds, "admin")).toThrow("日执行时长上限不能高于月度执行时长上限");
+		await expect(f.service.setPolicy(badSeconds, "admin")).rejects.toThrow("日执行时长上限不能高于月度执行时长上限");
 		// 日 ≤ 月合法；日未设置（null）= 跟随月度约束，不做比较。
 		const ok = { monthly_tokens: 1000, monthly_active_seconds: 3600, daily_tokens: 1000, daily_active_seconds: 3600 };
-		expect(() => f.service.setPolicy(ok, "admin")).not.toThrow();
+		await f.service.setPolicy(ok, "admin");
 		await expect(
 			f.service.setMember("member_a", { ...ok, daily_tokens: null, daily_active_seconds: null }, "admin"),
 		).resolves.toMatchObject({ override: { daily_tokens: null, monthly_tokens: 1000 } });
 	});
 
 	it("模版用量逐日趋势：observe 增量按采集确认日入条目日账，零值补全且非模版条目不计入", async () => {
-		const f = setup();
-		const templateId = listing(f.db);
+		const f = await setup();
+		const templateId = await listing(f.db);
 		f.time("2026-10-30T10:00:00.000Z");
 		await f.run("day1");
 		f.complete();
@@ -733,7 +736,7 @@ describe("成员月度 Session 用量准入", () => {
 		f.db
 			.prepare("INSERT INTO kit_usage_limit_agent_days (agent_slug, day, tokens, active_seconds) VALUES (?, ?, ?, ?)")
 			.run("rogue-entry", "2026-11-01", 999, 9); // 非模版上架条目：任何视角都不计入
-		const trend = f.service.templateDailyTrend(templateId, 7);
+		const trend = await f.service.templateDailyTrend(templateId, 7);
 		expect(trend).toMatchObject({ days: 7, from_day: "2026-10-27", to_day: "2026-11-02", since_day: "2026-10-30" });
 		expect(trend.data).toHaveLength(7);
 		expect(trend.data.filter((point) => point.tokens > 0)).toEqual([
@@ -741,7 +744,7 @@ describe("成员月度 Session 用量准入", () => {
 			{ day: "2026-11-02", tokens: 300, active_seconds: 3 },
 		]);
 		// 「全部」视角聚合全部模版条目，仍不含非模版条目日账。
-		const all = f.service.templateDailyTrend(null, 28);
+		const all = await f.service.templateDailyTrend(null, 28);
 		expect(all.data).toHaveLength(28);
 		expect(all.data.filter((point) => point.tokens > 0)).toEqual([
 			{ day: "2026-10-30", tokens: 200, active_seconds: 2 },

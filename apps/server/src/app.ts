@@ -85,7 +85,7 @@ export function createApp(services: KitServices) {
 			}
 			return;
 		}
-		c.set("identity", resolveIdentity(c, services.config));
+		c.set("identity", await resolveIdentity(c, services.config));
 		await next();
 	});
 

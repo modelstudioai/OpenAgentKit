@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import type {
 	AttachmentRef,
 	CatalogMemoryStore,
@@ -7,6 +6,7 @@ import type {
 	SessionPurpose,
 	SessionSummary,
 } from "@openagentkit/sdk/protocol";
+import type { StoreDatabase } from "./database.ts";
 import { createSessionDirectoryIndex } from "./session-directory.ts";
 
 interface Row {
@@ -148,23 +148,26 @@ function targetColumns(input: CreateSessionIndexInput) {
 }
 
 /** 只存会话索引；两个身份域即使 subject 相同也不可互相读取。事件正文始终由 Provider 保存。 */
-export function createSessionIndex(db: DatabaseSync) {
+export function createSessionIndex(db: StoreDatabase) {
 	const directory = createSessionDirectoryIndex(db);
-	function getScoped(sessionId: string, purpose: SessionPurpose): Row | undefined {
-		return db
-			.prepare("SELECT * FROM kit_sessions WHERE session_id = ? AND purpose = ?")
-			.get(sessionId, purpose) as unknown as Row | undefined;
+	async function getScoped(sessionId: string, purpose: SessionPurpose): Promise<Row | undefined> {
+		return (await db.get(
+			"SELECT * FROM kit_sessions WHERE session_id = ? AND purpose = ?",
+			sessionId,
+			purpose,
+		)) as unknown as Row | undefined;
 	}
 	return {
 		listAgentsForSubject: directory.agents,
 		pageForSubject: directory.page,
-		create(input: CreateSessionIndexInput) {
+		async create(input: CreateSessionIndexInput) {
 			const now = new Date().toISOString();
-			db.prepare(`INSERT INTO kit_sessions
+			await db.run(
+				`INSERT INTO kit_sessions
         (session_id, subject_id, purpose, agent_slug, remote_agent_id, project_name, agent_key,
           project_revision, source_dirty, debug_source, remote_environment_id, runtime_json,
           title, status, created_at, last_event_at, files_json)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 				input.sessionId,
 				input.subjectId,
 				input.purpose ?? "experience",
@@ -176,87 +179,106 @@ export function createSessionIndex(db: DatabaseSync) {
 				serializeFiles(input.files),
 			);
 		},
-		get(sessionId: string) {
-			const row = getScoped(sessionId, "experience");
+		async get(sessionId: string) {
+			const row = await getScoped(sessionId, "experience");
 			return row?.agent_slug != null ? experienceRow({ ...row, agent_slug: row.agent_slug }) : null;
 		},
-		getForSubject(sessionId: string, subjectId: string) {
-			const row = this.get(sessionId);
+		async getForSubject(sessionId: string, subjectId: string) {
+			const row = await this.get(sessionId);
 			return row?.subject_id === subjectId ? row : null;
 		},
-		getDebugForSubject(sessionId: string, subjectId: string) {
-			const row = getScoped(sessionId, "admin_debug");
+		async getDebugForSubject(sessionId: string, subjectId: string) {
+			const row = await getScoped(sessionId, "admin_debug");
 			return row?.subject_id === subjectId ? debugRow(row) : null;
 		},
-		owns(sessionId: string, subjectId: string, purpose: SessionPurpose = "experience") {
-			return getScoped(sessionId, purpose)?.subject_id === subjectId;
+		async owns(sessionId: string, subjectId: string, purpose: SessionPurpose = "experience") {
+			return (await getScoped(sessionId, purpose))?.subject_id === subjectId;
 		},
 		/** 最近活动优先：侧栏「最近」与智能体分组都以 last_event_at（缺省回落 created_at）倒序为准。 */
-		listForSubject(subjectId: string, options: { agentSlug?: string; limit?: number } = {}) {
+		async listForSubject(subjectId: string, options: { agentSlug?: string; limit?: number } = {}) {
 			const rows = (options.agentSlug
-				? db
-						.prepare(
-							"SELECT * FROM kit_sessions WHERE purpose = 'experience' AND subject_id = ? AND agent_slug = ? ORDER BY COALESCE(last_event_at, created_at) DESC LIMIT ?",
-						)
-						.all(subjectId, options.agentSlug, options.limit ?? 50)
-				: db
-						.prepare(
-							"SELECT * FROM kit_sessions WHERE purpose = 'experience' AND subject_id = ? ORDER BY COALESCE(last_event_at, created_at) DESC LIMIT ?",
-						)
-						.all(subjectId, options.limit ?? 50)) as unknown as (Row & { agent_slug: string })[];
+				? await db.all(
+						"SELECT * FROM kit_sessions WHERE purpose = 'experience' AND subject_id = ? AND agent_slug = ? ORDER BY COALESCE(last_event_at, created_at) DESC LIMIT ?",
+						subjectId,
+						options.agentSlug,
+						options.limit ?? 50,
+					)
+				: await db.all(
+						"SELECT * FROM kit_sessions WHERE purpose = 'experience' AND subject_id = ? ORDER BY COALESCE(last_event_at, created_at) DESC LIMIT ?",
+						subjectId,
+						options.limit ?? 50,
+					)) as unknown as (Row & { agent_slug: string })[];
 			return rows.map((row) => experienceRow(row).summary);
 		},
-		listDebugForSubject(subjectId: string, projectName: string, agentKey: string, limit = 50) {
-			const rows = db
-				.prepare(
-					"SELECT * FROM kit_sessions WHERE purpose = 'admin_debug' AND subject_id = ? AND project_name = ? AND agent_key = ? ORDER BY created_at DESC LIMIT ?",
-				)
-				.all(subjectId, projectName, agentKey, limit) as unknown as Row[];
+		async listDebugForSubject(subjectId: string, projectName: string, agentKey: string, limit = 50) {
+			const rows = (await db.all(
+				"SELECT * FROM kit_sessions WHERE purpose = 'admin_debug' AND subject_id = ? AND project_name = ? AND agent_key = ? ORDER BY created_at DESC LIMIT ?",
+				subjectId,
+				projectName,
+				agentKey,
+				limit,
+			)) as unknown as Row[];
 			return rows.map((row) => debugRow(row).summary);
 		},
-		remove(sessionId: string): boolean {
-			return db.prepare("DELETE FROM kit_sessions WHERE session_id = ?").run(sessionId).changes > 0;
+		async remove(sessionId: string): Promise<boolean> {
+			return (await db.run("DELETE FROM kit_sessions WHERE session_id = ?", sessionId)).changes > 0;
 		},
-		setTitle(sessionId: string, title: string) {
-			db.prepare("UPDATE kit_sessions SET title = ? WHERE session_id = ?").run(title, sessionId);
+		async setTitle(sessionId: string, title: string) {
+			await db.run("UPDATE kit_sessions SET title = ? WHERE session_id = ?", title, sessionId);
 		},
 		/** 运行时挂载成功后并入 files_json：provider 不回显运行时挂载，本地索引是唯一展示权威。 */
-		appendFiles(sessionId: string, files: AttachmentRef[]) {
-			const row = getScoped(sessionId, "experience");
-			if (!row || !files.length) return;
-			const merged = [...parseFiles(row), ...files];
-			db.prepare("UPDATE kit_sessions SET files_json = ? WHERE session_id = ?").run(serializeFiles(merged), sessionId);
+		async appendFiles(sessionId: string, files: AttachmentRef[]) {
+			if (!files.length) return;
+			await db.transaction(async () => {
+				const row = await getScoped(sessionId, "experience");
+				if (!row) return;
+				const merged = [...parseFiles(row), ...files];
+				await db.run("UPDATE kit_sessions SET files_json = ? WHERE session_id = ?", serializeFiles(merged), sessionId);
+			});
 		},
 		/** 随消息挂载的附件按发送响应 event_ids 落关联；刷新后历史气泡的附件展示以它为准。 */
-		appendMessageFiles(sessionId: string, entry: MessageFileAssociation) {
-			const row = getScoped(sessionId, "experience");
-			if (!row) return;
-			const merged = [...parseMessageFiles(row), entry];
-			db.prepare("UPDATE kit_sessions SET message_files_json = ? WHERE session_id = ?").run(
-				JSON.stringify(merged),
+		async appendMessageFiles(sessionId: string, entry: MessageFileAssociation) {
+			await db.transaction(async () => {
+				const row = await getScoped(sessionId, "experience");
+				if (!row) return;
+				const merged = [...parseMessageFiles(row), entry];
+				await db.run(
+					"UPDATE kit_sessions SET message_files_json = ? WHERE session_id = ?",
+					JSON.stringify(merged),
+					sessionId,
+				);
+			});
+		},
+		/** 状态同步只写 status：订阅水合的历史终态回落与归档都走这里，不得影响「最近」排序。 */
+		async setStatus(sessionId: string, status: string) {
+			await db.run("UPDATE kit_sessions SET status = ? WHERE session_id = ?", status, sessionId);
+		},
+		async setStatusUnlessArchived(sessionId: string, status: string) {
+			await db.run(
+				"UPDATE kit_sessions SET status = ? WHERE session_id = ? AND (status IS NULL OR status <> 'archived')",
+				status,
 				sessionId,
 			);
 		},
-		/** 状态同步只写 status：订阅水合的历史终态回落与归档都走这里，不得影响「最近」排序。 */
-		setStatus(sessionId: string, status: string) {
-			db.prepare("UPDATE kit_sessions SET status = ? WHERE session_id = ?").run(status, sessionId);
-		},
 		/** 推进「最近」排序的唯一入口：只由发消息等真实对话活动调用。 */
-		touch(sessionId: string, status?: string) {
+		async touch(sessionId: string, status?: string) {
 			const now = new Date().toISOString();
 			if (status)
-				db.prepare("UPDATE kit_sessions SET last_event_at = ?, status = ? WHERE session_id = ?").run(
+				await db.run(
+					"UPDATE kit_sessions SET last_event_at = ?, status = ? WHERE session_id = ?",
 					now,
 					status,
 					sessionId,
 				);
-			else db.prepare("UPDATE kit_sessions SET last_event_at = ? WHERE session_id = ?").run(now, sessionId);
+			else await db.run("UPDATE kit_sessions SET last_event_at = ? WHERE session_id = ?", now, sessionId);
 		},
 		/** 列表对账专用 CAS 写：只改仍处于 running 的行，避免与归档/删除竞态。 */
-		setStatusIfRunning(sessionId: string, status: string): boolean {
-			const result = db
-				.prepare("UPDATE kit_sessions SET status = ? WHERE session_id = ? AND status = 'running'")
-				.run(status, sessionId);
+		async setStatusIfRunning(sessionId: string, status: string): Promise<boolean> {
+			const result = await db.run(
+				"UPDATE kit_sessions SET status = ? WHERE session_id = ? AND status = 'running'",
+				status,
+				sessionId,
+			);
 			return result.changes > 0;
 		},
 	};

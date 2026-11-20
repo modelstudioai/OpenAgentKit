@@ -1,5 +1,6 @@
-import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 import { KitError, type SessionPage, type SessionSummary } from "@openagentkit/sdk/protocol";
+import type { SqlValue, StoreDatabase } from "./database.ts";
+import { likePattern } from "./sql.ts";
 
 export interface SessionDirectoryQuery {
 	agentSlug?: string;
@@ -48,15 +49,10 @@ function nextCursor(data: SessionSummary[], hasMore: boolean, context: string): 
 	).toString("base64url");
 }
 
-/** SQLite LIKE 的转义规则：用户输入里的通配符按字面量匹配。 */
-function likePattern(value: string) {
-	return `%${value.replace(/[\\%_]/g, (match) => `\\${match}`)}%`;
-}
-
 function searchClause(q: string | undefined, agentSlugs: string[]) {
 	if (!q) return "";
 	const agentMatch = agentSlugs.length ? ` OR agent_slug IN (${agentSlugs.map(() => "?").join(", ")})` : "";
-	return `AND (title LIKE ? ESCAPE '\\' OR agent_slug LIKE ? ESCAPE '\\'${agentMatch})`;
+	return `AND (LOWER(title) LIKE LOWER(?) ESCAPE '!' OR LOWER(agent_slug) LIKE LOWER(?) ESCAPE '!'${agentMatch})`;
 }
 
 function cursorClause(cursor: Cursor | undefined) {
@@ -72,7 +68,7 @@ function pageParams(
 	agentSlugs: string[],
 	cursor: Cursor | undefined,
 ) {
-	const params: SQLInputValue[] = [subjectId];
+	const params: SqlValue[] = [subjectId];
 	if (query.agentSlug) params.push(query.agentSlug);
 	if (q) params.push(likePattern(q), likePattern(q), ...agentSlugs);
 	if (cursor) params.push(cursor.at, cursor.at, cursor.id);
@@ -97,36 +93,35 @@ function toSummary(
 }
 
 /** 本人会话的两级只读目录；仅投影索引摘要，不读取事件或 Provider 配置。 */
-export function createSessionDirectoryIndex(db: DatabaseSync) {
+export function createSessionDirectoryIndex(db: StoreDatabase) {
 	return {
-		agents(subjectId: string): string[] {
-			const rows = db
-				.prepare(`SELECT agent_slug FROM kit_sessions
+		async agents(subjectId: string): Promise<string[]> {
+			const rows = (await db.all(
+				`SELECT agent_slug FROM kit_sessions
 				WHERE subject_id = ? AND purpose = 'experience' AND agent_slug IS NOT NULL
 				AND COALESCE(status, '') <> 'archived'
-				GROUP BY agent_slug ORDER BY MAX(COALESCE(last_event_at, created_at)) DESC, agent_slug ASC`)
-				.all(subjectId) as { agent_slug: string }[];
+				GROUP BY agent_slug ORDER BY MAX(COALESCE(last_event_at, created_at)) DESC, agent_slug ASC`,
+				subjectId,
+			)) as { agent_slug: string }[];
 			return rows.map((row) => row.agent_slug);
 		},
-		page(subjectId: string, query: SessionDirectoryQuery = {}): SessionPage {
+		async page(subjectId: string, query: SessionDirectoryQuery = {}): Promise<SessionPage> {
 			const limit = query.limit ?? 50;
 			const includeArchived = query.includeArchived !== false;
 			const q = query.q?.trim();
 			const agentSlugs = q ? (query.agentSlugs ?? []) : [];
 			const context = JSON.stringify([subjectId, query.agentSlug ?? null, includeArchived, q ?? null]);
 			const cursor = readCursor(query.pageToken, context);
-			const rows = db
-				.prepare(`SELECT session_id, agent_slug, title, status, created_at, last_event_at
+			const rows = (await db.all(
+				`SELECT session_id, agent_slug, title, status, created_at, last_event_at
 				FROM kit_sessions WHERE subject_id = ? AND purpose = 'experience' AND agent_slug IS NOT NULL
 				${query.agentSlug ? "AND agent_slug = ?" : ""}
 				${includeArchived ? "" : "AND COALESCE(status, '') <> 'archived'"}
 				${searchClause(q, agentSlugs)}
 				${cursorClause(cursor)}
-				ORDER BY COALESCE(last_event_at, created_at) DESC, session_id DESC LIMIT ?`)
-				.all(...pageParams(subjectId, query, q, agentSlugs, cursor)) as unknown as (Omit<
-				SessionSummary,
-				"title" | "status" | "last_event_at"
-			> & {
+				ORDER BY COALESCE(last_event_at, created_at) DESC, session_id DESC LIMIT ?`,
+				...pageParams(subjectId, query, q, agentSlugs, cursor),
+			)) as unknown as (Omit<SessionSummary, "title" | "status" | "last_event_at"> & {
 				title: string | null;
 				status: string | null;
 				last_event_at: string | null;

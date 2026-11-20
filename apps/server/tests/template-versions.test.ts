@@ -105,9 +105,9 @@ describe("模版版本", () => {
 			.mockRejectedValue(new Error("环境目录暂不可用"));
 		const first = await save({ remote_environment_id: undefined, agent_version: 1 });
 		for (const key of ["remote_environment_id", "remote_environment_name"]) expect(first).not.toHaveProperty(key);
-		const persisted = reopen().services.templates.get(first.template_id);
+		const persisted = await reopen().services.templates.get(first.template_id);
 		expect(persisted).toEqual(first);
-		expect(services.templates.list({ limit: 20 }).data[0]).toEqual(first);
+		expect((await services.templates.list({ limit: 20 })).data[0]).toEqual(first);
 		const entry = await publish(first);
 		expect(entry.remote_environment_id).toBeNull();
 		expect(environments).not.toHaveBeenCalled();
@@ -124,7 +124,7 @@ describe("模版版本", () => {
 		expect(create).toHaveBeenLastCalledWith({ agentId: first.remote_agent_id, agentVersion: 1 });
 		environments.mockRestore();
 		const second = await edited(first, { remote_environment_id: selected.remote_environment_id });
-		expect(services.catalog.get(entry.id)?.remote_environment_id).toBe(selected.remote_environment_id);
+		expect((await services.catalog.get(entry.id))?.remote_environment_id).toBe(selected.remote_environment_id);
 		await start();
 		expect(create).toHaveBeenLastCalledWith({
 			agentId: first.remote_agent_id,
@@ -140,16 +140,16 @@ describe("模版版本", () => {
 		expect(third.version).toBe(3);
 		expect(third.listing?.status).toBe("listed");
 		for (const key of ["remote_environment_id", "remote_environment_name"]) expect(third).not.toHaveProperty(key);
-		expect(services.catalog.get(entry.id)?.remote_environment_id).toBeNull();
+		expect((await services.catalog.get(entry.id))?.remote_environment_id).toBeNull();
 		await start();
 		expect(create).toHaveBeenLastCalledWith({ agentId: first.remote_agent_id, agentVersion: 1 });
-		const versions = services.templates.versions(first.template_id, { limit: 20 });
+		const versions = await services.templates.versions(first.template_id, { limit: 20 });
 		expect(versions.data.map((version) => version.remote_environment_id)).toEqual([
 			undefined,
 			selected.remote_environment_id,
 			undefined,
 		]);
-		expect(services.templates.version(first.template_id, 1)).not.toHaveProperty("remote_environment_id");
+		expect(await services.templates.version(first.template_id, 1)).not.toHaveProperty("remote_environment_id");
 		expect(history(first.template_id).map((version) => version.config.remote_environment_id)).toEqual([
 			undefined,
 			selected.remote_environment_id,
@@ -213,9 +213,9 @@ describe("模版版本", () => {
 		expect(third.version).toBe(3);
 		expect(history(first.template_id).slice(0, 2)).toEqual(twoVersions);
 		expect(history(first.template_id).map((row) => row.version)).toEqual([1, 2, 3]);
-		expect(services.templates.list({ limit: 10 }).data).toEqual([third]);
+		expect((await services.templates.list({ limit: 10 })).data).toEqual([third]);
 		const restarted = reopen();
-		expect(restarted.services.templates.get(first.template_id)).toEqual(third);
+		expect(await restarted.services.templates.get(first.template_id)).toEqual(third);
 		expect(restarted.history(first.template_id)).toEqual(history(first.template_id));
 		await restarted.publish(third);
 		const provider = vi.spyOn(restarted.services.gateway, "listRemoteAgents").mockRejectedValue(new Error("offline"));
@@ -340,7 +340,7 @@ describe("模版版本", () => {
 			DELETE FROM _kit_migrations WHERE id='018_template_versions';`);
 		db.close();
 		const upgraded = reopen();
-		expect(upgraded.services.templates.get(template.template_id)).toMatchObject({
+		expect(await upgraded.services.templates.get(template.template_id)).toMatchObject({
 			version: 1,
 			category: "general",
 			updated_at: template.created_at,
@@ -349,9 +349,11 @@ describe("模版版本", () => {
 			listing: { catalog_id: catalog.id, status: "listed" },
 		});
 		expect(upgraded.history(template.template_id)).toMatchObject([{ version: 1, ...original }]);
-		expect(upgraded.services.templates.list({ limit: 20 }).data[0]?.category).toBe("general");
-		expect(upgraded.services.templates.versions(template.template_id, { limit: 20 }).data[0]?.category).toBe("general");
-		expect(upgraded.services.templates.version(template.template_id, 1).category).toBe("general");
+		expect((await upgraded.services.templates.list({ limit: 20 })).data[0]?.category).toBe("general");
+		expect((await upgraded.services.templates.versions(template.template_id, { limit: 20 })).data[0]?.category).toBe(
+			"general",
+		);
+		expect((await upgraded.services.templates.version(template.template_id, 1)).category).toBe("general");
 		expect(upgraded.history(template.template_id)[0]?.config).not.toHaveProperty("category");
 		expect(reopen().history(template.template_id)).toEqual(upgraded.history(template.template_id));
 	});
@@ -368,10 +370,10 @@ describe("模版版本", () => {
 		const successful = responses.find((response) => response.status === 200);
 		if (!successful) throw new Error("Missing successful edit");
 		const { data: current } = (await successful.json()) as { data: TemplateView };
-		expect(services.templates.get(template.template_id)).toEqual(current);
+		expect(await services.templates.get(template.template_id)).toEqual(current);
 		expect(history(template.template_id).map((row) => row.version)).toEqual([1, 2]);
 		expect((await edit(template, { description: "过期覆盖" })).status).toBe(409);
-		expect(services.templates.get(template.template_id)).toEqual(current);
+		expect(await services.templates.get(template.template_id)).toEqual(current);
 	});
 
 	// 已上架目录自动采用最新模版，但上架状态和运营字段保持；员工已有Session不被重新创建或换资源。
@@ -388,7 +390,7 @@ describe("模版版本", () => {
 			suggested_prompts: ["旧问题"],
 		});
 		const entry = await publish(first);
-		services.catalog.update(entry.id, {
+		await services.catalog.update(entry.id, {
 			ordering: 7,
 			category: "coding",
 			featured: true,
@@ -406,7 +408,7 @@ describe("模版版本", () => {
 			return ((await response.json()) as { data: { session_id: string } }).data.session_id;
 		};
 		const oldSessionId = await start();
-		const oldSession = services.sessionIndex.get(oldSessionId);
+		const oldSession = await services.sessionIndex.get(oldSessionId);
 		expect(create).toHaveBeenLastCalledWith(
 			expect.objectContaining({
 				agentId: first.remote_agent_id,
@@ -433,7 +435,7 @@ describe("模版版本", () => {
 			display_name: second.name,
 			status: "listed",
 		});
-		expect(services.catalog.get(entry.id)).toMatchObject({
+		expect(await services.catalog.get(entry.id)).toMatchObject({
 			display_name: second.name,
 			status: "listed",
 			ordering: 7,
@@ -449,7 +451,7 @@ describe("模版版本", () => {
 			opening_remarks: "新开场",
 			suggested_prompts: ["新问题"],
 		});
-		expect(services.catalog.get(entry.id)?.remote_agent_version).toBeUndefined();
+		expect((await services.catalog.get(entry.id))?.remote_agent_version).toBeUndefined();
 		const newSessionId = await start();
 		expect(newSessionId).not.toBe(oldSessionId);
 		expect(create).toHaveBeenLastCalledWith({
@@ -463,7 +465,7 @@ describe("模版版本", () => {
 			fileId: newFile.file_id,
 			mountPath: "/mnt/session/uploads/v2.txt",
 		});
-		expect(services.sessionIndex.get(oldSessionId)).toEqual(oldSession);
+		expect(await services.sessionIndex.get(oldSessionId)).toEqual(oldSession);
 		expect((await services.gateway.getSession(oldSessionId))?.files?.map((file) => file.file_id)).toEqual([
 			oldFile.file_id,
 		]);
@@ -504,7 +506,7 @@ describe("模版版本", () => {
 				suggested_prompts: [],
 			});
 			const entry = await publish(second);
-			if (status === "unlisted") services.catalog.setStatus(entry.slug, status);
+			if (status === "unlisted") await services.catalog.setStatus(entry.slug, status);
 			const originalHistory = history(first.template_id);
 			const response = await app.request(`/api/admin/templates/${first.template_id}/versions/1`, { headers });
 			expect(response.status).toBe(200);
@@ -516,7 +518,7 @@ describe("模版版本", () => {
 			expect(applied.listing).toMatchObject({ catalog_id: entry.id, slug: entry.slug, status });
 			expect(history(first.template_id).slice(0, 2)).toEqual(originalHistory);
 			expect(history(first.template_id).map((row) => row.version)).toEqual([1, 2, 3]);
-			const catalog = services.catalog.get(entry.id);
+			const catalog = await services.catalog.get(entry.id);
 			expect(catalog).toMatchObject({
 				id: entry.id,
 				slug: entry.slug,
@@ -537,9 +539,9 @@ describe("模版版本", () => {
 			const stale = await edit(second, historicalConfig);
 			expect(stale.status).toBe(409);
 			expect(await stale.json()).toMatchObject({ error: { code: "conflict" } });
-			expect(services.templates.get(first.template_id)).toEqual(applied);
+			expect(await services.templates.get(first.template_id)).toEqual(applied);
 			expect(history(first.template_id)).toEqual(appliedHistory);
-			expect(services.catalog.get(entry.id)).toEqual(catalog);
+			expect(await services.catalog.get(entry.id)).toEqual(catalog);
 		},
 	);
 
@@ -548,16 +550,16 @@ describe("模版版本", () => {
 		const { services, save, publish, edited } = setup();
 		const first = await save();
 		const entry = await publish(first);
-		services.catalog.setStatus(entry.slug, "unlisted");
+		await services.catalog.setStatus(entry.slug, "unlisted");
 		const input = { display_name: first.name };
 		const plan = await services.templates.planListing(first.template_id, input, "test-admin");
 		const second = await edited(first, { name: "长".repeat(64), description: "新描述" });
-		expect(services.catalog.get(entry.id)).toMatchObject({
+		expect(await services.catalog.get(entry.id)).toMatchObject({
 			status: "unlisted",
 			display_name: "长".repeat(60),
 			description: "新描述",
 		});
-		expect(services.catalog.listed()).toEqual([]);
+		expect(await services.catalog.listed()).toEqual([]);
 		await expect(
 			services.templates.listing(
 				second.template_id,
@@ -565,7 +567,7 @@ describe("模版版本", () => {
 				"test-admin",
 			),
 		).rejects.toMatchObject({ code: "conflict" });
-		expect(services.catalog.get(entry.id)?.status).toBe("unlisted");
+		expect((await services.catalog.get(entry.id))?.status).toBe("unlisted");
 	});
 
 	// 名称冲突可能来自模板本身或关联目录；资源失效、任何同步失败均不留下部分版本或目录变更。
@@ -573,10 +575,10 @@ describe("模版版本", () => {
 		const { services, save, publish, edit, history } = setup();
 		const first = await save({ description: "保留内容" });
 		const entry = await publish(first);
-		const initial = services.templates.get(first.template_id);
+		const initial = await services.templates.get(first.template_id);
 		const versions = history(first.template_id);
 		const other = await save({ name: "其他模版" });
-		const occupied = services.catalog.create({
+		const occupied = await services.catalog.create({
 			slug: "occupied-name",
 			display_name: "目录占用名称",
 			remote_agent_id: "agent_mock_assistant",
@@ -596,17 +598,17 @@ describe("模版版本", () => {
 		]) {
 			const response = await edit(first, patch);
 			expect([400, 409]).toContain(response.status);
-			expect(services.templates.get(first.template_id)).toEqual(initial);
+			expect(await services.templates.get(first.template_id)).toEqual(initial);
 			expect(history(first.template_id)).toEqual(versions);
-			expect(services.catalog.get(entry.id)).toEqual(entry);
+			expect(await services.catalog.get(entry.id)).toEqual(entry);
 		}
 		vi.spyOn(services.catalog, "update").mockImplementationOnce(() => {
 			throw new Error("catalog sync failed");
 		});
 		expect((await edit(first, { description: "不能部分提交" })).status).toBe(500);
-		expect(services.templates.get(first.template_id)).toEqual(initial);
+		expect(await services.templates.get(first.template_id)).toEqual(initial);
 		expect(history(first.template_id)).toEqual(versions);
-		expect(services.catalog.get(entry.id)).toEqual(entry);
-		expect(services.audit.list().filter((row) => row.action === "templates.update")).toEqual([]);
+		expect(await services.catalog.get(entry.id)).toEqual(entry);
+		expect((await services.audit.list()).filter((row) => row.action === "templates.update")).toEqual([]);
 	});
 });

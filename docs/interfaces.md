@@ -169,7 +169,7 @@ SDK/CLI 自身的目录能力不受影响；Kit 只提供下面的 YAML 批次�
 
 新批次通过 YAML gateway 调用 SDK 公开对象解析、资源 scope、Plan 与执行入口，不创建 SDK 目录项目。
 Kit 只保留当前声明，修订号不等于模版历史或 Agent 版本。SDK state 检查点、YAML 和成功证明保存在
-SQLite，SDK 管理 state 语义；独立上传暂存受路径边界、哈希和批次互斥保护。Provider 凭据显式传入，
+Kit 数据库，SDK 管理 state 语义；独立上传暂存受路径边界、哈希和批次互斥保护。Provider 凭据显式传入，
 Vault 值只留在批次内存，声明仅保存随机引用；不写全局环境变量。
 
 编辑与编辑预览在 SDK 规范化前递归检查字段和正文，敏感字段仅允许空值或环境变量引用，
@@ -376,7 +376,7 @@ Agent 显式版本按版本读取，旧记录版本仅作只读展示，不能�
 与默认文件及成员本人附件共同组成 Provider `resources`；记忆权限不因成员请求而升级。
 记忆库内容跨会话共享，读写挂载可修改原库。空配置不追加记忆资源，不修改已有会话；
 `agents.list`、`agents.get`、`plaza.get` 仅输出公开协议字段，不暴露目录记忆配置及说明。
-Kit 只读记忆库元数据，不提供记忆内容查询、编辑或创建接口，SQLite 不保存记忆内容。
+Kit 只读记忆库元数据，不提供记忆内容查询、编辑或创建接口，Kit 数据库不保存记忆内容。
 Provider wire、权限和分页依据见 `docs/research/catalog-memory-stores.md`。
 
 目录 `vault_ids?: string[]` 最多 10 项，仅选择当前工作空间已有且未归档的密钥库。省略
@@ -570,7 +570,7 @@ Credits 政策、审批、override 或加油包操作。本地成员使用新月
 | `ProviderGateway` | `apps/server/src/gateway/types.ts` | `SdkGateway` / `MockGateway` / services |
 | `CredentialResolver` | `apps/server/src/identity/credentials.ts` | gateway 构造 |
 | `IdentityProvider` | `apps/server/src/identity/types.ts` | server 身份中间件；仅 server 使用 |
-| `CatalogStore` / `OperationStore` | `apps/server/src/store/types.ts` | `node:sqlite` 实现；预留 Postgres |
+| `StoreDatabase` | `apps/server/src/store/database.ts` | 服务端 Store 共用，SQLite、MySQL 和 PostgreSQL 适配负责连接及迁移 |
 | `EventBuffer` | `apps/server/src/services/event-buffer.ts` | 内存实现；预留 Redis adapter |
 | `KitClient` | `packages/sdk/src/providers/kit/client.ts` | SDK 各功能 `/hooks` hooks、仓库脚本、测试 |
 | `ClientOperations` | `packages/sdk/src/providers/kit/client.ts` | 显式 Client 的可选请求映射；复用 Request/BackendOperation 与现有 DTO，缺失能力不回退固定路由 |

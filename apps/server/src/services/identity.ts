@@ -76,13 +76,13 @@ export function signJwt(payload: Record<string, unknown>, secret: string, ttlSec
  * 终端用户身份解析：本地登录 / 可信 JWT；默认拒绝未登录请求。
  * 匿名 cookie 仅用于显式演示模式，不能命中成员命名空间；无效 Bearer 不降级。
  */
-export function resolveIdentity(c: Context<AppEnv>, config: ServerConfig): Identity {
+export async function resolveIdentity(c: Context<AppEnv>, config: ServerConfig): Promise<Identity> {
 	const auth = c.req.header("authorization");
 	if (auth) {
 		if (!auth.startsWith("Bearer ")) throw new KitError("unauthorized", "登录状态无效或已过期，请重新登录");
 		const token = auth.slice(7);
 		if (token.startsWith(MEMBER_TOKEN_PREFIX)) {
-			const resolved = c.get("services").memberAuth.resolve(token);
+			const resolved = await c.get("services").memberAuth.resolve(token);
 			c.set("memberSession", resolved.session);
 			c.set("authExpiresAt", resolved.session.expires_at);
 			return resolved.view.identity;

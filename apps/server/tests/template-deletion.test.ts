@@ -105,15 +105,15 @@ describe("模版删除", () => {
 		expect(prepared.diff.some((item) => item.summary?.includes("全部历史版本"))).toBe(true);
 		expect(prepared.diff.some((item) => item.action === "noop" && item.summary?.includes("已有会话"))).toBe(true);
 		expect(localRows(template.template_id)).toEqual(before);
-		expect(services.audit.list().filter((row) => row.action === "templates.delete")).toEqual([]);
+		expect((await services.audit.list()).filter((row) => row.action === "templates.delete")).toEqual([]);
 		const response = await remove(template, confirmation(prepared));
 		expect(response.status, await response.clone().text()).toBe(200);
 		expect(await response.json()).toEqual({ data: { deleted: true } });
 		expect(localRows(template.template_id)).toEqual({ templates: [], versions: [], listings: [] });
 		expect((await app.request(`/api/admin/templates/${template.template_id}`, { headers: admin })).status).toBe(404);
-		expect(services.templates.list({ limit: 10 }).data).toEqual([]);
+		expect((await services.templates.list({ limit: 10 })).data).toEqual([]);
 		expect(remote).not.toHaveBeenCalled();
-		expect(services.audit.list().find((row) => row.action === "templates.delete")).toMatchObject({
+		expect((await services.audit.list()).find((row) => row.action === "templates.delete")).toMatchObject({
 			subject: expect.stringMatching(/^admin:admin:[0-9a-f]{8}$/),
 			target: template.template_id,
 			detail: JSON.stringify({ name: template.name }),
@@ -133,7 +133,7 @@ describe("模版删除", () => {
 		});
 		expect(started.status).toBe(201);
 		const { data: session } = (await started.json()) as { data: { session_id: string } };
-		const index = services.sessionIndex.get(session.session_id);
+		const index = await services.sessionIndex.get(session.session_id);
 		const deleteSession = vi.spyOn(services.gateway, "deleteSession");
 		const prepared = await plan(template);
 		expect(prepared.diff).toContainEqual(
@@ -143,7 +143,7 @@ describe("模版删除", () => {
 		db.exec("PRAGMA foreign_keys = OFF");
 		expect((await remove(template, confirmation(prepared))).status).toBe(200);
 		expect(localRows(template.template_id)).toEqual({ templates: [], versions: [], listings: [] });
-		expect(services.catalog.get(entry.id)).toBeNull();
+		expect(await services.catalog.get(entry.id)).toBeNull();
 		expect((await app.request(`/api/kit/agents/${entry.slug}`, { headers: employee })).status).toBe(404);
 		expect(
 			(
@@ -155,7 +155,7 @@ describe("模版删除", () => {
 			).status,
 		).toBe(404);
 		expect((await app.request(`/api/kit/sessions/${session.session_id}`, { headers: employee })).status).toBe(200);
-		expect(services.sessionIndex.get(session.session_id)).toEqual(index);
+		expect(await services.sessionIndex.get(session.session_id)).toEqual(index);
 		expect(deleteSession).not.toHaveBeenCalled();
 		expect(await services.gateway.getSession(session.session_id)).not.toBeNull();
 	});
@@ -171,10 +171,10 @@ describe("模版删除", () => {
 		const prepared = await plan(template);
 		expect((await remove(template, confirmation(prepared), "other-admin")).status).toBe(428);
 		expect((await remove(other, confirmation(prepared))).status).toBe(428);
-		expect(services.templates.list({ limit: 10 }).data).toHaveLength(2);
+		expect((await services.templates.list({ limit: 10 })).data).toHaveLength(2);
 		expect((await remove(template, confirmation(prepared))).status).toBe(200);
 		expect((await remove(template, confirmation(prepared))).status).toBe(428);
-		expect(services.templates.get(other.template_id)).toEqual(other);
+		expect(await services.templates.get(other.template_id)).toEqual(other);
 	});
 
 	// 计划之后任何模版版本或关联目录变化都需重新确认，不能删除用户未审阅的状态。
@@ -196,15 +196,15 @@ describe("模版删除", () => {
 		const entry = await publish(template);
 		expect((await remove(template, confirmation(beforeListing))).status).toBe(409);
 		const beforeUnlisting = await plan(template);
-		services.catalog.setStatus(entry.slug, "unlisted");
+		await services.catalog.setStatus(entry.slug, "unlisted");
 		expect((await remove(template, confirmation(beforeUnlisting))).status).toBe(409);
 		const beforeEdit = await plan(template);
-		services.catalog.update(entry.id, { ordering: 42 });
+		await services.catalog.update(entry.id, { ordering: 42 });
 		expect((await remove(template, confirmation(beforeEdit))).status).toBe(409);
-		expect(services.templates.get(template.template_id).version).toBe(2);
-		expect(services.catalog.get(entry.id)).toMatchObject({ status: "unlisted", ordering: 42 });
+		expect((await services.templates.get(template.template_id)).version).toBe(2);
+		expect(await services.catalog.get(entry.id)).toMatchObject({ status: "unlisted", ordering: 42 });
 		expect((await remove(template, confirmation(await plan(template)))).status).toBe(200);
-		expect(services.catalog.get(entry.id)).toBeNull();
+		expect(await services.catalog.get(entry.id)).toBeNull();
 	});
 
 	// 在最后删除当前记录时注入数据库失败，证明已执行的Catalog/历史/映射删除也会一起回滚。
@@ -218,7 +218,7 @@ describe("模版删除", () => {
 			BEGIN SELECT RAISE(ABORT, 'template delete failed'); END;`);
 		expect((await remove(template, confirmation(prepared))).status).toBe(500);
 		expect(localRows(template.template_id)).toEqual(before);
-		expect(services.catalog.get(entry.id)).toEqual(entry);
-		expect(services.audit.list().filter((row) => row.action === "templates.delete")).toEqual([]);
+		expect(await services.catalog.get(entry.id)).toEqual(entry);
+		expect((await services.audit.list()).filter((row) => row.action === "templates.delete")).toEqual([]);
 	});
 });

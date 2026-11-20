@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import type { DatabaseSync } from "node:sqlite";
 import {
 	type CatalogAgentView,
 	KitError,
@@ -13,6 +12,8 @@ import {
 	type TemplateView,
 	TemplateViewSchema,
 } from "@openagentkit/sdk/protocol";
+import type { StoreDatabase } from "./database.ts";
+import { jsonText, likePattern } from "./sql.ts";
 
 export type TemplateRecord = Omit<TemplateView, "template_id" | "created_at" | "updated_at" | "version" | "listing">;
 interface TemplateRow {
@@ -122,29 +123,24 @@ function asTemplate(row: TemplateRow): TemplateView {
 }
 
 /** 模版只保存管理员选择的资源引用和展示配置，不保存事件正文或 Provider 凭据。 */
-export function createTemplateStore(db: DatabaseSync) {
-	function transaction<T>(work: () => T): T {
-		db.exec("BEGIN IMMEDIATE");
-		try {
-			const result = work();
-			db.exec("COMMIT");
-			return result;
-		} catch (error) {
-			db.exec("ROLLBACK");
-			throw error;
-		}
+export function createTemplateStore(db: StoreDatabase) {
+	async function appendVersion(templateId: string, version: number, input: TemplateRecord, createdAt: string) {
+		await db.run(
+			`INSERT INTO kit_template_versions (template_id,version,config_json,created_at)
+			VALUES (?,?,?,?)`,
+			templateId,
+			version,
+			JSON.stringify(input),
+			createdAt,
+		);
 	}
-	function appendVersion(templateId: string, version: number, input: TemplateRecord, createdAt: string) {
-		db.prepare(`INSERT INTO kit_template_versions (template_id,version,config_json,created_at)
-			VALUES (?,?,?,?)`).run(templateId, version, JSON.stringify(input), createdAt);
-	}
-	function get(templateId: string): TemplateView {
-		const row = db.prepare(`${TEMPLATE_SELECT} WHERE t.template_id=?`).get(templateId) as TemplateRow | undefined;
+	async function get(templateId: string): Promise<TemplateView> {
+		const row = (await db.get(`${TEMPLATE_SELECT} WHERE t.template_id=?`, templateId)) as TemplateRow | undefined;
 		if (!row) throw new KitError("not_found", "模版不存在");
 		return asTemplate(row);
 	}
-	function currentVersion(templateId: string): number {
-		const row = db.prepare("SELECT version FROM kit_templates WHERE template_id=?").get(templateId) as
+	async function currentVersion(templateId: string): Promise<number> {
+		const row = (await db.get("SELECT version FROM kit_templates WHERE template_id=?", templateId)) as
 			| { version: number }
 			| undefined;
 		if (!row) throw new KitError("not_found", "模版不存在");
@@ -152,13 +148,16 @@ export function createTemplateStore(db: DatabaseSync) {
 	}
 	return {
 		get,
-		versions(templateId: string, query: TemplateVersionsQuery): TemplateVersionsPage {
-			const version = currentVersion(templateId);
+		async versions(templateId: string, query: TemplateVersionsQuery): Promise<TemplateVersionsPage> {
+			const version = await currentVersion(templateId);
 			const before = versionCursor(query.page_token, templateId);
-			const rows = db
-				.prepare(`SELECT template_id,version,config_json,created_at FROM kit_template_versions
-					WHERE template_id=? ${before !== undefined ? "AND version < ?" : ""} ORDER BY version DESC LIMIT ?`)
-				.all(templateId, ...(before !== undefined ? [before] : []), query.limit + 1) as unknown as TemplateVersionRow[];
+			const rows = (await db.all(
+				`SELECT template_id,version,config_json,created_at FROM kit_template_versions
+					WHERE template_id=? ${before !== undefined ? "AND version < ?" : ""} ORDER BY version DESC LIMIT ?`,
+				templateId,
+				...(before !== undefined ? [before] : []),
+				query.limit + 1,
+			)) as unknown as TemplateVersionRow[];
 			const data = rows.slice(0, query.limit).map((row) =>
 				TemplateVersionSummarySchema.strip().parse({
 					...JSON.parse(row.config_json),
@@ -179,13 +178,13 @@ export function createTemplateStore(db: DatabaseSync) {
 					: {}),
 			};
 		},
-		version(templateId: string, version: number): TemplateVersionView {
-			currentVersion(templateId);
-			const row = db
-				.prepare(
-					"SELECT template_id,version,config_json,created_at FROM kit_template_versions WHERE template_id=? AND version=?",
-				)
-				.get(templateId, version) as unknown as TemplateVersionRow | undefined;
+		async version(templateId: string, version: number): Promise<TemplateVersionView> {
+			await currentVersion(templateId);
+			const row = (await db.get(
+				"SELECT template_id,version,config_json,created_at FROM kit_template_versions WHERE template_id=? AND version=?",
+				templateId,
+				version,
+			)) as unknown as TemplateVersionRow | undefined;
 			if (!row) throw new KitError("not_found", "模版版本不存在");
 			return TemplateVersionViewSchema.parse({
 				...JSON.parse(row.config_json),
@@ -195,94 +194,109 @@ export function createTemplateStore(db: DatabaseSync) {
 			});
 		},
 		/** 删除前在同一事务重新检查计划；显式清理子表，不依赖部署的外键开关。 */
-		remove(templateId: string, beforeDelete: (template: TemplateView) => void): void {
-			transaction(() => {
-				beforeDelete(get(templateId));
-				db.prepare("DELETE FROM kit_template_versions WHERE template_id=?").run(templateId);
-				db.prepare("DELETE FROM kit_template_listings WHERE template_id=?").run(templateId);
-				const removed = db.prepare("DELETE FROM kit_templates WHERE template_id=?").run(templateId);
+		async remove(templateId: string, beforeDelete: (template: TemplateView) => void | Promise<void>): Promise<void> {
+			await db.transaction(async () => {
+				await beforeDelete(await get(templateId));
+				await db.run("DELETE FROM kit_template_versions WHERE template_id=?", templateId);
+				await db.run("DELETE FROM kit_template_listings WHERE template_id=?", templateId);
+				const removed = await db.run("DELETE FROM kit_templates WHERE template_id=?", templateId);
 				if (!removed.changes) throw new KitError("conflict", "模版已变更，请重试并再次确认删除");
 			});
 		},
-		/** 确认后的目录写入与来源关联一起提交；回调中必须同步重读并校验计划快照。 */
-		saveListing(templateId: string, commit: () => CatalogAgentView): CatalogAgentView {
-			return transaction(() => {
-				get(templateId);
-				const entry = commit();
-				db.prepare(`INSERT INTO kit_template_listings (template_id, catalog_id) VALUES (?, ?)
-					ON CONFLICT(template_id) DO UPDATE SET catalog_id=excluded.catalog_id`).run(templateId, entry.id);
+		/** 确认后的目录写入与来源关联一起提交；回调在事务内重读并校验计划快照。 */
+		async saveListing(templateId: string, commit: () => Promise<CatalogAgentView>): Promise<CatalogAgentView> {
+			return await db.transaction(async () => {
+				await get(templateId);
+				const entry = await commit();
+				const link = await db.get("SELECT 1 FROM kit_template_listings WHERE template_id = ?", templateId);
+				if (link)
+					await db.run("UPDATE kit_template_listings SET catalog_id = ? WHERE template_id = ?", entry.id, templateId);
+				else
+					await db.run(
+						"INSERT INTO kit_template_listings (template_id, catalog_id) VALUES (?, ?)",
+						templateId,
+						entry.id,
+					);
 				return entry;
 			});
 		},
-		create(input: TemplateRecord): TemplateView {
-			return transaction(() => {
+		async create(input: TemplateRecord): Promise<TemplateView> {
+			return await db.transaction(async () => {
 				const id = `template_${randomUUID()}`;
 				const now = new Date().toISOString();
-				const result = db
-					.prepare(`INSERT INTO kit_templates
+				const result = await db.insertIfAbsent(
+					`INSERT INTO kit_templates
 					(template_id,name,remote_agent_id,remote_agent_name,config_json,created_at,updated_at,version)
-					VALUES (?,?,?,?,?,?,?,1) ON CONFLICT(name) DO NOTHING`)
-					.run(id, input.name, input.remote_agent_id, input.remote_agent_name, JSON.stringify(input), now, now);
+					VALUES (?,?,?,?,?,?,?,1)`,
+					"name",
+					id,
+					input.name,
+					input.remote_agent_id,
+					input.remote_agent_name,
+					JSON.stringify(input),
+					now,
+					now,
+				);
 				if (!result.changes) throw new KitError("conflict", "模版名称已存在，请使用其他名称");
-				appendVersion(id, 1, input, now);
-				return get(id);
+				await appendVersion(id, 1, input, now);
+				return await get(id);
 			});
 		},
 		/** 历史只追加；当前配置、版本和关联目录同步必须在同一事务提交。 */
-		update(
+		async update(
 			templateId: string,
 			baseVersion: number,
 			input: TemplateRecord,
-			syncCatalog: (template: TemplateView) => void,
-		): TemplateView {
-			return transaction(() => {
-				const current = get(templateId);
+			syncCatalog: (template: TemplateView) => void | Promise<void>,
+		): Promise<TemplateView> {
+			return await db.transaction(async () => {
+				const current = await get(templateId);
 				if (current.version !== baseVersion) throw new KitError("conflict", "模版已有新版本，请刷新后重新编辑");
+				const duplicate = await db.get(
+					"SELECT 1 FROM kit_templates WHERE name = ? AND template_id <> ?",
+					input.name,
+					templateId,
+				);
+				if (duplicate) throw new KitError("conflict", "模版名称已存在，请使用其他名称");
 				const version = current.version + 1;
 				const now = new Date().toISOString();
-				const updated = db
-					.prepare(`UPDATE kit_templates
+				const updated = await db.run(
+					`UPDATE kit_templates
 					SET name=?,remote_agent_id=?,remote_agent_name=?,config_json=?,updated_at=?,version=?
-					WHERE template_id=? AND version=? AND NOT EXISTS (
-						SELECT 1 FROM kit_templates WHERE name=? AND template_id<>?
-					)`)
-					.run(
-						input.name,
-						input.remote_agent_id,
-						input.remote_agent_name,
-						JSON.stringify(input),
-						now,
-						version,
-						templateId,
-						baseVersion,
-						input.name,
-						templateId,
-					);
-				if (!updated.changes) throw new KitError("conflict", "模版名称已存在，请使用其他名称");
-				appendVersion(templateId, version, input, now);
-				syncCatalog(get(templateId));
-				return get(templateId);
+					WHERE template_id=? AND version=?`,
+					input.name,
+					input.remote_agent_id,
+					input.remote_agent_name,
+					JSON.stringify(input),
+					now,
+					version,
+					templateId,
+					baseVersion,
+				);
+				if (!updated.changes) throw new KitError("conflict", "模版已有新版本，请刷新后重新编辑");
+				await appendVersion(templateId, version, input, now);
+				await syncCatalog(await get(templateId));
+				return await get(templateId);
 			});
 		},
-		list(query: TemplatesQuery): TemplatesPage {
+		async list(query: TemplatesQuery): Promise<TemplatesPage> {
 			const search = (query.search ?? "").toLowerCase();
 			const cursor = cursorFor(query.page_token, search, query.status, query.category);
-			const pattern = `%${search.replace(/[\\%_]/g, "\\$&")}%`;
-			const rows = db
-				.prepare(`${TEMPLATE_SELECT}
-				WHERE (t.name LIKE ? ESCAPE '\\' OR t.remote_agent_id LIKE ? ESCAPE '\\' OR t.remote_agent_name LIKE ? ESCAPE '\\')
+			const pattern = likePattern(search);
+			const rows = (await db.all(
+				`${TEMPLATE_SELECT}
+				WHERE (LOWER(t.name) LIKE LOWER(?) ESCAPE '!' OR LOWER(t.remote_agent_id) LIKE LOWER(?) ESCAPE '!' OR LOWER(t.remote_agent_name) LIKE LOWER(?) ESCAPE '!')
 				${query.status ? "AND COALESCE(c.status, 'unlisted') = ?" : ""}
-				${query.category ? "AND COALESCE(json_extract(t.config_json, '$.category'), 'general') = ?" : ""}
+				${query.category ? `AND COALESCE(${jsonText(db, "t.config_json", "category")}, 'general') = ?` : ""}
 				${cursor ? "AND (t.created_at < ? OR (t.created_at=? AND t.template_id<?))" : ""}
-				ORDER BY t.created_at DESC, t.template_id DESC LIMIT ?`)
-				.all(
-					pattern,
-					pattern,
-					pattern,
-					...[query.status, query.category].filter((value) => value !== undefined),
-					...(cursor ? [cursor.created_at, cursor.created_at, cursor.id] : []),
-					query.limit + 1,
-				) as unknown as TemplateRow[];
+				ORDER BY t.created_at DESC, t.template_id DESC LIMIT ?`,
+				pattern,
+				pattern,
+				pattern,
+				...[query.status, query.category].filter((value) => value !== undefined),
+				...(cursor ? [cursor.created_at, cursor.created_at, cursor.id] : []),
+				query.limit + 1,
+			)) as unknown as TemplateRow[];
 			const data = rows.slice(0, query.limit).map(asTemplate);
 			const last = data.at(-1);
 			return {

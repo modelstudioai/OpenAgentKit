@@ -8,6 +8,7 @@ import { loadConfig } from "../src/config.ts";
 import { createKitServices } from "../src/services/index.ts";
 import { createCatalogStore } from "../src/store/catalog.ts";
 import { openDatabase } from "../src/store/db.ts";
+import { createSqliteDatabase } from "../src/store/sqlite.ts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => {
@@ -60,9 +61,11 @@ describe("上架目录的密钥库白名单", () => {
 		expect((await update({ description: "保留密钥库" })).status).toBe(200);
 		const reopened = openDatabase(dataDir);
 		cleanup.push(() => reopened.close());
-		expect(createCatalogStore(reopened).getBySlug("vault-agent")?.vault_ids).toEqual(selected);
+		expect((await createCatalogStore(createSqliteDatabase(reopened)).getBySlug("vault-agent"))?.vault_ids).toEqual(
+			selected,
+		);
 		expect((await update({ vault_ids: [] })).status).toBe(200);
-		expect(services.catalog.getBySlug("vault-agent")?.vault_ids).toEqual([]);
+		expect((await services.catalog.getBySlug("vault-agent"))?.vault_ids).toEqual([]);
 	});
 
 	it("新会话只采用目录的密钥库且保留环境/文件/记忆，公开目录不暴露绑定", async () => {
@@ -78,7 +81,7 @@ describe("上架目录的密钥库白名单", () => {
 				})
 			).status,
 		).toBe(201);
-		services.catalog.setStatus("vault-agent", "listed");
+		await services.catalog.setStatus("vault-agent", "listed");
 		const createRemote = vi.spyOn(services.gateway, "createSession");
 		const mountRemote = vi.spyOn(services.gateway, "mountSessionResource");
 		const start = () =>
@@ -138,6 +141,6 @@ describe("上架目录的密钥库白名单", () => {
 		expect((await update({ vault_ids: ["vlt_mock_2"] })).status).toBe(400);
 		lookup.mockRejectedValue(new KitError("provider_error", "密钥库信息查询失败，请稍后重试"));
 		expect((await update({ vault_ids: ["vlt_mock_2"] })).status).toBe(502);
-		expect(services.catalog.getBySlug("vault-agent")?.vault_ids).toEqual(["vlt_mock_1"]);
+		expect((await services.catalog.getBySlug("vault-agent"))?.vault_ids).toEqual(["vlt_mock_1"]);
 	});
 });

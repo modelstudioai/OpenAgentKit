@@ -131,18 +131,18 @@ export function createUsageLimitService({
 			clearTimeout(timer);
 		}
 	}
-	function requireMember(memberId: string) {
-		if (!members.findById(memberId)) throw new KitError("not_found", "成员不存在");
-		return store.prepare(memberId, now().toISOString());
+	async function requireMember(memberId: string) {
+		if (!(await members.findById(memberId))) throw new KitError("not_found", "成员不存在");
+		return await store.prepare(memberId, now().toISOString());
 	}
-	const limitsFor = (memberId: string) => store.override(memberId) ?? store.policy().limits;
+	const limitsFor = async (memberId: string) => (await store.override(memberId)) ?? (await store.policy()).limits;
 	const enabled = (limits: UsageLimitConfig) =>
 		limits.monthly_tokens !== null ||
 		limits.monthly_active_seconds !== null ||
 		limits.daily_tokens !== null ||
 		limits.daily_active_seconds !== null;
 	async function readDetail(sessionId: string): Promise<GatewaySessionInfo | null> {
-		const final = snapshots.get(sessionId);
+		const final = await snapshots.get(sessionId);
 		if (!final?.deleted_at || !final.finalized_at) return bounded(gateway.getSession(sessionId));
 		return {
 			session_id: sessionId,
@@ -158,7 +158,7 @@ export function createUsageLimitService({
 		try {
 			const info = await readDetail(sessionId);
 			if (!info) throw new Error("unavailable");
-			const observed = store.observe(sessionId, observationValues(info), now().toISOString());
+			const observed = await store.observe(sessionId, observationValues(info), now().toISOString());
 			result.observations.set(sessionId, observed);
 			result.details.set(sessionId, info);
 			if (info.status === "deleted") result.deleted.add(sessionId);
@@ -169,29 +169,32 @@ export function createUsageLimitService({
 	}
 	async function collect(
 		memberId: string,
-		include: (sessionId: string, month: string | null) => boolean = () => true,
+		include: (sessionId: string, month: string | null) => boolean | Promise<boolean> = () => true,
 		result: Collection = { observations: new Map(), details: new Map(), deleted: new Set(), preview: new Map() },
 	): Promise<Collection> {
-		const rows = store
-			.sessions(memberId)
-			.filter((row) => include(row.session_id, row.admission_month) && !result.observations.has(row.session_id));
+		const rows = [];
+		for (const row of await store.sessions(memberId)) {
+			if (!result.observations.has(row.session_id) && (await include(row.session_id, row.admission_month))) {
+				rows.push(row);
+			}
+		}
 		// 自有基线只在成员锁内写入；普通用量列表的后台刷新不会覆盖它。
 		for (let offset = 0; offset < rows.length; offset += 4) {
 			await Promise.all(rows.slice(offset, offset + 4).map((row) => collectSession(row.session_id, result)));
 		}
 		return result;
 	}
-	function collectAdmission(memberId: string, sessionId: string, month: string, result?: Collection) {
-		const limited = enabled(limitsFor(memberId));
-		const pending = new Set(store.pending(memberId).map((request) => request.session_id));
+	async function collectAdmission(memberId: string, sessionId: string, month: string, result?: Collection) {
+		const limited = enabled(await limitsFor(memberId));
+		const pending = new Set((await store.pending(memberId)).map((request) => request.session_id));
 		// 不限量也采集目标基线，但不等待无关历史。启用限额时核对本月用量及尚未结束的旧轮。
 		// 已删除的不确定请求只读取本地封存快照，仍可解除对其他会话的保护。
 		return collect(
 			memberId,
-			(id, admittedMonth) =>
+			async (id, admittedMonth) =>
 				id === sessionId ||
 				(limited && (admittedMonth === month || pending.has(id))) ||
-				(pending.has(id) && Boolean(snapshots.get(id)?.deleted_at)),
+				(pending.has(id) && Boolean((await snapshots.get(id))?.deleted_at)),
 			result,
 		);
 	}
@@ -218,25 +221,27 @@ export function createUsageLimitService({
 			);
 		}
 	}
-	function view(
+	async function view(
 		memberId: string,
 		started: string,
 		collected: Collection,
 		month = monthKey(now()),
 		targetSession?: string,
 		dailyDays = 30,
-	): MemberUsageLimitView {
-		const limits = limitsFor(memberId);
-		const used = store.totals(memberId, month);
+	): Promise<MemberUsageLimitView> {
+		const limits = await limitsFor(memberId);
+		const used = await store.totals(memberId, month);
 		// 历史月份的不可读会话不会污染本月；复用它发送时仍须确认本次基线。
-		const relevant = store
-			.sessions(memberId)
-			.filter((row) => row.admission_month === month || row.session_id === targetSession);
+		const relevant = (await store.sessions(memberId)).filter(
+			(row) => row.admission_month === month || row.session_id === targetSession,
+		);
 		const tokensAvailable = relevant.every((row) => collected.observations.get(row.session_id)?.tokens);
 		const secondsAvailable = relevant.every((row) => collected.observations.get(row.session_id)?.active_seconds);
 		// 每日用量窗口（默认近 30 天，含今天 UTC 日键升序、零值补全）；增量已由 observe 归因到采集确认日。
 		const at = now();
-		const dailyMap = new Map(store.dailyUsage(memberId, daysAgoKey(at, dailyDays - 1)).map((row) => [row.day, row]));
+		const dailyMap = new Map(
+			(await store.dailyUsage(memberId, daysAgoKey(at, dailyDays - 1))).map((row) => [row.day, row]),
+		);
 		const daily = Array.from({ length: dailyDays }, (_, index) => {
 			const day = daysAgoKey(at, dailyDays - 1 - index);
 			const row = dailyMap.get(day);
@@ -248,13 +253,13 @@ export function createUsageLimitService({
 		});
 		// 日维度状态：今日已用取自逐日账（当日增量由 observe 实时写入），可用性与月维度同源。
 		const day = dayKey(at);
-		const dayUsed = store.memberDayTotals(memberId, day);
+		const dayUsed = await store.memberDayTotals(memberId, day);
 		return {
 			member_id: memberId,
 			month,
 			reset_at: resetAtFor(month),
 			limits,
-			override: store.override(memberId),
+			override: await store.override(memberId),
 			tokens: metric(limits.monthly_tokens, used.tokens, tokensAvailable && !used.tokens_unknown),
 			active_seconds: metric(
 				limits.monthly_active_seconds,
@@ -368,10 +373,15 @@ export function createUsageLimitService({
 		if (used >= limit) throw templateQuotaError(name, period, periodKey, limit, used);
 	}
 	/** 共享模版准入合计：条目月账 + 条目日账 + 全部未入账预览增量（增量按采集确认日归入当日）。 */
-	function templateAdmissionTotals(slug: string, month: string, rows: UsageLimitSession[], collected: Collection) {
-		const monthTotals = store.agentTotals(slug, month);
+	async function templateAdmissionTotals(
+		slug: string,
+		month: string,
+		rows: UsageLimitSession[],
+		collected: Collection,
+	) {
+		const monthTotals = await store.agentTotals(slug, month);
 		const day = dayKey(now());
-		const dayTotals = store.agentDayTotals(slug, day);
+		const dayTotals = await store.agentDayTotals(slug, day);
 		const totals = {
 			dayKey: day,
 			tokens: monthTotals.tokens,
@@ -404,9 +414,9 @@ export function createUsageLimitService({
 	}
 	/** 条目锁内的准入判断：先只读补采清单里尚未读取的会话，再按账本 + 未入账增量做共享限额检查。 */
 	async function admitTemplate(slug: string, month: string, collected: Collection, override: UsageLimitConfig) {
-		const rows = store.templateSessions(slug, month);
+		const rows = await store.templateSessions(slug, month);
 		await previewTemplateSessions(rows, collected);
-		const totals = templateAdmissionTotals(slug, month, rows, collected);
+		const totals = await templateAdmissionTotals(slug, month, rows, collected);
 		assertTemplateMetric("tokens", "month", month, override.monthly_tokens, totals.tokens, totals.monthTokensUnknown);
 		assertTemplateMetric(
 			"active_seconds",
@@ -438,12 +448,12 @@ export function createUsageLimitService({
 	 * 仍只在成员锁内写入）；本次读取失败、字段缺失或计数倒退的会话不得凭旧账本放行。 */
 	async function assertTemplateAdmission(agentSlug: string | undefined, month: string, collected: Collection) {
 		if (!agentSlug) return;
-		const override = store.templateOverrideBySlug(agentSlug);
+		const override = await store.templateOverrideBySlug(agentSlug);
 		if (!override || !enabled(override)) return;
 		await templateLocked(agentSlug, () => admitTemplate(agentSlug, month, collected, override));
 	}
-	function templateView(templateId: string): TemplateUsageLimitView {
-		const override = store.templateOverride(templateId);
+	async function templateView(templateId: string): Promise<TemplateUsageLimitView> {
+		const override = await store.templateOverride(templateId);
 		const limits = override ?? {
 			monthly_tokens: null,
 			monthly_active_seconds: null,
@@ -451,12 +461,12 @@ export function createUsageLimitService({
 			daily_active_seconds: null,
 		};
 		const month = monthKey(now());
-		const slug = store.templateSlug(templateId);
+		const slug = await store.templateSlug(templateId);
 		const used = slug
-			? store.agentTotals(slug, month)
+			? await store.agentTotals(slug, month)
 			: { tokens: 0, active_seconds: 0, tokens_unknown: 0, active_seconds_unknown: 0 };
 		const day = dayKey(now());
-		const dayUsed = slug ? store.agentDayTotals(slug, day) : { tokens: 0, active_seconds: 0 };
+		const dayUsed = slug ? await store.agentDayTotals(slug, day) : { tokens: 0, active_seconds: 0 };
 		return {
 			template_id: templateId,
 			month,
@@ -480,10 +490,10 @@ export function createUsageLimitService({
 	}
 	/** 模版用量逐日趋势：条目逐日账（模版限额账本启用后开始记录），零值补全到今天（UTC 日键）；
 	 * templateId 为 null 时聚合全部模版条目。 */
-	function templateDailyTrend(templateId: string | null, days: number): TemplateUsageTrend {
+	async function templateDailyTrend(templateId: string | null, days: number): Promise<TemplateUsageTrend> {
 		const at = now();
 		const from = daysAgoKey(at, days - 1);
-		const rows = new Map(store.templateDailyUsage(templateId, from).map((row) => [row.day, row]));
+		const rows = new Map((await store.templateDailyUsage(templateId, from)).map((row) => [row.day, row]));
 		const data = Array.from({ length: days }, (_, index) => {
 			const day = daysAgoKey(at, days - 1 - index);
 			const row = rows.get(day);
@@ -493,7 +503,7 @@ export function createUsageLimitService({
 			days,
 			from_day: from,
 			to_day: dayKey(at),
-			since_day: store.templateDailySince(templateId),
+			since_day: await store.templateDailySince(templateId),
 			data,
 		};
 	}
@@ -521,12 +531,12 @@ export function createUsageLimitService({
 		const snapshot = await history(request.session_id);
 		if (!requestFinished(snapshot.events, snapshot.latestStatus, request, buffers.get(request.session_id)))
 			throw new KitError("conflict", "上一轮结果尚未确认，请稍后重试", { retryable: true });
-		store.settle(request.session_id, request.request_key);
+		await store.settle(request.session_id, request.request_key);
 	}
 	async function checkPending(memberId: string, collected: Collection, continuationSession?: string) {
-		for (const request of store.pending(memberId)) {
+		for (const request of await store.pending(memberId)) {
 			if (collected.deleted.has(request.session_id)) {
-				store.settle(request.session_id, request.request_key);
+				await store.settle(request.session_id, request.request_key);
 				continue;
 			}
 			if (request.status !== "accepted") throw uncertain();
@@ -535,18 +545,23 @@ export function createUsageLimitService({
 		}
 	}
 	async function load(memberId: string, dailyDays = 30) {
-		const started = requireMember(memberId);
-		return view(memberId, started, await collect(memberId), monthKey(now()), undefined, dailyDays);
+		const started = await requireMember(memberId);
+		return await view(memberId, started, await collect(memberId), monthKey(now()), undefined, dailyDays);
 	}
-	async function finishSend(sessionId: string, key: string, send: () => Promise<Accepted>, reject: () => void) {
+	async function finishSend(
+		sessionId: string,
+		key: string,
+		send: () => Promise<Accepted>,
+		reject: () => Promise<void>,
+	) {
 		try {
 			const result = await bounded(send());
-			store.accepted(sessionId, key, result.event_ids);
+			await store.accepted(sessionId, key, result.event_ids);
 			return result;
 		} catch (error) {
 			if (error instanceof GatewaySendRejectedError) {
 				try {
-					reject();
+					await reject();
 				} catch {
 					// 回滚未提交时保留 sending，避免只清除部分受理状态后放行。
 					throw uncertain();
@@ -554,7 +569,7 @@ export function createUsageLimitService({
 				throw error;
 			}
 			try {
-				store.uncertain(sessionId, key);
+				await store.uncertain(sessionId, key);
 			} catch {
 				/* sending 仍能在重启后保护结果不明。 */
 			}
@@ -570,16 +585,14 @@ export function createUsageLimitService({
 			return null;
 		}
 	}
-	function admissionMonth(sessionId: string, continuation: boolean, at = now()) {
-		return (continuation && store.session(sessionId)?.admission_month) || monthKey(at);
+	async function admissionMonth(sessionId: string, continuation: boolean, at = now()) {
+		return (continuation && (await store.session(sessionId))?.admission_month) || monthKey(at);
 	}
-	function assertNoUncertain(memberId: string, collected: Collection) {
+	async function assertNoUncertain(memberId: string, collected: Collection) {
 		if (
-			store
-				.pending(memberId)
-				.some(
-					(request) => ["sending", "uncertain"].includes(request.status) && !collected.deleted.has(request.session_id),
-				)
+			(await store.pending(memberId)).some(
+				(request) => ["sending", "uncertain"].includes(request.status) && !collected.deleted.has(request.session_id),
+			)
 		)
 			throw uncertain();
 	}
@@ -591,23 +604,35 @@ export function createUsageLimitService({
 		send: () => Promise<Accepted>,
 		continuation = false,
 	): Promise<Accepted> {
-		const local = sessionIndex.get(sessionId);
-		if (local?.purpose !== "experience" || !members.findById(local.subject_id)) {
+		const local = await sessionIndex.get(sessionId);
+		if (local?.purpose !== "experience" || !(await members.findById(local.subject_id))) {
 			await beforeSend?.();
 			return send();
 		}
 		return locked(local.subject_id, async () => {
-			const existing = replay(store.request(sessionId, key), hash);
+			const existing = replay(await store.request(sessionId, key), hash);
 			if (existing) return existing;
-			const started = requireMember(local.subject_id);
-			const collected = await collectAdmission(local.subject_id, sessionId, admissionMonth(sessionId, continuation));
-			const current = view(local.subject_id, started, collected, admissionMonth(sessionId, continuation), sessionId);
+			const started = await requireMember(local.subject_id);
+			const collected = await collectAdmission(
+				local.subject_id,
+				sessionId,
+				await admissionMonth(sessionId, continuation),
+			);
+			const current = await view(
+				local.subject_id,
+				started,
+				collected,
+				await admissionMonth(sessionId, continuation),
+				sessionId,
+			);
 			let previousStatus: string | null = null;
 			let executionChecked = false;
 			const checkExecution = async () => {
 				// 异步采集期间可能从不限量切为限量；补齐新政策需要的会话后才作准入判断。
-				await collectAdmission(local.subject_id, sessionId, admissionMonth(sessionId, continuation), collected);
-				assertAvailable(view(local.subject_id, started, collected, admissionMonth(sessionId, continuation), sessionId));
+				await collectAdmission(local.subject_id, sessionId, await admissionMonth(sessionId, continuation), collected);
+				assertAvailable(
+					await view(local.subject_id, started, collected, await admissionMonth(sessionId, continuation), sessionId),
+				);
 				await checkPending(local.subject_id, collected, continuation ? sessionId : undefined);
 				const info = collected.details.get(sessionId);
 				const status = (await history(sessionId)).latestStatus;
@@ -622,16 +647,16 @@ export function createUsageLimitService({
 				previousStatus = await optionalStatusMarker(sessionId);
 			}
 			// 读取失败不会挡未启用的维度；已有结果不明的请求始终不能自动重发。
-			assertNoUncertain(local.subject_id, collected);
+			await assertNoUncertain(local.subject_id, collected);
 			// 全局政策可能在网络采集期间变更；使用真正发送前的有效政策，不缓存旧的不限量配置。
-			if (enabled(limitsFor(local.subject_id)) && !executionChecked) await checkExecution();
+			if (enabled(await limitsFor(local.subject_id)) && !executionChecked) await checkExecution();
 			// 此同步检查是准入点；之后才记受理账本，不在记账后因政策变更追溯拒绝。
 			const admittedAt = now();
-			const admittedMonth = admissionMonth(sessionId, continuation, admittedAt);
-			assertAvailable(view(local.subject_id, started, collected, admittedMonth, sessionId));
+			const admittedMonth = await admissionMonth(sessionId, continuation, admittedAt);
+			assertAvailable(await view(local.subject_id, started, collected, admittedMonth, sessionId));
 			await assertTemplateAdmission(local.agent_slug, admittedMonth, collected);
 			await beforeSend?.();
-			const reject = store.begin({
+			const reject = await store.begin({
 				sessionId,
 				memberId: local.subject_id,
 				key,
@@ -647,46 +672,46 @@ export function createUsageLimitService({
 	}
 	return {
 		policy: store.policy,
-		setPolicy(config: UsageLimitConfig, by: string) {
+		async setPolicy(config: UsageLimitConfig, by: string) {
 			const parsed = UsageLimitConfigSchema.parse(config);
 			assertPeriodOrder(parsed);
-			store.setPolicy(parsed, by, now().toISOString());
-			audit.append({ subject: by, action: "usage_limits.policy.set", detail: parsed });
-			return store.policy();
+			await store.setPolicy(parsed, by, now().toISOString());
+			await audit.append({ subject: by, action: "usage_limits.policy.set", detail: parsed });
+			return await store.policy();
 		},
 		member: (memberId: string, options: { dailyDays?: number } = {}) =>
 			locked(memberId, () => load(memberId, options.dailyDays)),
 		setMember: (memberId: string, config: UsageLimitConfig, by: string) =>
 			locked(memberId, async () => {
-				requireMember(memberId);
+				await requireMember(memberId);
 				const parsed = UsageLimitConfigSchema.parse(config);
 				assertPeriodOrder(parsed);
-				store.setOverride(memberId, parsed, by, now().toISOString());
-				audit.append({ subject: by, action: "usage_limits.member.set", target: memberId, detail: parsed });
+				await store.setOverride(memberId, parsed, by, now().toISOString());
+				await audit.append({ subject: by, action: "usage_limits.member.set", target: memberId, detail: parsed });
 				return load(memberId);
 			}),
 		resetMember: (memberId: string, by: string) =>
 			locked(memberId, async () => {
-				requireMember(memberId);
-				store.resetOverride(memberId);
-				audit.append({ subject: by, action: "usage_limits.member.reset", target: memberId });
+				await requireMember(memberId);
+				await store.resetOverride(memberId);
+				await audit.append({ subject: by, action: "usage_limits.member.reset", target: memberId });
 				return load(memberId);
 			}),
-		template: (templateId: string) => templateView(templateId),
+		template: async (templateId: string) => await templateView(templateId),
 		templateDailyTrend,
-		setTemplate: (templateId: string, config: UsageLimitConfig, by: string) => {
+		setTemplate: async (templateId: string, config: UsageLimitConfig, by: string) => {
 			const parsed = UsageLimitConfigSchema.parse(config);
 			assertPeriodOrder(parsed);
-			store.setTemplateOverride(templateId, parsed, by, now().toISOString());
-			audit.append({ subject: by, action: "usage_limits.template.set", target: templateId, detail: parsed });
-			return templateView(templateId);
+			await store.setTemplateOverride(templateId, parsed, by, now().toISOString());
+			await audit.append({ subject: by, action: "usage_limits.template.set", target: templateId, detail: parsed });
+			return await templateView(templateId);
 		},
-		resetTemplate: (templateId: string, by: string) => {
-			store.resetTemplateOverride(templateId);
-			audit.append({ subject: by, action: "usage_limits.template.reset", target: templateId });
-			return templateView(templateId);
+		resetTemplate: async (templateId: string, by: string) => {
+			await store.resetTemplateOverride(templateId);
+			await audit.append({ subject: by, action: "usage_limits.template.reset", target: templateId });
+			return await templateView(templateId);
 		},
-		isMember: (subjectId: string) => Boolean(members.findById(subjectId)),
+		isMember: async (subjectId: string) => Boolean(await members.findById(subjectId)),
 		runSend(
 			sessionId: string,
 			input: GatewaySendInput,

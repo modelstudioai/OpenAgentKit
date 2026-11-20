@@ -29,9 +29,9 @@ export interface DraftAsset {
 	size: number;
 }
 export interface YamlDraftStorage {
-	read(): { revision: number; yaml: string; sdk_state_json: string; assets_json: string };
-	write(expected: string, yaml: string, assets?: string): string;
-	writeState(state: string): void;
+	read(): Promise<{ revision: number; yaml: string; sdk_state_json: string; assets_json: string }>;
+	write(expected: string, yaml: string, assets?: string): Promise<string>;
+	writeState(state: string): Promise<void>;
 }
 export function digest(value: unknown): string {
 	return createHash("sha256")
@@ -66,19 +66,19 @@ export interface YamlDraftDocument {
 	assetRoot: string;
 	secrets: Map<string, string>;
 	stateBackend: BackendRuntimeInput["stateBackend"];
-	snapshot(): {
+	snapshot(): Promise<{
 		revision: string;
 		yaml: string;
 		sdk_state_json: string;
 		assets_json: string;
 		raw: DraftConfig;
 		assets: DraftAsset[];
-	};
-	assertRevision(expected: string): void;
+	}>;
+	assertRevision(expected: string): Promise<void>;
 	resolve(raw?: DraftConfig, materialize?: boolean): ReturnType<typeof resolveProjectConfigFromObject>;
 	diagnostics(raw?: DraftConfig): Promise<ReturnType<typeof validateProjectConfig>>;
 	commit(expected: string, raw: DraftConfig, assets?: DraftAsset[]): Promise<string>;
-	declaration(type: DeclarationType, key: string): ResourceDraftDeclaration;
+	declaration(type: DeclarationType, key: string): Promise<ResourceDraftDeclaration>;
 	runtime(materialize?: boolean): Promise<BackendRuntimeInput>;
 }
 
@@ -90,8 +90,8 @@ export function createYamlDraftDocument(
 	credentials?: BailianCredentials,
 ): YamlDraftDocument {
 	const secrets = new Map<string, string>();
-	function snapshot() {
-		const row = storage.read();
+	async function snapshot() {
+		const row = await storage.read();
 		return {
 			...row,
 			revision: String(row.revision),
@@ -99,11 +99,11 @@ export function createYamlDraftDocument(
 			assets: JSON.parse(row.assets_json) as DraftAsset[],
 		};
 	}
-	function assertRevision(expected: string) {
-		if (snapshot().revision !== expected) throw new KitError("conflict", "批次配置已变化，请重新加载并预览");
+	async function assertRevision(expected: string) {
+		if ((await snapshot()).revision !== expected) throw new KitError("conflict", "批次配置已变化，请重新加载并预览");
 	}
-	async function resolve(raw = snapshot().raw, materialize = false): ReturnType<typeof resolveProjectConfigFromObject> {
-		const config = structuredClone(raw);
+	async function resolve(raw?: DraftConfig, materialize = false): ReturnType<typeof resolveProjectConfigFromObject> {
+		const config = structuredClone(raw ?? (await snapshot()).raw);
 		config.providers = {
 			bailian: credentials
 				? { api_key: credentials.apiKey, base_url: workspaceBaseUrl(credentials) }
@@ -121,20 +121,21 @@ export function createYamlDraftDocument(
 			throw new KitError("invalid_request", "批次声明不符合 SDK 契约，请检查资源配置");
 		}
 	}
-	async function diagnostics(raw = snapshot().raw): Promise<ReturnType<typeof validateProjectConfig>> {
+	async function diagnostics(raw?: DraftConfig): Promise<ReturnType<typeof validateProjectConfig>> {
+		raw ??= (await snapshot()).raw;
 		for (const type of Object.keys(sections) as DeclarationType[])
 			for (const declaration of Object.values(raw[sections[type]] ?? {})) assertSafeDraftDeclaration(type, declaration);
 		const loaded = await resolve(raw);
 		return validateProjectConfig(loaded.config);
 	}
 	async function commit(expected: string, raw: DraftConfig, assets?: DraftAsset[]) {
-		assertRevision(expected);
+		await assertRevision(expected);
 		const errors = (await diagnostics(raw)).filter((item) => item.severity === "error");
 		if (errors.length) throw new KitError("invalid_request", "资源声明或引用未通过 SDK 校验，请检查配置");
 		return storage.write(expected, stringify(raw), assets ? JSON.stringify(assets) : undefined);
 	}
-	function declaration(type: DeclarationType, key: string): ResourceDraftDeclaration {
-		const current = snapshot();
+	async function declaration(type: DeclarationType, key: string): Promise<ResourceDraftDeclaration> {
+		const current = await snapshot();
 		const resources = current.raw[sections[type]] ?? {};
 		if (!Object.hasOwn(resources, key)) throw new KitError("not_found", "批次声明不存在");
 		const readOnly: string[][] = type === "vault" ? [["credentials"]] : [];
@@ -153,12 +154,13 @@ export function createYamlDraftDocument(
 	const stateBackend: BackendRuntimeInput["stateBackend"] = {
 		async read(scope, fn) {
 			if (scope.projectId !== id) throw new KitError("not_found", "发布批次不存在");
-			return fn(InMemoryStateManager.fromJSON(JSON.parse(storage.read().sdk_state_json) as StateFile));
+			return fn(InMemoryStateManager.fromJSON(JSON.parse((await storage.read()).sdk_state_json) as StateFile));
 		},
 		async write(scope, fn) {
 			if (scope.projectId !== id) throw new KitError("not_found", "发布批次不存在");
-			const state = InMemoryStateManager.fromJSON(JSON.parse(storage.read().sdk_state_json) as StateFile, (snapshot) =>
-				storage.writeState(JSON.stringify(snapshot)),
+			const state = InMemoryStateManager.fromJSON(
+				JSON.parse((await storage.read()).sdk_state_json) as StateFile,
+				(snapshot) => storage.writeState(JSON.stringify(snapshot)),
 			);
 			try {
 				return await fn(state);

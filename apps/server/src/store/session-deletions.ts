@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { StoreDatabase } from "./database.ts";
 
 export type DeletionStage = "preparing" | "captured" | "deleting" | "uncertain" | "deleted";
 export interface SessionDeletion {
@@ -9,24 +9,27 @@ export interface SessionDeletion {
 }
 
 /** 仅保存删除阶段；重启后结果未确认的会话仍不允许产生新用量。 */
-export function createSessionDeletionStore(db: DatabaseSync) {
+export function createSessionDeletionStore(db: StoreDatabase) {
 	return {
-		get(sessionId: string) {
-			return db.prepare("SELECT * FROM kit_session_deletions WHERE session_id = ?").get(sessionId) as
+		async get(sessionId: string) {
+			return (await db.get("SELECT * FROM kit_session_deletions WHERE session_id = ?", sessionId)) as
 				| SessionDeletion
 				| undefined;
 		},
-		set(sessionId: string, subjectId: string, stage: DeletionStage) {
-			db.prepare(`INSERT INTO kit_session_deletions (session_id, subject_id, stage, updated_at)
-				VALUES (?, ?, ?, ?) ON CONFLICT(session_id) DO UPDATE SET stage=excluded.stage, updated_at=excluded.updated_at`).run(
+		async set(sessionId: string, subjectId: string, stage: DeletionStage) {
+			await db.upsert(
+				`INSERT INTO kit_session_deletions (session_id, subject_id, stage, updated_at)
+				VALUES (?, ?, ?, ?)`,
+				"session_id",
+				`stage=excluded.stage, updated_at=excluded.updated_at`,
 				sessionId,
 				subjectId,
 				stage,
 				new Date().toISOString(),
 			);
 		},
-		clear(sessionId: string) {
-			db.prepare("DELETE FROM kit_session_deletions WHERE session_id = ? AND stage != 'deleted'").run(sessionId);
+		async clear(sessionId: string) {
+			await db.run("DELETE FROM kit_session_deletions WHERE session_id = ? AND stage != 'deleted'", sessionId);
 		},
 	};
 }

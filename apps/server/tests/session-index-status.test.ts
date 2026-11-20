@@ -54,12 +54,12 @@ describe("会话索引状态", () => {
 	it("无人订阅期间收敛的回合，重订阅水合把遗留 running 回正为 idle", async () => {
 		const { services, sessionId } = await setup();
 		await services.sessions.send(sessionId, { text: "你好" });
-		expect(services.sessionIndex.get(sessionId)?.summary.status).toBe("running");
+		expect((await services.sessionIndex.get(sessionId))?.summary.status).toBe("running");
 		await vi.waitFor(async () => {
 			expect((await services.gateway.getSession(sessionId))?.status).toBe("idle");
 		});
 		await hydrateOnce(services, sessionId);
-		expect(services.sessionIndex.get(sessionId)?.summary.status).toBe("idle");
+		expect((await services.sessionIndex.get(sessionId))?.summary.status).toBe("idle");
 	});
 
 	it("显式归档不被水合覆盖：历史终态 idle 不得改写 archived 行", async () => {
@@ -69,20 +69,20 @@ describe("会话索引状态", () => {
 			expect((await services.gateway.getSession(sessionId))?.status).toBe("idle");
 		});
 		await services.sessions.archive(sessionId);
-		expect(services.sessionIndex.get(sessionId)?.summary.status).toBe("archived");
+		expect((await services.sessionIndex.get(sessionId))?.summary.status).toBe("archived");
 		await hydrateOnce(services, sessionId);
-		expect(services.sessionIndex.get(sessionId)?.summary.status).toBe("archived");
+		expect((await services.sessionIndex.get(sessionId))?.summary.status).toBe("archived");
 	});
 
 	it("列表对账：无人订阅收敛的 running 行，读取时按 Provider 详情回正为 idle", async () => {
 		const { services, sessionId, memberId } = await setup();
 		await services.sessions.send(sessionId, { text: "你好" });
-		expect(services.sessionIndex.get(sessionId)?.summary.status).toBe("running");
+		expect((await services.sessionIndex.get(sessionId))?.summary.status).toBe("running");
 		await vi.waitFor(async () => {
 			expect((await services.gateway.getSession(sessionId))?.status).toBe("idle");
 		});
 		expect(await listedStatus(services, memberId, sessionId)).toBe("idle");
-		expect(services.sessionIndex.get(sessionId)?.summary.status).toBe("idle");
+		expect((await services.sessionIndex.get(sessionId))?.summary.status).toBe("idle");
 	});
 
 	it("无订阅的 fresh running 行在列表读取时立即按 Provider 回正", async () => {
@@ -97,7 +97,7 @@ describe("会话索引状态", () => {
 	it("有活跃订阅时列表不额外探测，状态交给实时事件回写", async () => {
 		const { services, sessionId, memberId } = await setup();
 		await services.sessions.send(sessionId, { text: "你好" });
-		expect(services.sessionIndex.get(sessionId)?.summary.status).toBe("running");
+		expect((await services.sessionIndex.get(sessionId))?.summary.status).toBe("running");
 		const stream = services.sessions.openStream(sessionId, {})[Symbol.asyncIterator]();
 		await stream.next();
 		let probes = 0;
@@ -124,7 +124,7 @@ describe("会话索引状态", () => {
 
 	it("Provider 详情不可查询时静默保留原 running，不误改", async () => {
 		const { services, memberId, db } = await setup();
-		services.sessionIndex.create({ sessionId: "orphan", subjectId: memberId, agentSlug: "assistant" });
+		await services.sessionIndex.create({ sessionId: "orphan", subjectId: memberId, agentSlug: "assistant" });
 		db.prepare("UPDATE kit_sessions SET status = 'running', last_event_at = ? WHERE session_id = ?").run(
 			new Date(Date.now() - 5 * 60_000).toISOString(),
 			"orphan",
@@ -135,7 +135,7 @@ describe("会话索引状态", () => {
 
 	it("对账去重：无上游泵的 running 存量行在同一会话 60 秒内不重复探测", async () => {
 		const { services, memberId, db } = await setup();
-		services.sessionIndex.create({ sessionId: "orphan", subjectId: memberId, agentSlug: "assistant" });
+		await services.sessionIndex.create({ sessionId: "orphan", subjectId: memberId, agentSlug: "assistant" });
 		db.prepare("UPDATE kit_sessions SET status = 'running', last_event_at = ? WHERE session_id = ?").run(
 			new Date(Date.now() - 5 * 60_000).toISOString(),
 			"orphan",
@@ -183,7 +183,7 @@ describe("会话索引状态", () => {
 		};
 		await services.sessions.send(sessionId, { text: "第二轮", clientMessageId: "cm-second" });
 		await vi.waitFor(() => expect(replayed).toBe(true));
-		expect(services.sessionIndex.get(sessionId)?.summary.status).toBe("running");
-		await vi.waitFor(() => expect(services.sessionIndex.get(sessionId)?.summary.status).toBe("idle"));
+		expect((await services.sessionIndex.get(sessionId))?.summary.status).toBe("running");
+		await vi.waitFor(async () => expect((await services.sessionIndex.get(sessionId))?.summary.status).toBe("idle"));
 	});
 });

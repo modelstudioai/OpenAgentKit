@@ -249,6 +249,8 @@ assets/skills/
 
 ## app 内
 
+- JDK 11 与 Node SDK 的跨进程验收 PoC 位于 [apps/server/tests/java-sdk-poc/](../apps/server/tests/java-sdk-poc/README.md)，
+  通过独立 Maven 工程和验收脚本显式运行。工具链、构建产物与实测证据放在 `.scratch/java-sdk-poc/`。
 - 体验页品牌由 console 的 `features/branding/` 经管理端品牌接口维护；server 的
   `store/branding.ts` 保存名称、Logo 配置与上传文件，`routes/branding.ts` 负责权限及公开图片响应隔离。
   Web 的 `lib/branding.ts` 按运行时 API base 拼接上传地址并保留路径前缀。

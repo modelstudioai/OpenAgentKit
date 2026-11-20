@@ -8,6 +8,7 @@ import type { GatewaySessionInfo } from "../src/gateway/types.ts";
 import { createKitServices } from "../src/services/index.ts";
 import { openDatabase } from "../src/store/db.ts";
 import { createMemberStore } from "../src/store/members.ts";
+import { createSqliteDatabase } from "../src/store/sqlite.ts";
 
 const cleanups: (() => void | Promise<void>)[] = [];
 afterEach(async () => {
@@ -43,7 +44,7 @@ async function setup(reuseAcrossTurns = false) {
 	cleanups.push(() => db.close());
 	const services = createKitServices(loadConfig({ KIT_GATEWAY: "mock", KIT_DATA_DIR: directory }), db);
 	const now = new Date().toISOString();
-	createMemberStore(db).create(
+	await createMemberStore(createSqliteDatabase(db)).create(
 		{
 			member_id: "member",
 			username: "member",
@@ -112,7 +113,7 @@ async function setup(reuseAcrossTurns = false) {
 		publish({ event_id: `message-${turn}`, type: "message", role: "user", content: [] });
 		return { event_ids: [`message-${turn}`] };
 	});
-	services.usageLimits.setPolicy(
+	await services.usageLimits.setPolicy(
 		{ monthly_tokens: 10000, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 		"admin",
 	);

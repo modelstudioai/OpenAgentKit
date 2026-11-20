@@ -59,7 +59,7 @@ it("管理员和auditor可读既有候选，未认证和非法来源不可访问
 	const app = createApp(services);
 	const before = await services.gateway.listRemoteSkills("official");
 	expect(before).toContainEqual(expect.objectContaining({ skill_id: "skill_mock_research", available: true }));
-	const audit = services.audit.list();
+	const audit = await services.audit.list();
 	for (const token of ["skill-admin", "skill-auditor"]) {
 		const response = await app.request("/api/admin/remote/skills?source=official", {
 			headers: { authorization: `Bearer ${token}` },
@@ -76,5 +76,5 @@ it("管理员和auditor可读既有候选，未认证和非法来源不可访问
 	).toBe(400);
 	expect(spy).not.toHaveBeenCalled();
 	expect(await services.gateway.listRemoteSkills("official")).toEqual(before);
-	expect(services.audit.list()).toEqual(audit);
+	expect(await services.audit.list()).toEqual(audit);
 });

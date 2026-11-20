@@ -22,7 +22,7 @@ export function registerSessionDirectoryRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		}),
-		(c) => c.json({ data: c.get("services").sessions.listAgents(c.get("identity").subjectId) }, 200),
+		async (c) => c.json({ data: await c.get("services").sessions.listAgents(c.get("identity").subjectId) }, 200),
 	);
 	app.openapi(
 		createRoute({
@@ -42,9 +42,7 @@ export function registerSessionDirectoryRoutes(app: OpenAPIHono<AppEnv>) {
 			const query = c.req.valid("query");
 			const q = query.q?.toLowerCase();
 			const agentSlugs = q
-				? c
-						.get("services")
-						.catalog.list()
+				? (await c.get("services").catalog.list())
 						.filter((agent) => agent.slug.toLowerCase().includes(q) || agent.display_name.toLowerCase().includes(q))
 						.map((agent) => agent.slug)
 				: undefined;

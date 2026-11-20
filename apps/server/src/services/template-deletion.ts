@@ -28,13 +28,13 @@ export function createTemplateDeletionService({
 	gate: ConfirmGate;
 	audit: AuditLog;
 }) {
-	function catalogFor(template: TemplateView): CatalogAgentView | null {
-		return template.listing ? catalog.get(template.listing.catalog_id) : null;
+	async function catalogFor(template: TemplateView): Promise<CatalogAgentView | null> {
+		return template.listing ? await catalog.get(template.listing.catalog_id) : null;
 	}
 	return {
 		async planDelete(templateId: string, subject: string): Promise<PlanResponse> {
-			const template = store.get(templateId);
-			const entry = catalogFor(template);
+			const template = await store.get(templateId);
+			const entry = await catalogFor(template);
 			const planId = `template_delete:${fingerprint(template, entry)}:${randomUUID()}`;
 			const issued = await gate.issue({ planId, action: `templates.delete:${templateId}`, subject });
 			return {
@@ -82,18 +82,18 @@ export function createTemplateDeletionService({
 			}
 			let catalogId: string | undefined;
 			let name = "";
-			store.remove(templateId, (current) => {
-				const entry = catalogFor(current);
+			await store.remove(templateId, async (current) => {
+				const entry = await catalogFor(current);
 				if (fingerprint(current, entry) !== parts[1]) {
 					throw new KitError("conflict", "模版或关联条目已变更，请重试并再次确认删除");
 				}
 				name = current.name;
 				if (entry) {
-					if (!catalog.remove(entry.id)) throw new KitError("conflict", "关联条目已变更，请重试并再次确认删除");
+					if (!(await catalog.remove(entry.id))) throw new KitError("conflict", "关联条目已变更，请重试并再次确认删除");
 					catalogId = entry.id;
 				}
 			});
-			audit.append({
+			await audit.append({
 				subject,
 				action: "templates.delete",
 				target: templateId,

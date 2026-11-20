@@ -1,5 +1,5 @@
-import type { DatabaseSync } from "node:sqlite";
 import { BRANDING_LOGO_PATH, DEFAULT_BRAND_PRODUCT_NAME } from "@openagentkit/sdk/protocol";
+import type { StoreDatabase } from "./database.ts";
 
 export interface BrandingRow {
 	product_name: string;
@@ -25,24 +25,26 @@ function isUploadedLogoUrl(url: string | null, logo: BrandingLogoMeta | null): b
 	return url === suffix || url.endsWith(suffix);
 }
 
-export function createBrandingStore(db: DatabaseSync) {
-	const get = (): BrandingRow => {
-		const row = db
-			.prepare("SELECT product_name, logo_url, updated_at, updated_by FROM kit_branding WHERE id = 1")
-			.get() as BrandingRow | undefined;
+export function createBrandingStore(db: StoreDatabase) {
+	const get = async (): Promise<BrandingRow> => {
+		const row = (await db.get(
+			"SELECT product_name, logo_url, updated_at, updated_by FROM kit_branding WHERE id = 1",
+		)) as BrandingRow | undefined;
 		if (row) return row;
-		db.prepare("INSERT OR IGNORE INTO kit_branding (id, product_name, updated_at) VALUES (1, ?, ?)").run(
+		await db.insertIfAbsent(
+			"INSERT INTO kit_branding (id, product_name, updated_at) VALUES (1, ?, ?)",
+			"id",
 			DEFAULT_BRAND_PRODUCT_NAME,
 			new Date().toISOString(),
 		);
-		return get();
+		return await get();
 	};
-	const clearLogo = () => {
-		db.prepare("DELETE FROM kit_branding_logo WHERE id = 1").run();
+	const clearLogo = async () => {
+		await db.run("DELETE FROM kit_branding_logo WHERE id = 1");
 	};
-	const getLogoMeta = (): BrandingLogoMeta | null => {
+	const getLogoMeta = async (): Promise<BrandingLogoMeta | null> => {
 		return (
-			(db.prepare("SELECT content_type, hash, updated_at FROM kit_branding_logo WHERE id = 1").get() as
+			((await db.get("SELECT content_type, hash, updated_at FROM kit_branding_logo WHERE id = 1")) as
 				| BrandingLogoMeta
 				| undefined) ?? null
 		);
@@ -50,42 +52,62 @@ export function createBrandingStore(db: DatabaseSync) {
 	return {
 		get,
 		getLogoMeta,
-		getLogo(): BrandingLogoRow | null {
+		async getLogo(): Promise<BrandingLogoRow | null> {
 			return (
-				(db.prepare("SELECT content_type, hash, updated_at, bytes FROM kit_branding_logo WHERE id = 1").get() as
+				((await db.get("SELECT content_type, hash, updated_at, bytes FROM kit_branding_logo WHERE id = 1")) as
 					| BrandingLogoRow
 					| undefined) ?? null
 			);
 		},
-		update(input: { productName: string; logoUrl?: string | null; updatedBy: string }): BrandingRow {
-			const now = new Date().toISOString();
-			// 管理端把上传地址解析成绝对 URL 后回传时仍指向当前上传文件：保持二进制，不误清空。
-			if (input.logoUrl === undefined || isUploadedLogoUrl(input.logoUrl, getLogoMeta())) {
-				db.prepare("UPDATE kit_branding SET product_name = ?, updated_at = ?, updated_by = ? WHERE id = 1").run(
-					input.productName,
+		async update(input: { productName: string; logoUrl?: string | null; updatedBy: string }): Promise<BrandingRow> {
+			return db.transaction(async () => {
+				const now = new Date().toISOString();
+				// 管理端把上传地址解析成绝对 URL 后回传时仍指向当前上传文件：保持二进制，不误清空。
+				if (input.logoUrl === undefined || isUploadedLogoUrl(input.logoUrl, await getLogoMeta())) {
+					await db.run(
+						"UPDATE kit_branding SET product_name = ?, updated_at = ?, updated_by = ? WHERE id = 1",
+						input.productName,
+						now,
+						input.updatedBy,
+					);
+				} else {
+					await clearLogo();
+					await db.run(
+						"UPDATE kit_branding SET product_name = ?, logo_url = ?, updated_at = ?, updated_by = ? WHERE id = 1",
+						input.productName,
+						input.logoUrl,
+						now,
+						input.updatedBy,
+					);
+				}
+				return get();
+			});
+		},
+		async saveLogo(input: {
+			contentType: string;
+			bytes: Uint8Array;
+			hash: string;
+			updatedBy: string;
+		}): Promise<BrandingLogoMeta> {
+			return db.transaction(async () => {
+				const now = new Date().toISOString();
+				await db.upsert(
+					`INSERT INTO kit_branding_logo (id, content_type, bytes, hash, updated_at) VALUES (1, ?, ?, ?, ?)`,
+					"id",
+					`content_type = excluded.content_type, bytes = excluded.bytes,
+				   hash = excluded.hash, updated_at = excluded.updated_at`,
+					input.contentType,
+					input.bytes,
+					input.hash,
+					now,
+				);
+				await db.run(
+					"UPDATE kit_branding SET logo_url = NULL, updated_at = ?, updated_by = ? WHERE id = 1",
 					now,
 					input.updatedBy,
 				);
-			} else {
-				clearLogo();
-				db.prepare(
-					"UPDATE kit_branding SET product_name = ?, logo_url = ?, updated_at = ?, updated_by = ? WHERE id = 1",
-				).run(input.productName, input.logoUrl, now, input.updatedBy);
-			}
-			return get();
-		},
-		saveLogo(input: { contentType: string; bytes: Uint8Array; hash: string; updatedBy: string }): BrandingLogoMeta {
-			const now = new Date().toISOString();
-			db.prepare(
-				`INSERT INTO kit_branding_logo (id, content_type, bytes, hash, updated_at) VALUES (1, ?, ?, ?, ?)
-				 ON CONFLICT(id) DO UPDATE SET content_type = excluded.content_type, bytes = excluded.bytes,
-				   hash = excluded.hash, updated_at = excluded.updated_at`,
-			).run(input.contentType, input.bytes, input.hash, now);
-			db.prepare("UPDATE kit_branding SET logo_url = NULL, updated_at = ?, updated_by = ? WHERE id = 1").run(
-				now,
-				input.updatedBy,
-			);
-			return { content_type: input.contentType, hash: input.hash, updated_at: now };
+				return { content_type: input.contentType, hash: input.hash, updated_at: now };
+			});
 		},
 	};
 }

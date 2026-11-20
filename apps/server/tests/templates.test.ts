@@ -102,7 +102,7 @@ describe("已保存模版目录", () => {
 			],
 		});
 		expect(createSession).not.toHaveBeenCalled();
-		expect(services.catalog.all()).toEqual([]);
+		expect(await services.catalog.all()).toEqual([]);
 		expect(db.prepare("SELECT count(*) AS count FROM kit_sessions").get()?.count).toBe(0);
 		const restarted = reopen();
 		vi.spyOn(restarted.services.gateway, "listRemoteAgents").mockRejectedValue(new Error("Provider offline"));
@@ -111,7 +111,7 @@ describe("已保存模版目录", () => {
 		expect(detail.status).toBe(200);
 		expect(await detail.json()).toEqual({ data: template });
 		expect(detail.headers.get("cache-control")).toBe("no-store");
-		const audit = services.audit.list().filter((row) => row.action === "templates.create");
+		const audit = (await services.audit.list()).filter((row) => row.action === "templates.create");
 		expect(audit).toHaveLength(1);
 		expect(audit[0]).toMatchObject({
 			target: template.template_id,
@@ -162,8 +162,8 @@ describe("已保存模版目录", () => {
 		const unlistedEntry = await listTemplate(app, unlisted);
 		const removedEntry = await listTemplate(app, removed);
 		await listTemplate(app, outside);
-		services.catalog.setStatus(unlistedEntry.slug, "unlisted");
-		services.catalog.remove(removedEntry.id);
+		await services.catalog.setStatus(unlistedEntry.slug, "unlisted");
+		await services.catalog.remove(removedEntry.id);
 		vi.spyOn(services.gateway, "listRemoteAgents").mockRejectedValue(new Error("Provider offline"));
 		const search = `search=${encodeURIComponent("筛选_")}`;
 		for (const [status, expected] of [
@@ -183,7 +183,7 @@ describe("已保存模版目录", () => {
 		}
 		expect((await list(app, `?${search}`)).data).toHaveLength(5);
 		expect((await list(app)).data).toHaveLength(6);
-		services.catalog.setStatus(firstEntry.slug, "unlisted");
+		await services.catalog.setStatus(firstEntry.slug, "unlisted");
 		expect((await list(app, `?${search}&status=listed`)).data.map((item) => item.template_id)).toEqual([
 			second.template_id,
 		]);
@@ -203,8 +203,8 @@ describe("已保存模版目录", () => {
 		await listTemplate(app, second);
 		const writingEntry = await listTemplate(app, writing);
 		await listTemplate(app, outside);
-		services.catalog.update(firstEntry.id, { category: "writing" });
-		services.catalog.update(writingEntry.id, { category: "data" });
+		await services.catalog.update(firstEntry.id, { category: "writing" });
+		await services.catalog.update(writingEntry.id, { category: "data" });
 		db.prepare("UPDATE kit_templates SET config_json=json_remove(config_json,'$.category') WHERE template_id=?").run(
 			legacy.template_id,
 		);
@@ -319,6 +319,6 @@ describe("已保存模版目录", () => {
 		vi.spyOn(services.gateway, "listRemoteEnvironments").mockRejectedValue(new Error("Provider offline"));
 		expect((await request(app, "/api/admin/templates", { ...selected, name: "失败模版" })).status).toBe(500);
 		expect((await list(app)).data).toEqual([existing]);
-		expect(services.audit.list().filter((row) => row.action === "templates.create")).toHaveLength(1);
+		expect((await services.audit.list()).filter((row) => row.action === "templates.create")).toHaveLength(1);
 	});
 });

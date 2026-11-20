@@ -61,12 +61,12 @@ export async function withPublicationResult<T>(
 	} catch (error) {
 		const outerSaveFailed = Boolean(attempt.execution) && error !== attempt.failure;
 		if (attempt.execution)
-			feedback?.publication?.(
+			await feedback?.publication?.(
 				publicationReport(outerSaveFailed ? { ...attempt.execution, outcome: "unknown" } : attempt.execution),
 			);
 		throw normalizeFailure(attempt, error, outerSaveFailed);
 	}
-	if (attempt.execution) feedback?.publication?.(publicationReport(attempt.execution));
+	if (attempt.execution) await feedback?.publication?.(publicationReport(attempt.execution));
 	assertCompleted(attempt.execution);
 	return value;
 }

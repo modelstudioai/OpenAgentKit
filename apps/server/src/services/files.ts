@@ -27,26 +27,28 @@ export function createFileService(deps: {
 			const rejection = uploadTypeRejectionReason(input.filename);
 			if (rejection) throw new KitError("invalid_request", rejection);
 			const info = await gateway.uploadFile(input);
-			store.recordUpload(info.file_id, subjectId, purpose);
+			await store.recordUpload(info.file_id, subjectId, purpose);
 			metrics?.count("kit_uploads_total", { gateway: gateway.mode });
 			return info;
 		},
 		/** 在扫描文件、创建 Provider Session 之前拒绝任何非本人上传的附件。 */
-		requireUploads(subjectId: string, attachments: AttachmentRef[], purpose: SessionPurpose = "experience") {
-			if (attachments.some((file) => !store.isUploadedBy(file.file_id, subjectId, purpose))) {
-				throw new KitError("not_found", "文件不存在");
+		async requireUploads(subjectId: string, attachments: AttachmentRef[], purpose: SessionPurpose = "experience") {
+			for (const file of attachments) {
+				if (!(await store.isUploadedBy(file.file_id, subjectId, purpose))) {
+					throw new KitError("not_found", "文件不存在");
+				}
 			}
 		},
 		/** 本人上传附件的扫描状态：available 前绑定会话会被 provider 拒（服务端发送闸门兜底）。 */
 		async status(subjectId: string, fileId: string, purpose: SessionPurpose = "experience") {
-			if (!store.isUploadedBy(fileId, subjectId, purpose)) throw new KitError("not_found", "文件不存在");
+			if (!(await store.isUploadedBy(fileId, subjectId, purpose))) throw new KitError("not_found", "文件不存在");
 			const info = await gateway.fileStatus(fileId);
 			return { file_id: fileId, status: info.status ?? null, available: info.available };
 		},
 		async download(subjectId: string, fileId: string, sessionId?: string, purpose: SessionPurpose = "experience") {
-			if (store.isUploadedBy(fileId, subjectId, purpose)) return gateway.downloadFile(fileId);
+			if (await store.isUploadedBy(fileId, subjectId, purpose)) return gateway.downloadFile(fileId);
 			// Session ID 本身不是文件访问凭据：先确认会话归属，再从 Provider 完整历史验证交付文件。
-			if (!sessionId || !sessionIndex.owns(sessionId, subjectId, purpose)) {
+			if (!sessionId || !(await sessionIndex.owns(sessionId, subjectId, purpose))) {
 				throw new KitError("not_found", "文件不存在");
 			}
 			const events = await readSessionHistory(gateway, sessionId);

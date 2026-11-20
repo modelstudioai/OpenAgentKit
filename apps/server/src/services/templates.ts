@@ -66,15 +66,15 @@ export function createTemplateService({
 		...createTemplateListingService({ store, gateway, audit, catalog, gate }),
 		...createTemplateDeletionService({ store, audit, catalog, gate }),
 		get: store.get,
-		versions: (templateId: string, query: TemplateVersionsQuery) =>
-			store.versions(templateId, validated(TemplateVersionsQuerySchema, query)),
-		version: (templateId: string, version: number) =>
-			store.version(templateId, validated(TemplateVersionViewSchema.shape.version, version)),
-		list: (query: TemplatesQuery) => store.list(validated(TemplatesQuerySchema, query)),
+		versions: async (templateId: string, query: TemplateVersionsQuery) =>
+			await store.versions(templateId, validated(TemplateVersionsQuerySchema, query)),
+		version: async (templateId: string, version: number) =>
+			await store.version(templateId, validated(TemplateVersionViewSchema.shape.version, version)),
+		list: async (query: TemplatesQuery) => await store.list(validated(TemplatesQuerySchema, query)),
 		async create(input: TemplateInput, subject: string) {
 			const config = validated(TemplateInputSchema, input);
-			const template = store.create(await prepareConfig(config));
-			audit.append({
+			const template = await store.create(await prepareConfig(config));
+			await audit.append({
 				subject,
 				action: "templates.create",
 				target: template.template_id,
@@ -84,21 +84,21 @@ export function createTemplateService({
 		},
 		async update(templateId: string, input: TemplateUpdateInput, subject: string) {
 			const { base_version: baseVersion, ...config } = validated(TemplateUpdateInputSchema, input);
-			if (store.get(templateId).version !== baseVersion) {
+			if ((await store.get(templateId)).version !== baseVersion) {
 				throw new KitError("conflict", "模版已有新版本，请刷新后重新编辑");
 			}
 			const prepared = await prepareConfig(config);
-			const template = store.update(templateId, baseVersion, prepared, (current) => {
+			const template = await store.update(templateId, baseVersion, prepared, async (current) => {
 				if (!current.listing) return;
-				const entry = catalog.get(current.listing.catalog_id);
+				const entry = await catalog.get(current.listing.catalog_id);
 				if (!entry) throw new KitError("conflict", "关联的上架条目已变化，请刷新后重试");
-				const updated = catalog.update(
+				const updated = await catalog.update(
 					entry.id,
 					catalogInputFromTemplate(current, entry.slug, current.name.slice(0, 60).trimEnd()),
 				);
 				if (!updated) throw new KitError("conflict", "关联的上架条目已变化，请刷新后重试");
 			});
-			audit.append({
+			await audit.append({
 				subject,
 				action: "templates.update",
 				target: templateId,

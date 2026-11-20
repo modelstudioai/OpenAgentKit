@@ -1,5 +1,5 @@
-import type { DatabaseSync } from "node:sqlite";
 import { type CatalogAgentView, KitError } from "@openagentkit/sdk/protocol";
+import type { StoreDatabase } from "./database.ts";
 
 export interface CatalogRow {
 	id: string;
@@ -116,156 +116,138 @@ function toView(row: CatalogRow): CatalogAgentView {
 	};
 }
 
-export function createCatalogStore(db: DatabaseSync) {
+function writableFields(view: CatalogAgentView) {
 	return {
-		list(): CatalogAgentView[] {
-			const rows = db
-				.prepare("SELECT * FROM catalog_agents ORDER BY ordering ASC, created_at ASC")
-				.all() as unknown as CatalogRow[];
+		slug: view.slug,
+		display_name: view.display_name,
+		description: view.description ?? null,
+		icon: view.icon ?? null,
+		opening_remarks: view.opening_remarks ?? null,
+		suggested_prompts: JSON.stringify(view.suggested_prompts ?? []),
+		capabilities: JSON.stringify(view.capabilities),
+		theme: view.theme ? JSON.stringify(view.theme) : null,
+		remote_agent_id: view.remote_agent_id,
+		remote_agent_version: view.remote_agent_version ?? null,
+		agent_version: view.agent_version ?? null,
+		remote_environment_id: view.remote_environment_id ?? null,
+		files_json: JSON.stringify(view.files ?? []),
+		memory_stores_json: JSON.stringify(view.memory_stores ?? []),
+		vault_ids_json: JSON.stringify(view.vault_ids ?? []),
+		visibility: view.visibility,
+		ordering: view.ordering,
+		category: view.category,
+		featured: view.featured ? 1 : 0,
+		status: view.status,
+		updated_at: view.updated_at,
+	};
+}
+
+export function createCatalogStore(db: StoreDatabase) {
+	return {
+		async list(): Promise<CatalogAgentView[]> {
+			const rows = (await db.all(
+				"SELECT * FROM catalog_agents ORDER BY ordering ASC, created_at ASC",
+			)) as unknown as CatalogRow[];
 			return rows.map(toView);
 		},
-		listed(): CatalogAgentView[] {
-			const rows = db
-				.prepare("SELECT * FROM catalog_agents WHERE status = 'listed' ORDER BY ordering ASC, created_at ASC")
-				.all() as unknown as CatalogRow[];
+		async listed(): Promise<CatalogAgentView[]> {
+			const rows = (await db.all(
+				"SELECT * FROM catalog_agents WHERE status = 'listed' ORDER BY ordering ASC, created_at ASC",
+			)) as unknown as CatalogRow[];
 			return rows.map(toView);
 		},
-		get(id: string): CatalogAgentView | null {
-			const row = db.prepare("SELECT * FROM catalog_agents WHERE id = ?").get(id) as unknown as CatalogRow | undefined;
+		async get(id: string): Promise<CatalogAgentView | null> {
+			const row = (await db.get("SELECT * FROM catalog_agents WHERE id = ?", id)) as unknown as CatalogRow | undefined;
 			return row ? toView(row) : null;
 		},
-		getBySlug(slug: string): CatalogAgentView | null {
-			const row = db.prepare("SELECT * FROM catalog_agents WHERE slug = ?").get(slug) as unknown as
+		async getBySlug(slug: string): Promise<CatalogAgentView | null> {
+			const row = (await db.get("SELECT * FROM catalog_agents WHERE slug = ?", slug)) as unknown as
 				| CatalogRow
 				| undefined;
 			return row ? toView(row) : null;
 		},
-		insert(view: CatalogAgentView) {
-			const { files = [], memory_stores = [], vault_ids = [], agent_version = null } = view;
-			const inserted = db
-				.prepare(
-					`INSERT INTO catalog_agents (id, slug, display_name, description, icon, opening_remarks, suggested_prompts,
-				 capabilities, theme, remote_agent_id, remote_agent_version, agent_version, remote_environment_id, files_json, memory_stores_json, vault_ids_json, visibility, ordering, category, featured, status, created_at, updated_at, listed_at)
-					 SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CASE WHEN ?='listed' THEN ? ELSE NULL END
-					 WHERE NOT EXISTS (SELECT 1 FROM catalog_agents WHERE display_name = ?)
-					 ON CONFLICT(slug) DO NOTHING`,
-				)
-				.run(
-					view.id,
-					view.slug,
-					view.display_name,
-					view.description ?? null,
-					view.icon ?? null,
-					view.opening_remarks ?? null,
-					JSON.stringify(view.suggested_prompts ?? []),
-					JSON.stringify(view.capabilities),
-					view.theme ? JSON.stringify(view.theme) : null,
-					view.remote_agent_id,
-					view.remote_agent_version ?? null,
-					agent_version,
-					view.remote_environment_id ?? null,
-					JSON.stringify(files),
-					JSON.stringify(memory_stores),
-					JSON.stringify(vault_ids),
-					view.visibility,
-					view.ordering,
-					view.category,
-					view.featured ? 1 : 0,
-					view.status,
-					view.created_at,
-					view.updated_at,
-					view.status,
-					new Date().toISOString(),
-					view.display_name,
+		async insert(view: CatalogAgentView) {
+			const row = {
+				id: view.id,
+				...writableFields(view),
+				created_at: view.created_at,
+				listed_at: view.status === "listed" ? new Date().toISOString() : null,
+			};
+			const columns = Object.keys(row);
+			await db.transaction(async () => {
+				if (await this.getBySlug(view.slug)) throw new KitError("conflict", "ID 已存在，请使用其他 ID");
+				if (await db.get("SELECT 1 FROM catalog_agents WHERE display_name = ?", view.display_name))
+					throw new KitError("conflict", "展示名已存在，请使用其他展示名");
+				const inserted = await db.insertIfAbsent(
+					`INSERT INTO catalog_agents (${columns.join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`,
+					"slug",
+					...Object.values(row),
 				);
-			if (!inserted.changes) {
-				throw new KitError(
-					"conflict",
-					this.getBySlug(view.slug) ? "ID 已存在，请使用其他 ID" : "展示名已存在，请使用其他展示名",
-				);
-			}
+				if (!inserted.changes) throw new KitError("conflict", "ID 已存在，请使用其他 ID");
+			});
 		},
-		update(id: string, patch: Partial<CatalogAgentView>) {
-			const current = this.get(id);
-			if (!current) return null;
-			const next: CatalogAgentView = { ...current, ...patch, id, updated_at: new Date().toISOString() };
-			const { remote_environment_id: environmentId = null } = next;
-			const { files = [], memory_stores = [], vault_ids = [], agent_version = null } = next;
-			// 历史同名条目可保留原名修改其他信息；新增名称冲突在同一写语句内拒绝。
-			const updated = db
-				.prepare(
-					`UPDATE catalog_agents SET slug=?, display_name=?, description=?, icon=?, opening_remarks=?, suggested_prompts=?,
-				 capabilities=?, theme=?, remote_agent_id=?, remote_agent_version=?, agent_version=?, remote_environment_id=?, files_json=?, memory_stores_json=?, vault_ids_json=?, visibility=?, ordering=?, category=?, featured=?, status=?, updated_at=?,
-				 listed_at=CASE WHEN status<>'listed' AND ?='listed' THEN ? ELSE listed_at END
-				 WHERE id=? AND (display_name=? OR NOT EXISTS (
-				   SELECT 1 FROM catalog_agents WHERE display_name=? AND id<>?
-				 ))`,
-				)
-				.run(
-					next.slug,
-					next.display_name,
-					next.description ?? null,
-					next.icon ?? null,
-					next.opening_remarks ?? null,
-					JSON.stringify(next.suggested_prompts ?? []),
-					JSON.stringify(next.capabilities),
-					next.theme ? JSON.stringify(next.theme) : null,
-					next.remote_agent_id,
-					next.remote_agent_version ?? null,
-					agent_version,
-					environmentId,
-					JSON.stringify(files),
-					JSON.stringify(memory_stores),
-					JSON.stringify(vault_ids),
-					next.visibility,
-					next.ordering,
-					next.category,
-					next.featured ? 1 : 0,
-					next.status,
-					next.updated_at,
-					next.status,
-					next.updated_at,
-					id,
-					next.display_name,
-					next.display_name,
+		async update(id: string, patch: Partial<CatalogAgentView>) {
+			return db.transaction(async () => {
+				const current = await this.get(id);
+				if (!current) return null;
+				const next: CatalogAgentView = { ...current, ...patch, id, updated_at: new Date().toISOString() };
+				if (
+					current.display_name !== next.display_name &&
+					(await db.get("SELECT 1 FROM catalog_agents WHERE display_name = ? AND id <> ?", next.display_name, id))
+				) {
+					throw new KitError("conflict", "展示名已存在，请使用其他展示名");
+				}
+				const listedAt = current.status !== "listed" && next.status === "listed" ? next.updated_at : null;
+				const row = writableFields(next);
+				const assignments = Object.keys(row)
+					.map((column) => `${column} = ?`)
+					.join(", ");
+				await db.run(
+					`UPDATE catalog_agents SET ${assignments}, listed_at = COALESCE(?, listed_at) WHERE id = ?`,
+					...Object.values(row),
+					listedAt,
 					id,
 				);
-			if (updated.changes) return next;
-			if (!this.get(id)) return null;
-			throw new KitError("conflict", "展示名已存在，请使用其他展示名");
+				return next;
+			});
 		},
-		all(): CatalogAgentView[] {
-			return this.list();
+		async all(): Promise<CatalogAgentView[]> {
+			return await this.list();
 		},
 		/** 仅创建新条目；数据库写入原子拒绝重复 ID 或展示名，不覆盖已有条目。 */
-		create(input: CatalogEntryInput): CatalogAgentView {
+		async create(input: CatalogEntryInput): Promise<CatalogAgentView> {
 			const view = newEntry(input);
-			this.insert(view);
+			await this.insert(view);
 			return view;
 		},
 		/**
 		 * 创建条目，或按 slug 更新已存在条目的展示信息。
 		 * **status 不在这里改**：上/下架必须走 plan → 确认令牌（AGENTS.md 红线）。
 		 */
-		upsert(input: CatalogEntryInput) {
-			const { slug, ...display } = input;
-			const existing = this.getBySlug(slug);
-			if (existing) return this.update(existing.id, definedOnly(display)) as CatalogAgentView;
-			return this.create(input);
+		async upsert(input: CatalogEntryInput) {
+			return db.transaction(async () => {
+				const { slug, ...display } = input;
+				const existing = await this.getBySlug(slug);
+				if (existing) return (await this.update(existing.id, definedOnly(display))) as CatalogAgentView;
+				return this.create(input);
+			});
 		},
 		/** 按 slug 改展示信息（PUT /api/admin/agents/:slug）；不存在返回 null。 */
-		updateBySlug(slug: string, patch: Partial<Omit<CatalogEntryInput, "slug">>): CatalogAgentView | null {
-			const existing = this.getBySlug(slug);
+		async updateBySlug(
+			slug: string,
+			patch: Partial<Omit<CatalogEntryInput, "slug">>,
+		): Promise<CatalogAgentView | null> {
+			const existing = await this.getBySlug(slug);
 			if (!existing) return null;
-			return this.update(existing.id, definedOnly(patch));
+			return await this.update(existing.id, definedOnly(patch));
 		},
-		setStatus(slug: string, status: "listed" | "unlisted") {
-			const existing = this.getBySlug(slug);
+		async setStatus(slug: string, status: "listed" | "unlisted") {
+			const existing = await this.getBySlug(slug);
 			if (!existing) return null;
-			return this.update(existing.id, { status });
+			return await this.update(existing.id, { status });
 		},
-		remove(id: string): boolean {
-			const result = db.prepare("DELETE FROM catalog_agents WHERE id = ?").run(id);
+		async remove(id: string): Promise<boolean> {
+			const result = await db.run("DELETE FROM catalog_agents WHERE id = ?", id);
 			return result.changes > 0;
 		},
 	};

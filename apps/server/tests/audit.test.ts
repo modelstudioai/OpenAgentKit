@@ -100,7 +100,7 @@ describe("操作日志", () => {
 			"catalog.plan",
 			"unknown.action",
 		])
-			services.audit.append({ subject: "fixture", action, target: "excluded" });
+			await services.audit.append({ subject: "fixture", action, target: "excluded" });
 		expect(db.prepare("SELECT count(*) AS total FROM kit_audit").get()?.total).toBe(5);
 		const logs = AuditLogsPageSchema.parse(await (await request("/api/admin/audit")).json());
 		expect(logs.data.map((row) => row.action)).toEqual([
@@ -186,7 +186,7 @@ describe("操作日志", () => {
 		const { data: other } = (await created.json()) as { data: TemplateView };
 		historical("member_test", "member.auth.login", "member_test");
 		historical(null, "templates.create", "unattributed");
-		expect(services.audit.list()).toHaveLength(4);
+		expect(await services.audit.list()).toHaveLength(4);
 		const foreign = AuditLogsPageSchema.parse(
 			await (await app.request("/api/admin/audit", { headers: otherHeaders })).json(),
 		);

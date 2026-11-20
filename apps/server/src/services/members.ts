@@ -29,15 +29,15 @@ function generatePassword(username: string): string {
 
 export function createMemberService({ store, audit }: { store: MemberStore; audit: AuditLog }) {
 	return {
-		get(memberId: string) {
-			const member = store.findById(memberId);
+		async get(memberId: string) {
+			const member = await store.findById(memberId);
 			if (!member) throw new KitError("not_found", "成员不存在");
 			return member;
 		},
-		list(input: MembersQuery) {
+		async list(input: MembersQuery) {
 			const parsed = MembersQuerySchema.safeParse(input);
 			if (!parsed.success) throw new KitError("invalid_request", "成员查询参数无效");
-			return store.list(parsed.data);
+			return await store.list(parsed.data);
 		},
 		async create(input: CreateMemberRequest, subject: string): Promise<CreateMemberResponse["data"]> {
 			// 服务入口也校验，避免非 HTTP 调用绕过密码规则；异常不能携带原始输入。
@@ -47,7 +47,7 @@ export function createMemberService({ store, audit }: { store: MemberStore; audi
 			const password = value.password_mode === "auto" ? generatePassword(value.username) : value.password;
 			const passwordHash = await hashPassword(password);
 			const now = new Date().toISOString();
-			const member = store.create(
+			const member = await store.create(
 				{
 					member_id: `member_${randomUUID()}`,
 					username: value.username,
@@ -60,7 +60,7 @@ export function createMemberService({ store, audit }: { store: MemberStore; audi
 				},
 				passwordHash,
 			);
-			audit.append({ subject, action: "members.create", target: member.member_id });
+			await audit.append({ subject, action: "members.create", target: member.member_id });
 			return { member, ...(value.password_mode === "auto" ? { initial_password: password } : {}) };
 		},
 	};

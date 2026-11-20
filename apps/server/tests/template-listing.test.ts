@@ -82,9 +82,9 @@ describe("模版上架", () => {
 		const createSession = vi.spyOn(services.gateway, "createSession");
 		const prepared = await plan(template);
 		expect(prepared.diff.map((entry) => entry.action)).toEqual(["create", "update"]);
-		expect(services.catalog.all()).toEqual([]);
+		expect(await services.catalog.all()).toEqual([]);
 		expect(db.prepare("SELECT count(*) AS count FROM kit_template_listings").get()?.count).toBe(0);
-		expect(services.audit.list().filter((row) => row.action === "templates.listing")).toEqual([]);
+		expect((await services.audit.list()).filter((row) => row.action === "templates.listing")).toEqual([]);
 		const response = await listing(template, confirmed(prepared));
 		expect(response.status, await response.clone().text()).toBe(200);
 		const { data: entry } = (await response.json()) as { data: CatalogAgentView };
@@ -108,15 +108,15 @@ describe("模版上架", () => {
 		expect(await publicCatalog.json()).toMatchObject({ data: [{ slug: entry.slug }] });
 		const restarted = reopen();
 		vi.spyOn(restarted.services.gateway, "listRemoteAgents").mockRejectedValue(new Error("offline"));
-		expect(restarted.services.templates.get(template.template_id).listing).toEqual({
+		expect((await restarted.services.templates.get(template.template_id)).listing).toEqual({
 			catalog_id: entry.id,
 			slug: entry.slug,
 			display_name: entry.display_name,
 			status: "listed",
 			listed_at: entry.updated_at,
 		});
-		expect(restarted.services.templates.list({ limit: 10 }).data[0]?.listing?.status).toBe("listed");
-		expect(services.audit.list().find((row) => row.action === "templates.listing")).toMatchObject({
+		expect((await restarted.services.templates.list({ limit: 10 })).data[0]?.listing?.status).toBe("listed");
+		expect((await services.audit.list()).find((row) => row.action === "templates.listing")).toMatchObject({
 			subject: expect.stringMatching(/^admin:admin:[0-9a-f]{8}$/),
 			target: template.template_id,
 			detail: JSON.stringify({ name: entry.display_name, catalog_id: entry.id }),
@@ -132,20 +132,20 @@ describe("模版上架", () => {
 		const { save, plan, listing, services, reopen } = setup();
 		const template = await save();
 		const prepared = await plan(template);
-		expect(services.templates.get(template.template_id).listing).toBeUndefined();
+		expect((await services.templates.get(template.template_id)).listing).toBeUndefined();
 		expect((await listing(template, confirmed(prepared))).status).toBe(200);
-		const entry = services.catalog.all()[0]!;
-		expect(services.templates.get(template.template_id).listing?.listed_at).toBe(first);
+		const entry = (await services.catalog.all())[0]!;
+		expect((await services.templates.get(template.template_id)).listing?.listed_at).toBe(first);
 		vi.setSystemTime("2026-11-02T01:01:00.000Z");
 		await services.templates.update(
 			template.template_id,
 			{ ...selected, name: template.name, description: "编辑模版", base_version: template.version },
 			"admin:test",
 		);
-		services.catalog.setStatus(entry.slug, "listed");
-		expect(services.templates.get(template.template_id).listing?.listed_at).toBe(first);
-		services.catalog.setStatus(entry.slug, "unlisted");
-		expect(services.templates.get(template.template_id).listing).toMatchObject({
+		await services.catalog.setStatus(entry.slug, "listed");
+		expect((await services.templates.get(template.template_id)).listing?.listed_at).toBe(first);
+		await services.catalog.setStatus(entry.slug, "unlisted");
+		expect((await services.templates.get(template.template_id)).listing).toMatchObject({
 			status: "unlisted",
 			listed_at: first,
 		});
@@ -157,7 +157,7 @@ describe("模版上架", () => {
 		});
 		expect(response.status).toBe(200);
 		expect(await response.json()).toMatchObject({ data: [{ listing: { status: "listed", listed_at: second } }] });
-		expect(restarted.services.templates.get(template.template_id).listing?.listed_at).toBe(second);
+		expect((await restarted.services.templates.get(template.template_id)).listing?.listed_at).toBe(second);
 	});
 
 	it("旧目录迁移保留上架状态与配置，不把创建或更新时间补作上架时间", async () => {
@@ -167,11 +167,11 @@ describe("模版上架", () => {
 		db.exec(`ALTER TABLE catalog_agents DROP COLUMN listed_at;
 			DELETE FROM _kit_migrations WHERE id='023_catalog_listed_at';`);
 		const restarted = reopen();
-		const migrated = restarted.services.templates.get(template.template_id);
+		const migrated = await restarted.services.templates.get(template.template_id);
 		expect(migrated).toMatchObject({ ...template, listing: { status: "listed" } });
 		expect(migrated.listing?.listed_at).toBeUndefined();
-		expect(restarted.services.catalog.all()[0]?.status).toBe("listed");
-		expect(reopen().services.templates.get(template.template_id)).toEqual(migrated);
+		expect((await restarted.services.catalog.all())[0]?.status).toBe("listed");
+		expect(await reopen().services.templates.get(template.template_id)).toEqual(migrated);
 	});
 
 	// 确认必须绑定主体、模版和展示名称；缺失、伪造、错用和重放均不得产生目录写入。
@@ -187,11 +187,11 @@ describe("模版上架", () => {
 		expect((await listing(template, confirmed(prepared), "other-admin")).status).toBe(428);
 		expect((await listing(other, confirmed(prepared))).status).toBe(428);
 		expect((await listing(template, confirmed(prepared, "未确认的名称"))).status).toBe(409);
-		expect(services.catalog.all()).toEqual([]);
+		expect(await services.catalog.all()).toEqual([]);
 		const finalPlan = await plan(template);
 		expect((await listing(template, confirmed(finalPlan))).status).toBe(200);
 		expect((await listing(template, confirmed(finalPlan))).status).toBe(428);
-		expect(services.catalog.all()).toHaveLength(1);
+		expect(await services.catalog.all()).toHaveLength(1);
 	});
 
 	// 同一模版只对应一个条目；重新上架同步模版字段，保留目录运营信息，并拒绝覆盖计划之后的编辑。
@@ -201,13 +201,13 @@ describe("模版上架", () => {
 		const plans = await Promise.all([plan(template), plan(template)]);
 		const responses = await Promise.all(plans.map((prepared) => listing(template, confirmed(prepared))));
 		expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
-		const initial = services.catalog.all()[0];
+		const initial = (await services.catalog.all())[0];
 		expect(initial).toBeDefined();
 		if (!initial) throw new Error("Missing catalog entry");
 		expect(
 			(await post(`/api/admin/templates/${template.template_id}/listing/plan`, { display_name: "项目助手" })).status,
 		).toBe(409);
-		services.catalog.update(initial.id, {
+		await services.catalog.update(initial.id, {
 			status: "unlisted",
 			description: "条目中修改的描述",
 			remote_environment_id: "env_mock_default",
@@ -218,13 +218,13 @@ describe("模版上架", () => {
 		});
 		const stale = await plan(template);
 		expect(stale.diff[0]?.summary).toContain("覆盖现有条目");
-		services.catalog.update(initial.id, { ordering: 4 });
+		await services.catalog.update(initial.id, { ordering: 4 });
 		expect((await listing(template, confirmed(stale))).status).toBe(409);
-		expect(services.catalog.get(initial.id)).toMatchObject({ status: "unlisted", ordering: 4 });
+		expect(await services.catalog.get(initial.id)).toMatchObject({ status: "unlisted", ordering: 4 });
 		const fresh = await plan(template);
 		expect((await listing(template, confirmed(fresh))).status).toBe(200);
-		expect(services.catalog.all()).toHaveLength(1);
-		expect(services.catalog.get(initial.id)).toMatchObject({
+		expect(await services.catalog.all()).toHaveLength(1);
+		expect(await services.catalog.get(initial.id)).toMatchObject({
 			id: initial.id,
 			...selected,
 			status: "listed",
@@ -232,39 +232,39 @@ describe("模版上架", () => {
 			ordering: 4,
 			featured: true,
 		});
-		expect(services.catalog.get(initial.id)?.description).toBeUndefined();
-		expect(services.catalog.get(initial.id)?.remote_agent_version).toBeUndefined();
+		expect((await services.catalog.get(initial.id))?.description).toBeUndefined();
+		expect((await services.catalog.get(initial.id))?.remote_agent_version).toBeUndefined();
 	});
 
 	// 真实存在的占用条目必须保持不变；删除后的关联不误认同 slug 的外来条目。
 	it("删除条目清除关联，名称或稳定 ID 冲突不会覆盖其他条目", async () => {
 		const { services, save, plan, listing, post, db } = setup();
 		const template = await save();
-		const foreign = services.catalog.create({
+		const foreign = await services.catalog.create({
 			slug: "another-agent",
 			display_name: "项目助手",
 			remote_agent_id: "foreign-agent",
 		});
 		const path = `/api/admin/templates/${template.template_id}/listing/plan`;
 		expect((await post(path, { display_name: "项目助手" })).status).toBe(409);
-		expect(services.catalog.get(foreign.id)).toEqual(foreign);
-		services.catalog.remove(foreign.id);
+		expect(await services.catalog.get(foreign.id)).toEqual(foreign);
+		await services.catalog.remove(foreign.id);
 		expect((await listing(template, confirmed(await plan(template)))).status).toBe(200);
-		const catalogId = services.templates.get(template.template_id).listing?.catalog_id;
+		const catalogId = (await services.templates.get(template.template_id)).listing?.catalog_id;
 		if (!catalogId) throw new Error("Missing catalog link");
-		services.catalog.remove(catalogId);
-		expect(services.templates.get(template.template_id).listing).toBeUndefined();
+		await services.catalog.remove(catalogId);
+		expect((await services.templates.get(template.template_id)).listing).toBeUndefined();
 		expect(db.prepare("SELECT count(*) AS count FROM kit_template_listings").get()?.count).toBe(0);
-		const occupied = services.catalog.create({
+		const occupied = await services.catalog.create({
 			slug: template.template_id,
 			display_name: "别的条目",
 			remote_agent_id: "foreign-agent",
 		});
 		expect((await post(path, { display_name: "项目助手" })).status).toBe(409);
-		expect(services.catalog.get(occupied.id)).toEqual(occupied);
-		services.catalog.remove(occupied.id);
+		expect(await services.catalog.get(occupied.id)).toEqual(occupied);
+		await services.catalog.remove(occupied.id);
 		expect((await listing(template, confirmed(await plan(template)))).status).toBe(200);
-		expect(services.templates.get(template.template_id).listing?.catalog_id).not.toBe(catalogId);
+		expect((await services.templates.get(template.template_id)).listing?.catalog_id).not.toBe(catalogId);
 	});
 
 	// Provider 引用可能在计划后消失；确认前必须重新验证，每一种资源失效都保持零目录写入。
@@ -285,7 +285,7 @@ describe("模版上架", () => {
 			if (resource === "memory") vi.spyOn(services.gateway, "getRemoteMemoryStore").mockResolvedValue(null);
 			if (resource === "vault") vi.spyOn(services.gateway, "getRemoteVault").mockResolvedValue(null);
 			expect((await listing(template, confirmed(prepared))).status).toBe(400);
-			expect(services.catalog.all()).toEqual([]);
+			expect(await services.catalog.all()).toEqual([]);
 			expect(db.prepare("SELECT count(*) AS count FROM kit_template_listings").get()?.count).toBe(0);
 		},
 	);
@@ -299,8 +299,8 @@ describe("模版上架", () => {
 			throw new Error("write failed");
 		});
 		expect((await listing(template, confirmed(prepared))).status).toBe(500);
-		expect(services.catalog.all()).toEqual([]);
+		expect(await services.catalog.all()).toEqual([]);
 		expect(db.prepare("SELECT count(*) AS count FROM kit_template_listings").get()?.count).toBe(0);
-		expect(services.audit.list().filter((row) => row.action === "templates.listing")).toEqual([]);
+		expect((await services.audit.list()).filter((row) => row.action === "templates.listing")).toEqual([]);
 	});
 });

@@ -6,6 +6,8 @@ import {
 	DeclarationWriteSchema,
 	encodeFrame,
 	KitError,
+	type OperationProgress,
+	type OperationView,
 	OperationViewSchema,
 	ProjectPlanSchema,
 	ResourceDraftDeclarationSchema,
@@ -289,48 +291,43 @@ export function registerDraftResourceRoutes(app: OpenAPIHono<AppEnv>) {
 			requireAdmin(c, c.get("services").config);
 			const operationId = c.req.param("operationId");
 			const operations = c.get("services").operations;
-			if (!operations.get(operationId)) throw new KitError("not_found", "operation 不存在");
+			if (!(await operations.get(operationId))) throw new KitError("not_found", "operation 不存在");
 			return streamSSE(c, async (stream) => {
-				const isTerminal = (view: { status: string } | null) =>
-					view !== null && (view.status === "succeeded" || view.status === "failed" || view.status === "cancelled");
-				const writeFrame = (view: unknown) => stream.write(encodeFrame({ type: "operation", data: view as never }));
-				await new Promise<void>((resolve) => {
-					let unsubscribe: (() => void) | null = null;
-					const settle = async (view: unknown) => {
-						await writeFrame(view);
-						await stream.write(
-							encodeFrame({
-								type: "done",
-								data: {
-									session_id: operationId,
-									status: (view as { status: string }).status,
-									last_event_id: null,
-									reason: "operation_closed",
-								},
-							}),
-						);
-						unsubscribe?.();
-						resolve();
-					};
-					const current = operations.get(operationId);
-					if (isTerminal(current)) {
-						void settle(current);
-						return;
-					}
-					void writeFrame(current);
-					unsubscribe = operations.subscribe(operationId, (view) => {
-						if (isTerminal(view)) void settle(view);
-						else void writeFrame(view);
+				const signal = c.req.raw.signal;
+				let unsubscribe: (() => void) | undefined;
+				let onAbort: (() => void) | undefined;
+				try {
+					await new Promise<void>((resolve, reject) => {
+						let terminal = false;
+						const publish = async (view: OperationView) => {
+							if (terminal || signal.aborted) return;
+							const done = ["succeeded", "failed", "cancelled"].includes(view.status);
+							terminal = done;
+							await stream.write(encodeFrame({ type: "operation", data: view as OperationProgress }));
+							if (done) {
+								await stream.write(
+									encodeFrame({
+										type: "done",
+										data: {
+											session_id: operationId,
+											status: view.status,
+											last_event_id: null,
+											reason: "operation_closed",
+										},
+									}),
+								);
+								resolve();
+							}
+						};
+						unsubscribe = operations.subscribe(operationId, (view) => void publish(view).catch(reject), reject);
+						onAbort = resolve;
+						signal.addEventListener("abort", onAbort, { once: true });
+						if (signal.aborted) return resolve();
 					});
-					c.req.raw.signal.addEventListener(
-						"abort",
-						() => {
-							unsubscribe?.();
-							resolve();
-						},
-						{ once: true },
-					);
-				});
+				} finally {
+					unsubscribe?.();
+					if (onAbort) signal.removeEventListener("abort", onAbort);
+				}
 			});
 		},
 	);
@@ -345,8 +342,8 @@ export function registerDraftResourceRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		}),
-		(c) => {
-			const view = c.get("services").operations.get(c.req.param("operationId"));
+		async (c) => {
+			const view = await c.get("services").operations.get(c.req.param("operationId"));
 			if (!view) return c.json({ error: { code: "not_found", message: "operation 不存在" } }, 404);
 			return c.json({ data: view }, 200);
 		},

@@ -30,7 +30,7 @@ const asAdmin = { authorization: "Bearer admin-token", ...json };
 describe("管理端角色分离（admin / auditor）", () => {
 	it("auditor 可读、不可写；未知令牌 403；缺令牌 401", async () => {
 		const { app, services } = makeApp({ KIT_ADMIN_TOKENS: "audit-token:auditor" });
-		services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
+		await services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
 
 		const auditor = { authorization: "Bearer audit-token", ...json };
 		expect((await app.request("/api/admin/agents", { headers: auditor })).status).toBe(200);
@@ -88,7 +88,7 @@ describe("管理端角色分离（admin / auditor）", () => {
 
 	it("审计主体是令牌指纹，不含令牌原文", async () => {
 		const { app, services } = makeApp({ KIT_ADMIN_TOKENS: "audit-token:admin" });
-		services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
+		await services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
 		const updated = await app.request("/api/admin/agents/assistant", {
 			method: "PUT",
 			headers: { ...json, authorization: "Bearer audit-token" },
@@ -152,8 +152,8 @@ describe("限流与请求体上限", () => {
 describe("附件扫描闸门", () => {
 	it("未就绪 → 409 conflict 且 retryable；就绪后 → 201", async () => {
 		const strict = makeApp({ KIT_MOCK_FILE_SCAN_DELAY_MS: "400", KIT_FILE_SCAN_TIMEOUT_MS: "50" });
-		strict.services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
-		strict.services.catalog.setStatus("assistant", "listed");
+		await strict.services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
+		await strict.services.catalog.setStatus("assistant", "listed");
 		const cookie = "kit_subject=scan";
 		const form = new FormData();
 		form.append("file", new Blob([new Uint8Array([1, 2, 3])], { type: "application/octet-stream" }), "a.txt");
@@ -172,8 +172,8 @@ describe("附件扫描闸门", () => {
 		expect(conflict.error.message).toContain("附件仍在处理中");
 
 		const patient = makeApp({ KIT_MOCK_FILE_SCAN_DELAY_MS: "200", KIT_FILE_SCAN_TIMEOUT_MS: "3000" });
-		patient.services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
-		patient.services.catalog.setStatus("assistant", "listed");
+		await patient.services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
+		await patient.services.catalog.setStatus("assistant", "listed");
 		const form2 = new FormData();
 		form2.append("file", new Blob([new Uint8Array([1, 2, 3])], { type: "application/octet-stream" }), "a.txt");
 		const uploaded2 = await patient.app.request("/api/kit/files", { method: "POST", headers: { cookie }, body: form2 });
@@ -190,8 +190,8 @@ describe("附件扫描闸门", () => {
 describe("指标暴露", () => {
 	it("GET /api/admin/metrics 输出 Prometheus 文本，含请求/限流/会话计数", async () => {
 		const { app, services } = makeApp({ KIT_RATE_LIMIT_RPS: "1000", KIT_RATE_LIMIT_BURST: "1000" });
-		services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
-		services.catalog.setStatus("assistant", "listed");
+		await services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
+		await services.catalog.setStatus("assistant", "listed");
 		await app.request("/api/kit/agents");
 		await app.request("/api/kit/sessions", {
 			method: "POST",
@@ -212,14 +212,14 @@ describe("指标暴露", () => {
 });
 
 /** 播种一个未上架条目（多个用例共用）。 */
-function seed(_app: ReturnType<typeof makeApp>["app"], services: ReturnType<typeof makeApp>["services"]) {
-	services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
+async function seed(_app: ReturnType<typeof makeApp>["app"], services: ReturnType<typeof makeApp>["services"]) {
+	await services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
 }
 
 describe("上下架确认闸门（AGENTS.md 红线：上下架必须 plan → 确认）", () => {
 	it("缺令牌 400 / 伪造令牌 428 / plan+令牌 200 / 令牌重放 428", async () => {
 		const { app, services } = makeApp();
-		seed(app, services);
+		await seed(app, services);
 
 		const noToken = await app.request("/api/admin/agents/assistant", {
 			method: "PATCH",
@@ -269,7 +269,7 @@ describe("上下架确认闸门（AGENTS.md 红线：上下架必须 plan → �
 
 	it("同一条目可反复上/下架：plan id 每次唯一，第二次不被误判为重放", async () => {
 		const { app, services } = makeApp();
-		seed(app, services);
+		await seed(app, services);
 		const flip = async (status: "listed" | "unlisted") => {
 			const planRes = await app.request("/api/admin/agents/assistant/plan", {
 				method: "POST",
@@ -312,7 +312,7 @@ describe("上架条目：展示信息编辑与删除闸门", () => {
 
 	it("PUT 改展示信息不需要令牌，但改不了 status；数据面立刻同步", async () => {
 		const { app, services } = makeApp();
-		seed(app, services);
+		await seed(app, services);
 		await listEntry(app);
 
 		const updated = await app.request("/api/admin/agents/assistant", {
@@ -343,7 +343,7 @@ describe("上架条目：展示信息编辑与删除闸门", () => {
 
 	it("删除条目必须 plan(action=delete) → 确认：缺令牌 400 / 伪造 428 / 有效 200 / 重放 428", async () => {
 		const { app, services } = makeApp();
-		seed(app, services);
+		await seed(app, services);
 
 		expect(
 			(
@@ -400,7 +400,7 @@ describe("上架条目：展示信息编辑与删除闸门", () => {
 
 	it("auditor 只读：PUT/DELETE 上架条目一律 403", async () => {
 		const { app, services } = makeApp({ KIT_ADMIN_TOKENS: "audit-token:auditor" });
-		services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
+		await services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
 		const auditor = { authorization: "Bearer audit-token", ...json };
 
 		const put = await app.request("/api/admin/agents/assistant", {

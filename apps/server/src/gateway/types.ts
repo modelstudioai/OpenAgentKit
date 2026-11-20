@@ -116,7 +116,7 @@ export interface ProjectExecutionPlan {
 export interface ProjectFeedback {
 	log(line: string): void;
 	progress(value: number, phase?: string): void;
-	publication?(report: PublicationReport): void;
+	publication?(report: PublicationReport): void | Promise<void>;
 }
 export interface PlanDiffEntry {
 	resource: string;

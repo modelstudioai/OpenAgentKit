@@ -40,18 +40,20 @@ export function registerMemberRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		}),
-		(c) => {
+		async (c) => {
 			const { members, memberUsage, groups } = c.get("services");
-			const page = members.list(c.req.valid("query"));
-			const groupSummaries = groups.summaries(page.data.map((member) => member.member_id));
+			const page = await members.list(c.req.valid("query"));
+			const groupSummaries = await groups.summaries(page.data.map((member) => member.member_id));
 			return c.json(
 				{
 					...page,
-					data: page.data.map((member) => ({
-						...member,
-						groups: groupSummaries.get(member.member_id) ?? [],
-						usage_summary: memberUsage.summary(member.member_id),
-					})),
+					data: await Promise.all(
+						page.data.map(async (member) => ({
+							...member,
+							groups: groupSummaries.get(member.member_id) ?? [],
+							usage_summary: await memberUsage.summary(member.member_id),
+						})),
+					),
 				},
 				200,
 			);
@@ -104,7 +106,7 @@ export function registerMemberRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		}),
-		(c) => c.json({ data: c.get("services").members.get(c.req.valid("param").memberId) }, 200),
+		async (c) => c.json({ data: await c.get("services").members.get(c.req.valid("param").memberId) }, 200),
 	);
 	app.openapi(
 		createRoute({
@@ -120,8 +122,11 @@ export function registerMemberRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		}),
-		(c) =>
-			c.json({ data: c.get("services").memberUsage.summary(c.req.valid("param").memberId, c.req.valid("query")) }, 200),
+		async (c) =>
+			c.json(
+				{ data: await c.get("services").memberUsage.summary(c.req.valid("param").memberId, c.req.valid("query")) },
+				200,
+			),
 	);
 	app.openapi(
 		createRoute({
@@ -137,6 +142,7 @@ export function registerMemberRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		}),
-		(c) => c.json(c.get("services").memberUsage.list(c.req.valid("param").memberId, c.req.valid("query")), 200),
+		async (c) =>
+			c.json(await c.get("services").memberUsage.list(c.req.valid("param").memberId, c.req.valid("query")), 200),
 	);
 }

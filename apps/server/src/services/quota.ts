@@ -43,8 +43,6 @@ export interface QuotaServiceDeps {
 	catalog: CatalogStore;
 	sessionIndex: SessionIndex;
 	audit: AuditLog;
-	/** `KIT_QUOTA_DEFAULT_MONTHLY`：仅在政策行从未被人工改过时生效（避免覆盖管理员意图）。 */
-	defaultMonthly?: number;
 }
 
 export interface QuotaState {
@@ -127,21 +125,14 @@ function assertReviewInput(input: { action: "approve" | "reject"; mode?: "overri
 export function createQuotaService(deps: QuotaServiceDeps) {
 	const { store, catalog, sessionIndex, audit } = deps;
 
-	if (deps.defaultMonthly != null) {
-		const policy = store.getPolicy();
-		if (policy.updated_at == null && policy.monthly_credits !== deps.defaultMonthly) {
-			store.setPolicy(deps.defaultMonthly, "config");
-		}
-	}
-
-	function stateFor(subjectId: string, now = new Date()): QuotaState {
+	async function stateFor(subjectId: string, now = new Date()): Promise<QuotaState> {
 		const month = monthKey(now);
-		const policy = store.getPolicy();
-		const override = store.getOverride(subjectId);
+		const policy = await store.getPolicy();
+		const override = await store.getOverride(subjectId);
 		const limit = override?.monthly_credits ?? policy.monthly_credits;
-		const packs = store.listPacks(subjectId, month).map(packView);
+		const packs = (await store.listPacks(subjectId, month)).map(packView);
 		const packTotal = packs.reduce((sum, p) => sum + p.credits, 0);
-		const used = store.usedForMonth(subjectId, month);
+		const used = await store.usedForMonth(subjectId, month);
 		const unlimited = limit === -1;
 		return {
 			month,
@@ -157,14 +148,14 @@ export function createQuotaService(deps: QuotaServiceDeps) {
 	}
 
 	/** 审批通过的副作用：override=覆盖长期上限；pack=当月加油包（月底失效）。 */
-	function applyApproval(
+	async function applyApproval(
 		current: { id: string; subject_id: string },
 		mode: "override" | "pack",
 		granted: number,
 		by: string,
 	) {
 		if (mode === "override") {
-			store.setOverride({
+			await store.setOverride({
 				subjectId: current.subject_id,
 				monthlyCredits: granted,
 				reason: `批准申请 ${current.id}`,
@@ -172,7 +163,7 @@ export function createQuotaService(deps: QuotaServiceDeps) {
 			});
 			return;
 		}
-		store.addPack({
+		await store.addPack({
 			id: `qp_${randomUUID().slice(0, 8)}`,
 			subjectId: current.subject_id,
 			month: monthKey(new Date()),
@@ -182,20 +173,20 @@ export function createQuotaService(deps: QuotaServiceDeps) {
 		});
 	}
 
-	function finalizeReview(
+	async function finalizeReview(
 		id: string,
 		input: { action: "approve" | "reject"; mode?: "override" | "pack"; note?: string },
 		granted: number,
 		by: string,
-	): QuotaRequestView {
-		const row = store.reviewRequest({
+	): Promise<QuotaRequestView> {
+		const row = await store.reviewRequest({
 			id,
 			status: input.action === "approve" ? "approved" : "rejected",
 			...(input.action === "approve" ? { mode: input.mode, grantedCredits: granted } : {}),
 			...(input.note ? { note: input.note } : {}),
 			by,
 		});
-		audit.append({
+		await audit.append({
 			subject: by,
 			action: `quota.request.${input.action}`,
 			target: id,
@@ -214,52 +205,54 @@ export function createQuotaService(deps: QuotaServiceDeps) {
 		 * send 受理点扣费：先挡超限（403 `quota_exceeded`，不写账本），再幂等插账本。
 		 * 带 `client_message_id` 的重放（同 turn 重试）不重复扣、也不因已耗尽而误拒。
 		 */
-		chargeTurn(input: {
+		async chargeTurn(input: {
 			subjectId: string;
 			agentSlug: string;
 			sessionId: string;
 			clientMessageId?: string;
 			enforceLimit?: boolean;
 		}) {
-			const now = new Date();
-			if (input.clientMessageId && store.turnExists(input.sessionId, input.clientMessageId)) return;
-			const state = stateFor(input.subjectId, now);
-			if (input.enforceLimit !== false && !state.unlimited && state.remaining < 1) {
-				throw new KitError(
-					"quota_exceeded",
-					`本月 Credits 已用完（${state.used}/${state.limit}），可到「我的用量」申请提额，或等待 ${state.reset_at.slice(0, 10)} 重置`,
-					{
-						details: {
-							month: state.month,
-							limit: state.limit,
-							used: state.used,
-							remaining: state.remaining,
-							reset_at: state.reset_at,
+			await store.transaction(async () => {
+				const now = new Date();
+				if (input.clientMessageId && (await store.turnExists(input.sessionId, input.clientMessageId))) return;
+				const state = await stateFor(input.subjectId, now);
+				if (input.enforceLimit !== false && !state.unlimited && state.remaining < 1) {
+					throw new KitError(
+						"quota_exceeded",
+						`本月 Credits 已用完（${state.used}/${state.limit}），可到「我的用量」申请提额，或等待 ${state.reset_at.slice(0, 10)} 重置`,
+						{
+							details: {
+								month: state.month,
+								limit: state.limit,
+								used: state.used,
+								remaining: state.remaining,
+								reset_at: state.reset_at,
+							},
 						},
-					},
-				);
-			}
-			store.chargeTurn({
-				subjectId: input.subjectId,
-				agentSlug: input.agentSlug,
-				sessionId: input.sessionId,
-				...(input.clientMessageId ? { clientMessageId: input.clientMessageId } : {}),
-				day: dayKey(now),
-				month: state.month,
+					);
+				}
+				await store.chargeTurn({
+					subjectId: input.subjectId,
+					agentSlug: input.agentSlug,
+					sessionId: input.sessionId,
+					...(input.clientMessageId ? { clientMessageId: input.clientMessageId } : {}),
+					day: dayKey(now),
+					month: state.month,
+				});
 			});
 		},
 
-		plazaView(subjectId: string, query: { category?: PlazaCategory; q?: string } = {}): PlazaView {
+		async plazaView(subjectId: string, query: { category?: PlazaCategory; q?: string } = {}): Promise<PlazaView> {
 			const now = new Date();
-			const listed = catalog.listed();
-			const mineSessions = sessionIndex.listForSubject(subjectId, { limit: 1000 });
+			const listed = await catalog.listed();
+			const mineSessions = await sessionIndex.listForSubject(subjectId, { limit: 1000 });
 			const mine = new Map<string, string>();
 			for (const s of mineSessions) {
 				const at = s.last_event_at ?? s.created_at;
 				const prev = mine.get(s.agent_slug);
 				if (!prev || at > prev) mine.set(s.agent_slug, at);
 			}
-			const turns30 = new Map(store.turns30dByAgent(daysAgoKey(now, 29)).map((r) => [r.agent_slug, r.turns]));
+			const turns30 = new Map((await store.turns30dByAgent(daysAgoKey(now, 29))).map((r) => [r.agent_slug, r.turns]));
 
 			const entries = listed.map((agent) => ({
 				...agent,
@@ -304,11 +297,11 @@ export function createQuotaService(deps: QuotaServiceDeps) {
 			return { agents, featured, popular, categories };
 		},
 
-		quotaView(subjectId: string, days = 30): QuotaView {
+		async quotaView(subjectId: string, days = 30): Promise<QuotaView> {
 			const now = new Date();
-			const state = stateFor(subjectId, now);
+			const state = await stateFor(subjectId, now);
 			const fromDay = daysAgoKey(now, days - 1);
-			const dailyMap = new Map(store.dailyTurns(subjectId, fromDay).map((r) => [r.day, r.turns]));
+			const dailyMap = new Map((await store.dailyTurns(subjectId, fromDay)).map((r) => [r.day, r.turns]));
 			const daily: { day: string; turns: number }[] = [];
 			for (let i = days - 1; i >= 0; i--) {
 				const day = daysAgoKey(now, i);
@@ -324,23 +317,28 @@ export function createQuotaService(deps: QuotaServiceDeps) {
 				limit: state.limit,
 				used: state.used,
 				remaining: state.remaining,
-				per_agent: store.turnsByAgentForMonth(subjectId, state.month),
+				per_agent: await store.turnsByAgentForMonth(subjectId, state.month),
 				daily,
-				pending_request: store.pendingRequest(subjectId) ? requestView(store.pendingRequest(subjectId)!) : null,
+				pending_request: (await store.pendingRequest(subjectId))
+					? requestView((await store.pendingRequest(subjectId))!)
+					: null,
 			};
 		},
 
-		createRequest(subjectId: string, input: { requestedCredits: number; reason?: string }): QuotaRequestView {
-			if (store.pendingRequest(subjectId)) {
+		async createRequest(
+			subjectId: string,
+			input: { requestedCredits: number; reason?: string },
+		): Promise<QuotaRequestView> {
+			if (await store.pendingRequest(subjectId)) {
 				throw new KitError("request_pending", "已有一条待审批的提额申请，请等审批完成后再提交");
 			}
-			const row = store.createRequest({
+			const row = await store.createRequest({
 				id: `qr_${randomUUID().slice(0, 8)}`,
 				subjectId,
 				requestedCredits: input.requestedCredits,
 				...(input.reason ? { reason: input.reason } : {}),
 			});
-			audit.append({
+			await audit.append({
 				subject: `user:${subjectId}`,
 				action: "quota.request.create",
 				target: row.id,
@@ -348,61 +346,66 @@ export function createQuotaService(deps: QuotaServiceDeps) {
 			});
 			return requestView(row);
 		},
-		myRequests(subjectId: string): QuotaRequestView[] {
-			return store.listRequestsForSubject(subjectId).map(requestView);
+		async myRequests(subjectId: string): Promise<QuotaRequestView[]> {
+			return (await store.listRequestsForSubject(subjectId)).map(requestView);
 		},
 
 		/** ---- 管理端 ---- */
-		policy(): QuotaPolicyView {
-			const row = store.getPolicy();
+		async policy(): Promise<QuotaPolicyView> {
+			const row = await store.getPolicy();
 			return {
 				monthly_credits: row.monthly_credits,
 				...(row.updated_at ? { updated_at: row.updated_at } : {}),
 				...(row.updated_by ? { updated_by: row.updated_by } : {}),
 			};
 		},
-		putPolicy(monthlyCredits: number, by: string): QuotaPolicyView {
-			const row = store.setPolicy(monthlyCredits, by);
-			audit.append({ subject: by, action: "quota.policy.put", detail: { monthly_credits: monthlyCredits } });
+		async putPolicy(monthlyCredits: number, by: string): Promise<QuotaPolicyView> {
+			const row = await store.setPolicy(monthlyCredits, by);
+			await audit.append({ subject: by, action: "quota.policy.put", detail: { monthly_credits: monthlyCredits } });
 			return {
 				monthly_credits: row.monthly_credits,
 				...(row.updated_at ? { updated_at: row.updated_at } : {}),
 				...(row.updated_by ? { updated_by: row.updated_by } : {}),
 			};
 		},
-		overrides(): QuotaOverrideView[] {
+		async overrides(): Promise<QuotaOverrideView[]> {
 			const month = monthKey(new Date());
-			return store.listOverrides().map((row) => {
-				const packs = store.listPacks(row.subject_id, month).map(packView);
-				const packTotal = packs.reduce((sum, p) => sum + p.credits, 0);
-				const used = store.usedForMonth(row.subject_id, month);
-				return {
-					subject_id: row.subject_id,
-					monthly_credits: row.monthly_credits,
-					...(row.reason ? { reason: row.reason } : {}),
-					updated_by: row.updated_by,
-					updated_at: row.updated_at,
-					used,
-					packs,
-					remaining: row.monthly_credits === -1 ? -1 : row.monthly_credits + packTotal - used,
-				};
-			});
+			return Promise.all(
+				(await store.listOverrides()).map(async (row) => {
+					const packs = (await store.listPacks(row.subject_id, month)).map(packView);
+					const packTotal = packs.reduce((sum, p) => sum + p.credits, 0);
+					const used = await store.usedForMonth(row.subject_id, month);
+					return {
+						subject_id: row.subject_id,
+						monthly_credits: row.monthly_credits,
+						...(row.reason ? { reason: row.reason } : {}),
+						updated_by: row.updated_by,
+						updated_at: row.updated_at,
+						used,
+						packs,
+						remaining: row.monthly_credits === -1 ? -1 : row.monthly_credits + packTotal - used,
+					};
+				}),
+			);
 		},
-		putOverride(input: { subjectId: string; monthlyCredits: number; reason?: string }, by: string): QuotaOverrideView {
-			const row = store.setOverride({
+		async putOverride(
+			input: { subjectId: string; monthlyCredits: number; reason?: string },
+			by: string,
+		): Promise<QuotaOverrideView> {
+			const row = await store.setOverride({
 				subjectId: input.subjectId,
 				monthlyCredits: input.monthlyCredits,
 				...(input.reason ? { reason: input.reason } : {}),
 				by,
 			});
-			audit.append({
+			await audit.append({
 				subject: by,
 				action: "quota.override.put",
 				target: input.subjectId,
 				detail: { monthly_credits: input.monthlyCredits },
 			});
 			return (
-				this.overrides().find((o) => o.subject_id === input.subjectId) ?? {
+				(await this.overrides()).find((o) => o.subject_id === input.subjectId) ?? {
 					subject_id: row.subject_id,
 					monthly_credits: row.monthly_credits,
 					...(row.reason ? { reason: row.reason } : {}),
@@ -414,13 +417,16 @@ export function createQuotaService(deps: QuotaServiceDeps) {
 				}
 			);
 		},
-		deleteOverride(subjectId: string, by: string): boolean {
-			const removed = store.deleteOverride(subjectId);
-			if (removed) audit.append({ subject: by, action: "quota.override.delete", target: subjectId });
+		async deleteOverride(subjectId: string, by: string): Promise<boolean> {
+			const removed = await store.deleteOverride(subjectId);
+			if (removed) await audit.append({ subject: by, action: "quota.override.delete", target: subjectId });
 			return removed;
 		},
-		createPack(input: { subjectId: string; credits: number; reason?: string }, by: string): QuotaPackView {
-			const row = store.addPack({
+		async createPack(
+			input: { subjectId: string; credits: number; reason?: string },
+			by: string,
+		): Promise<QuotaPackView> {
+			const row = await store.addPack({
 				id: `qp_${randomUUID().slice(0, 8)}`,
 				subjectId: input.subjectId,
 				month: monthKey(new Date()),
@@ -428,7 +434,7 @@ export function createQuotaService(deps: QuotaServiceDeps) {
 				...(input.reason ? { reason: input.reason } : {}),
 				by,
 			});
-			audit.append({
+			await audit.append({
 				subject: by,
 				action: "quota.pack.create",
 				target: input.subjectId,
@@ -436,41 +442,45 @@ export function createQuotaService(deps: QuotaServiceDeps) {
 			});
 			return packView(row);
 		},
-		deletePack(id: string, by: string): boolean {
-			const removed = store.deletePack(id);
-			if (removed) audit.append({ subject: by, action: "quota.pack.delete", target: id });
+		async deletePack(id: string, by: string): Promise<boolean> {
+			const removed = await store.deletePack(id);
+			if (removed) await audit.append({ subject: by, action: "quota.pack.delete", target: id });
 			return removed;
 		},
-		requests(status?: "pending" | "approved" | "rejected"): QuotaRequestView[] {
-			return store.listRequests(status).map(requestView);
+		async requests(status?: "pending" | "approved" | "rejected"): Promise<QuotaRequestView[]> {
+			return (await store.listRequests(status)).map(requestView);
 		},
-		review(
+		async review(
 			id: string,
 			input: { action: "approve" | "reject"; mode?: "override" | "pack"; grantedCredits?: number; note?: string },
 			by: string,
-		): QuotaRequestView {
-			const current = store.getRequest(id);
-			if (!current) throw new KitError("not_found", "申请不存在");
-			if (current.status !== "pending") throw new KitError("conflict", "该申请已审批过，不能重复处理");
-			assertReviewInput(input);
-			const granted = input.grantedCredits ?? current.requested_credits;
-			if (input.action === "approve") applyApproval(current, input.mode as "override" | "pack", granted, by);
-			return finalizeReview(id, input, granted, by);
-		},
-		usage(month?: string): QuotaUsageRow[] {
-			const key = month ?? monthKey(new Date());
-			const policy = store.getPolicy();
-			return store.subjectUsageForMonth(key).map((row) => {
-				const override = store.getOverride(row.subject_id);
-				const limit = override?.monthly_credits ?? policy.monthly_credits;
-				const packTotal = store.listPacks(row.subject_id, key).reduce((sum, p) => sum + p.credits, 0);
-				return {
-					subject_id: row.subject_id,
-					used: row.used,
-					limit,
-					remaining: limit === -1 ? -1 : limit + packTotal - row.used,
-				};
+		): Promise<QuotaRequestView> {
+			return store.transaction(async () => {
+				const current = await store.getRequest(id);
+				if (!current) throw new KitError("not_found", "申请不存在");
+				if (current.status !== "pending") throw new KitError("conflict", "该申请已审批过，不能重复处理");
+				assertReviewInput(input);
+				const granted = input.grantedCredits ?? current.requested_credits;
+				if (input.action === "approve") await applyApproval(current, input.mode as "override" | "pack", granted, by);
+				return finalizeReview(id, input, granted, by);
 			});
+		},
+		async usage(month?: string): Promise<QuotaUsageRow[]> {
+			const key = month ?? monthKey(new Date());
+			const policy = await store.getPolicy();
+			return Promise.all(
+				(await store.subjectUsageForMonth(key)).map(async (row) => {
+					const override = await store.getOverride(row.subject_id);
+					const limit = override?.monthly_credits ?? policy.monthly_credits;
+					const packTotal = (await store.listPacks(row.subject_id, key)).reduce((sum, p) => sum + p.credits, 0);
+					return {
+						subject_id: row.subject_id,
+						used: row.used,
+						limit,
+						remaining: limit === -1 ? -1 : limit + packTotal - row.used,
+					};
+				}),
+			);
 		},
 	};
 }

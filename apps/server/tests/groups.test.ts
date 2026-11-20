@@ -223,8 +223,8 @@ describe("用户组管理权限与删除确认", () => {
 		const { app, services } = setup();
 		const alice = await member(app);
 		const existing = await group(app, "将被删除的组");
-		services.catalog.upsert({ slug: "assistant", display_name: "助手", remote_agent_id: "agent_mock" });
-		services.catalog.setStatus("assistant", "listed");
+		await services.catalog.upsert({ slug: "assistant", display_name: "助手", remote_agent_id: "agent_mock" });
+		await services.catalog.setStatus("assistant", "listed");
 		const login = async () =>
 			data<MemberLoginResult>(
 				await app.request("/api/kit/auth/login", {
@@ -272,7 +272,7 @@ describe("用户组管理权限与删除确认", () => {
 		const recreated = await group(app, existing.name);
 		expect(recreated.group_id).not.toBe(existing.group_id);
 		expect(recreated.member_count).toBe(0);
-		expect(services.audit.list()).toEqual([]);
+		expect(await services.audit.list()).toEqual([]);
 	});
 
 	it("过期删除计划被拒且保留组；重新生成计划可正常删除", async () => {

@@ -66,7 +66,7 @@ export function registerGroupRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		}),
-		(c) => c.json(c.get("services").groups.list(c.req.valid("query")), 200),
+		async (c) => c.json(await c.get("services").groups.list(c.req.valid("query")), 200),
 		rejectInvalid,
 	);
 	app.openapi(
@@ -77,10 +77,10 @@ export function registerGroupRoutes(app: OpenAPIHono<AppEnv>) {
 			request: { body: body(GroupInputSchema) },
 			responses: { 201: groupResponse, ...errors },
 		}),
-		(c) => {
+		async (c) => {
 			const services = c.get("services");
 			return c.json(
-				{ data: services.groups.create(c.req.valid("json"), requireAdmin(c, services.config).subject) },
+				{ data: await services.groups.create(c.req.valid("json"), requireAdmin(c, services.config).subject) },
 				201,
 			);
 		},
@@ -94,7 +94,7 @@ export function registerGroupRoutes(app: OpenAPIHono<AppEnv>) {
 			request: { params: groupParams },
 			responses: { 200: groupResponse, ...errors },
 		}),
-		(c) => c.json({ data: c.get("services").groups.get(c.req.valid("param").groupId) }, 200),
+		async (c) => c.json({ data: await c.get("services").groups.get(c.req.valid("param").groupId) }, 200),
 		rejectInvalid,
 	);
 	app.openapi(
@@ -105,11 +105,11 @@ export function registerGroupRoutes(app: OpenAPIHono<AppEnv>) {
 			request: { params: groupParams, body: body(GroupInputSchema) },
 			responses: { 200: groupResponse, ...errors },
 		}),
-		(c) => {
+		async (c) => {
 			const services = c.get("services");
 			return c.json(
 				{
-					data: services.groups.update(
+					data: await services.groups.update(
 						c.req.valid("param").groupId,
 						c.req.valid("json"),
 						requireAdmin(c, services.config).subject,
@@ -194,7 +194,8 @@ export function registerGroupRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		}),
-		(c) => c.json(c.get("services").groups.groupMembers(c.req.valid("param").groupId, c.req.valid("query")), 200),
+		async (c) =>
+			c.json(await c.get("services").groups.groupMembers(c.req.valid("param").groupId, c.req.valid("query")), 200),
 		rejectInvalid,
 	);
 	app.openapi(
@@ -205,11 +206,11 @@ export function registerGroupRoutes(app: OpenAPIHono<AppEnv>) {
 			request: { params: groupParams, body: body(GroupMembersPatchSchema) },
 			responses: { 200: groupResponse, ...errors },
 		}),
-		(c) => {
+		async (c) => {
 			const services = c.get("services");
 			return c.json(
 				{
-					data: services.groups.updateGroupMembers(
+					data: await services.groups.updateGroupMembers(
 						c.req.valid("param").groupId,
 						c.req.valid("json"),
 						requireAdmin(c, services.config).subject,
@@ -234,7 +235,8 @@ export function registerGroupRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		}),
-		(c) => c.json(c.get("services").groups.memberGroups(c.req.valid("param").memberId, c.req.valid("query")), 200),
+		async (c) =>
+			c.json(await c.get("services").groups.memberGroups(c.req.valid("param").memberId, c.req.valid("query")), 200),
 		rejectInvalid,
 	);
 	app.openapi(
@@ -251,11 +253,11 @@ export function registerGroupRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		}),
-		(c) => {
+		async (c) => {
 			const services = c.get("services");
 			return c.json(
 				{
-					data: services.groups.updateMemberGroups(
+					data: await services.groups.updateMemberGroups(
 						c.req.valid("param").memberId,
 						c.req.valid("json"),
 						requireAdmin(c, services.config).subject,

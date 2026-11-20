@@ -59,9 +59,9 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		}),
-		(c) => {
+		async (c) => {
 			const { catalog } = c.get("services");
-			return c.json({ data: catalog.listed().map((entry) => AgentSummarySchema.parse(entry)) }, 200);
+			return c.json({ data: (await catalog.listed()).map((entry) => AgentSummarySchema.parse(entry)) }, 200);
 		},
 	);
 
@@ -78,7 +78,7 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 		}),
 		async (c) => {
 			const { catalog, gateway } = c.get("services");
-			const entry = catalog.getBySlug(c.req.param("slug"));
+			const entry = await catalog.getBySlug(c.req.param("slug"));
 			if (entry?.status !== "listed") throw new KitError("not_found", "agent 不存在或未上架");
 			// 目录原始记忆配置（库 ID/权限/说明）不进成员响应：先剥离再 parse，由网关解析成名称/描述投影。
 			const { memory_stores: catalogMemories, ...catalogEntry } = entry;
@@ -121,9 +121,9 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 		async (c) => {
 			const { catalog, sessions, files } = c.get("services");
 			const body = c.req.valid("json");
-			const entry = catalog.getBySlug(body.agent_slug);
+			const entry = await catalog.getBySlug(body.agent_slug);
 			if (entry?.status !== "listed") throw new KitError("not_found", "agent 不存在或未上架");
-			files.requireUploads(c.get("identity").subjectId, body.files ?? []);
+			await files.requireUploads(c.get("identity").subjectId, body.files ?? []);
 			const sessionFiles = mergeSessionFiles(entry.files ?? [], body.files ?? []);
 			const info = await sessions.create({
 				subjectId: c.get("identity").subjectId,
@@ -164,7 +164,7 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 		}),
 		async (c) => {
 			const { sessionIndex, gateway } = c.get("services");
-			const row = sessionIndex.getForSubject(c.req.param("sessionId"), c.get("identity").subjectId);
+			const row = await sessionIndex.getForSubject(c.req.param("sessionId"), c.get("identity").subjectId);
 			if (!row) throw new KitError("not_found", "会话不存在");
 			const remote = await gateway.getSession(row.session_id);
 			return c.json(
@@ -197,12 +197,12 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		}),
-		(c) => {
+		async (c) => {
 			const { sessionIndex } = c.get("services");
-			const row = sessionIndex.getForSubject(c.req.param("sessionId"), c.get("identity").subjectId);
+			const row = await sessionIndex.getForSubject(c.req.param("sessionId"), c.get("identity").subjectId);
 			if (!row) throw new KitError("not_found", "会话不存在");
-			sessionIndex.setTitle(row.session_id, c.req.valid("json").title);
-			const updated = sessionIndex.get(row.session_id);
+			await sessionIndex.setTitle(row.session_id, c.req.valid("json").title);
+			const updated = await sessionIndex.get(row.session_id);
 			if (!updated) throw new KitError("not_found", "会话不存在");
 			return c.json({ data: updated.summary }, 200);
 		},
@@ -225,12 +225,12 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 		}),
 		async (c) => {
 			const { sessionIndex, sessions, files } = c.get("services");
-			const row = sessionIndex.getForSubject(c.req.param("sessionId"), c.get("identity").subjectId);
+			const row = await sessionIndex.getForSubject(c.req.param("sessionId"), c.get("identity").subjectId);
 			if (!row) throw new KitError("not_found", "会话不存在");
 			const body = c.req.valid("json");
 			// 附件随消息运行时挂载（POST /sessions/:id/resources，实测 2026-11-02）：
 			// 归属校验与建会话同源；挂载→发送→失败自动卸载回滚由会话服务负责。
-			if (body.attachments?.length) files.requireUploads(c.get("identity").subjectId, body.attachments);
+			if (body.attachments?.length) await files.requireUploads(c.get("identity").subjectId, body.attachments);
 			const { quota, usageLimits } = c.get("services");
 			const result = await sessions.send(
 				row.session_id,
@@ -240,11 +240,11 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 					...(body.skills?.length ? { skills: body.skills } : {}),
 					...(body.attachments?.length ? { attachments: body.attachments } : {}),
 				},
-				() => {
+				async () => {
 					// 本地成员由 Session 月度计量闸门限制；Turn 账本仍供广场与历史统计使用。
 					// 匿名及外部身份继续遵守兼容 Credits 政策。
-					quota.chargeTurn({
-						enforceLimit: !usageLimits.isMember(c.get("identity").subjectId),
+					await quota.chargeTurn({
+						enforceLimit: !(await usageLimits.isMember(c.get("identity").subjectId)),
 						subjectId: c.get("identity").subjectId,
 						agentSlug: row.agent_slug,
 						sessionId: row.session_id,
@@ -272,7 +272,7 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 		}),
 		async (c) => {
 			const { sessionIndex, sessions } = c.get("services");
-			const row = sessionIndex.getForSubject(c.req.param("sessionId"), c.get("identity").subjectId);
+			const row = await sessionIndex.getForSubject(c.req.param("sessionId"), c.get("identity").subjectId);
 			if (!row) throw new KitError("not_found", "会话不存在");
 			await sessions.interrupt(row.session_id);
 			return c.json({ data: { interrupted: true } }, 200);
@@ -299,7 +299,7 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 		async (c) => {
 			const { sessionIndex, gate } = c.get("services");
 			const sessionId = c.req.param("sessionId");
-			const row = sessionIndex.getForSubject(sessionId, c.get("identity").subjectId);
+			const row = await sessionIndex.getForSubject(sessionId, c.get("identity").subjectId);
 			if (!row) throw new KitError("not_found", "会话不存在");
 			const action = c.req.valid("json").action;
 			const subject = c.get("identity").subjectId;
@@ -346,13 +346,13 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 		async (c) => {
 			const { sessionIndex, sessions, gate, audit } = c.get("services");
 			const sessionId = c.req.param("sessionId");
-			const row = sessionIndex.getForSubject(sessionId, c.get("identity").subjectId);
+			const row = await sessionIndex.getForSubject(sessionId, c.get("identity").subjectId);
 			if (!row) throw new KitError("not_found", "会话不存在");
 			const subject = c.get("identity").subjectId;
 			const body = c.req.valid("json");
 			await gate.consume({ planId: body.plan_id, action: "session.archive", subject, token: body.confirm_token });
 			await sessions.archive(sessionId);
-			audit.append({ subject, action: "session.archive", target: sessionId });
+			await audit.append({ subject, action: "session.archive", target: sessionId });
 			return c.json({ data: { archived: true } }, 200);
 		},
 	);
@@ -381,13 +381,13 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 		async (c) => {
 			const { sessionIndex, sessions, gate, audit } = c.get("services");
 			const sessionId = c.req.param("sessionId");
-			const row = sessionIndex.getForSubject(sessionId, c.get("identity").subjectId);
+			const row = await sessionIndex.getForSubject(sessionId, c.get("identity").subjectId);
 			if (!row) throw new KitError("not_found", "会话不存在");
 			const subject = c.get("identity").subjectId;
 			const body = c.req.valid("json");
 			await gate.consume({ planId: body.plan_id, action: "session.delete", subject, token: body.confirm_token });
 			await sessions.delete(sessionId);
-			audit.append({ subject, action: "session.delete", target: sessionId });
+			await audit.append({ subject, action: "session.delete", target: sessionId });
 			return c.json({ data: { deleted: true } }, 200);
 		},
 	);
@@ -437,7 +437,7 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 				bytes,
 				mimeType: file.type || undefined,
 			});
-			audit.append({
+			await audit.append({
 				subject: c.get("identity").subjectId,
 				action: "file.upload",
 				target: info.file_id,
@@ -501,7 +501,7 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 		}),
 		async (c) => {
 			const { sessionIndex, sessions } = c.get("services");
-			const row = sessionIndex.getForSubject(c.req.param("sessionId"), c.get("identity").subjectId);
+			const row = await sessionIndex.getForSubject(c.req.param("sessionId"), c.get("identity").subjectId);
 			if (!row) throw new KitError("not_found", "会话不存在");
 			const query = c.req.valid("query");
 			const page = await sessions.events(row.session_id, {
@@ -533,10 +533,10 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 		}),
 		async (c) => {
 			const { sessionIndex } = c.get("services");
-			const row = sessionIndex.getForSubject(c.req.param("sessionId"), c.get("identity").subjectId);
+			const row = await sessionIndex.getForSubject(c.req.param("sessionId"), c.get("identity").subjectId);
 			if (!row) throw new KitError("not_found", "会话不存在");
 			const after = c.req.valid("query").after;
-			return streamSession(c, row.session_id, after);
+			return await streamSession(c, row.session_id, after);
 		},
 	);
 
@@ -591,10 +591,10 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		}),
-		(c) => {
+		async (c) => {
 			const { quota } = c.get("services");
 			const query = c.req.valid("query");
-			return c.json({ data: PlazaViewSchema.parse(quota.plazaView(c.get("identity").subjectId, query)) }, 200);
+			return c.json({ data: PlazaViewSchema.parse(await quota.plazaView(c.get("identity").subjectId, query)) }, 200);
 		},
 	);
 
@@ -614,14 +614,14 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		}),
-		(c) => {
+		async (c) => {
 			const { quota, usageLimits } = c.get("services");
 			const subjectId = c.get("identity").subjectId;
-			const view = quota.quotaView(subjectId, c.req.valid("query").days);
+			const view = await quota.quotaView(subjectId, c.req.valid("query").days);
 			// 本地成员已迁移到 Token/执行时长限额，兼容读接口只保留 Turn 统计。
 			return c.json(
 				{
-					data: usageLimits.isMember(subjectId)
+					data: (await usageLimits.isMember(subjectId))
 						? {
 								...view,
 								unlimited: true,
@@ -653,10 +653,10 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		}),
-		(c) => {
+		async (c) => {
 			const { quota } = c.get("services");
 			const body = c.req.valid("json");
-			const view = quota.createRequest(c.get("identity").subjectId, {
+			const view = await quota.createRequest(c.get("identity").subjectId, {
 				requestedCredits: body.requested_credits,
 				...(body.reason ? { reason: body.reason } : {}),
 			});
@@ -677,9 +677,9 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		}),
-		(c) => {
+		async (c) => {
 			const { quota } = c.get("services");
-			return c.json({ data: quota.myRequests(c.get("identity").subjectId) }, 200);
+			return c.json({ data: await quota.myRequests(c.get("identity").subjectId) }, 200);
 		},
 	);
 }

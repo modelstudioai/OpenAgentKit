@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import {
 	KitError,
 	type MemberSessionsPage,
@@ -10,6 +9,8 @@ import {
 	type SessionUsage,
 	type TemplateSessionUsage,
 } from "@openagentkit/sdk/protocol";
+import type { StoreDatabase } from "./database.ts";
+import { likePattern } from "./sql.ts";
 
 type SnapshotValues = SessionUsage & SessionStats;
 type Row = Omit<MemberSessionUsage, "usage" | "stats" | "title" | "status" | "captured_at" | "deleted_at"> & {
@@ -86,43 +87,58 @@ function metricSummary(totals: Record<string, number | null>, sessionCount: numb
 }
 
 /** 仅保留成员会话累计数值；Provider 事件、消息和附件不进入本表。 */
-export function createSessionUsageStore(db: DatabaseSync) {
-	function get(sessionId: string) {
-		return db.prepare("SELECT * FROM kit_session_usage WHERE session_id = ?").get(sessionId) as Row | undefined;
+export function createSessionUsageStore(db: StoreDatabase) {
+	async function get(sessionId: string) {
+		return (await db.get("SELECT * FROM kit_session_usage WHERE session_id = ?", sessionId)) as Row | undefined;
 	}
-	function syncMember(memberId: string) {
-		db.prepare(`INSERT INTO kit_session_usage (session_id, member_id, agent_slug, title, status, created_at)
-			SELECT s.session_id, s.subject_id, s.agent_slug, s.title, s.status, s.created_at
-			FROM kit_sessions s JOIN kit_members m ON m.member_id = s.subject_id
-			WHERE s.purpose = 'experience' AND m.member_id = ?
-			ON CONFLICT(session_id) DO UPDATE SET title = excluded.title
-			WHERE kit_session_usage.deleted_at IS NULL AND kit_session_usage.finalized_at IS NULL`).run(memberId);
+	async function syncMember(memberId?: string) {
+		const memberFilter = memberId === undefined ? "" : " AND m.member_id = ?";
+		const values = memberId === undefined ? [] : [memberId];
+		await db.transaction(async () => {
+			await db.run(
+				`INSERT INTO kit_session_usage (session_id, member_id, agent_slug, title, status, created_at)
+				SELECT s.session_id, s.subject_id, s.agent_slug, s.title, s.status, s.created_at
+				FROM kit_sessions s JOIN kit_members m ON m.member_id = s.subject_id
+				LEFT JOIN kit_session_usage u ON u.session_id = s.session_id
+				WHERE s.purpose = 'experience' AND u.session_id IS NULL${memberFilter}`,
+				...values,
+			);
+			await db.run(
+				`UPDATE kit_session_usage SET title = (
+					SELECT s.title FROM kit_sessions s WHERE s.session_id = kit_session_usage.session_id
+				)
+				WHERE deleted_at IS NULL AND finalized_at IS NULL AND EXISTS (
+					SELECT 1 FROM kit_sessions s JOIN kit_members m ON m.member_id = s.subject_id
+					WHERE s.session_id = kit_session_usage.session_id AND s.purpose = 'experience'${memberFilter}
+				)`,
+				...values,
+			);
+		});
 	}
 	/** 登记全部成员的体验会话并返回涉及成员，供调用方调度后台采集。 */
-	function syncAll(): string[] {
-		db.prepare(`INSERT INTO kit_session_usage (session_id, member_id, agent_slug, title, status, created_at)
-			SELECT s.session_id, s.subject_id, s.agent_slug, s.title, s.status, s.created_at
-			FROM kit_sessions s JOIN kit_members m ON m.member_id = s.subject_id
-			WHERE s.purpose = 'experience'
-			ON CONFLICT(session_id) DO UPDATE SET title = excluded.title
-			WHERE kit_session_usage.deleted_at IS NULL AND kit_session_usage.finalized_at IS NULL`).run();
+	async function syncAll(): Promise<string[]> {
+		await syncMember();
 		return (
-			db
-				.prepare(`SELECT DISTINCT u.member_id FROM kit_session_usage u
-			JOIN kit_members m ON m.member_id = u.member_id`)
-				.all() as { member_id: string }[]
+			(await db.all(`SELECT DISTINCT u.member_id FROM kit_session_usage u
+			JOIN kit_members m ON m.member_id = u.member_id`)) as { member_id: string }[]
 		).map((row) => row.member_id);
 	}
-	function writeSnapshot(sessionId: string, values: SnapshotValues, status: string, revision: number, final: boolean) {
+	async function writeSnapshot(
+		sessionId: string,
+		values: SnapshotValues,
+		status: string,
+		revision: number,
+		final: boolean,
+	) {
 		const complete = SESSION_USAGE_METRICS.every((key) => values[key] !== undefined);
 		const now = new Date().toISOString();
 		return (
-			db
-				.prepare(`UPDATE kit_session_usage SET
+			(
+				await db.run(
+					`UPDATE kit_session_usage SET
 			${SESSION_USAGE_METRICS.map((key) => `${key} = ?`).join(", ")},
 			status = ?, collection_status = ?, captured_at = ?, attempted_at = ?, finalized_at = ?
-			WHERE session_id = ? AND capture_revision = ? AND deleted_at IS NULL AND finalized_at IS NULL`)
-				.run(
+			WHERE session_id = ? AND capture_revision = ? AND deleted_at IS NULL AND finalized_at IS NULL`,
 					...SESSION_USAGE_METRICS.map((key) => values[key] ?? null),
 					status,
 					complete ? "complete" : "partial",
@@ -131,20 +147,21 @@ export function createSessionUsageStore(db: DatabaseSync) {
 					final ? now : null,
 					sessionId,
 					revision,
-				).changes > 0
+				)
+			).changes > 0
 		);
 	}
 	return {
 		syncMember,
 		syncAll,
 		/** 以模版为主键聚合：只统计从该模版上架条目发起的体验会话；未产生会话的模版也返回；search 按模版名/智能体名/模版 ID 过滤。 */
-		summaryByTemplate(search = "") {
-			const pattern = `%${search.toLowerCase().replace(/[\\%_]/g, "\\$&")}%`;
+		async summaryByTemplate(search = "") {
+			const pattern = likePattern(search);
 			const filter = search
-				? `WHERE (t.name LIKE ? ESCAPE '\\' OR t.remote_agent_name LIKE ? ESCAPE '\\' OR t.template_id LIKE ? ESCAPE '\\')`
+				? `WHERE (LOWER(t.name) LIKE LOWER(?) ESCAPE '!' OR LOWER(t.remote_agent_name) LIKE LOWER(?) ESCAPE '!' OR LOWER(t.template_id) LIKE LOWER(?) ESCAPE '!')`
 				: "";
-			const rows = db
-				.prepare(`SELECT t.template_id, t.name, t.remote_agent_id, t.remote_agent_name,
+			const rows = (await db.all(
+				`SELECT t.template_id, t.name, t.remote_agent_id, t.remote_agent_name,
 				CASE WHEN c.status = 'listed' THEN 'listed' ELSE 'unlisted' END AS listing_status,
 				COUNT(u.session_id) AS total, COUNT(u.deleted_at) AS deleted, MAX(u.captured_at) AS refreshed,
 				${SESSION_USAGE_METRICS.map((key) => `SUM(u.${key}) AS ${key}, COUNT(u.${key}) AS ${key}_count`).join(",")}
@@ -153,8 +170,9 @@ export function createSessionUsageStore(db: DatabaseSync) {
 				LEFT JOIN catalog_agents c ON c.id = l.catalog_id
 				LEFT JOIN kit_session_usage u ON u.agent_slug = c.slug
 				${filter}
-				GROUP BY t.template_id ORDER BY t.created_at, t.template_id`)
-				.all(...(search ? [pattern, pattern, pattern] : [])) as (Record<string, number | null> & {
+				GROUP BY t.template_id, c.status ORDER BY t.created_at, t.template_id`,
+				...(search ? [pattern, pattern, pattern] : []),
+			)) as (Record<string, number | null> & {
 				template_id: string;
 				name: string;
 				remote_agent_id: string;
@@ -178,9 +196,8 @@ export function createSessionUsageStore(db: DatabaseSync) {
 		},
 		/** mock 遥测数据源：只统计从模版上架条目发起的体验会话（与模版汇总的口径 B 一致），
 		 *  聚合键为模版绑定的 remote_agent_id；手动创建条目的会话不计入，避免「未上架模版也有调用」。 */
-		telemetryByAgent() {
-			const rows = db
-				.prepare(`SELECT t.remote_agent_id AS agent_key, COUNT(*) AS sessions,
+		async telemetryByAgent() {
+			const rows = (await db.all(`SELECT t.remote_agent_id AS agent_key, COUNT(*) AS sessions,
 				COALESCE(SUM(u.input_tokens), 0) AS input_tokens, COALESCE(SUM(u.output_tokens), 0) AS output_tokens,
 				COALESCE(SUM(u.cache_read_input_tokens), 0) AS cache_read_tokens,
 				COALESCE(SUM(u.cache_creation_input_tokens), 0) AS cache_creation_tokens
@@ -188,8 +205,7 @@ export function createSessionUsageStore(db: DatabaseSync) {
 				JOIN catalog_agents c ON c.slug = u.agent_slug
 				JOIN kit_template_listings l ON l.catalog_id = c.id
 				JOIN kit_templates t ON t.template_id = l.template_id
-				GROUP BY t.remote_agent_id`)
-				.all() as {
+				GROUP BY t.remote_agent_id`)) as {
 				agent_key: string;
 				sessions: number;
 				input_tokens: number;
@@ -200,14 +216,15 @@ export function createSessionUsageStore(db: DatabaseSync) {
 			return new Map(rows.map((row) => [row.agent_key, row]));
 		},
 		/** mock 遥测数据源：单会话口径；无账本行返回 null。 */
-		telemetryBySession(sessionId: string) {
-			const row = db
-				.prepare(`SELECT COUNT(*) AS sessions,
+		async telemetryBySession(sessionId: string) {
+			const row = (await db.get(
+				`SELECT COUNT(*) AS sessions,
 				COALESCE(SUM(u.input_tokens), 0) AS input_tokens, COALESCE(SUM(u.output_tokens), 0) AS output_tokens,
 				COALESCE(SUM(u.cache_read_input_tokens), 0) AS cache_read_tokens,
 				COALESCE(SUM(u.cache_creation_input_tokens), 0) AS cache_creation_tokens
-				FROM kit_session_usage u WHERE u.session_id = ?`)
-				.get(sessionId) as
+				FROM kit_session_usage u WHERE u.session_id = ?`,
+				sessionId,
+			)) as
 				| {
 						sessions: number;
 						input_tokens: number;
@@ -218,107 +235,114 @@ export function createSessionUsageStore(db: DatabaseSync) {
 				| undefined;
 			return row?.sessions ? row : null;
 		},
-		isMemberSession(sessionId: string) {
+		async isMemberSession(sessionId: string) {
 			return Boolean(
-				db
-					.prepare(`SELECT 1 FROM kit_sessions s JOIN kit_members m ON m.member_id = s.subject_id
-				WHERE s.session_id = ? AND s.purpose = 'experience'`)
-					.get(sessionId),
+				await db.get(
+					`SELECT 1 FROM kit_sessions s JOIN kit_members m ON m.member_id = s.subject_id
+				WHERE s.session_id = ? AND s.purpose = 'experience'`,
+					sessionId,
+				),
 			);
 		},
 		get,
-		hasPending(memberId: string) {
+		async hasPending(memberId: string) {
 			return Boolean(
-				db
-					.prepare(`SELECT 1 FROM kit_session_usage u JOIN kit_sessions s ON s.session_id = u.session_id
+				await db.get(
+					`SELECT 1 FROM kit_session_usage u JOIN kit_sessions s ON s.session_id = u.session_id
 				WHERE u.member_id = ? AND s.subject_id = ? AND s.purpose = 'experience'
-				AND u.collection_status = 'pending' AND u.finalized_at IS NULL AND u.deleted_at IS NULL LIMIT 1`)
-					.get(memberId, memberId),
+				AND u.collection_status = 'pending' AND u.finalized_at IS NULL AND u.deleted_at IS NULL LIMIT 1`,
+					memberId,
+					memberId,
+				),
 			);
 		},
 		/** 每批固定上限但游标遍历全量，不能复用会话列表的 50/100 条默认上限。 */
-		captureCandidates(memberId: string, after = "", limit = 100): string[] {
+		async captureCandidates(memberId: string, after = "", limit = 100): Promise<string[]> {
 			return (
-				db
-					.prepare(`SELECT u.session_id FROM kit_session_usage u JOIN kit_sessions s ON s.session_id = u.session_id
+				(await db.all(
+					`SELECT u.session_id FROM kit_session_usage u JOIN kit_sessions s ON s.session_id = u.session_id
 				WHERE u.member_id = ? AND s.subject_id = ? AND s.purpose = 'experience'
 				AND u.deleted_at IS NULL AND u.finalized_at IS NULL AND u.session_id > ?
-				ORDER BY u.session_id LIMIT ?`)
-					.all(memberId, memberId, after, limit) as { session_id: string }[]
+				ORDER BY u.session_id LIMIT ?`,
+					memberId,
+					memberId,
+					after,
+					limit,
+				)) as { session_id: string }[]
 			).map((row) => row.session_id);
 		},
-		beginCapture(sessionId: string): number | null {
-			const row = db
-				.prepare(`UPDATE kit_session_usage SET capture_revision = capture_revision + 1
-				WHERE session_id = ? AND deleted_at IS NULL AND finalized_at IS NULL RETURNING capture_revision`)
-				.get(sessionId) as { capture_revision: number } | undefined;
-			return row?.capture_revision ?? null;
+		async beginCapture(sessionId: string): Promise<number | null> {
+			return db.transaction(async () => {
+				const update = await db.run(
+					`UPDATE kit_session_usage SET capture_revision = capture_revision + 1
+					WHERE session_id = ? AND deleted_at IS NULL AND finalized_at IS NULL`,
+					sessionId,
+				);
+				return update.changes ? ((await get(sessionId))?.capture_revision ?? null) : null;
+			});
 		},
-		save(sessionId: string, values: SnapshotValues, status: string, revision: number) {
-			return writeSnapshot(sessionId, values, status, revision, false);
+		async save(sessionId: string, values: SnapshotValues, status: string, revision: number) {
+			return await writeSnapshot(sessionId, values, status, revision, false);
 		},
-		fail(sessionId: string, revision: number, status: "failed" | "not_found") {
-			db.prepare(`UPDATE kit_session_usage SET collection_status = ?, attempted_at = ?
-				WHERE session_id = ? AND capture_revision = ? AND finalized_at IS NULL AND deleted_at IS NULL`).run(
+		async fail(sessionId: string, revision: number, status: "failed" | "not_found") {
+			await db.run(
+				`UPDATE kit_session_usage SET collection_status = ?, attempted_at = ?
+				WHERE session_id = ? AND capture_revision = ? AND finalized_at IS NULL AND deleted_at IS NULL`,
 				status,
 				new Date().toISOString(),
 				sessionId,
 				revision,
 			);
 		},
-		/** 同步事务返回即已提交；递增版本使之前开始的后台查询失效。 */
-		finalize(sessionId: string, values: SnapshotValues, status: string) {
-			db.exec("BEGIN IMMEDIATE");
-			try {
-				const existing = get(sessionId);
+		/** 递增版本使之前开始的后台查询失效。 */
+		async finalize(sessionId: string, values: SnapshotValues, status: string) {
+			await db.transaction(async () => {
+				const existing = await get(sessionId);
 				if (!existing || existing.deleted_at) throw new KitError("conflict", "会话用量记录不可用，请重试");
-				db.prepare(
+				await db.run(
 					"UPDATE kit_session_usage SET finalized_at = NULL, capture_revision = capture_revision + 1 WHERE session_id = ?",
-				).run(sessionId);
-				if (!writeSnapshot(sessionId, values, status, existing.capture_revision + 1, true)) {
+					sessionId,
+				);
+				if (!(await writeSnapshot(sessionId, values, status, existing.capture_revision + 1, true))) {
 					throw new KitError("conflict", "会话用量快照未保存，请重试");
 				}
-				db.exec("COMMIT");
-			} catch (error) {
-				db.exec("ROLLBACK");
-				throw error;
-			}
+			});
 		},
-		releaseFinal(sessionId: string) {
-			db.prepare("UPDATE kit_session_usage SET finalized_at = NULL WHERE session_id = ? AND deleted_at IS NULL").run(
+		async releaseFinal(sessionId: string) {
+			await db.run(
+				"UPDATE kit_session_usage SET finalized_at = NULL WHERE session_id = ? AND deleted_at IS NULL",
 				sessionId,
 			);
 		},
-		markDeleted(sessionId: string) {
-			db.exec("BEGIN IMMEDIATE");
-			try {
-				const row = get(sessionId);
+		async markDeleted(sessionId: string) {
+			await db.transaction(async () => {
+				const row = await get(sessionId);
 				if (!row?.finalized_at) throw new KitError("conflict", "必须先成功保存最终用量快照");
-				db.prepare(
+				await db.run(
 					"UPDATE kit_session_usage SET deleted_at = COALESCE(deleted_at, ?), status = 'deleted' WHERE session_id = ?",
-				).run(new Date().toISOString(), sessionId);
-				db.prepare("DELETE FROM kit_sessions WHERE session_id = ?").run(sessionId);
-				db.prepare("UPDATE kit_session_deletions SET stage = 'deleted', updated_at = ? WHERE session_id = ?").run(
 					new Date().toISOString(),
 					sessionId,
 				);
-				db.exec("COMMIT");
-			} catch (error) {
-				db.exec("ROLLBACK");
-				throw error;
-			}
+				await db.run("DELETE FROM kit_sessions WHERE session_id = ?", sessionId);
+				await db.run(
+					"UPDATE kit_session_deletions SET stage = 'deleted', updated_at = ? WHERE session_id = ?",
+					new Date().toISOString(),
+					sessionId,
+				);
+			});
 		},
-		summary(memberId: string, agentSlug?: string, refreshStartedAt?: string): MemberUsageSummary {
+		async summary(memberId: string, agentSlug?: string, refreshStartedAt?: string): Promise<MemberUsageSummary> {
 			const filter = `member_id = ?${agentSlug ? " AND agent_slug = ?" : ""}`;
 			const params = agentSlug ? [memberId, agentSlug] : [memberId];
-			const counts = db
-				.prepare(`SELECT COUNT(*) AS total, COUNT(deleted_at) AS deleted,
+			const counts = (await db.get(
+				`SELECT COUNT(*) AS total, COUNT(deleted_at) AS deleted,
 				SUM(CASE WHEN collection_status IN ('failed','not_found') THEN 1 ELSE 0 END) AS failed,
 				SUM(CASE WHEN collection_status <> 'complete' THEN 1 ELSE 0 END) AS incomplete,
 				COUNT(captured_at) AS captured, MAX(captured_at) AS refreshed,
 				SUM(CASE WHEN attempted_at IS NOT NULL ${refreshStartedAt ? "AND (attempted_at >= ? OR finalized_at IS NOT NULL)" : ""} THEN 1 ELSE 0 END) AS completed
-				FROM kit_session_usage WHERE ${filter}`)
-				.get(...(refreshStartedAt ? [refreshStartedAt, ...params] : params)) as {
+				FROM kit_session_usage WHERE ${filter}`,
+				...(refreshStartedAt ? [refreshStartedAt, ...params] : params),
+			)) as {
 				total: number;
 				deleted: number;
 				failed: number;
@@ -327,15 +351,17 @@ export function createSessionUsageStore(db: DatabaseSync) {
 				refreshed: string | null;
 				completed: number | null;
 			};
-			const totals = db
-				.prepare(`SELECT ${SESSION_USAGE_METRICS.map((key) => `SUM(${key}) AS ${key}, COUNT(${key}) AS ${key}_count`).join(",")}
-				FROM kit_session_usage WHERE ${filter}`)
-				.get(...params) as Record<string, number | null>;
+			const totals = (await db.get(
+				`SELECT ${SESSION_USAGE_METRICS.map((key) => `SUM(${key}) AS ${key}, COUNT(${key}) AS ${key}_count`).join(",")}
+				FROM kit_session_usage WHERE ${filter}`,
+				...params,
+			)) as Record<string, number | null>;
 			const metrics = metricSummary(totals, counts.total);
 			const agents = (
-				db
-					.prepare("SELECT DISTINCT agent_slug FROM kit_session_usage WHERE member_id = ? ORDER BY agent_slug")
-					.all(memberId) as { agent_slug: string }[]
+				(await db.all(
+					"SELECT DISTINCT agent_slug FROM kit_session_usage WHERE member_id = ? ORDER BY agent_slug",
+					memberId,
+				)) as { agent_slug: string }[]
 			).map((row) => row.agent_slug);
 			return {
 				session_count: counts.total,
@@ -347,19 +373,18 @@ export function createSessionUsageStore(db: DatabaseSync) {
 				refresh_status: refreshStatus(counts, Boolean(refreshStartedAt)),
 			};
 		},
-		list(memberId: string, options: MemberSessionsQuery): MemberSessionsPage {
+		async list(memberId: string, options: MemberSessionsQuery): Promise<MemberSessionsPage> {
 			const cursor = readCursor(options.cursor, memberId, options.agent_slug);
-			const rows = db
-				.prepare(`SELECT * FROM kit_session_usage WHERE member_id = ?
+			const rows = (await db.all(
+				`SELECT * FROM kit_session_usage WHERE member_id = ?
 				${options.agent_slug ? "AND agent_slug = ?" : ""}
 				${cursor ? "AND (created_at < ? OR (created_at = ? AND session_id < ?))" : ""}
-				ORDER BY created_at DESC, session_id DESC LIMIT ?`)
-				.all(
-					memberId,
-					...(options.agent_slug ? [options.agent_slug] : []),
-					...(cursor ? [cursor.created_at, cursor.created_at, cursor.session_id] : []),
-					options.limit + 1,
-				) as Row[];
+				ORDER BY created_at DESC, session_id DESC LIMIT ?`,
+				memberId,
+				...(options.agent_slug ? [options.agent_slug] : []),
+				...(cursor ? [cursor.created_at, cursor.created_at, cursor.session_id] : []),
+				options.limit + 1,
+			)) as Row[];
 			const data = rows.slice(0, options.limit).map(view);
 			const last = data.at(-1);
 			return {
@@ -379,10 +404,10 @@ export function createSessionUsageStore(db: DatabaseSync) {
 			};
 		},
 		/** 模版维度的会话明细：跨成员取该模版上架条目的用量行，附带成员公开资料。 */
-		listByTemplate(
+		async listByTemplate(
 			templateId: string,
 			options: { cursor?: string; limit: number },
-		): { data: TemplateSessionUsage[]; next_cursor?: string } {
+		): Promise<{ data: TemplateSessionUsage[]; next_cursor?: string }> {
 			let cursor: { created_at: string; session_id: string } | undefined;
 			if (options.cursor) {
 				try {
@@ -400,20 +425,19 @@ export function createSessionUsageStore(db: DatabaseSync) {
 					throw new KitError("invalid_request", "会话用量游标无效或与筛选条件不匹配，请重新查询");
 				}
 			}
-			const rows = db
-				.prepare(`SELECT u.*, m.display_name AS member_display_name, m.username AS member_username
+			const rows = (await db.all(
+				`SELECT u.*, m.display_name AS member_display_name, m.username AS member_username
 				FROM kit_template_listings l
 				JOIN catalog_agents c ON c.id = l.catalog_id
 				JOIN kit_session_usage u ON u.agent_slug = c.slug
 				JOIN kit_members m ON m.member_id = u.member_id
 				WHERE l.template_id = ?
 				${cursor ? "AND (u.created_at < ? OR (u.created_at = ? AND u.session_id < ?))" : ""}
-				ORDER BY u.created_at DESC, u.session_id DESC LIMIT ?`)
-				.all(
-					templateId,
-					...(cursor ? [cursor.created_at, cursor.created_at, cursor.session_id] : []),
-					options.limit + 1,
-				) as unknown as (Row & { member_display_name: string; member_username: string })[];
+				ORDER BY u.created_at DESC, u.session_id DESC LIMIT ?`,
+				templateId,
+				...(cursor ? [cursor.created_at, cursor.created_at, cursor.session_id] : []),
+				options.limit + 1,
+			)) as unknown as (Row & { member_display_name: string; member_username: string })[];
 			const data = rows.slice(0, options.limit).map((row) => ({
 				...view(row),
 				member_display_name: row.member_display_name,

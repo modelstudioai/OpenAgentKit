@@ -44,7 +44,7 @@ it("admin/auditor 发现指定 Agent 的会话与挂载，未认证拒绝且不�
 		mountPath: "/mnt/session/uploads/one.txt",
 	});
 	const endpoint = (id: string) => `/api/admin/preset-packs/agents/${id}/resources`;
-	const auditBefore = services.audit.list();
+	const auditBefore = await services.audit.list();
 	const foreign = await app.request(endpoint("agent_mock_designer"), {
 		headers: { authorization: "Bearer preset-admin" },
 	});
@@ -67,7 +67,7 @@ it("admin/auditor 发现指定 Agent 的会话与挂载，未认证拒绝且不�
 	expect((await app.request(endpoint("missing"), { headers: { authorization: "Bearer preset-admin" } })).status).toBe(
 		404,
 	);
-	expect(services.audit.list()).toEqual(auditBefore);
+	expect(await services.audit.list()).toEqual(auditBefore);
 	expect(db.prepare("SELECT COUNT(*) AS count FROM kit_sessions").get()).toMatchObject({ count: 0 });
 	expect(await gateway.getSession(selected.session_id)).not.toBeNull();
 	expect(await gateway.getSession(other.session_id)).not.toBeNull();

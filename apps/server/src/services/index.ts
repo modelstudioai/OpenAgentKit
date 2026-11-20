@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import type { KitServices } from "../app-env.ts";
 import type { ServerConfig } from "../config.ts";
 import { createMockGateway, type MockTelemetrySource } from "../gateway/mock.ts";
@@ -7,7 +6,7 @@ import type { ProviderGateway } from "../gateway/types.ts";
 import { createAuditLog } from "../store/audit.ts";
 import { createBrandingStore } from "../store/branding.ts";
 import { createCatalogStore } from "../store/catalog.ts";
-import { openDatabase } from "../store/db.ts";
+import { connectDatabase, type DatabaseConnection, prepareDatabase } from "../store/connect.ts";
 import { createFileStore } from "../store/files.ts";
 import { createGroupStore } from "../store/groups.ts";
 import { createMemberSessionStore } from "../store/member-sessions.ts";
@@ -45,14 +44,29 @@ export function createGateway(config: ServerConfig, telemetry?: MockTelemetrySou
 	return createMockGateway({ fileScanDelayMs: config.mockFileScanDelayMs, telemetry });
 }
 
-export function createKitServices(config: ServerConfig, db?: DatabaseSync): KitServices {
-	const database = db ?? openDatabase(config.dataDir);
+export async function openKitServices(config: ServerConfig) {
+	const database = await connectDatabase(config);
+	try {
+		return createKitServices(config, database);
+	} catch (error) {
+		await database.close().catch(() => undefined);
+		throw error;
+	}
+}
+
+export function createKitServices(
+	config: ServerConfig,
+	connection: DatabaseConnection,
+): KitServices & {
+	close(): Promise<void>;
+} {
+	const database = prepareDatabase(connection, config.quotaDefaultMonthly);
 	const branding = createBrandingStore(database);
 	const usageSnapshots = createSessionUsageStore(database);
 	// mock 网关不读本地库（保持 Provider 抽象分层），账本聚合经注入成为其演示明细的数据源。
 	const gateway = createGateway(config, {
-		byAgent: () => Promise.resolve(usageSnapshots.telemetryByAgent()),
-		bySession: (sessionId) => Promise.resolve(usageSnapshots.telemetryBySession(sessionId)),
+		byAgent: () => usageSnapshots.telemetryByAgent(),
+		bySession: (sessionId) => usageSnapshots.telemetryBySession(sessionId),
 	});
 	const buffers = createEventBufferRegistry();
 	const sessionIndex = createSessionIndex(database);
@@ -111,7 +125,6 @@ export function createKitServices(config: ServerConfig, db?: DatabaseSync): KitS
 		catalog,
 		sessionIndex,
 		audit,
-		...(config.quotaDefaultMonthly != null ? { defaultMonthly: config.quotaDefaultMonthly } : {}),
 	});
 	const resourceDrafts = createResourceDraftService({
 		config,
@@ -132,6 +145,7 @@ export function createKitServices(config: ServerConfig, db?: DatabaseSync): KitS
 	});
 	return {
 		config,
+		close: () => database.close(),
 		branding,
 		gateway,
 		buffers,

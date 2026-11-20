@@ -3,12 +3,12 @@ import type { MemberSessionRecord } from "../store/member-sessions.ts";
 import type { AuthStreamBinding, MemberAuthService } from "./member-auth.ts";
 
 /** 本地登录可主动撤销；兼容 JWT 也在自身 exp 到期后结束长连接。 */
-export function createAuthStreamGuard(
+export async function createAuthStreamGuard(
 	auth: MemberAuthService,
 	session?: MemberSessionRecord,
 	expiresAt?: string,
-): AuthStreamBinding {
-	if (session) return auth.bindStream(session);
+): Promise<AuthStreamBinding> {
+	if (session) return await auth.bindStream(session);
 	const controller = new AbortController();
 	const expires = expiresAt ? Date.parse(expiresAt) : undefined;
 	let timer: ReturnType<typeof setTimeout> | undefined;

@@ -53,12 +53,12 @@ export function registerMetaRoutes(app: OpenAPIHono<AppEnv>) {
 				},
 			},
 		},
-		(c) => {
+		async (c) => {
 			// 空串 = 与访问者同源（反代或自定义宿主场景）；仅 KIT_PUBLIC_BASE_URL 显式覆盖
 			const services = c.get("services");
 			const origin = services.config.publicBaseUrl;
-			const branding = services.branding.get();
-			const uploaded = services.branding.getLogoMeta();
+			const branding = await services.branding.get();
+			const uploaded = await services.branding.getLogoMeta();
 			const logoUrl = uploaded ? `${BRANDING_LOGO_PATH}?v=${uploaded.hash}` : branding.logo_url;
 			return c.json(
 				{
