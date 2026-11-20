@@ -24,16 +24,26 @@ import { sqliteHistory } from "../src/store/sqlite-history.ts";
 import { mysqlSchema } from "./fixtures/before-shared-mysql.ts";
 import { postgresSchema } from "./fixtures/before-shared-postgres.ts";
 
-const original = readFileSync(new URL("../src/store/schema/definition.sql", import.meta.url), "utf8");
+// 合成变更注入到两份底稿：基线链（buildArtifacts 断言）从历史基线编译，apply 链从现行定义末端编译。
+// 历史基线结构 == 033 版本快照（033 为纯数据迁移）；现行共享定义 == 已登记版本链末端。
+const baselineSql = readFileSync(
+	new URL("../src/store/schema/versions/033_openagentkit_default_branding.sql", import.meta.url),
+	"utf8",
+);
+const currentSql = readFileSync(new URL("../src/store/schema/definition.sql", import.meta.url), "utf8");
 const label = "O'Brien \\ data";
-const added =
-	original.replace(
+const inject = (sql: string) =>
+	sql.replace(
 		'CREATE TABLE "kit_members" (\n',
 		`CREATE TABLE "kit_members" (\n  "remark" TEXT,\n  "label" VARCHAR(32) NOT NULL DEFAULT '${label.replaceAll("'", "''")}',\n`,
 	) +
 	'\nCREATE INDEX "idx_members_remark" ON "kit_members" ("remark");\n' +
 	'CREATE TABLE "kit_migration_notes" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "note" TEXT);\n';
-const renamed = added.replace('"remark" TEXT', '"note" TEXT').replace('("remark")', '("note")');
+const rename = (sql: string) => sql.replace('"remark" TEXT', '"note" TEXT').replace('("remark")', '("note")');
+const added = inject(baselineSql);
+const renamed = rename(added);
+const currentAdded = inject(currentSql);
+const currentRenamed = rename(currentAdded);
 const renameSql = "ALTER TABLE kit_members RENAME COLUMN remark TO note";
 const backfillSql = "UPDATE kit_members SET note = 'legacy' WHERE note IS NULL";
 const explicit = {
@@ -48,9 +58,9 @@ const versions = [
 ];
 
 function withUpgrades(program: MigrationProgram, dialect: "sqlite" | ExternalDialect): MigrationProgram {
-	const before = readDefinition(original);
-	const middle = readDefinition(added);
-	const final = readDefinition(renamed);
+	const before = readDefinition(currentSql);
+	const middle = readDefinition(currentAdded);
+	const final = readDefinition(currentRenamed);
 	return {
 		...program,
 		upgrades: [

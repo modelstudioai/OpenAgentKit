@@ -67,6 +67,7 @@ export function createKitServices(
 	const gateway = createGateway(config, {
 		byAgent: () => usageSnapshots.telemetryByAgent(),
 		bySession: (sessionId) => usageSnapshots.telemetryBySession(sessionId),
+		byAgentHour: () => usageSnapshots.telemetryByAgentHour(),
 	});
 	const buffers = createEventBufferRegistry();
 	const sessionIndex = createSessionIndex(database);

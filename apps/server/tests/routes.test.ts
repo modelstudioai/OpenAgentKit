@@ -723,8 +723,8 @@ describe("会话生命周期与文件（B1/B2）", () => {
 	// 已删/孤儿智能体的会话保留只读：详情与列表可回看，发消息被拒；下架未删仍可继续对话。
 	it("已删或孤儿智能体的会话只读，下架未删不受影响", async () => {
 		const { app, services } = makeApp();
-		services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
-		services.catalog.setStatus("assistant", "listed");
+		await services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
+		await services.catalog.setStatus("assistant", "listed");
 		const { cookie, sessionId } = await seedAndCreate(app);
 		const send = () =>
 			app.request(`/api/kit/sessions/${sessionId}/messages`, {
@@ -733,12 +733,12 @@ describe("会话生命周期与文件（B1/B2）", () => {
 				body: JSON.stringify({ text: "hello", client_message_id: "cm1" }),
 			});
 		expect((await send()).status).toBe(202);
-		services.catalog.setStatus("assistant", "unlisted");
+		await services.catalog.setStatus("assistant", "unlisted");
 		expect((await send()).status).toBe(202);
 
-		services.catalog.setStatus("assistant", "listed");
-		const entry = services.catalog.getBySlug("assistant");
-		services.catalog.markDeleted(entry!.id);
+		await services.catalog.setStatus("assistant", "listed");
+		const entry = await services.catalog.getBySlug("assistant");
+		await services.catalog.markDeleted(entry!.id);
 		expect((await app.request(`/api/kit/sessions/${sessionId}`, { headers: { cookie } })).status).toBe(200);
 		const rejected = await send();
 		expect(rejected.status).toBe(403);
@@ -747,7 +747,7 @@ describe("会话生命周期与文件（B1/B2）", () => {
 		});
 
 		// 旧硬删孤儿（slug 无目录行）同样只读
-		services.sessionIndex.create({ sessionId: "sesn_orphan", subjectId: "lifecycle", agentSlug: "ghost" });
+		await services.sessionIndex.create({ sessionId: "sesn_orphan", subjectId: "lifecycle", agentSlug: "ghost" });
 		const orphanSend = await app.request("/api/kit/sessions/sesn_orphan/messages", {
 			method: "POST",
 			headers: { ...json, cookie },
@@ -757,8 +757,8 @@ describe("会话生命周期与文件（B1/B2）", () => {
 
 		// slug 复用不复活旧会话：软删后同 slug 建新条目，旧会话仍按条目 ID 判定只读，
 		// 新会话落在新条目上可正常发送。
-		services.catalog.upsert({ slug: "assistant", display_name: "A2", remote_agent_id: "agent_mock" });
-		services.catalog.setStatus("assistant", "listed");
+		await services.catalog.upsert({ slug: "assistant", display_name: "A2", remote_agent_id: "agent_mock" });
+		await services.catalog.setStatus("assistant", "listed");
 		expect((await send()).status).toBe(403);
 		const { sessionId: reusedSessionId } = await seedAndCreate(app);
 		const reusedSend = await app.request(`/api/kit/sessions/${reusedSessionId}/messages`, {

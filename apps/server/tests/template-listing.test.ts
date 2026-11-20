@@ -178,7 +178,11 @@ describe("模版上架", () => {
 	it("拒绝缺失、伪造、跨主体或跨模版的令牌、计划外改名及确认重放", async () => {
 		const { services, save, listing, plan } = setup();
 		const template = await save();
-		const other = await save({ name: "另一模版" });
+		const other = await save({
+			name: "另一模版",
+			remote_agent_id: "agent_mock_designer",
+			remote_environment_id: "env_mock_default",
+		});
 		expect((await listing(template, { display_name: "项目助手" })).status).toBe(428);
 		expect((await listing(template, { display_name: "项目助手", plan_id: "bad", confirm_token: "bad" })).status).toBe(
 			428,
@@ -248,11 +252,12 @@ describe("模版上架", () => {
 		const path = `/api/admin/templates/${template.template_id}/listing/plan`;
 		expect((await post(path, { display_name: "项目助手" })).status).toBe(409);
 		expect(await services.catalog.get(foreign.id)).toEqual(foreign);
-		await services.catalog.remove(foreign.id);
+		await services.catalog.markDeleted(foreign.id);
 		expect((await listing(template, confirmed(await plan(template)))).status).toBe(200);
 		const catalogId = (await services.templates.get(template.template_id)).listing?.catalog_id;
 		if (!catalogId) throw new Error("Missing catalog link");
-		await services.catalog.remove(catalogId);
+		await services.catalog.markDeleted(catalogId);
+		await services.templates.detachListingByCatalog(catalogId);
 		expect((await services.templates.get(template.template_id)).listing).toBeUndefined();
 		expect(db.prepare("SELECT count(*) AS count FROM kit_template_listings").get()?.count).toBe(0);
 		const occupied = await services.catalog.create({
@@ -262,7 +267,7 @@ describe("模版上架", () => {
 		});
 		expect((await post(path, { display_name: "项目助手" })).status).toBe(409);
 		expect(await services.catalog.get(occupied.id)).toEqual(occupied);
-		await services.catalog.remove(occupied.id);
+		await services.catalog.markDeleted(occupied.id);
 		expect((await listing(template, confirmed(await plan(template)))).status).toBe(200);
 		expect((await services.templates.get(template.template_id)).listing?.catalog_id).not.toBe(catalogId);
 	});

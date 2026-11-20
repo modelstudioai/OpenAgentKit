@@ -204,6 +204,7 @@ async function exerciseBackend(backend?: { driver: "mysql" | "postgres"; url?: s
 
 		// 缺失计量基线时，两张月账的未知标记随事务写入，撤销本次准入时一起恢复。
 		const limits = createUsageLimitStore(db);
+		const entryId = (await services.catalog.getBySlug(agent.slug))!.id;
 		const now = "2040-01-01T00:00:00.000Z";
 		const month = now.slice(0, 7);
 		await limits.prepare(charge.subjectId, now);
@@ -222,7 +223,7 @@ async function exerciseBackend(backend?: { driver: "mysql" | "postgres"; url?: s
 				tokens_unknown: expected,
 				active_seconds_unknown: expected,
 			});
-			expect(await limits.agentTotals(agent.slug, month)).toMatchObject({
+			expect(await limits.agentTotals(entryId, month)).toMatchObject({
 				tokens_unknown: expected,
 				active_seconds_unknown: expected,
 			});

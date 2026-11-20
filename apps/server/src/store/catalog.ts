@@ -23,6 +23,7 @@ export interface CatalogRow {
 	category: string;
 	featured: number;
 	status: string;
+	deleted_at: string | null;
 	created_at: string;
 	updated_at: string;
 }
@@ -111,9 +112,15 @@ function toView(row: CatalogRow): CatalogAgentView {
 		category: row.category as CatalogAgentView["category"],
 		featured: row.featured === 1,
 		status: row.status as CatalogAgentView["status"],
+		...(row.deleted_at ? { deleted: true as const } : {}),
 		created_at: row.created_at,
 		updated_at: row.updated_at,
 	};
+}
+
+/** 写入失败归因：slug 被活动行占用 vs 展示名冲突；已删行不占用 slug。 */
+function conflictReason(owner: CatalogAgentView | null): string {
+	return owner && !owner.deleted ? "ID 已存在，请使用其他 ID" : "展示名已存在，请使用其他展示名";
 }
 
 function writableFields(view: CatalogAgentView) {
@@ -146,13 +153,13 @@ export function createCatalogStore(db: StoreDatabase) {
 	return {
 		async list(): Promise<CatalogAgentView[]> {
 			const rows = (await db.all(
-				"SELECT * FROM catalog_agents ORDER BY ordering ASC, created_at ASC",
+				"SELECT * FROM catalog_agents WHERE deleted_at IS NULL ORDER BY ordering ASC, created_at ASC",
 			)) as unknown as CatalogRow[];
 			return rows.map(toView);
 		},
 		async listed(): Promise<CatalogAgentView[]> {
 			const rows = (await db.all(
-				"SELECT * FROM catalog_agents WHERE status = 'listed' ORDER BY ordering ASC, created_at ASC",
+				"SELECT * FROM catalog_agents WHERE status = 'listed' AND deleted_at IS NULL ORDER BY ordering ASC, created_at ASC",
 			)) as unknown as CatalogRow[];
 			return rows.map(toView);
 		},
@@ -161,9 +168,11 @@ export function createCatalogStore(db: StoreDatabase) {
 			return row ? toView(row) : null;
 		},
 		async getBySlug(slug: string): Promise<CatalogAgentView | null> {
-			const row = (await db.get("SELECT * FROM catalog_agents WHERE slug = ?", slug)) as unknown as
-				| CatalogRow
-				| undefined;
+			// slug 可被已删行与活动行复用；优先返回活动行，保证编辑/删除/上架流程不会命中已删行。
+			const row = (await db.get(
+				"SELECT * FROM catalog_agents WHERE slug = ? ORDER BY (deleted_at IS NOT NULL), updated_at DESC LIMIT 1",
+				slug,
+			)) as unknown as CatalogRow | undefined;
 			return row ? toView(row) : null;
 		},
 		async insert(view: CatalogAgentView) {
@@ -175,15 +184,20 @@ export function createCatalogStore(db: StoreDatabase) {
 			};
 			const columns = Object.keys(row);
 			await db.transaction(async () => {
-				if (await this.getBySlug(view.slug)) throw new KitError("conflict", "ID 已存在，请使用其他 ID");
-				if (await db.get("SELECT 1 FROM catalog_agents WHERE display_name = ?", view.display_name))
+				// 已删行不占用 slug：仅活动行触发前置拒绝，软删复用交给部分唯一索引放行。
+				const slugOwner = await this.getBySlug(view.slug);
+				if (slugOwner && !slugOwner.deleted) throw new KitError("conflict", "ID 已存在，请使用其他 ID");
+				if (
+					await db.get("SELECT 1 FROM catalog_agents WHERE display_name = ? AND deleted_at IS NULL", view.display_name)
+				)
 					throw new KitError("conflict", "展示名已存在，请使用其他展示名");
+				// slug 唯一性来自排除已删行的部分唯一索引，冲突目标用全量兜底；未写入时按活动行归因。
 				const inserted = await db.insertIfAbsent(
 					`INSERT INTO catalog_agents (${columns.join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`,
-					"slug",
+					"",
 					...Object.values(row),
 				);
-				if (!inserted.changes) throw new KitError("conflict", "ID 已存在，请使用其他 ID");
+				if (!inserted.changes) throw new KitError("conflict", conflictReason(await this.getBySlug(view.slug)));
 			});
 		},
 		async update(id: string, patch: Partial<CatalogAgentView>) {
@@ -193,7 +207,11 @@ export function createCatalogStore(db: StoreDatabase) {
 				const next: CatalogAgentView = { ...current, ...patch, id, updated_at: new Date().toISOString() };
 				if (
 					current.display_name !== next.display_name &&
-					(await db.get("SELECT 1 FROM catalog_agents WHERE display_name = ? AND id <> ?", next.display_name, id))
+					(await db.get(
+						"SELECT 1 FROM catalog_agents WHERE display_name = ? AND id <> ? AND deleted_at IS NULL",
+						next.display_name,
+						id,
+					))
 				) {
 					throw new KitError("conflict", "展示名已存在，请使用其他展示名");
 				}
@@ -228,7 +246,9 @@ export function createCatalogStore(db: StoreDatabase) {
 			return db.transaction(async () => {
 				const { slug, ...display } = input;
 				const existing = await this.getBySlug(slug);
-				if (existing) return (await this.update(existing.id, definedOnly(display))) as CatalogAgentView;
+				// 已删行不参与 upsert：slug 已被部分唯一索引释放，按创建新条目处理，不会"复活"已删行。
+				if (existing && !existing.deleted)
+					return (await this.update(existing.id, definedOnly(display))) as CatalogAgentView;
 				return this.create(input);
 			});
 		},
@@ -246,8 +266,15 @@ export function createCatalogStore(db: StoreDatabase) {
 			if (!existing) return null;
 			return await this.update(existing.id, { status });
 		},
-		async remove(id: string): Promise<boolean> {
-			const result = await db.run("DELETE FROM catalog_agents WHERE id = ?", id);
+		/** 软删：仅标记 deleted_at，不改上下架 status；历史会话与用量账本保留，员工端按此列过滤。 */
+		async markDeleted(id: string): Promise<boolean> {
+			const now = new Date().toISOString();
+			const result = await db.run(
+				"UPDATE catalog_agents SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+				now,
+				now,
+				id,
+			);
 			return result.changes > 0;
 		},
 	};

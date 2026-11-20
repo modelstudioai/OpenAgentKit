@@ -24,7 +24,7 @@ const widths = [
 	[100, "content_type kind"],
 	[
 		128,
-		"catalog_id cleanup_key_hash draft_id group_id hash member_id operation_id preset_pack_id request_hash template_id token_hash",
+		"catalog_entry_id catalog_id cleanup_key_hash draft_id group_id hash member_id operation_id preset_pack_id request_hash template_id token_hash",
 	],
 	[255, "agent_key agent_slug client_message_id file_id name owner project_name request_key session_id slug username"],
 	[512, "subject_id"],
@@ -114,6 +114,13 @@ function mysqlPlainIndex(table: Table, index: Index): Index {
 	};
 }
 
+/** MySQL 无部分索引：声明的部分唯一索引映射为生成列 + 完整唯一索引，值为生成列名。 */
+const mysqlPartialUniques: Record<string, string> = {
+	idx_resource_drafts_active_owner: "active_owner",
+	idx_catalog_agents_slug_active: "active_slug",
+	idx_kit_templates_name_active: "active_name",
+};
+
 function externalIndexes(table: Table, dialect: "mysql" | "postgres") {
 	return table.indexes.map((index) => {
 		if (index.name === "idx_usage_turns_idempotency" && index.where === "client_message_id IS NOT NULL") {
@@ -128,12 +135,9 @@ function externalIndexes(table: Table, dialect: "mysql" | "postgres") {
 				columns: index.columns.map((name) => (["project_name", "agent_key"].includes(name) ? `${name}(64)` : name)),
 			};
 		}
-		if (index.where && index.name !== "idx_resource_drafts_active_owner") {
-			throw new Error(`缺少 MySQL 部分索引映射：${table.name}.${index.name}`);
-		}
-		return index.name === "idx_resource_drafts_active_owner"
-			? { name: index.name, columns: ["active_owner"], unique: true }
-			: mysqlPlainIndex(table, index);
+		const partial = index.where ? mysqlPartialUniques[index.name] : undefined;
+		if (index.where && !partial) throw new Error(`缺少 MySQL 部分索引映射：${table.name}.${index.name}`);
+		return partial ? { name: index.name, columns: [partial], unique: true } : mysqlPlainIndex(table, index);
 	});
 }
 
@@ -147,13 +151,13 @@ export function forDialect(schema: Schema, dialect: Dialect): Schema {
 			if (table.name === "kit_members") checks.push("username = lower(username)");
 			if (table.name === "kit_resource_drafts") checks.push("cleanup_pending IN (0, 1)");
 		}
-		const active = table.indexes.find((index) => index.name === "idx_resource_drafts_active_owner");
+		const active = table.indexes.find((index) => index.where && mysqlPartialUniques[index.name]);
 		if (dialect === "mysql" && active?.where) {
 			columns.push({
-				name: "active_owner",
+				name: mysqlPartialUniques[active.name]!,
 				type: "VARCHAR(255)",
 				nullable: true,
-				generated: `CASE WHEN ${active.where} THEN owner END`,
+				generated: `CASE WHEN ${active.where} THEN ${active.columns[0]} END`,
 			});
 		}
 		return { ...table, columns, checks, indexes: externalIndexes(table, dialect) };

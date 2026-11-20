@@ -26,7 +26,8 @@ const unlimited: UsageLimitConfig = {
 	daily_tokens: null,
 	daily_active_seconds: null,
 };
-/** 模版条目 fixture：catalog slug 与 setup 的会话 agentSlug 同名，限额外部数据最少。 */
+/** 模版条目 fixture：catalog slug 与 setup 的会话 agentSlug 同名，限额外部数据最少。
+ * 返回条目 ID：账本与准入按条目 ID 记键（slug 软删后可复用）。 */
 async function listing(db: ReturnType<typeof openDatabase>) {
 	const catalog = createCatalogStore(createSqliteDatabase(db));
 	const templates = createTemplateStore(createSqliteDatabase(db));
@@ -45,8 +46,9 @@ async function listing(db: ReturnType<typeof openDatabase>) {
 		vault_ids: [],
 		category: "general",
 	});
-	await templates.saveListing(created.template_id, async () => (await catalog.getBySlug("agent"))!);
-	return created.template_id;
+	const entry = (await catalog.getBySlug("agent"))!;
+	await templates.saveListing(created.template_id, async () => entry);
+	return { templateId: created.template_id, entryId: entry.id };
 }
 function detail(id: string, input = 0, output = 0, seconds = 0): GatewaySessionInfo {
 	return {
@@ -63,6 +65,7 @@ async function setup() {
 	cleanup.push(() => db.close());
 	const members = createMemberStore(createSqliteDatabase(db));
 	const index = createSessionIndex(createSqliteDatabase(db));
+	const { templateId, entryId } = await listing(db);
 	const snapshots = createSessionUsageStore(createSqliteDatabase(db));
 	const store = createUsageLimitStore(createSqliteDatabase(db));
 	const gateway = createMockGateway();
@@ -90,7 +93,7 @@ async function setup() {
 		);
 	}
 	async function session(id = "s", owner = "member_a") {
-		await index.create({ sessionId: id, subjectId: owner, agentSlug: "agent" });
+		await index.create({ sessionId: id, subjectId: owner, agentSlug: "agent", catalogEntryId: entryId });
 		details.set(id, detail(id));
 		events.set(id, []);
 	}
@@ -149,6 +152,8 @@ async function setup() {
 		complete,
 		service,
 		make,
+		templateId,
+		entryId,
 		time: (iso: string) => {
 			current = new Date(iso);
 		},
@@ -621,7 +626,7 @@ describe("成员月度 Session 用量准入", () => {
 	it("模版限额准入补采其他成员未入账消耗，共享超限时拒绝且不调用发送", async () => {
 		const f = await setup();
 		await f.service.setTemplate(
-			await listing(f.db),
+			f.templateId,
 			{ monthly_tokens: 100, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 			"admin",
 		);
@@ -639,7 +644,7 @@ describe("成员月度 Session 用量准入", () => {
 	it("仅启用模版限额时，本次采集失败不得凭旧账本放行；恢复后可重新准入", async () => {
 		const f = await setup();
 		await f.service.setTemplate(
-			await listing(f.db),
+			f.templateId,
 			{ monthly_tokens: 100, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 			"admin",
 		);
@@ -676,14 +681,14 @@ describe("成员月度 Session 用量准入", () => {
 	it("模版日限额基于条目日账（observe 与成员逐日账同事务双写），共享超限拒绝后续发送", async () => {
 		const f = await setup();
 		await f.service.setTemplate(
-			await listing(f.db),
+			f.templateId,
 			{ monthly_tokens: null, monthly_active_seconds: null, daily_tokens: 200, daily_active_seconds: null },
 			"admin",
 		);
 		await f.run("first");
 		f.complete();
 		await f.service.member("member_a"); // 触发采集：条目日账与成员日账同步入账。
-		expect(await f.store.agentDayTotals("agent", "2026-10-31")).toEqual({ tokens: 200, active_seconds: 2 });
+		expect(await f.store.agentDayTotals(f.entryId, "2026-10-31")).toEqual({ tokens: 200, active_seconds: 2 });
 		await expect(f.run("second")).rejects.toMatchObject({
 			code: "quota_exceeded",
 			details: { scope: "template", period: "day", day: "2026-10-31", limit: 200 },
@@ -693,7 +698,7 @@ describe("成员月度 Session 用量准入", () => {
 
 	it("日维度上限不得高于月维度：policy/member/template 三个设置入口统一校验，日未设置视为跟随月", async () => {
 		const f = await setup();
-		const templateId = await listing(f.db);
+		const templateId = f.templateId;
 		const badTokens = {
 			monthly_tokens: 100,
 			monthly_active_seconds: null,
@@ -724,7 +729,7 @@ describe("成员月度 Session 用量准入", () => {
 
 	it("模版用量逐日趋势：observe 增量按采集确认日入条目日账，零值补全且非模版条目不计入", async () => {
 		const f = await setup();
-		const templateId = await listing(f.db);
+		const templateId = f.templateId;
 		f.time("2026-10-30T10:00:00.000Z");
 		await f.run("day1");
 		f.complete();
@@ -734,7 +739,9 @@ describe("成员月度 Session 用量准入", () => {
 		f.complete("s", 300, 200, 5);
 		await f.service.member("member_a"); // 条目日账 2026-11-02：300 tokens / 3s
 		f.db
-			.prepare("INSERT INTO kit_usage_limit_agent_days (agent_slug, day, tokens, active_seconds) VALUES (?, ?, ?, ?)")
+			.prepare(
+				"INSERT INTO kit_usage_limit_agent_days (catalog_entry_id, day, tokens, active_seconds) VALUES (?, ?, ?, ?)",
+			)
 			.run("rogue-entry", "2026-11-01", 999, 9); // 非模版上架条目：任何视角都不计入
 		const trend = await f.service.templateDailyTrend(templateId, 7);
 		expect(trend).toMatchObject({ days: 7, from_day: "2026-10-27", to_day: "2026-11-02", since_day: "2026-10-30" });
@@ -750,5 +757,45 @@ describe("成员月度 Session 用量准入", () => {
 			{ day: "2026-10-30", tokens: 200, active_seconds: 2 },
 			{ day: "2026-11-02", tokens: 300, active_seconds: 3 },
 		]);
+	});
+
+	it("slug 复用按条目隔离：旧条目账本与模版限额不串到新条目，明细归属不串", async () => {
+		const f = await setup();
+		await f.service.setTemplate(
+			f.templateId,
+			{ monthly_tokens: 100, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
+			"admin",
+		);
+		// 旧条目会话消耗 150 并入账；旧条目已超限。
+		await f.run("old-first");
+		f.complete("s", 150, 0, 0);
+		await f.service.member("member_a");
+		expect((await f.store.agentTotals(f.entryId, "2026-10")).tokens).toBe(150);
+		await expect(f.run("old-second")).rejects.toMatchObject({
+			code: "quota_exceeded",
+			details: { scope: "template" },
+		});
+
+		// 同 slug 复用：软删旧条目、新建条目。新条目没有自己的模版配置与账本。
+		const catalog = createCatalogStore(createSqliteDatabase(f.db));
+		expect(await catalog.markDeleted(f.entryId)).toBe(true);
+		const reused = await catalog.create({ slug: "agent", display_name: "复用条目", remote_agent_id: "remote-x" });
+		await f.member("member_b");
+		await f.index.create({
+			sessionId: "reused-s",
+			subjectId: "member_b",
+			agentSlug: "agent",
+			catalogEntryId: reused.id,
+		});
+		f.details.set("reused-s", detail("reused-s"));
+		f.events.set("reused-s", []);
+
+		// 旧账本与旧模版配置都不拦新条目会话。
+		await expect(f.run("reused-first", "reused-s")).resolves.toHaveProperty("event_ids");
+		expect((await f.store.agentTotals(reused.id, "2026-10")).tokens).toBe(0);
+		expect(await f.store.templateOverrideByEntry(reused.id)).toBeNull();
+		expect((await f.store.templateSessions(reused.id, "2026-10")).map((row) => row.session_id)).toEqual(["reused-s"]);
+		// 旧条目账本保留：明细归属仍按条目 ID（不因 slug 相同串到新条目）。
+		expect((await f.store.templateSessions(f.entryId, "2026-10")).map((row) => row.session_id)).toEqual(["s"]);
 	});
 });

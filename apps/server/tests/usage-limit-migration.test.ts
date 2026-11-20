@@ -1,52 +1,38 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { expect, it } from "vitest";
 import { openDatabase } from "../src/store/db.ts";
+import { program } from "../src/store/schema/generated/sqlite.ts";
+import { sqliteHistory } from "../src/store/sqlite-history.ts";
 
-/** 033 为止的真实形状：slug/名称仍内联 UNIQUE、已含 deleted_at 列；034 重建两表及全部子表。 */
-it("034 重建模版表保留存量限额配置", () => {
+const snapshot034 = readFileSync(
+	new URL("../src/store/schema/versions/034_catalog_template_soft_delete.sql", import.meta.url),
+	"utf8",
+);
+
+/** 034 为止的真实形状（已含 deleted_at，slug/名称仍内联 UNIQUE）：以版本快照建库并登记已应用迁移。
+ * 版本链要求迁移记录连续，035/036 必须整段重放，不能单独删除其一。 */
+function baseAt034(dataDir: string) {
+	const db = new DatabaseSync(join(dataDir, "kit.sqlite"));
+	db.exec("CREATE TABLE _kit_migrations (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL)");
+	db.exec(snapshot034);
+	const upgrades = program.upgrades.map((migration) => migration.id);
+	const through = upgrades.indexOf("034_catalog_template_soft_delete");
+	if (through < 0) throw new Error("缺少 034 版本快照迁移");
+	const record = db.prepare("INSERT INTO _kit_migrations VALUES (?, ?)");
+	for (const id of [...sqliteHistory.map((migration) => migration.id), ...upgrades.slice(0, through + 1)])
+		record.run(id, "2026-11-01");
+	return db;
+}
+
+/** 035 重建模版两表及全部子表外键父级：存量限额配置、模版本与上架关联必须原样保留。 */
+it("035 重建模版表保留存量限额配置", () => {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-limit-migration-"));
-	let db = openDatabase(dataDir);
+	let db = baseAt034(dataDir);
 	try {
 		db.exec(`
-DELETE FROM _kit_migrations WHERE id = '034_soft_delete_identity_reuse';
-DROP TABLE kit_usage_limit_templates;
-DROP TABLE kit_template_listings;
-DROP TABLE kit_template_versions;
-DROP TABLE kit_templates;
-DROP TABLE catalog_agents;
-CREATE TABLE catalog_agents (
-  id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL,
-  description TEXT, icon TEXT, opening_remarks TEXT, suggested_prompts TEXT NOT NULL DEFAULT '[]',
-  capabilities TEXT NOT NULL DEFAULT '{}', theme TEXT, remote_agent_id TEXT NOT NULL,
-  remote_agent_version INTEGER, visibility TEXT NOT NULL DEFAULT 'public', ordering INTEGER NOT NULL DEFAULT 100,
-  status TEXT NOT NULL DEFAULT 'unlisted', created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
-  category TEXT NOT NULL DEFAULT 'general', featured INTEGER NOT NULL DEFAULT 0,
-  remote_environment_id TEXT, files_json TEXT NOT NULL DEFAULT '[]', memory_stores_json TEXT NOT NULL DEFAULT '[]',
-  vault_ids_json TEXT NOT NULL DEFAULT '[]', agent_version INTEGER CHECK (agent_version > 0),
-  listed_at TEXT, deleted_at TEXT
-);
-CREATE TABLE kit_templates (
-  template_id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE,
-  remote_agent_id TEXT NOT NULL, remote_agent_name TEXT NOT NULL,
-  config_json TEXT NOT NULL, created_at TEXT NOT NULL,
-  version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0), updated_at TEXT NOT NULL DEFAULT '', deleted_at TEXT
-);
-CREATE TABLE kit_template_versions (
-  template_id TEXT NOT NULL REFERENCES kit_templates(template_id) ON DELETE CASCADE,
-  version INTEGER NOT NULL CHECK (version > 0), config_json TEXT NOT NULL, created_at TEXT NOT NULL,
-  PRIMARY KEY (template_id, version)
-);
-CREATE TABLE kit_template_listings (
-  template_id TEXT PRIMARY KEY REFERENCES kit_templates(template_id) ON DELETE CASCADE,
-  catalog_id TEXT NOT NULL UNIQUE REFERENCES catalog_agents(id) ON DELETE CASCADE
-);
-CREATE TABLE kit_usage_limit_templates (
-  template_id TEXT PRIMARY KEY REFERENCES kit_templates(template_id) ON DELETE CASCADE,
-  monthly_tokens INTEGER, monthly_active_seconds REAL, updated_at TEXT NOT NULL, updated_by TEXT NOT NULL,
-  daily_tokens INTEGER, daily_active_seconds REAL
-);
 INSERT INTO catalog_agents (id, slug, display_name, remote_agent_id, created_at, updated_at)
   VALUES ('entry_1', 'assistant', '员工助手', 'agent_remote', '2026-11-01', '2026-11-01');
 INSERT INTO kit_templates (template_id, name, remote_agent_id, remote_agent_name, config_json, created_at, updated_at)
@@ -85,13 +71,14 @@ INSERT INTO kit_usage_limit_templates
 	}
 });
 
-/** 035 之前的形状：kit_sessions/kit_session_usage 无 catalog_entry_id，条目账按 slug 记键。 */
-it("035 按存活窗口回填会话归属、条目账改按条目 ID 记键", () => {
+/** 036 之前的形状：kit_sessions/kit_session_usage 无 catalog_entry_id，条目账按 slug 记键。 */
+it("036 按存活窗口回填会话归属、条目账改按条目 ID 记键", () => {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-entry-migration-"));
 	let db = openDatabase(dataDir);
 	try {
+		// 036 是链尾迁移，可单独删除重放；catalog_agents 保持部分唯一索引形状，slug 可复用。
 		db.exec(`
-DELETE FROM _kit_migrations WHERE id = '035_usage_entry_identity';
+DELETE FROM _kit_migrations WHERE id = '036_usage_entry_identity';
 DROP INDEX idx_sessions_entry;
 DROP INDEX idx_session_usage_entry;
 ALTER TABLE kit_sessions DROP COLUMN catalog_entry_id;

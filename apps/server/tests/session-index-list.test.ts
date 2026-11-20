@@ -57,6 +57,16 @@ describe("会话索引列表", () => {
 			purpose: "admin_debug",
 			debug: { project_name: "p", agent_key: "a", remote_agent_id: "r" },
 		});
+		// 分组只认仍有未删除目录行的 slug：为涉及断言的 slug 建目录行。
+		const insertEntry = (slug: string) =>
+			db
+				.prepare(
+					"INSERT INTO catalog_agents (id, slug, display_name, remote_agent_id, created_at, updated_at) VALUES (?, ?, ?, 'agent-a', ?, ?)",
+				)
+				.run(`cat-${slug}`, slug, slug, "2026-01-01T00:00:00.000Z", "2026-01-01T00:00:00.000Z");
+		insertEntry("assistant");
+		insertEntry("writer");
+		insertEntry("private-agent");
 		await index.create({ sessionId: "only-archived", subjectId: "owner", agentSlug: "archived-agent" });
 		await index.setStatus("only-archived", "archived");
 		expect(new Set(await index.listAgentsForSubject("owner"))).toEqual(new Set(["assistant", "writer"]));
@@ -84,6 +94,38 @@ describe("会话索引列表", () => {
 				index.pageForSubject(subject, { ...options, pageToken: first.next_page_token as string }),
 			).rejects.toThrow("游标无效");
 		await expect(index.pageForSubject("owner", { pageToken: "invalid" })).rejects.toThrow("游标无效");
+	});
+
+	// 员工端菜单只展示仍有未删除目录行的分组：已删条目与无目录行的历史孤儿都隐藏；会话仍可通过列表读取。
+	it("菜单隐藏已删条目和无目录行的分组，会话仍可通过列表读取", async () => {
+		const db = setupDb();
+		const index = createSessionIndex(createSqliteDatabase(db));
+		const now = new Date().toISOString();
+		const insertEntry = (id: string, slug: string) =>
+			db
+				.prepare(
+					"INSERT INTO catalog_agents (id, slug, display_name, remote_agent_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+				)
+				.run(id, slug, slug, "agent-a", now, now);
+		insertEntry("cat-del", "deleted-agent");
+		insertEntry("cat-live", "live-agent");
+		await index.create({ sessionId: "s-deleted", subjectId: "owner", agentSlug: "deleted-agent" });
+		await index.create({ sessionId: "s-live", subjectId: "owner", agentSlug: "live-agent" });
+		await index.create({ sessionId: "s-legacy", subjectId: "owner", agentSlug: "legacy-agent" });
+		expect(new Set(await index.listAgentsForSubject("owner"))).toEqual(new Set(["deleted-agent", "live-agent"]));
+		db.prepare("UPDATE catalog_agents SET deleted_at = ? WHERE id = ?").run(now, "cat-del");
+		expect(await index.listAgentsForSubject("owner")).toEqual(["live-agent"]);
+		expect(
+			(await index.pageForSubject("owner", { agentSlug: "deleted-agent", includeArchived: false })).data.map(
+				(row) => row.session_id,
+			),
+		).toEqual(["s-deleted"]);
+		// 无目录行的历史孤儿（旧硬删遗留）不再进分组，但会话本身仍可读取。
+		expect(
+			(await index.pageForSubject("owner", { agentSlug: "legacy-agent", includeArchived: false })).data.map(
+				(row) => row.session_id,
+			),
+		).toEqual(["s-legacy"]);
 	});
 
 	it("按最近活动排序：last_event_at 优先，缺失时回落 created_at", async () => {
@@ -204,6 +246,18 @@ describe("会话索引列表", () => {
 			"admin:test",
 		);
 		await services.sessions.create({ subjectId: member.member_id, agentSlug: "assistant", remoteAgentId: "mock" });
+		await services.catalog.insert(
+			CatalogAgentViewSchema.parse({
+				id: "cat-assistant",
+				slug: "assistant",
+				display_name: "助理",
+				capabilities: {},
+				remote_agent_id: "mock",
+				status: "listed",
+				created_at: "2026-01-01T00:00:00.000Z",
+				updated_at: "2026-01-01T00:00:00.000Z",
+			}),
+		);
 		const app = createApp(services);
 		const login = await app.request("/api/kit/auth/login", {
 			method: "POST",
