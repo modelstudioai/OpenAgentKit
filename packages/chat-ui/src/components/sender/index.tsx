@@ -8,6 +8,7 @@ import {
 	type AriaAttributes,
 	type AriaRole,
 	type ClipboardEvent,
+	type InputEvent as ReactInputEvent,
 	createContext,
 	forwardRef,
 	type KeyboardEvent,
@@ -201,6 +202,15 @@ function atomicBackspaceKeyDown(
 	event.preventDefault();
 	commit(atomic.value, atomic.caret);
 	return true;
+}
+
+/** 输入完整技能标记（后跟空白）后自动投影成 chip；调用方无需再手动 replaceRange。 */
+export function shouldAutoChip(root: HTMLElement, value: string, names: readonly string[]): boolean {
+	const markers = skillInputMarkerRanges(value, names);
+	if (!markers.length) return false;
+	const chips = root.querySelectorAll("[data-skill]").length;
+	if (markers.length <= chips) return false;
+	return markers.some((marker) => /\s/.test(value[marker.end] ?? ""));
 }
 
 /** 提交载荷：正文里的输入标记派生技能名（skillInputTokens，首现顺序去重）；无标记时省略。 */
@@ -640,10 +650,19 @@ const InternalSender = forwardRef<SenderRef, SenderProps>(function Sender(
 		if (handleEditKeys(event)) return;
 		if (submitKeyDown(event, submitType)) submit();
 	};
-	const handleInput = () => {
+	const handleInput = (event: ReactInputEvent<HTMLDivElement>) => {
 		const el = inputRef.current;
 		if (!el) return;
 		const next = serializeEditable(el);
+		const composing = (event.nativeEvent as InputEvent).isComposing;
+		if (!composing && shouldAutoChip(el, next, skillNames)) {
+			const caret = selectionOffsets(el).start;
+			renderValueInto(el, next, skillNames);
+			setCaretAtTextOffset(el, caret);
+			update(next);
+			reportSelection();
+			return;
+		}
 		update(next);
 		reportSelection();
 	};

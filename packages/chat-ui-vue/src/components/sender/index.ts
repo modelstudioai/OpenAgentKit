@@ -331,6 +331,15 @@ export function atomicBackspace(
 	return null;
 }
 
+/** 输入完整技能标记（后跟空白）后自动投影成 chip；调用方无需再手动 replaceRange。 */
+export function shouldAutoChip(root: HTMLElement, value: string, names: readonly string[]): boolean {
+	const markers = skillInputMarkerRanges(value, names);
+	if (!markers.length) return false;
+	const chips = root.querySelectorAll("[data-skill]").length;
+	if (markers.length <= chips) return false;
+	return markers.some((marker) => /\s/.test(value[marker.end] ?? ""));
+}
+
 function submitKeyDown(event: KeyboardEvent, submitType: SenderSubmitType): boolean {
 	if (event.key !== "Enter" || submitType === false) return false;
 	const shouldSubmit = submitType === "enter" ? !event.shiftKey : event.shiftKey;
@@ -462,10 +471,20 @@ export const Sender = defineComponent({
 			if (submitKeyDown(event, props.submitType)) submit();
 		};
 
-		const handleInput = () => {
+		const handleInput = (event: Event) => {
 			const element = inputRef.value;
 			if (!element) return;
-			update(serializeEditable(element));
+			const next = serializeEditable(element);
+			const composing = (event as InputEvent).isComposing;
+			if (!composing && shouldAutoChip(element, next, skillNames.value)) {
+				const caret = selectionOffsets(element).start;
+				renderValueInto(element, next, skillNames.value);
+				setCaretAtTextOffset(element, caret);
+				update(next);
+				reportSelection();
+				return;
+			}
+			update(next);
 			reportSelection();
 		};
 

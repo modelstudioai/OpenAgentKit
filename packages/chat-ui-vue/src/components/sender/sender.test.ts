@@ -44,4 +44,14 @@ describe("Sender（Vue）", () => {
 		await empty.find("form").trigger("submit");
 		expect(empty.emitted("submit")).toBeUndefined();
 	});
+
+	it("输入完整标记（后跟空格）后自动变成 chip", async () => {
+		const wrapper = mount(Sender, { props: { skills: [{ name: "review" }] } });
+		const input = wrapper.find("[role='textbox']");
+		(input.element as HTMLElement).textContent = "/review ";
+		await input.trigger("input");
+		await nextTick();
+		expect(wrapper.find("[data-skill='review']").exists()).toBe(true);
+		expect(serializeEditable(input.element as HTMLElement)).toBe("/review ");
+	});
 });

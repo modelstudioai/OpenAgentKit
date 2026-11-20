@@ -172,7 +172,7 @@ ${diagram}
 				<h2 class="text-[length:var(--kit-text-heading)] font-semibold">6. 对话输入框（Sender）</h2>
 				<p class="mt-1 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
 					合同：<code>role="textbox"</code> + contenteditable；chip 由调用方插入技能标记（Suggestion 选中后
-					<code>replaceRange</code>），手打 <code>/review</code> 仍是普通文本；Enter 提交、Shift+Enter 换行。
+					<code>replaceRange</code>），手打 <code>/review</code> 加空格也会自动变 chip；Enter 提交、Shift+Enter 换行。
 				</p>
 				<div class="mt-4 flex flex-wrap items-center gap-2">
 					<span class="text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">技能候选：</span>
