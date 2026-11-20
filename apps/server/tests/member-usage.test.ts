@@ -1,18 +1,20 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type {
-	MembersPage,
-	MemberUsageSummary,
-	TemplateSessionUsage,
-	TemplateUsageRow,
-	TemplateUsageTrend,
-	UsageMetric,
-	UsageModelRow,
-	UsageSummary,
-	UsageToolRow,
-	UsageTotal,
-	UsageTrend,
+import {
+	KitError,
+	type MemberSessionsPage,
+	type MembersPage,
+	type MemberUsageSummary,
+	type TemplateSessionUsage,
+	type TemplateUsageRow,
+	type TemplateUsageTrend,
+	type UsageMetric,
+	type UsageModelRow,
+	type UsageSummary,
+	type UsageToolRow,
+	type UsageTotal,
+	type UsageTrend,
 } from "@openagentkit/sdk/protocol";
 import {
 	ApiError,
@@ -148,8 +150,8 @@ describe("成员累计会话用量", () => {
 		expect(filtered.session_count).toBe(62);
 		expect(filtered.metrics.input_tokens.value).toBe(744);
 		expect(filtered.agents).toEqual([
-			{ slug: "agent-a", display_name: null },
-			{ slug: "agent-b", display_name: null },
+			{ slug: "agent-a", catalog_entry_id: null, display_name: null },
+			{ slug: "agent-b", catalog_entry_id: null, display_name: null },
 		]);
 		const ids = new Set<string>();
 		let cursor: string | undefined;
@@ -648,38 +650,53 @@ describe("成员累计会话用量", () => {
 		expect((await app.request("/api/admin/usage/templates/daily-trend")).status).toBe(401);
 	});
 
-	// 条目软删保留用量候选：展示名按会话绑定的条目解析并携带 deleted；slug 复用不串旧会话的归属。
-	it("成员用量候选：条目软删后带 deleted 标记，slug 复用不串旧会话归属", async () => {
-		const { db, services, member, session } = setup();
+	it("同 slug 的旧条目、新条目和未绑定会话分别筛选，汇总、明细与游标使用相同归属", async () => {
+		const { app, services, member, session } = setup();
 		await member("member_a");
-		const now0 = new Date().toISOString();
-		db.prepare(
-			"INSERT INTO catalog_agents (id, slug, display_name, remote_agent_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-		).run("cat-del", "old-agent", "旧条目", "agent-a", now0, now0);
-		await session("s-old", "member_a", "old-agent");
-		vi.spyOn(services.gateway, "getSession").mockImplementation(async (id) => detail(id));
+		const agent = { slug: "shared-agent", remote_agent_id: "agent-a" };
+		await session("s-unknown", "member_a", agent.slug);
+		const old = await services.catalog.create({ ...agent, display_name: "旧条目" });
+		await session("s-old-1", "member_a", agent.slug);
+		await session("s-old-2", "member_a", agent.slug);
+		await services.catalog.markDeleted(old.id);
+		const replacement = await services.catalog.create({ ...agent, display_name: "新条目" });
+		await session("s-new", "member_a", agent.slug);
+		vi.spyOn(services.gateway, "getSession").mockImplementation(async (id) => detail(id, id === "s-new" ? 30 : 10));
 		await services.memberUsage.refresh("member_a", true);
-		expect((await services.memberUsage.summary("member_a")).agents).toEqual([
-			{ slug: "old-agent", display_name: "旧条目" },
-		]);
-		db.prepare("UPDATE catalog_agents SET deleted_at = ? WHERE id = ?").run(new Date().toISOString(), "cat-del");
-		expect((await services.memberUsage.summary("member_a")).agents).toEqual([
-			{ slug: "old-agent", display_name: "旧条目", deleted: true },
-		]);
-		// 同 slug 新条目不复用为旧会话的身份：旧会话仍解析到已删旧条目。
-		const now1 = new Date().toISOString();
-		db.prepare(
-			"INSERT INTO catalog_agents (id, slug, display_name, remote_agent_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-		).run("cat-new", "old-agent", "新条目", "agent-a", now1, now1);
-		expect((await services.memberUsage.summary("member_a")).agents).toEqual([
-			{ slug: "old-agent", display_name: "旧条目", deleted: true },
-		]);
-		// 新会话绑定新条目；展示名按最新会话的条目解析，切到新条目且不带已删标记。
-		await session("s-new", "member_a", "old-agent");
-		await services.memberUsage.refresh("member_a", true);
-		expect((await services.memberUsage.summary("member_a")).agents).toEqual([
-			{ slug: "old-agent", display_name: "新条目" },
-		]);
+		const base = "/api/admin/members/member_a";
+		const agents = [
+			{ slug: agent.slug, catalog_entry_id: old.id, display_name: "旧条目", deleted: true },
+			{ slug: agent.slug, catalog_entry_id: replacement.id, display_name: "新条目" },
+			{ slug: agent.slug, catalog_entry_id: null, display_name: null },
+		];
+		for (const [id, total, sessions] of [
+			[old.id, 20, ["s-old-1", "s-old-2"]],
+			[replacement.id, 30, ["s-new"]],
+			["", 10, ["s-unknown"]],
+		] as const) {
+			const query = `agent_slug=${agent.slug}&catalog_entry_id=${id}`;
+			const summary = await app.request(`${base}/usage?${query}`, { headers: auditor });
+			expect(summary.status).toBe(200);
+			const { data } = (await summary.json()) as { data: MemberUsageSummary };
+			expect(data.agents).toHaveLength(3);
+			expect(data.agents).toEqual(expect.arrayContaining(agents));
+			expect(data.metrics.input_tokens.value).toBe(total);
+			const page = await app.request(`${base}/sessions?${query}`, { headers: auditor });
+			expect(page.status).toBe(200);
+			expect(((await page.json()) as MemberSessionsPage).data.map((row) => row.session_id).sort()).toEqual(sessions);
+		}
+		const slugSummary = await app.request(`${base}/usage?agent_slug=${agent.slug}`, { headers: auditor });
+		expect(await slugSummary.json()).toMatchObject({ data: { session_count: 4 } });
+		const first = await app.request(`${base}/sessions?catalog_entry_id=${old.id}&limit=1`, { headers: auditor });
+		const { next_cursor } = (await first.json()) as MemberSessionsPage;
+		expect(next_cursor).toBeTruthy();
+		expect(
+			(
+				await app.request(`${base}/sessions?catalog_entry_id=${replacement.id}&cursor=${next_cursor}`, {
+					headers: auditor,
+				})
+			).status,
+		).toBe(400);
 	});
 
 	it("模型/工具用量汇总：auditor 可读、维度映射与时间格式校验", async () => {
@@ -710,8 +727,8 @@ describe("成员累计会话用量", () => {
 		await services.memberUsage.refresh("member_a", true);
 		// 成员筛选候选带 catalog 展示名；未登记 catalog 条目的 agent 回落 null。
 		expect((await services.memberUsage.summary("member_a")).agents).toEqual([
-			{ slug: "agent-manual", display_name: null },
-			{ slug: "template_t1", display_name: "模版条目" },
+			{ slug: "agent-manual", catalog_entry_id: null, display_name: null },
+			{ slug: "template_t1", catalog_entry_id: "cat-t1", display_name: "模版条目" },
 		]);
 
 		const now = Date.now();
@@ -1059,7 +1076,7 @@ describe("成员累计会话用量", () => {
 						usage: { total: stubTotal(100, 2), models: [], tools: [] },
 					},
 				} as UsageSummaryResponse;
-			throw new Error("agent-b 查询失败");
+			throw new KitError("not_found", "agent-b 已不存在");
 		});
 		const all = await app.request("/api/admin/usage/summary", { headers: auditor });
 		expect(all.status).toBe(200);
@@ -1086,13 +1103,14 @@ describe("成员累计会话用量", () => {
 						next_page_token: null,
 					},
 				} as UsageTrendResponse;
-			throw new Error("agent-b 趋势查询失败");
+			throw new KitError("not_found", "agent-b 已不存在");
 		});
 		const trend = await app.request("/api/admin/usage/trend", { headers: auditor });
 		expect(trend.status).toBe(200);
 		const trendBody = (await trend.json()) as { data: UsageTrend };
 		expect(trendBody.data.points[0]?.usage.total.input_tokens).toEqual(metricOf(100, "tokens"));
 		expect(trendBody.data.coverage).toEqual({ complete: false, missing_agent_ids: ["agent-b"] });
+		expect((await app.request("/api/admin/usage/trend?agent_id=agent-b", { headers: auditor })).status).toBe(404);
 
 		// 全部智能体都失败：返回零值汇总且 coverage 列出全部缺失来源。
 		vi.spyOn(services.gateway, "getUsageSummary").mockRejectedValue(new Error("全部失败"));

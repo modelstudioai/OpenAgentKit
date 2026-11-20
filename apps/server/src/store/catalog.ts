@@ -277,6 +277,14 @@ export function createCatalogStore(db: StoreDatabase) {
 			);
 			return result.changes > 0;
 		},
+		/** 单独删除目录条目时，一并解除上架关联，使模版可以重新上架。 */
+		async markDeletedAndDetachListing(id: string): Promise<boolean> {
+			return await db.transaction(async () => {
+				if (!(await this.markDeleted(id))) return false;
+				await db.run("DELETE FROM kit_template_listings WHERE catalog_id = ?", id);
+				return true;
+			});
+		},
 	};
 }
 export type CatalogStore = ReturnType<typeof createCatalogStore>;

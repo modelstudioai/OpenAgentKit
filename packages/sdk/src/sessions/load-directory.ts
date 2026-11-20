@@ -3,6 +3,7 @@ import { KitError, type SessionSummary } from "../protocol/index.ts";
 
 export interface SessionListQuery {
 	agentSlug?: string;
+	activeEntryOnly?: boolean;
 	limit?: number;
 	pageToken?: string;
 	includeArchived?: boolean;
@@ -74,7 +75,12 @@ export async function loadSessionDirectory(source: DirectorySource, signal?: Abo
 				const agentSlug = agents[nextAgent++];
 				if (agentSlug === undefined) return;
 				const rows = await readAgentPages(agentSlug, (pageToken) =>
-					read(() => source.sessions({ agentSlug, limit: 200, includeArchived: false, pageToken }, scope.signal)),
+					read(() =>
+						source.sessions(
+							{ agentSlug, activeEntryOnly: true, limit: 200, includeArchived: false, pageToken },
+							scope.signal,
+						),
+					),
 				);
 				for (const session of rows) sessions.set(session.session_id, session);
 			}

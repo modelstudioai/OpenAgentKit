@@ -10,6 +10,7 @@ import type { TableColumnsType } from "antd";
 import { Button, Empty, Popover, Result, Spin, Table, Tabs, Tag } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { createAdminClient } from "../../lib/admin/index.ts";
+import { memberUsageAgentKey } from "../../lib/admin/member-usage.ts";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { useMemberUsage } from "../../lib/admin/use-member-usage.ts";
 import { getAdminClient } from "../../lib/api.ts";
@@ -482,16 +483,22 @@ export function MemberUsagePage({
 								hideLabel
 								resource="Agent"
 								placeholder="全部 Agent"
-								value={usage.agentSlug}
-								onChange={usage.setAgent}
+								value={memberUsageAgentKey(usage.agent)}
+								onChange={(key) => usage.setAgent(usage.agents.find((agent) => memberUsageAgentKey(agent) === key))}
 								defaultOption={{ id: "", name: "全部 Agent" }}
 								emptyText="该成员暂无体验会话"
 								refreshOnOpen={false}
+								showId={false}
 								remote={{
 									data: usage.agents.map((agent) => ({
-										id: agent.slug,
+										id: memberUsageAgentKey(agent),
 										name: agent.display_name ?? agent.slug,
-										tag: agent.deleted ? <Tag>已删除</Tag> : undefined,
+										detail: agent.display_name ? agent.slug : undefined,
+										tag: agent.deleted ? (
+											<Tag>已删除</Tag>
+										) : agent.catalog_entry_id === null ? (
+											<Tag>未关联</Tag>
+										) : undefined,
 									})),
 									loading: usage.loading,
 									error: usage.error,
@@ -544,7 +551,7 @@ export function MemberUsagePage({
 					<Empty
 						image={Empty.PRESENTED_IMAGE_SIMPLE}
 						description={
-							usage.agentSlug ? "该成员在此 Agent 下还没有会话。" : "该成员开始使用体验页后，将在这里统计会话用量。"
+							usage.agent ? "该成员在此 Agent 下还没有会话。" : "该成员开始使用体验页后，将在这里统计会话用量。"
 						}
 					/>
 				)

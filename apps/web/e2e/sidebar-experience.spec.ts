@@ -54,7 +54,7 @@ test("侧栏新建：下架前后均核对目标智能体，拒绝时提示并�
 	await notice.getByRole("button", { name: "关闭错误提示", exact: true }).click();
 	await expect(notice).toHaveCount(0);
 	if (isMobile) await page.getByRole("button", { name: "关闭导航菜单", exact: true }).click();
-	await expect(page.getByLabel("消息输入")).toHaveValue("保留当前智能体的草稿");
+	await expect(page.getByLabel("消息输入")).toHaveText("保留当前智能体的草稿", { useInnerText: true });
 
 	// 刷新后目录已经排除目标，但历史会话仍形成分组，点击同样只提示。
 	await page.reload();
@@ -65,13 +65,50 @@ test("侧栏新建：下架前后均核对目标智能体，拒绝时提示并�
 	await expect(notice).toBeVisible();
 	await expect(page).toHaveURL(`/?agent=${current}`);
 	if (isMobile) await page.getByRole("button", { name: "关闭导航菜单", exact: true }).click();
-	await expect(page.getByLabel("消息输入")).toHaveValue("刷新后的草稿");
+	await expect(page.getByLabel("消息输入")).toHaveText("刷新后的草稿", { useInnerText: true });
 	await openSessionList(page);
 	await page
 		.getByRole("navigation", { name: "最近会话", exact: true })
 		.getByRole("button", { name: `${target} history`, exact: true })
 		.click();
 	await expect(page).toHaveURL(new RegExp(`agent=${target}&session=`));
+});
+
+test("侧栏：同 slug 重建后分组只显示新条目的会话，旧会话保留在最近", async ({ page, request }) => {
+	const slug = `sidebar-reuse-${Date.now()}`;
+	const oldTitle = "旧条目的会话";
+	const newTitle = "新条目的会话";
+	await seedListedAgent(request, slug, "旧目录条目");
+	const created = await page.request.post("/api/kit/sessions", { data: { agent_slug: slug, title: oldTitle } });
+	expect(created.status()).toBe(201);
+
+	const headers = { authorization: `Bearer ${ADMIN_TOKEN}` };
+	const entryPath = `/api/admin/agents/${slug}`;
+	const planned = await request.post(`${entryPath}/plan`, { headers, data: { action: "delete" } });
+	expect(planned.ok()).toBe(true);
+	const { data: plan } = await planned.json();
+	const deleted = await request.delete(entryPath, {
+		headers,
+		data: { plan_id: plan.plan_id, confirm_token: plan.confirm_token },
+	});
+	expect(deleted.ok()).toBe(true);
+	await seedListedAgent(request, slug, "新目录条目");
+
+	await page.goto(`/?agent=${slug}`);
+	await openSessionList(page);
+	const recent = page.getByRole("navigation", { name: "最近会话", exact: true });
+	await expect(recent.getByRole("button", { name: oldTitle, exact: true })).toBeVisible();
+	await expect(page.getByTestId(`sidebar-group-${slug}`)).toHaveCount(0);
+
+	const replacement = await page.request.post("/api/kit/sessions", { data: { agent_slug: slug, title: newTitle } });
+	expect(replacement.status()).toBe(201);
+	await page.reload();
+	await openSessionList(page);
+	await page.getByTestId(`sidebar-group-${slug}`).click();
+	const group = page.getByTestId(`group-sessions-${slug}`);
+	await expect(group.getByRole("button", { name: newTitle, exact: true })).toBeVisible();
+	await expect(group.getByRole("button", { name: oldTitle, exact: true })).toHaveCount(0);
+	await expect(recent.getByRole("button", { name: oldTitle, exact: true })).toBeVisible();
 });
 
 // 状态查询失败不能触发回退导航；关闭提示后可再次点击并正常进入目标。

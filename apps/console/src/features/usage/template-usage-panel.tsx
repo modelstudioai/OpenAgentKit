@@ -339,6 +339,7 @@ function StatRangePicker({
 /** 模版用量主面板：rows 为单个选中模版时逐模版展示，为全量模版行（「全部」视角）时聚合求和；查询状态与明细导航均由用量页持有。 */
 export function TemplateUsagePanel({
 	rows,
+	allTemplates,
 	loading,
 	error,
 	onRetry,
@@ -346,6 +347,7 @@ export function TemplateUsagePanel({
 	onLimits,
 }: {
 	rows: TemplateUsageRow[];
+	allTemplates: boolean;
 	loading: boolean;
 	error: string | null;
 	onRetry: () => void;
@@ -355,7 +357,7 @@ export function TemplateUsagePanel({
 	const client = useMemo(getAdminClient, []);
 	const aggregate = rows.length > 1 ? aggregateTemplateRows(rows) : null;
 	const selected = aggregate ? null : (rows[0] ?? null);
-	const agentId = selected?.remote_agent_id;
+	const agentId = allTemplates ? undefined : selected?.remote_agent_id;
 	/** 面板顶部统计时间（分钟精度）：统一驱动轮数/步骤卡、趋势卡与模型/工具明细。 */
 	const [statRange, setStatRange] = useState(() => ({
 		start: toLocalMinuteInput(Date.now() - 7 * 24 * 60 * 60 * 1000),

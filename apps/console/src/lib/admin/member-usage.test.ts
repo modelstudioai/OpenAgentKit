@@ -3,6 +3,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createAdminClient } from "./client.ts";
 import { createMemberUsageController } from "./member-usage.ts";
 
+const agentA = { slug: "agent/a", catalog_entry_id: "cat/a", display_name: "Agent A" };
+const agentB = { slug: "agent-b", catalog_entry_id: null, display_name: null };
+
 function summary(value: number, count = 21, status: MemberUsageSummary["refresh_status"] = "idle"): MemberUsageSummary {
 	return {
 		session_count: count,
@@ -10,10 +13,7 @@ function summary(value: number, count = 21, status: MemberUsageSummary["refresh_
 		metrics: Object.fromEntries(
 			SESSION_USAGE_METRICS.map((key) => [key, { value, covered_sessions: count }]),
 		) as MemberUsageSummary["metrics"],
-		agents: [
-			{ slug: "agent/a", display_name: "Agent A" },
-			{ slug: "agent-b", display_name: null },
-		],
+		agents: [agentA, agentB],
 		refresh_status: status,
 		completed_sessions: count,
 	};
@@ -61,19 +61,17 @@ describe("成员用量查询编排", () => {
 		await vi.waitFor(() => expect(controller.getSnapshot().sessions[0]?.session_id).toBe("last"));
 		expect(controller.getSnapshot().summary?.metrics.input_tokens.value).toBe(9000);
 		expect(controller.getSnapshot().page).toBe(2);
-		controller.setAgent("agent/a");
+		controller.setAgent(agentA);
 		await vi.waitFor(() => expect(controller.getSnapshot().summary?.metrics.input_tokens.value).toBe(500));
 		expect(controller.getSnapshot()).toMatchObject({
 			page: 1,
-			agentSlug: "agent/a",
-			agents: [
-				{ slug: "agent/a", display_name: "Agent A" },
-				{ slug: "agent-b", display_name: null },
-			],
+			agent: agentA,
+			agents: [agentA, agentB],
 		});
 		for (const url of urls.slice(-2)) {
 			expect(url.pathname).toContain("/kit/api/admin/members/member%20one/");
 			expect(url.searchParams.get("agent_slug")).toBe("agent/a");
+			expect(url.searchParams.get("catalog_entry_id")).toBe("cat/a");
 			expect(url.searchParams.has("cursor")).toBe(false);
 		}
 		controller.dispose();
@@ -191,6 +189,7 @@ describe("成员用量查询编排", () => {
 			fetchImpl: async (input) => {
 				const url = new URL(String(input));
 				if (reject) throw new Error("网络暂不可用");
+				if (url.searchParams.has("agent_slug")) expect(url.searchParams.get("catalog_entry_id")).toBe("");
 				if (url.pathname.endsWith("/sessions")) return Response.json({ data: [session("filtered")] });
 				if (!url.searchParams.has("agent_slug")) return old.promise;
 				return Response.json({ data: summary(300, 1) });
@@ -198,7 +197,7 @@ describe("成员用量查询编排", () => {
 		});
 		const controller = createMemberUsageController(client, "member one");
 		const first = controller.start();
-		controller.setAgent("agent-b");
+		controller.setAgent(agentB);
 		await vi.waitFor(() => expect(controller.getSnapshot().summary?.metrics.input_tokens.value).toBe(300));
 		old.resolve(Response.json({ data: summary(9000) }));
 		await first;

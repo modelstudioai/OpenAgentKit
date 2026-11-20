@@ -301,6 +301,21 @@ export interface paths {
                     };
                 };
                 /** @description 审批或归属校验失败 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                            };
+                        };
+                    };
+                };
+                /** @description 审批或归属校验失败 */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -1187,7 +1202,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description 本人未归档体验会话关联的全部智能体 slug */
+                /** @description 本人未归档体验会话关联的未软删条目 slug */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1252,6 +1267,7 @@ export interface paths {
                     limit?: number;
                     page_token?: string;
                     include_archived?: "true" | "false";
+                    active_entry_only?: "true";
                     q?: string;
                 };
                 header?: never;
@@ -4195,6 +4211,7 @@ export interface paths {
                                         };
                                         agents: {
                                             slug: string;
+                                            catalog_entry_id?: string | null;
                                             display_name: string | null;
                                             deleted?: boolean;
                                         }[];
@@ -4335,6 +4352,7 @@ export interface paths {
                                         };
                                         agents: {
                                             slug: string;
+                                            catalog_entry_id?: string | null;
                                             display_name: string | null;
                                             deleted?: boolean;
                                         }[];
@@ -5878,7 +5896,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description 条目已标记删除（软删，确认令牌已消费） */
+                /** @description 条目已软删并解除模版上架关联（确认令牌已消费） */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -7479,6 +7497,21 @@ export interface paths {
                 };
                 /** @description confirmation_required（上下架等破坏性动作缺确认令牌） */
                 428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable?: boolean;
+                            };
+                        };
+                    };
+                };
+                /** @description provider_error */
+                502: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -10391,6 +10424,7 @@ export interface paths {
                                     };
                                     agents: {
                                         slug: string;
+                                        catalog_entry_id?: string | null;
                                         display_name: string | null;
                                         deleted?: boolean;
                                     }[];
@@ -10571,6 +10605,7 @@ export interface paths {
                                         };
                                         agents: {
                                             slug: string;
+                                            catalog_entry_id?: string | null;
                                             display_name: string | null;
                                             deleted?: boolean;
                                         }[];
@@ -10735,6 +10770,7 @@ export interface paths {
                                     };
                                     agents: {
                                         slug: string;
+                                        catalog_entry_id?: string | null;
                                         display_name: string | null;
                                         deleted?: boolean;
                                     }[];
@@ -10853,6 +10889,7 @@ export interface paths {
             parameters: {
                 query?: {
                     agent_slug?: string;
+                    catalog_entry_id?: string;
                     refresh?: "1";
                 };
                 header?: never;
@@ -10901,6 +10938,7 @@ export interface paths {
                                 };
                                 agents: {
                                     slug: string;
+                                    catalog_entry_id?: string | null;
                                     display_name: string | null;
                                     deleted?: boolean;
                                 }[];
@@ -11008,6 +11046,7 @@ export interface paths {
             parameters: {
                 query?: {
                     agent_slug?: string;
+                    catalog_entry_id?: string;
                     cursor?: string;
                     limit?: number;
                 };
@@ -12002,6 +12041,7 @@ export interface paths {
                                     };
                                     agents: {
                                         slug: string;
+                                        catalog_entry_id?: string | null;
                                         display_name: string | null;
                                         deleted?: boolean;
                                     }[];

@@ -89,6 +89,7 @@ function TemplateUsageTab({ templateId }: { templateId: string }) {
 	return (
 		<TemplateUsagePanel
 			rows={[row]}
+			allTemplates={false}
 			loading={false}
 			error={null}
 			onRetry={() => void templates.refresh()}

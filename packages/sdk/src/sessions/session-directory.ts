@@ -52,6 +52,7 @@ export function createSessionDirectory(
 						const result = await client.sessions(
 							{
 								agentSlug: group.slug,
+								activeEntryOnly: true,
 								limit: Math.min(200, Math.max(10, group.sessions.length)),
 								includeArchived: false,
 							},

@@ -3,6 +3,7 @@ import {
 	type MemberSessionsPage,
 	type MemberSessionsQuery,
 	type MemberSessionUsage,
+	type MemberUsageQuery,
 	type MemberUsageSummary,
 	SESSION_USAGE_METRICS,
 	type SessionStats,
@@ -47,13 +48,33 @@ function view(row: Row): MemberSessionUsage {
 	};
 }
 
-function readCursor(token: string | undefined, memberId: string, agentSlug?: string) {
+type MemberUsageFilter = Pick<MemberUsageQuery, "agent_slug" | "catalog_entry_id">;
+
+function memberUsageFilter(memberId: string, options: MemberUsageFilter) {
+	const clauses = ["member_id = ?"];
+	const params = [memberId];
+	if (options.agent_slug) {
+		clauses.push("agent_slug = ?");
+		params.push(options.agent_slug);
+	}
+	if (options.catalog_entry_id === "") {
+		clauses.push("catalog_entry_id IS NULL");
+	} else if (options.catalog_entry_id !== undefined) {
+		clauses.push("catalog_entry_id = ?");
+		params.push(options.catalog_entry_id);
+	}
+	return { filter: clauses.join(" AND "), params };
+}
+
+function readCursor(memberId: string, options: MemberSessionsQuery) {
+	const token = options.cursor;
 	if (!token) return undefined;
 	try {
 		const value = JSON.parse(Buffer.from(token, "base64url").toString("utf8"));
 		if (
 			value.member_id === memberId &&
-			value.agent_slug === (agentSlug ?? null) &&
+			value.agent_slug === (options.agent_slug ?? null) &&
+			value.catalog_entry_id === options.catalog_entry_id &&
 			typeof value.created_at === "string" &&
 			typeof value.session_id === "string"
 		) {
@@ -354,9 +375,12 @@ export function createSessionUsageStore(db: StoreDatabase) {
 				);
 			});
 		},
-		async summary(memberId: string, agentSlug?: string, refreshStartedAt?: string): Promise<MemberUsageSummary> {
-			const filter = `member_id = ?${agentSlug ? " AND agent_slug = ?" : ""}`;
-			const params = agentSlug ? [memberId, agentSlug] : [memberId];
+		async summary(
+			memberId: string,
+			options: MemberUsageFilter = {},
+			refreshStartedAt?: string,
+		): Promise<MemberUsageSummary> {
+			const { filter, params } = memberUsageFilter(memberId, options);
 			const counts = (await db.get(
 				`SELECT COUNT(*) AS total, COUNT(deleted_at) AS deleted,
 				SUM(CASE WHEN collection_status IN ('failed','not_found') THEN 1 ELSE 0 END) AS failed,
@@ -380,26 +404,23 @@ export function createSessionUsageStore(db: StoreDatabase) {
 				...params,
 			)) as Record<string, number | null>;
 			const metrics = metricSummary(totals, counts.total);
-			// 展示名按最新会话落下的条目解析（slug 可复用，不能按 slug 反查当前条目）；
-			// 成员侧筛选键仍为 agent_slug，条目 ID 仅用于展示归属。
+			// 同一 slug 可对应多个条目，按会话绑定拆分筛选项并解析名称。
 			const agents = (await db.all(
-				`SELECT slug, display_name, deleted FROM (
-					SELECT u.agent_slug AS slug,
-						ROW_NUMBER() OVER (PARTITION BY u.agent_slug ORDER BY u.created_at DESC, u.session_id DESC) AS rn,
-						c.display_name AS display_name, (c.deleted_at IS NOT NULL) AS deleted
-					FROM kit_session_usage u
-					LEFT JOIN catalog_agents c ON c.id = u.catalog_entry_id
-					WHERE u.member_id = ?
-				) WHERE rn = 1
-				ORDER BY slug`,
+				`SELECT DISTINCT u.agent_slug AS slug, u.catalog_entry_id, c.display_name,
+					(c.deleted_at IS NOT NULL) AS deleted
+				FROM kit_session_usage u
+				LEFT JOIN catalog_agents c ON c.id = u.catalog_entry_id
+				WHERE u.member_id = ?
+				ORDER BY slug, u.catalog_entry_id`,
 				memberId,
-			)) as { slug: string; display_name: string | null; deleted: number }[];
+			)) as { slug: string; catalog_entry_id: string | null; display_name: string | null; deleted: boolean | number }[];
 			return {
 				session_count: counts.total,
 				deleted_session_count: counts.deleted,
 				metrics,
 				agents: agents.map((agent) => ({
 					slug: agent.slug,
+					catalog_entry_id: agent.catalog_entry_id,
 					display_name: agent.display_name,
 					...(agent.deleted ? { deleted: true as const } : {}),
 				})),
@@ -409,14 +430,13 @@ export function createSessionUsageStore(db: StoreDatabase) {
 			};
 		},
 		async list(memberId: string, options: MemberSessionsQuery): Promise<MemberSessionsPage> {
-			const cursor = readCursor(options.cursor, memberId, options.agent_slug);
+			const cursor = readCursor(memberId, options);
+			const { filter, params } = memberUsageFilter(memberId, options);
 			const rows = (await db.all(
-				`SELECT * FROM kit_session_usage WHERE member_id = ?
-				${options.agent_slug ? "AND agent_slug = ?" : ""}
+				`SELECT * FROM kit_session_usage WHERE ${filter}
 				${cursor ? "AND (created_at < ? OR (created_at = ? AND session_id < ?))" : ""}
 				ORDER BY created_at DESC, session_id DESC LIMIT ?`,
-				memberId,
-				...(options.agent_slug ? [options.agent_slug] : []),
+				...params,
 				...(cursor ? [cursor.created_at, cursor.created_at, cursor.session_id] : []),
 				options.limit + 1,
 			)) as Row[];
@@ -430,6 +450,7 @@ export function createSessionUsageStore(db: StoreDatabase) {
 								JSON.stringify({
 									member_id: memberId,
 									agent_slug: options.agent_slug ?? null,
+									catalog_entry_id: options.catalog_entry_id,
 									session_id: last.session_id,
 									created_at: last.created_at,
 								}),
