@@ -179,6 +179,7 @@
 	.m-item.more { font-size: 12px; color: var(--m-muted); }
 	.m-item.more .label { flex: 1 1 auto; }
 	.m-sep { height: 1px; background: var(--m-sep-color); margin: 4px 0; flex: 0 0 auto; }
+	.m-sep.dashed { height: 0; background: none; border-top: 1px dashed var(--m-sep-color); }
 	.m-scroll { max-height: 173px; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 2px; }
 	[data-skin="design"] .m-scroll { scrollbar-width: thin; scrollbar-color: #e9e9ed transparent; }
 	[data-skin="design"] .m-scroll::-webkit-scrollbar { width: 4px; }
@@ -359,7 +360,7 @@
               onSelect={viewAllSkills}&gt;
               {t(<span class="s">"add.viewMore"</span>, { count: 8 })}
             &lt;/<span class="f">MenuItem</span>&gt;
-            &lt;<span class="f">MenuSeparator</span> /&gt;
+            &lt;<span class="f">MenuSeparator</span> dashed /&gt;
             &lt;<span class="f">MenuItem</span> icon={&lt;SettingsIcon /&gt;} onSelect={manageSkills}&gt;
               {t(<span class="s">"add.manageSkills"</span>)}
             &lt;/<span class="f">MenuItem</span>&gt;
@@ -429,7 +430,7 @@
             );
           })}
         &lt;/div&gt;
-        &lt;<span class="f">MenuSeparator</span> /&gt;
+        &lt;<span class="f">MenuSeparator</span> dashed /&gt;
         &lt;<span class="f">MenuItem</span> icon={&lt;SettingsIcon /&gt;} onSelect={manage}&gt;
           {t(<span class="s">"connector.manage"</span>)}
         &lt;/<span class="f">MenuItem</span>&gt;
@@ -514,6 +515,7 @@
 			<li>连接器：面板 310px、列表视口 216px、行高 36px、Switch 28×16（on <code>#2564F8</code> / off <code>#14151C3D</code>，滑块 12×12）来自节点 35:12584；堆叠 24×24、重叠 -8px、白描边、溢出 <code>+N</code>（13px/500）来自节点 53:11828。</li>
 			<li>连接器字母 logo 用设计稿 DSL 的品牌填充色示意（钉 <code>#1677FF</code> / 语雀 <code>#25B864</code> / Gmail <code>#EA4335</code> / 飞书 <code>#3370FF</code>）；原型为满足文本对比取加深值（Gmail <code>#C5221F</code>、飞书 <code>#133C9A</code> 为 DSL 内既有色，钉/语雀相应加深），真实 logo 由业务以 img 注入、不受此限。generic 助手用 Tool 图标（设计稿「待替换专属 Logo」）。</li>
 			<li>连接器行 hover 与圆角设计稿未标注，取与 Dropdown 条目一致的值示意；标题色 <code>#14151CCC</code> 同按可读性替换为 <code>#5f656e</code>。</li>
+			<li>钉底分隔线演示 <code>MenuSeparator dashed</code>（虚线轻分组，协议新增；设计稿未见虚线用例）。</li>
 			<li>kit 默认皮 Switch on 色 = <code>--kit-accent</code> <code>#4f46e5</code>（theme.css）；关态轨道色 kit 无冻结 token，取 <code>#d5d9e4</code> 示意，落码时随 Switch 定稿补充。plug 图标为中性示意。</li>
 		</ul>
 	</div>
@@ -586,7 +588,7 @@
 		<div class="m-item more" role="menuitem" tabindex="-1" data-action="viewMore">
 			<span class="label">查看更多 (8)</span>
 		</div>
-		<div class="m-sep" role="separator"></div>
+		<div class="m-sep dashed" role="separator"></div>
 		<div class="m-item" role="menuitem" tabindex="-1" data-action="manageSkills">
 			<span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
 			<span class="label">管理技能</span>
@@ -641,7 +643,7 @@
 			<span class="trail"><span class="sw" aria-hidden="true"></span></span>
 		</div>
 	</div>
-	<div class="m-sep" role="separator"></div>
+	<div class="m-sep dashed" role="separator"></div>
 	<div class="m-item" role="menuitem" tabindex="-1" data-action="manageConnectors">
 		<span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
 		<span class="label">管理连接器</span>
