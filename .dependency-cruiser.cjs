@@ -173,7 +173,7 @@ module.exports = {
 			severity: "error",
 			from: {
 				path: "^packages/sdk/src/chat/",
-				pathNot: "\\.test\\.ts$|^packages/sdk/src/chat/(hooks/|index\\.ts$|composer\\.ts$)",
+				pathNot: "\\.test\\.ts$|^packages/sdk/src/chat/(hooks/|hooks-vue/|index\\.ts$|composer\\.ts$)",
 			},
 			to: { path: "^packages/sdk/src/(chat/composer\\.ts$|sessions/|files/|agents/|usage/|auth/)" },
 		},

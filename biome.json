@@ -82,6 +82,16 @@
       }
     },
     {
+      "includes": ["**/tests/hooks-vue/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useHookAtTopLevel": "off"
+          }
+        }
+      }
+    },
+    {
       "includes": ["apps/storybook/app/globals.css"],
       "linter": {
         "rules": {
