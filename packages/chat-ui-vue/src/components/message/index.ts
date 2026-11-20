@@ -3,6 +3,8 @@ import { parseSkillDirective } from "@openagentkit/sdk/protocol";
 import { computed, defineComponent, h, type PropType, type VNode } from "vue";
 import { resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
 import { Markdown } from "../markdown/index.ts";
+import { ExecutionGroup, isProcessPart, type ProcessPart } from "../process/execution-group/index.ts";
+import { ProcessingIndicator } from "../processing-indicator/index.ts";
 import { SkillGlyph } from "../sender/index.ts";
 import messageStrings, { type MessageStrings } from "./strings.ts";
 
@@ -133,6 +135,28 @@ function surfaceClass(variant: "default" | "workspace", role: ChatMessage["role"
 	}`;
 }
 
+type RenderItem = { kind: "part"; part: MessagePart } | { kind: "run"; parts: ProcessPart[]; ended: boolean };
+
+/** 连续的思考/工具分片折成一个执行容器；正文与其他分片打断分组。 */
+function groupProcessRuns(parts: MessagePart[]): RenderItem[] {
+	const items: RenderItem[] = [];
+	let run: Extract<RenderItem, { kind: "run" }> | null = null;
+	for (const part of parts) {
+		if (isProcessPart(part)) {
+			if (!run) {
+				run = { kind: "run", parts: [], ended: false };
+				items.push(run);
+			}
+			run.parts.push(part);
+		} else {
+			if (run) run.ended = true;
+			run = null;
+			items.push({ kind: "part", part });
+		}
+	}
+	return items;
+}
+
 function renderActions(
 	message: ChatMessage,
 	text: string,
@@ -187,18 +211,26 @@ export const Message = defineComponent({
 			const streaming = message.status === "streaming";
 			const showsStatus = message.status !== "done" && !streaming;
 			const status = renderStatus(message.status, message.role, strings.value);
-			const processParts = message.parts.filter((part) => part.type === "reasoning" || part.type === "tool");
 			const nodes: VNode[] = [];
 			if (showsStatus && status) nodes.push(h("div", { class: "mb-2" }, [status]));
-			for (const part of message.parts) {
-				if (part.type === "reasoning" || part.type === "tool") continue;
-				nodes.push(...renderPart(part, message.role, props.skills, strings.value, slots as never));
-			}
-			if (processParts.length && slots.process) {
-				nodes.push(...slots.process({ parts: processParts, ended: !streaming, streaming }));
+			for (const item of groupProcessRuns(message.parts)) {
+				if (item.kind === "run") {
+					if (slots.process) nodes.push(...slots.process({ parts: item.parts, ended: item.ended, streaming }));
+					else
+						nodes.push(
+							h(ExecutionGroup, {
+								parts: item.parts,
+								createdAt: message.createdAt,
+								messageStreaming: streaming,
+								ended: item.ended,
+							}),
+						);
+				} else {
+					nodes.push(...renderPart(item.part, message.role, props.skills, strings.value, slots as never));
+				}
 			}
 			if (streaming && message.role === "assistant") {
-				nodes.push(h("div", { class: "mt-1 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]" }, "…"));
+				nodes.push(h(ProcessingIndicator, { className: "mt-1" }));
 			}
 			const surface = surfaceClass(props.variant, message.role);
 			const actions = renderActions(message, text, strings.value, props.onCopy);

@@ -30,7 +30,25 @@ function textMessage(id: string, role: ChatMessage["role"], text: string): ChatM
 
 const chatMessages = ref<ChatMessage[]>([
 	textMessage("u1", "user", "帮我看看会话重连的逻辑"),
-	textMessage("a1", "assistant", "重连使用 `after` 游标续传，事件按 `event_id` 去重。"),
+	{
+		id: "a1",
+		role: "assistant",
+		status: "done",
+		createdAt: new Date().toISOString(),
+		parts: [
+			{ type: "reasoning", id: "r1", text: "先确认事件流是否已经就绪，再检查续传游标。", status: "done" },
+			{
+				type: "tool",
+				id: "t1",
+				toolId: "call_1",
+				name: "read_file",
+				status: "done",
+				input: { path: "src/chat/session-store.ts" },
+				output: { ok: true, cursor: "evt_42" },
+			},
+			{ type: "text", text: "重连使用 `after` 游标续传，事件按 `event_id` 去重。" },
+		],
+	},
 	textMessage("u2", "user", "那工具审批呢？"),
 	textMessage("a2", "assistant", "审批走 plan → 显式确认，结果未知时不会自动重发。"),
 ]);

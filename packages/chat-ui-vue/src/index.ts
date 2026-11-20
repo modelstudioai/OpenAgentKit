@@ -35,6 +35,29 @@ export {
 	messageListStrings,
 } from "./components/message-list/index.ts";
 export {
+	ExecutionGroup,
+	type ExecutionGroupStrings,
+	executionGroupStrings,
+	type ProcessPart,
+} from "./components/process/execution-group/index.ts";
+export {
+	ReasoningBlock,
+	type ReasoningBlockStrings,
+	reasoningBlockStrings,
+} from "./components/process/reasoning-block/index.ts";
+export { ProcessStep, ProcessValue, ProcessValueCode } from "./components/process/step/index.ts";
+export {
+	ToolCallCard,
+	type ToolCallCardStrings,
+	toolCallCardStrings,
+} from "./components/process/tool-call-card/index.ts";
+export { type ToolSummary, toolSummary } from "./components/process/tool-summary/index.ts";
+export {
+	ProcessingIndicator,
+	type ProcessingIndicatorStrings,
+	processingIndicatorStrings,
+} from "./components/processing-indicator/index.ts";
+export {
 	ClearButton,
 	LoadingButton,
 	SendButton,

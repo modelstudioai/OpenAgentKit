@@ -28,4 +28,20 @@ describe("Message（Vue）", () => {
 		const wrapper = mount(Message, { props: { message } });
 		expect(wrapper.find("h2").text()).toBe("结论");
 	});
+
+	it("执行过程分片折成 ExecutionGroup", () => {
+		const message: ChatMessage = {
+			id: "a2",
+			role: "assistant",
+			status: "done",
+			parts: [
+				{ type: "reasoning", id: "r1", text: "思考", status: "done" },
+				{ type: "tool", id: "t1", toolId: "c1", name: "read_file", status: "done", input: { path: "a.ts" } },
+				{ type: "text", text: "结论" },
+			],
+		};
+		const wrapper = mount(Message, { props: { message } });
+		expect(wrapper.find("[aria-label='执行过程']").exists()).toBe(true);
+		expect(wrapper.text()).toContain("2 步");
+	});
 });

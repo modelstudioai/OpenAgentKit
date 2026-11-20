@@ -90,6 +90,36 @@
 			"deps": ["kit-i18n", "message-list", "sender", "suggestion"],
 			"extraFiles": ["src/components/chat/strings.ts"],
 			"npmDependencies": ["@openagentkit/sdk"]
+		},
+		"process-step": {
+			"file": "src/components/process/step/index.ts",
+			"deps": []
+		},
+		"process-tool-summary": {
+			"file": "src/components/process/tool-summary/index.ts",
+			"deps": [],
+			"extraFiles": ["src/components/process/tool-summary/strings.ts"]
+		},
+		"process-reasoning-block": {
+			"file": "src/components/process/reasoning-block/index.ts",
+			"deps": ["kit-i18n", "process-step"],
+			"extraFiles": ["src/components/process/reasoning-block/strings.ts"]
+		},
+		"process-tool-call-card": {
+			"file": "src/components/process/tool-call-card/index.ts",
+			"deps": ["kit-i18n", "process-step", "process-tool-summary", "code-highlighter"],
+			"extraFiles": ["src/components/process/tool-call-card/strings.ts"],
+			"npmDependencies": ["lowlight"]
+		},
+		"process-execution-group": {
+			"file": "src/components/process/execution-group/index.ts",
+			"deps": ["kit-i18n", "process-step", "process-reasoning-block", "process-tool-call-card"],
+			"extraFiles": ["src/components/process/execution-group/strings.ts"]
+		},
+		"processing-indicator": {
+			"file": "src/components/processing-indicator/index.ts",
+			"deps": ["kit-i18n", "process-step"],
+			"extraFiles": ["src/components/processing-indicator/strings.ts"]
 		}
 	},
 	"theme": "src/theme.css"
