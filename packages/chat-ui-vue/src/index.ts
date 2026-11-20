@@ -1,4 +1,9 @@
 export {
+	ActivityHeatmap,
+	type ActivityHeatmapStrings,
+	activityHeatmapStrings,
+} from "./components/activity-heatmap/index.ts";
+export {
 	CategoryTabs,
 	type CategoryTabsStrings,
 	categoryTabsStrings,
@@ -41,6 +46,7 @@ export {
 	type MessageListStrings,
 	messageListStrings,
 } from "./components/message-list/index.ts";
+export { MeterBar, type MeterBarStrings, meterBarStrings } from "./components/meter-bar/index.ts";
 export {
 	isIconImageSource,
 	PlazaCard,

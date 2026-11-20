@@ -161,6 +161,16 @@
 			"deps": ["kit-i18n"],
 			"extraFiles": ["src/components/plaza-card/strings.ts"],
 			"npmDependencies": ["@openagentkit/sdk"]
+		},
+		"meter-bar": {
+			"file": "src/components/meter-bar/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/meter-bar/strings.ts"]
+		},
+		"activity-heatmap": {
+			"file": "src/components/activity-heatmap/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/activity-heatmap/strings.ts"]
 		}
 	},
 	"theme": "src/theme.css"
