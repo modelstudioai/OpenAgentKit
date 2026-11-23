@@ -24,6 +24,7 @@ import {
 	type SessionSidebarGroup,
 	type SessionSidebarPage,
 	type SessionSidebarSection,
+	Tooltip,
 } from "@openagentpack/kit-chat-ui-vue";
 import { computed, defineComponent, nextTick, ref, type VNode, watch } from "vue";
 import { useTranslation } from "../../i18n/index.ts";
@@ -82,9 +83,24 @@ const currentAgent = computed(() => {
 	const slug = agentSlug.value ?? selectedAgent.value;
 	return agents.agents.value.find((agent) => agent.slug === slug) ?? agents.agents.value[0] ?? null;
 });
+const activeSession = computed(() => {
+	if (!sessionId.value) return null;
+	for (const group of directory.snapshot.value.groups) {
+		const found = group.sessions.find((session) => session.session_id === sessionId.value);
+		if (found) return found;
+	}
+	return directory.snapshot.value.recent.sessions.find((session) => session.session_id === sessionId.value) ?? null;
+});
+const headerTitle = computed(() => {
+	if (!sessionId.value) return currentAgent.value?.display_name ?? t("chat:newSession");
+	const detail = sessionDetails.snapshot.value.data;
+	const opened = activeSession.value ?? (detail?.session_id === sessionId.value ? detail : null);
+	return opened?.title || opened?.agent_slug || t("chat:untitledSession");
+});
 const mobileTitle = computed(() => {
 	if (view.value === "plaza") return t("layout:views.plaza");
 	if (view.value === "usage") return t("layout:views.usage");
+	if (view.value === "chat") return headerTitle.value;
 	return currentAgent.value?.display_name ?? props.branding.productName;
 });
 const statusLabel = computed(() => {
@@ -142,7 +158,7 @@ const artifactActions = useArtifactActions(() => ({
 	sessionId: sessionId.value ?? undefined,
 	artifacts: chat.artifacts.value,
 }));
-useSessionDetails(() => ({
+const sessionDetails = useSessionDetails(() => ({
 	client: props.client,
 	sessionId: sessionId.value,
 	setMessageFiles: chat.setMessageFiles,
@@ -584,9 +600,13 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 					</svg>
 				</button>
 				<VNodeHost v-if="menuToggle" :node="menuToggle" />
-				<span class="min-w-0 flex-1 truncate text-[length:var(--kit-text-base)] font-semibold">
-					{{ currentAgent?.display_name ?? member?.display_name ?? branding.productName }}
-				</span>
+				<Tooltip
+					class="block min-w-0 flex-1 truncate text-[length:var(--kit-text-base)] font-semibold"
+					:content="headerTitle"
+					overflow-only
+				>
+					{{ headerTitle }}
+				</Tooltip>
 				<span role="status" :title="statusLabel" class="shrink-0 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">{{ statusLabel }}</span>
 				<button
 					type="button"
