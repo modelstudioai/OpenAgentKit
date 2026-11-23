@@ -3,11 +3,12 @@
  * 并行起本地开发进程，带前缀输出与统一退出。
  *
  * 用法：
- *   pnpm dev                        # server + web + console + storybook（默认）
+ *   pnpm dev                        # server + web + web-vue + console（默认）
  *   pnpm dev server web console     # 只起指定目标
- *   pnpm dev server web-vue         # Vue 版体验页（默认不启动）
+ *   pnpm dev server web-vue         # 只启动 Vue 版体验页及其依赖
+ *   pnpm dev storybook              # 文档站按需单独启动
  *
- * 目标：server(:8787) web(:5173) console(:5174) storybook(:3000) web-vue(:5175)
+ * 目标：server(:8787) web(:5173) web-vue(:5175) console(:5174)；storybook(:3000) 需显式指定
  * 根 `.env` 会被读进子进程环境（server 自身也支持 --env-file-if-exists）。
  */
 import { spawn, spawnSync } from "node:child_process";
@@ -68,7 +69,7 @@ if (unknown.length) {
 	console.error(`未知目标：${unknown.join(", ")}（可选：${Object.keys(ALL_TARGETS).join(" ")}）`);
 	process.exit(1);
 }
-const names = requested.length ? requested : ["server", "web", "console", "storybook"];
+const names = requested.length ? requested : ["server", "web", "web-vue", "console"];
 
 // workspace 包的公开入口指向 dist；必须先按依赖图构建，再启动消费它们的进程。
 // Turbo 缓存会恢复缺失产物，也会在源码变化时重建，不能只检查 dist 是否存在。
