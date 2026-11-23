@@ -17,6 +17,7 @@ test("体验外壳：侧栏常驻广场与聊天，usage 深链可达且不溢�
 	};
 	// 广场（默认首页）：侧栏可见且广场导航处于选中态；桌面无抽屉开关。
 	await page.goto(`/?api=${encodeURIComponent(apiBase)}`);
+	await expect(page).toHaveTitle("OpenAgentKit");
 	await expect(page.getByRole("heading", { name: "Agent 广场", exact: true })).toBeVisible();
 	const sidebar = page.getByTestId("experience-sidebar");
 	await expect(sidebar).toBeVisible();
@@ -109,6 +110,16 @@ test("首屏 → 发送 → 流式回答 + 工具卡 + artifact", async ({ page 
 			kind: "desktop",
 			saveFile: async () => false,
 		};
+		class FakeNotification {
+			static permission = "granted";
+			static requestPermission = async () => "granted";
+			onclick = null;
+			constructor(title, options) {
+				window.__KIT_NOTIFICATION__ = { title, options };
+			}
+			close() {}
+		}
+		Object.defineProperty(window, "Notification", { configurable: true, value: FakeNotification });
 	});
 	await page.goto("/?agent=e2e-agent");
 	await expect(page.locator("html")).toHaveAttribute("data-kit-theme", "dark");
@@ -130,6 +141,7 @@ test("首屏 → 发送 → 流式回答 + 工具卡 + artifact", async ({ page 
 	// turn 收敛：停止按钮消失、状态回到空闲
 	await expect(page.getByRole("button", { name: "停止" })).toHaveCount(0, { timeout: 15_000 });
 	await expect(page.getByText("空闲", { exact: true })).toBeVisible({ timeout: 15_000 });
+	await expect.poll(() => page.evaluate(() => Boolean(window.__KIT_NOTIFICATION__))).toBe(true);
 	// 文件卡片迁移后，仍需实际下载 Provider 返回的文件，而不是只有可点击外观。
 	const [download] = await Promise.all([
 		page.waitForEvent("download"),
