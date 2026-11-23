@@ -518,8 +518,8 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 							type="button"
 							data-testid="sidebar-nav-plaza"
 							:aria-current="view === 'plaza' ? 'page' : undefined"
-							class="flex min-h-9 w-full items-center gap-2 rounded-[var(--kit-radius-sm)] px-2.5 py-1.5 text-left text-[length:var(--kit-text-label)] transition-colors hover:bg-[var(--kit-nav-active)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
-							:class="view === 'plaza' ? 'bg-[var(--kit-nav-active)] font-medium' : 'text-[var(--kit-fg-muted)]'"
+							class="flex w-full items-center gap-2 rounded-[var(--kit-radius-sm)] px-2.5 py-1.5 text-left text-[length:var(--kit-text-label)] transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none hover:bg-[var(--kit-nav-active)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
+							:class="view === 'plaza' ? 'bg-[var(--kit-nav-active)] font-medium' : ''"
 							@click="
 								() => {
 									goToPlaza();
@@ -534,6 +534,7 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 								stroke="currentColor"
 								stroke-width="1.5"
 								class="size-4 shrink-0"
+								:class="view === 'plaza' ? 'text-[var(--kit-fg)]' : 'text-[var(--kit-fg-muted)]'"
 							>
 								<rect x="3" y="3" width="7.5" height="7.5" rx="1.5" />
 								<rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5" />
