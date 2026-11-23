@@ -86,9 +86,33 @@ function artifactBadge(name: string | undefined, type: string | undefined): stri
 				<ul class="mt-1.5 flex flex-col">
 					<li v-for="item in resourceRows" :key="`${item.kind}:${item.name}`" class="rounded-[var(--kit-radius-sm)] px-1.5 py-1.5">
 						<div class="flex items-center gap-1.5">
-							<span class="grid size-5 shrink-0 place-items-center rounded bg-[var(--kit-bg-subtle)] text-[8px] font-semibold text-[var(--kit-fg-muted)]">
-								{{ item.kind === "mcp" ? "M" : "S" }}
-							</span>
+							<svg
+								v-if="item.kind === 'skill'"
+								aria-hidden="true"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.5"
+								class="size-3.5 shrink-0 text-[var(--kit-fg-muted)]"
+							>
+								<path stroke-linecap="round" stroke-linejoin="round" d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+								<path stroke-linecap="round" stroke-linejoin="round" d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+							</svg>
+							<svg
+								v-else
+								aria-hidden="true"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.5"
+								class="size-3.5 shrink-0 text-[var(--kit-fg-muted)]"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									d="M9 7V2.5M15 7V2.5M7 7h10v5.5a5 5 0 0 1-5 5 5 5 0 0 1-5-5zM12 17.5v4"
+								/>
+							</svg>
 							<div class="truncate text-[length:var(--kit-text-label)] font-medium">{{ item.name }}</div>
 							<span v-if="item.permission" class="ml-auto shrink-0 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
 								{{ item.permission === "allow" ? t("aside.permissions.allow") : t("aside.permissions.ask") }}
@@ -109,7 +133,20 @@ function artifactBadge(name: string | undefined, type: string | undefined): stri
 				<ul class="mt-1.5 flex flex-col">
 					<li v-for="item in toolRows" :key="item.name" class="rounded-[var(--kit-radius-sm)] px-1.5 py-1.5">
 						<div class="flex items-center gap-1.5">
-							<span class="grid size-5 shrink-0 place-items-center rounded bg-[var(--kit-bg-subtle)] text-[9px] font-semibold text-[var(--kit-fg-muted)]">T</span>
+							<svg
+								aria-hidden="true"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.5"
+								class="size-3.5 shrink-0 text-[var(--kit-fg-muted)]"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"
+								/>
+							</svg>
 							<div class="truncate text-[length:var(--kit-text-label)] font-medium">{{ item.name }}</div>
 							<span v-if="item.permission" class="ml-auto shrink-0 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
 								{{ item.permission === "allow" ? t("aside.permissions.allow") : t("aside.permissions.ask") }}

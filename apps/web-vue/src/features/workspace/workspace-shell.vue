@@ -587,6 +587,7 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 				<span class="min-w-0 flex-1 truncate text-[length:var(--kit-text-base)] font-semibold">
 					{{ currentAgent?.display_name ?? member?.display_name ?? branding.productName }}
 				</span>
+				<span role="status" :title="statusLabel" class="shrink-0 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">{{ statusLabel }}</span>
 				<button
 					type="button"
 					:aria-pressed="asideOpen"
@@ -601,7 +602,6 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 						<path d="M15 4v16" />
 					</svg>
 				</button>
-				<span role="status" :title="statusLabel" class="shrink-0 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">{{ statusLabel }}</span>
 			</header>
 		</template>
 
