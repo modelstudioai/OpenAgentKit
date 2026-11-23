@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useAgentCatalog, useAgentResources } from "@openagentkit/sdk/agents/hooks-vue";
-import { deriveTitle } from "@openagentkit/sdk/chat";
-import { useChat } from "@openagentkit/sdk/chat/hooks-vue";
+import { useChat, useComposer } from "@openagentkit/sdk/chat/hooks-vue";
 import { useArtifactActions, useAttachments } from "@openagentkit/sdk/files/hooks-vue";
 import { useIsMobile } from "@openagentkit/sdk/hooks-vue";
 import type { ArtifactDescriptor, MemberView, SessionSummary } from "@openagentkit/sdk/protocol";
@@ -87,7 +86,6 @@ const editing = ref<{ id: string; section: SessionSidebarSection } | null>(null)
 const actionError = ref<string | null>(null);
 /** 会话行操作菜单的触发按钮：弹窗取消后焦点必须回到它。 */
 const actionTrigger = ref<HTMLElement | null>(null);
-const sending = ref(false);
 const sendError = ref<string | null>(null);
 const quotaError = ref<QuotaExceededDetails | null>(null);
 const completedSessionId = ref<string | null>(null);
@@ -478,65 +476,50 @@ async function downloadArtifact(fileId: string) {
 	}
 }
 
-async function createSessionWithAttachments(
-	slug: string,
-	text: string,
-	files: { file_id: string; filename: string }[],
-): Promise<{ session_id: string }> {
-	for (let attempt = 1; ; attempt += 1) {
-		try {
-			return await props.client.createSession({
-				agentSlug: slug,
-				title: deriveTitle(text),
-				...(files.length ? { files } : {}),
-			});
-		} catch (error) {
-			const shape = error as { code?: string; retryable?: boolean };
-			const retry = files.length > 0 && shape?.code === "conflict" && shape.retryable === true && attempt < 3;
-			if (!retry) throw error;
-			await new Promise((resolve) => setTimeout(resolve, 3000));
-		}
+/**
+ * 发送编排复用 SDK composer：409 退避重试、并发闸门和「切换目标即中断在途建会话」只在
+ * packages/sdk/src/chat/composer.ts 存在一份，与 React 同源。此前这里自带一份重试副本，
+ * composer 的策略一变 Vue 就静默分叉，所以连同副本一起删掉。
+ */
+const composer = useComposer(() => ({
+	client: props.client,
+	agentSlug: currentAgent.value?.slug ?? null,
+	sessionId: sessionId.value,
+	files: stagedFiles.value,
+	send: chat.send,
+	onAccepted: (ids: string[]) => attachments.consume(ids),
+	onSessionCreated: (id: string) => {
+		// 新会话立刻写进地址（replace）并刷新目录，侧栏分组随之出现。
+		navigate({ view: "chat", agent: currentAgent.value?.slug ?? null, session: id }, { replace: true });
+		void directory.reload();
+	},
+}));
+const sending = computed(() => composer.snapshot.value.pending);
+
+function handleComposerError(error: unknown) {
+	const exceeded = readQuotaExceeded(error);
+	if (exceeded) {
+		quotaError.value = exceeded;
+		sendError.value = null;
+		return;
 	}
+	sendError.value = t("chat:errors.sendFailed", {
+		message: error instanceof Error ? error.message : String(error),
+	});
 }
 
 async function send(text: string, skills?: string[]): Promise<boolean> {
-	if (sending.value) return false;
 	// 在发送这一用户手势内申请通知权限；浏览器不支持或拒绝时静默跳过。
 	void requestCompletionNotificationPermission();
-	sending.value = true;
+	// 有意与 React 保持的差别：重发前先清掉上一次失败横幅，成功发送不会留下过期提示。
 	sendError.value = null;
 	try {
-		const readyFiles = stagedFiles.value.filter((file) => file.available);
-		const attachmentRefs = readyFiles.map((file) => ({ file_id: file.file_id, filename: file.filename }));
-		let activeSessionId = sessionId.value;
-		if (!activeSessionId) {
-			const slug = currentAgent.value?.slug;
-			if (!slug) return false;
-			const created = await createSessionWithAttachments(slug, text, attachmentRefs);
-			activeSessionId = created.session_id;
-			navigate({ view: "chat", agent: slug, session: activeSessionId }, { replace: true });
-			await directory.reload();
-		}
-		// 先建会话再发送：useChat.send 显式接收 sessionId，不依赖路由更新后的 watcher 时序。
-		await chat.send(text, {
-			sessionId: activeSessionId,
-			...(attachmentRefs.length ? { attachments: attachmentRefs } : {}),
-			skills,
-		});
-		attachments.consume(readyFiles.map((file) => file.file_id));
+		await composer.send(text, skills);
 		directory.refreshStatuses();
 		return true;
 	} catch (error) {
-		const exceeded = readQuotaExceeded(error);
-		if (exceeded) {
-			quotaError.value = exceeded;
-			sendError.value = null;
-			return false;
-		}
-		sendError.value = error instanceof Error ? error.message : String(error);
+		handleComposerError(error);
 		return false;
-	} finally {
-		sending.value = false;
 	}
 }
 </script>
