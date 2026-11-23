@@ -151,8 +151,16 @@ const attachmentItems = computed<AttachmentItem[]>(() => [
 const currentAgentSlug = computed(() => currentAgent.value?.slug ?? null);
 const agentResources = useAgentResources(currentAgentSlug, { client: props.client });
 const resources = computed(() => agentResources.resources.value);
+/** 输入选择器与消息气泡共用同一份技能清单：气泡按名称把 /skill 还原成 chip。 */
+const senderSkills = computed(() =>
+	(resources.value?.skills ?? []).map(({ name, description }) => ({
+		name,
+		...(description ? { description } : {}),
+	})),
+);
 const memories = computed(() => resources.value?.memory_stores ?? null);
-const artifactHost = createArtifactHost(resolveHostCapabilities());
+const host = resolveHostCapabilities();
+const artifactHost = createArtifactHost(host);
 const artifactActions = useArtifactActions(() => ({
 	client: props.client,
 	host: artifactHost,
@@ -342,6 +350,10 @@ async function uploadFiles(files: File[]) {
 
 function removeAttachment(fileId: string) {
 	attachments.remove(fileId);
+}
+
+async function copyMessageText(text: string) {
+	if (!(await host.copyText?.(text))) throw new Error(t("chat:errors.copyFailed"));
 }
 
 async function openArtifact(fileId: string, contentType?: string) {
@@ -664,14 +676,17 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 				:turn-running="chat.turnRunning.value"
 				:sending="sending"
 				:can-send="sessionId ? chat.canSend.value : true"
+				:skills="senderSkills"
+				:on-copy="copyMessageText"
 				:scroll-key="sessionId"
 				:multi-agent="chat.multiAgent.value"
 				@stop="() => void chat.stop()"
 			>
 				<template #sender>
 					<ExperienceSender
+						:key="sessionId ?? 'new'"
 						:items="attachmentItems"
-						:skills="resources?.skills ?? []"
+						:skills="senderSkills"
 						:turn-running="chat.turnRunning.value"
 						:sending="sending"
 						:can-send="sessionId ? chat.canSend.value : true"
