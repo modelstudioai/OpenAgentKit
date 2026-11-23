@@ -73,7 +73,7 @@ describe("openapi 文档", () => {
 		] as const) {
 			expect(
 				doc.paths[path]?.[method]?.parameters.find((parameter) => parameter.name === "x-kit-protocol-version"),
-			).toMatchObject({ in: "header", required: true, schema: { example: "2.0.0" } });
+			).toMatchObject({ in: "header", required: true, schema: { example: "3.0.0" } });
 		}
 	});
 

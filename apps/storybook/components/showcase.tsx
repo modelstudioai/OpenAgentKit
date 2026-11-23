@@ -1093,11 +1093,13 @@ parser.end();`;
 
 const KIT_STREAM_CODE = `import { createKitClient } from "@openagentkit/sdk/providers/kit";
 
-// mock fetchImpl 返回 Kit 协议流：reset → event* → ready → ping → event → done
+// mock fetchImpl 返回实时帧，游标失效时先发 reset，再发 ready
 const client = createKitClient({
   baseUrl: "/mock-kit",
-  fetchImpl: () =>
-    Promise.resolve(
+  fetchImpl: (input) =>
+    String(input).includes("/events?")
+      ? Promise.resolve(Response.json({ data: historySnapshots, next_page_token: null }))
+      : Promise.resolve(
       new Response(pacedStream(frames.map((frame) => new TextEncoder().encode(frame)), 450), {
         status: 200,
         headers: { "content-type": "text/event-stream" },
@@ -1105,13 +1107,20 @@ const client = createKitClient({
     ),
 });
 
+let needsHistory = !after;
 await client.stream("sess_demo", {
-  after, // "1:8" 续传；游标失效时服务端下发 reset 重建
+  after, // "1:8" 补发实时更新
   signal,
-  onReset: () => addLog("onReset() —— 游标不可续传，开始重建"),
+  onReset: () => { needsHistory = true; },
   onEvent: (event, cursor) =>
     addLog("onEvent cursor=" + cursor + " event_id=" + event.event_id + " type=" + event.type, JSON.stringify(event)),
-  onReady: ({ replayed, cursor }) => addLog("onReady replayed=" + replayed + " cursor=" + cursor),
+  onReady: ({ sessionId, replayed, cursor }) => {
+    addLog("onReady replayed=" + replayed + " cursor=" + cursor);
+    if (needsHistory) void client.events(sessionId, { limit: 100, signal }).then(
+      (page) => addLog("events", JSON.stringify(page)),
+      (error) => addLog(String(error)),
+    );
+  },
   onPing: (t) => addLog("onPing t=" + t + " —— 每 15s 保活"),
   onDone: ({ status, lastEventId }) => addLog("onDone status=" + status + " lastEventId=" + lastEventId),
 });`;

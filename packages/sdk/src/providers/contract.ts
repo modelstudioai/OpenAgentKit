@@ -25,10 +25,16 @@ export interface ThreadQueryOptions {
 	signal?: AbortSignal;
 }
 
+export interface EventQueryOptions extends ThreadQueryOptions {
+	afterId?: string;
+}
+
 /** 前端会话合同；一次 stream 只建立一次订阅，恢复和写入编排由 Chat 负责。 */
 export interface ChatProvider {
 	/** 定义事件的展示归并规则；省略时采用 Kit 默认规则，消息状态由 Chat 保存。 */
 	transformMessage?: MessageTransformer;
+	/** 纯实时 stream 配合升序历史分页。已在适配器内恢复历史的 Provider 省略此能力。 */
+	listEvents?(sessionId: string, options?: EventQueryOptions): Promise<EventsPage>;
 	listThreads?(sessionId: string, options?: ThreadQueryOptions): Promise<SessionThreadsResponse>;
 	/** 每页事件按创建顺序升序，游标继续查询更早一页。 */
 	listThreadEvents?(sessionId: string, threadId: string, options?: ThreadQueryOptions): Promise<EventsPage>;

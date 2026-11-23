@@ -269,10 +269,14 @@ describe("MockGateway 与契约同轨", () => {
 	it("mock 产出的事件同样满足契约并可被 store 归并", async () => {
 		const gateway = createMockGateway();
 		const session = await gateway.createSession({ agentId: "agent_mock" });
-		await gateway.sendMessage(session.session_id, { text: "契约", clientMessageId: "c1" });
 		const store = createSessionStore(session.session_id);
 		const abort = new AbortController();
-		for await (const event of gateway.streamEvents(session.session_id, { signal: abort.signal })) {
+		for await (const event of gateway.streamEvents(session.session_id, {
+			signal: abort.signal,
+			onReady: () => {
+				void gateway.sendMessage(session.session_id, { text: "契约", clientMessageId: "c1" });
+			},
+		})) {
 			assertContract(event);
 
 			store.applyEvent(event);

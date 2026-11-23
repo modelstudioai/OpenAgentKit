@@ -9,7 +9,7 @@ import { createCatalogStore } from "../src/store/catalog.ts";
 import { openDatabase } from "../src/store/db.ts";
 import { createSqliteDatabase } from "../src/store/sqlite.ts";
 
-const json = { "content-type": "application/json", "x-kit-protocol-version": "2.0.0" };
+const json = { "content-type": "application/json", "x-kit-protocol-version": "3.0.0" };
 const admin = { ...json, authorization: "Bearer admin-token" };
 
 it("目录环境持久化并用于后续体验会话；省略保留，null 清除，终端用户不能覆盖", async () => {

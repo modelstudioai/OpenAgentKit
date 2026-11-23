@@ -29,7 +29,7 @@ async function makeApp(env: Record<string, string> = {}) {
 }
 
 type TestApp = Awaited<ReturnType<typeof makeApp>>["app"];
-const json = { "content-type": "application/json", "x-kit-protocol-version": "2.0.0" };
+const json = { "content-type": "application/json", "x-kit-protocol-version": "3.0.0" };
 const headers = (token: string) => ({ ...json, authorization: `Bearer ${token}` });
 const password = "Private!Password2026";
 

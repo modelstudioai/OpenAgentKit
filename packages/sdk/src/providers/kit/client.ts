@@ -7,7 +7,10 @@ import type { ChatProvider } from "../contract.ts";
 import { type BackendOperation, executeOperation } from "../http-operation.ts";
 import { createLegacyKitClient, type LegacyKitClient, type LegacyKitClientOptions } from "./legacy-client.ts";
 
-type HttpMethods = Omit<LegacyKitClient, "transport" | "auth" | "stream" | "fileDownloadUrl" | "sessionDirectory"> & {
+type HttpMethods = Omit<
+	LegacyKitClient,
+	"transport" | "auth" | "listEvents" | "stream" | "fileDownloadUrl" | "sessionDirectory"
+> & {
 	"auth.login": LegacyKitClient["auth"]["login"];
 	"auth.me": LegacyKitClient["auth"]["me"];
 	"auth.logout": LegacyKitClient["auth"]["logout"];
@@ -24,7 +27,10 @@ export interface ExplicitKitClientOptions {
 	chatProvider?: ChatProvider;
 }
 export type KitClientOptions = LegacyKitClientOptions | ExplicitKitClientOptions;
-export type KitClient = LegacyKitClient & { supports(operation: ClientOperation): boolean };
+export type KitClient = Omit<LegacyKitClient, "listEvents"> & {
+	listEvents: ChatProvider["listEvents"];
+	supports(operation: ClientOperation): boolean;
+};
 
 function unsupported(operation: string): never {
 	throw new KitError("not_found", `Backend operation is not configured: ${operation}`);
@@ -121,6 +127,7 @@ export function createKitClient(options: KitClientOptions): KitClient {
 			stream: () => unsupported("transport.stream"),
 		},
 		stream: (...args) => (chatProvider ? chatProvider.stream(...args) : unsupported("stream")),
+		listEvents: chatProvider?.listEvents?.bind(chatProvider),
 		fileDownloadUrl: () => unsupported("fileDownloadUrl"),
 		sessionDirectory: (signal) => loadSessionDirectory(methods, signal),
 	};
