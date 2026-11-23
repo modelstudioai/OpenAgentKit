@@ -133,7 +133,12 @@ describe("本地成员认证", () => {
 		const known = await wrong("alice");
 		expect(unknown.status).toBe(401);
 		expect(known.status).toBe(401);
-		expect(await unknown.json()).toEqual(await known.json());
+		const [unknownBody, knownBody] = [await unknown.json(), await known.json()];
+		expect(unknownBody).toEqual(knownBody);
+		// 专用 message_key 让 Web 端按界面语言翻译，不和会话过期共用提示。
+		expect(unknownBody).toMatchObject({
+			error: { code: "unauthorized", message_key: "serverErrors.invalidCredentials" },
+		});
 		const invalid = await wrong("alice", "sensitive-".repeat(100));
 		expect(invalid.status).toBe(400);
 		expect(await invalid.text()).not.toContain("sensitive-");

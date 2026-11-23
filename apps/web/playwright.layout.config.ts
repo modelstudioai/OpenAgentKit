@@ -9,7 +9,7 @@ export default defineConfig({
 	workers: 1,
 	retries: 0,
 	reporter: [["list"]],
-	use: { baseURL: "http://127.0.0.1:5192", trace: "retain-on-failure" },
+	use: { baseURL: "http://127.0.0.1:5192", trace: "retain-on-failure", locale: "zh-CN" },
 	projects: [
 		{ name: "desktop", use: { ...devices["Desktop Chrome"], channel: process.env.KIT_E2E_CHANNEL ?? "chrome" } },
 		{

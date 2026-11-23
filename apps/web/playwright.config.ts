@@ -23,7 +23,8 @@ export default defineConfig({
 	workers: 1,
 	retries: 1,
 	reporter: [["list"]],
-	use: { baseURL: "http://localhost:5173", trace: "on-first-retry" },
+	// 词表断言以中文为基准；语言用例用 ?lang=en 显式进入英文，不依赖浏览器默认语言。
+	use: { baseURL: "http://localhost:5173", trace: "on-first-retry", locale: "zh-CN" },
 	projects: [
 		{ name: "desktop", use: { ...devices["Desktop Chrome"], channel: E2E_CHANNEL } },
 		{

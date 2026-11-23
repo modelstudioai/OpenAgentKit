@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { type MemberView, PROTOCOL_VERSION } from "../protocol/index.ts";
+import { KitError, type MemberView, PROTOCOL_VERSION } from "../protocol/index.ts";
 import { createSessionEventChatProvider } from "../providers/session-events/provider.ts";
 import {
 	createMemberAuthController,
@@ -24,7 +24,19 @@ const member = (username: string): MemberView => ({
 });
 const json = (data: unknown) => Response.json({ data });
 const unauthorized = () =>
-	Response.json({ error: { code: "unauthorized", message: "用户名或密码错误", retryable: false } }, { status: 401 });
+	Response.json({ error: { code: "unauthorized", message: "登录已失效", retryable: false } }, { status: 401 });
+const invalidCredentials = () =>
+	Response.json(
+		{
+			error: {
+				code: "unauthorized",
+				message: "用户名或密码错误",
+				message_key: "serverErrors.invalidCredentials",
+				retryable: false,
+			},
+		},
+		{ status: 401 },
+	);
 
 function setup() {
 	let stored: StoredMemberSession | null = null;
@@ -42,7 +54,7 @@ function setup() {
 	let override: ((url: URL, init: RequestInit) => Promise<Response> | undefined) | undefined;
 	const loginResponse = (init: RequestInit) => {
 		const body = JSON.parse(String(init.body));
-		if (body.password !== "Correct!123") return unauthorized();
+		if (body.password !== "Correct!123") return invalidCredentials();
 		const token = `kit_member_${body.username}_${requests.length}`;
 		return json({ access_token: token, token_type: "Bearer", expires_at: expiresAt, member: member(body.username) });
 	};
@@ -297,6 +309,10 @@ describe("本地成员认证生命周期", () => {
 		await expect(controller.login({ username: "alice", password: "wrong" })).rejects.toMatchObject({
 			code: "unauthorized",
 		});
+		// 凭据错误保留结构化 messageKey，供宿主按界面语言翻译；中文原文继续作为兜底。
+		expect(controller.getSnapshot().errorDetail).toBeInstanceOf(KitError);
+		expect(controller.getSnapshot().errorDetail?.messageKey).toBe("serverErrors.invalidCredentials");
+		expect(controller.getSnapshot().error).toBe("用户名或密码错误");
 		expect(controller.getSnapshot().client).toBeNull();
 		await login(controller);
 		fixture.setOverride((url) => {

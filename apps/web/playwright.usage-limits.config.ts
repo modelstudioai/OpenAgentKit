@@ -18,7 +18,13 @@ export default defineConfig({
 		webUrl: "http://localhost:5203",
 		apiBaseUrl: "http://localhost:8799",
 	},
-	use: { ...devices["Desktop Chrome"], baseURL: "http://localhost:8799", channel: "chrome", trace: "off" },
+	use: {
+		...devices["Desktop Chrome"],
+		baseURL: "http://localhost:8799",
+		channel: "chrome",
+		trace: "off",
+		locale: "zh-CN",
+	},
 	webServer: [
 		{
 			command: "pnpm --filter @openagentpack/kit-server exec tsx src/bin.ts",
