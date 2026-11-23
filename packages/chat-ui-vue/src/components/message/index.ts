@@ -63,6 +63,10 @@ function formatMessageTime(date: Date): string {
 	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+/** 悬停显隐：复制行与时间共享同一动效 token，键盘聚焦到消息内也显示。 */
+const HOVER_REVEAL =
+	"opacity-0 transition-opacity duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] group-hover/message:opacity-100 group-focus-within/message:opacity-100 motion-reduce:transition-none";
+
 function renderStatus(status: ChatMessage["status"], role: ChatMessage["role"], strings: MessageStrings): VNode | null {
 	if (status === "pending")
 		return h("span", { class: "text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]" }, strings.sending);
@@ -186,11 +190,41 @@ function renderActions(
 		message.createdAt
 			? h(
 					"time",
-					{ datetime: message.createdAt, class: "text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]" },
+					{
+						datetime: message.createdAt,
+						class: `text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)] ${HOVER_REVEAL}`,
+					},
 					formatMessageTime(new Date(message.createdAt)),
 				)
 			: null,
 	]);
+}
+
+/** 用户消息悬停操作：复制原文与时间绝对定位在气泡下方，不占气泡高度。 */
+function renderUserFooter(
+	message: ChatMessage,
+	text: string,
+	strings: MessageStrings,
+	onCopy: ((text: string) => void | Promise<void>) | undefined,
+): VNode | null {
+	if (message.role !== "user" || message.status !== "done" || !text.trim()) return null;
+	return h(
+		Actions,
+		{ ariaLabel: strings.actionsAriaLabel, className: `absolute top-full right-0 z-10 pt-1 ${HOVER_REVEAL}` },
+		[
+			h(ActionsCopy, { text, onCopy, iconOnly: true }),
+			message.createdAt
+				? h(
+						"time",
+						{
+							datetime: message.createdAt,
+							class: `text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)] ${HOVER_REVEAL}`,
+						},
+						formatMessageTime(new Date(message.createdAt)),
+					)
+				: null,
+		],
+	);
 }
 
 /** 消息：文本 + Markdown；附件、产物、子 Agent 与执行过程通过同名插槽交给上层。 */
@@ -252,6 +286,7 @@ export const Message = defineComponent({
 			}
 			const surface = surfaceClass(props.variant, message.role);
 			const actions = renderActions(message, text, strings.value, props.onCopy);
+			const footer = renderUserFooter(message, text, strings.value, props.onCopy);
 			return h(
 				"div",
 				{
@@ -265,6 +300,7 @@ export const Message = defineComponent({
 						},
 						[...nodes, actions],
 					),
+					footer,
 				],
 			);
 		};

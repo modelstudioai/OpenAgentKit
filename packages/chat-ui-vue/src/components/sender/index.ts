@@ -491,27 +491,30 @@ export const Sender = defineComponent({
 			if (inputRef.value) emit("selection-change", selectionOffsets(inputRef.value));
 		};
 
+		const handleAtomicBackspace = (event: KeyboardEvent): boolean => {
+			if (event.key !== "Backspace" || !editable.value) return false;
+			const element = inputRef.value;
+			if (!element) return false;
+			const { start, end } = selectionOffsets(element);
+			const atomic = atomicBackspace(
+				currentValue.value,
+				start,
+				end,
+				skillInputMarkerRanges(currentValue.value, skillNames.value),
+			);
+			if (!atomic) return false;
+			event.preventDefault();
+			commit(atomic.value, atomic.caret);
+			return true;
+		};
+
 		const handleKeyDown = (event: KeyboardEvent) => {
 			// 输入法合成中的回车用于确认候选词；Safari 合成结束后会补发 keyCode 229。
-			if (event.isComposing || event.keyCode === 229 || event.defaultPrevented) return;
+			if (event.isComposing || event.keyCode === 229) return;
+			// 候选层（Suggestion）确认选择时会 preventDefault；同一次 Enter 不能再提交。
 			props.onKeyDown?.(event);
-			if (event.key === "Backspace" && editable.value) {
-				const element = inputRef.value;
-				if (element) {
-					const { start, end } = selectionOffsets(element);
-					const atomic = atomicBackspace(
-						currentValue.value,
-						start,
-						end,
-						skillInputMarkerRanges(currentValue.value, skillNames.value),
-					);
-					if (atomic) {
-						event.preventDefault();
-						commit(atomic.value, atomic.caret);
-						return;
-					}
-				}
-			}
+			if (event.defaultPrevented) return;
+			if (handleAtomicBackspace(event)) return;
 			if (submitKeyDown(event, props.submitType)) submit();
 		};
 

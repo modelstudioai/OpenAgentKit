@@ -54,6 +54,11 @@ export {
 	type MessageListStrings,
 	messageListStrings,
 } from "./components/message-list/index.ts";
+export {
+	MessageListSkeleton,
+	type MessageListSkeletonStrings,
+	messageListSkeletonStrings,
+} from "./components/message-skeleton/index.ts";
 export { MeterBar, type MeterBarStrings, meterBarStrings } from "./components/meter-bar/index.ts";
 export {
 	isIconImageSource,
@@ -124,6 +129,11 @@ export {
 	sessionSidebarStrings,
 } from "./components/session-sidebar/index.ts";
 export { EmptyState, ErrorState } from "./components/states/index.ts";
+export {
+	StatusIndicator,
+	type StatusIndicatorStrings,
+	statusIndicatorStrings,
+} from "./components/status-indicator/index.ts";
 export { Suggestion, type SuggestionItem, type SuggestionSelectContext } from "./components/suggestion/index.ts";
 export {
 	ToolApprovalCard,
