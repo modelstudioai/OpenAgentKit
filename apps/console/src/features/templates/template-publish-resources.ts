@@ -48,10 +48,14 @@ export function pendingPublishDescription(plan: ProjectPlan, names: Record<strin
 			? t(RESOURCE_KEYS[type as keyof typeof RESOURCE_KEYS])
 			: t("publish.resources.fallbackType");
 		const action = `${t(ACTION_KEYS[entry.action])}${entry.destructive ? t("publish.resources.destructive") : ""}`;
-		const summary = entry.summary_key ? translateSummary(entry.summary_key, entry.summary_params) : undefined;
+		const localizedSummary =
+			entry.summary_key && i18n.exists(entry.summary_key, { ns: "templates" })
+				? translateSummary(entry.summary_key, entry.summary_params)
+				: undefined;
+		const summary = localizedSummary || entry.summary;
 		return (
 			t("publish.resources.row", { type: typeLabel, name, action, resource: entry.resource }) +
-			(summary ? t("publish.resources.summary", { summary }) : "")
+			(summary ? t("publish.resources.summary", { summary, interpolation: { escapeValue: false } }) : "")
 		);
 	});
 	return `${t("publish.resources.title", { count: changes.length })}\n\n${rows.join("\n\n")}`;

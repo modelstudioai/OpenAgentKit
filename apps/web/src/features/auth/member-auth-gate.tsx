@@ -6,6 +6,7 @@ import { KitProvider } from "@openagentkit/sdk/providers/kit/react";
 import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui";
 import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { resolveServerErrorMessage } from "../../i18n/server-error.ts";
 import { MemberLoginForm } from "./member-login-form.tsx";
 
 export interface MemberAccountProps {
@@ -44,7 +45,8 @@ export function MemberAuthGate({
 			</KitProvider>
 		);
 	}
-	return <MemberLoginForm pending={auth.pending} error={auth.error} onLogin={auth.login} onRetry={auth.retry} />;
+	const error = auth.errorDetail ? (resolveServerErrorMessage(auth.errorDetail) ?? auth.error) : auth.error;
+	return <MemberLoginForm pending={auth.pending} error={error} onLogin={auth.login} onRetry={auth.retry} />;
 }
 
 /** 账号区：头像旁常驻展示用户名，hover（桌面）或点击头像（触屏/键盘）展开浮层展示用户名与退出登录。 */

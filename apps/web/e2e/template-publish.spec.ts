@@ -331,7 +331,13 @@ test("模版保存发布：先校验和审阅计划，确认后等待发布成�
 		operationStatus: "running",
 		diff: [
 			...defaultDiff,
-			{ resource: "agent:assistant", action: "update", destructive: false, summary: "更新系统提示词" },
+			{
+				resource: "agent:assistant",
+				action: "update",
+				destructive: false,
+				summary_key: "publish.resources.updateAgentInstructions",
+				summary: "更新 R&D <Ops> 的系统提示词",
+			},
 			{ resource: "vault:old-vault", action: "delete", destructive: true, summary: "删除旧密钥库声明" },
 			{ resource: "file:unchanged-file", action: "noop", destructive: false, summary: "文件未变更" },
 			{ resource: "memory_store:dangerous-memory", action: "noop", destructive: true, summary: "需审阅的危险操作" },
@@ -364,7 +370,7 @@ test("模版保存发布：先校验和审阅计划，确认后等待发布成�
 		"创建分析环境",
 		"智能体：项目智能助手",
 		"更新 · agent:assistant",
-		"更新系统提示词",
+		"更新 R&D <Ops> 的系统提示词",
 		"密钥库：旧密钥库",
 		"删除（包含破坏性变更） · vault:old-vault",
 		"删除旧密钥库声明",

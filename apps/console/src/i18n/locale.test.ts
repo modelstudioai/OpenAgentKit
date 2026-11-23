@@ -1,9 +1,24 @@
-import { describe, expect, it } from "vitest";
-import { type LocaleEnv, resolveLocale } from "./index.ts";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { type LocaleEnv, readBrowserLocaleEnv, resolveLocale } from "./index.ts";
 
 const bare: LocaleEnv = { stored: null, urlParam: null, navigatorLanguage: undefined };
 
 describe("resolveLocale", () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it("存储读取失败时仍返回 URL 参数，不阻断启动", () => {
+		vi.stubGlobal("window", { location: { search: "?lang=en" } });
+		vi.stubGlobal("localStorage", {
+			getItem() {
+				throw new DOMException("blocked", "SecurityError");
+			},
+		});
+		vi.stubGlobal("navigator", { language: "zh-CN" });
+		expect(readBrowserLocaleEnv()).toEqual({ stored: null, urlParam: "en", navigatorLanguage: "zh-CN" });
+	});
+
 	it("用户显式选择优先于 URL 与浏览器语言", () => {
 		expect(resolveLocale({ stored: "en", urlParam: "zh-CN", navigatorLanguage: "zh-CN" })).toBe("en");
 	});

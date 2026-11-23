@@ -9,7 +9,7 @@ type NotificationProbe = {
 
 test("浏览器通知：发送时申请权限，本轮完成后展示通知", async ({ page, request }) => {
 	const slug = `notify-${Date.now().toString(36)}`;
-	const agentName = "通知助手";
+	const agentName = `通知助手 ${slug}`;
 	await seedListedAgent(request, slug, agentName);
 	await page.addInitScript(() => {
 		const probe: NotificationProbe = { permission: "default", requests: 0, shown: [] };

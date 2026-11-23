@@ -14,7 +14,7 @@ export default defineConfig({
 	retries: 0,
 	reporter: [["list"]],
 	outputDir: `${root}/.scratch/member-login-e2e/output`,
-	use: { baseURL: "http://localhost:8797", trace: "off" },
+	use: { baseURL: "http://localhost:8797", trace: "off", locale: "zh-CN" },
 	projects: [
 		{ name: "desktop", grep: /@desktop/, use: { ...devices["Desktop Chrome"], channel: "chrome" } },
 		{

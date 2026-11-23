@@ -37,8 +37,14 @@ export interface LocaleEnv {
 }
 
 export function readBrowserLocaleEnv(): LocaleEnv {
+	let stored: string | null = null;
+	try {
+		stored = localStorage.getItem(LOCALE_STORAGE_KEY);
+	} catch {
+		// 存储被禁用时仍按 URL / 浏览器语言初始化，避免启动白屏。
+	}
 	return {
-		stored: localStorage.getItem(LOCALE_STORAGE_KEY),
+		stored,
 		urlParam: new URLSearchParams(window.location.search).get("lang"),
 		navigatorLanguage: typeof navigator === "undefined" ? undefined : navigator.language,
 	};
@@ -98,6 +104,7 @@ export async function initI18n() {
 		fallbackLng: "zh-CN",
 		supportedLngs: [...SUPPORTED_LOCALES],
 		defaultNS: "common",
+		interpolation: { escapeValue: false },
 		ns: [
 			"common",
 			"auth",
@@ -147,7 +154,11 @@ export async function initI18n() {
 
 /** 切换语言：持久化用户选择、同步 <html lang>，再通知 react-i18next 订阅者。 */
 export function setLocale(locale: KitLocale) {
-	localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+	try {
+		localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+	} catch {
+		// 无法持久化时当前页面仍可切换语言。
+	}
 	document.documentElement.lang = locale;
 	return i18n.changeLanguage(locale);
 }

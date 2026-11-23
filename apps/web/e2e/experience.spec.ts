@@ -1,8 +1,9 @@
 import { expect, test } from "./fixtures.ts";
 import { ADMIN_TOKEN, newSession, openSessionList, seedListedAgent } from "./helpers.ts";
 
-test.beforeEach(async ({ request }, testInfo) => {
+test.beforeEach(async ({ request, page }, testInfo) => {
 	test.skip(testInfo.project.name === "mobile", "移动端本轮不做：恢复随移动端适配批次");
+	await page.addInitScript(() => localStorage.setItem("kit.locale", "zh-CN"));
 	await seedListedAgent(request);
 });
 
