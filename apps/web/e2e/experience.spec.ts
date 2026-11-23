@@ -159,8 +159,15 @@ test("回答复制：完整原文、失败反馈与重试", async ({ page }) => 
 	const input = "复制 **原文**\n第二行";
 	await page.getByLabel("消息输入").fill(input);
 	await page.getByRole("button", { name: "发送", exact: true }).click();
-	const actions = page.getByRole("group", { name: "消息操作", exact: true });
-	await expect(actions).toHaveCount(1);
+	// 用户消息也带操作行；等助手回答出现并取助手消息内的操作组，避免误复制用户原文。
+	await expect(page.getByText(/mock gateway 的流式回答/).first()).toBeVisible({ timeout: 15_000 });
+	await expect(page.getByText("空闲", { exact: true })).toBeVisible({ timeout: 15_000 });
+	const assistant = page
+		.getByText(/mock gateway 的流式回答/)
+		.first()
+		.locator("xpath=ancestor::div[contains(@class, 'group/message')]");
+	const actions = assistant.getByRole("group", { name: "消息操作", exact: true });
+	await expect(actions).toBeVisible();
 	await page.evaluate(() => sessionStorage.setItem("reject-copy", "yes"));
 	await actions.getByRole("button", { name: "复制", exact: true }).click();
 	await expect(actions.getByRole("status")).toHaveText("复制失败，请重试");
@@ -280,7 +287,7 @@ test("切换 Agent：广场入口清空当前对话、更新深链，侧栏目�
 	await page.getByRole("button", { name: "发送" }).click();
 	await expect(page.getByText(/mock gateway 的流式回答/).first()).toBeVisible({ timeout: 15_000 });
 
-	await expect(messages.getByText("writer session marker", { exact: true })).toBeVisible();
+	await expect(messages.getByText("writer session marker", { exact: true }).first()).toBeVisible();
 
 	// 经广场进入另一个 Agent（SPA 导航：验证旧会话状态释放、深链与 api 参数正确）
 	await page.getByTestId("nav-plaza").click();
@@ -292,7 +299,7 @@ test("切换 Agent：广场入口清空当前对话、更新深链，侧栏目�
 	await expect(page.locator("main > header")).toContainText("E2E 二号");
 	expect(new URL(page.url()).searchParams.get("api")).toBe(apiBase);
 	// 关键不变量：切走后不得残留上一个会话的消息（useChat(null) 必须释放旧 controller）
-	await expect(messages.getByText("writer session marker", { exact: true })).toHaveCount(0);
+	await expect(messages.getByText("writer session marker", { exact: true }).first()).toHaveCount(0);
 	// 侧栏目录按 Agent 分组：writer 的会话归「E2E 助手」组，二号还没有会话组
 	const sidebar = page.getByTestId("experience-sidebar");
 	await expect(sidebar.getByTestId("sidebar-group-e2e-agent")).toContainText("E2E 助手");
@@ -660,6 +667,8 @@ test("工具审批：审查参数 → 允许直提 → 拒绝直提 → 恢复�
 	const read = messages.getByRole("region", { name: "工具审批 read_file", exact: true });
 	const write = messages.getByRole("region", { name: "工具审批 write_file", exact: true });
 	await expect(read.getByRole("status")).toHaveText("等待审批");
+	// 页头状态与审批卡同步，避免「等待审批」时页头仍显示空闲/生成中。
+	await expect(page.locator("main header").getByRole("status")).toHaveText("等待审批");
 	// 多个待审批横向切换：一次只显示一张卡，翻页而不是纵向铺平。
 	await expect(messages.getByText("1 / 2", { exact: true })).toBeVisible();
 	await expect(write).toHaveCount(0);
