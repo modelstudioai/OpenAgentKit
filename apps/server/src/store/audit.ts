@@ -14,13 +14,13 @@ const agentActions = [
 	"catalog.unlist",
 	"branding.update",
 ];
-const agentActionSet = new Set(agentActions);
+const storedActions = new Set([...agentActions, "members.oidc.bind", "members.oidc.unbind"]);
 const agentActionFilter = `action IN (${agentActions.map(() => "?").join(", ")})`;
 
 export function createAuditLog(db: StoreDatabase) {
 	return {
 		async append(input: { subject?: string; action: string; target?: string; detail?: unknown }) {
-			if (!agentActionSet.has(input.action)) return;
+			if (!storedActions.has(input.action)) return;
 			await db.run(
 				"INSERT INTO kit_audit (at, subject, action, target, detail) VALUES (?,?,?,?,?)",
 				new Date().toISOString(),

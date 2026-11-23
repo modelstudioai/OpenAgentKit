@@ -9,7 +9,10 @@ export async function createAuthStreamGuard(
 	expiresAt?: string,
 ): Promise<AuthStreamBinding> {
 	if (session) return await auth.bindStream(session);
-	const controller = new AbortController();
+	return expiringAuthStream(expiresAt);
+}
+
+export function expiringAuthStream(expiresAt?: string, controller = new AbortController()): AuthStreamBinding {
 	const expires = expiresAt ? Date.parse(expiresAt) : undefined;
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	function expire() {
@@ -25,6 +28,7 @@ export async function createAuthStreamGuard(
 	return {
 		signal: controller.signal,
 		assertActive() {
+			controller.signal.throwIfAborted();
 			if (expires !== undefined && expires <= Date.now()) throw new KitError("unauthorized", "登录已过期，请重新登录");
 		},
 		close: () => clearTimeout(timer),

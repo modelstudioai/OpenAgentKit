@@ -6,6 +6,7 @@ import {
 	MemberLoginRequestSchema,
 	type MemberLoginResult,
 } from "@openagentkit/sdk/protocol";
+import { identityForMember } from "../identity/types.ts";
 import type { AuditLog } from "../store/audit.ts";
 import type { MemberSessionRecord, MemberSessionStore } from "../store/member-sessions.ts";
 import type { MemberStore } from "../store/members.ts";
@@ -101,7 +102,7 @@ export function createMemberAuthService({
 			return {
 				session,
 				view: {
-					identity: { subjectId: member.member_id, displayName: member.display_name, tier: "member" },
+					identity: identityForMember(member),
 					member,
 					expires_at: session.expires_at,
 				},

@@ -23,6 +23,7 @@ import {
 	type GroupView,
 	type MemberGroupsPage,
 	type MemberGroupsPatch,
+	type MemberOidcBinding,
 	type MemberSessionsPage,
 	type MembersQuery,
 	type MemberUsageLimitView,
@@ -159,6 +160,7 @@ export function createAdminClient(options: AdminClientOptions) {
 	}
 	const groupPath = (id: string) => `/api/admin/groups/${encodeURIComponent(id)}`;
 	const memberGroupsPath = (id: string) => `/api/admin/members/${encodeURIComponent(id)}/groups`;
+	const oidcBindingPath = (id: string) => `/api/admin/members/${encodeURIComponent(id)}/oidc-binding`;
 	/** 用量明细 query 全量字段非空即拼；布尔外的值统一 String 化。 */
 	function usageTelemetryQuery(
 		query: UsageTelemetryQuery & { model_name?: string; source?: string; tool_name?: string; sort_by?: string },
@@ -406,6 +408,10 @@ export function createAdminClient(options: AdminClientOptions) {
 		members: {
 			get: (id: string, signal?: AbortSignal) =>
 				get<MemberView>(`/api/admin/members/${encodeURIComponent(id)}`, signal),
+			oidcBinding: (id: string, signal?: AbortSignal) =>
+				request.json<{ data: MemberOidcBinding | null }>(oidcBindingPath(id), { signal }),
+			bindOidc: (id: string, sub: string) => write<MemberOidcBinding>(oidcBindingPath(id), "PUT", { sub }),
+			unbindOidc: (id: string) => request.response(oidcBindingPath(id), { method: "DELETE" }).then(() => undefined),
 			groups: (id: string, query: Partial<GroupMembershipQuery> = {}, signal?: AbortSignal) =>
 				request.json<MemberGroupsPage>(`${memberGroupsPath(id)}${groupQuery(query)}`, { signal }),
 			updateGroups: (id: string, input: MemberGroupsPatch) =>

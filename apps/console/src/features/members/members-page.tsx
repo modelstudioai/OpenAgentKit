@@ -7,6 +7,7 @@ import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { adminRequest } from "../../lib/kit.ts";
 import { useConsoleRoute } from "../navigation/console-router.tsx";
 import { CreateMemberPage } from "./create-member-page.tsx";
+import { MemberOidcBindingDialog } from "./member-oidc-binding-dialog.tsx";
 import { MemberUsageRoute } from "./member-usage-route.tsx";
 import styles from "./members.module.less";
 import { UsageCollectionStatus } from "./usage-collection-status.tsx";
@@ -17,11 +18,13 @@ function MembersContent({
 	members,
 	onCreate,
 	onUsage,
+	onBinding,
 	canWrite,
 }: {
 	members: ReturnType<typeof useMembers>;
 	onCreate: () => void;
 	onUsage: (member: MemberView) => void;
+	onBinding?: (member: MemberView) => void;
 	canWrite: boolean;
 }) {
 	const columns: TableColumnsType<AdminMemberView> = [
@@ -90,12 +93,19 @@ function MembersContent({
 		},
 		{
 			title: "操作",
-			width: 100,
+			width: onBinding ? 188 : 100,
 			fixed: "right",
 			render: (_, member) => (
-				<Button type="link" size="small" onClick={() => onUsage(member)}>
-					查看用量
-				</Button>
+				<>
+					<Button type="link" size="small" onClick={() => onUsage(member)}>
+						查看用量
+					</Button>
+					{onBinding && (
+						<Button type="link" size="small" onClick={() => onBinding(member)}>
+							企业绑定
+						</Button>
+					)}
+				</>
 			),
 		},
 	];
@@ -147,10 +157,12 @@ function MembersContent({
 function MembersList({
 	onCreate,
 	onUsage,
+	onBinding,
 	canWrite,
 }: {
 	onCreate: () => void;
 	onUsage: (member: MemberView) => void;
+	onBinding?: (member: MemberView) => void;
 	canWrite: boolean;
 }) {
 	const members = useMembers();
@@ -181,7 +193,13 @@ function MembersList({
 					刷新
 				</Button>
 			</div>
-			<MembersContent members={members} onCreate={onCreate} onUsage={onUsage} canWrite={canWrite} />
+			<MembersContent
+				members={members}
+				onCreate={onCreate}
+				onUsage={onUsage}
+				onBinding={onBinding}
+				canWrite={canWrite}
+			/>
 			{!members.error && (members.page > 1 || members.hasNext) && (
 				<nav aria-label="成员列表分页" className={styles.pager}>
 					<Button size="small" disabled={members.loading || members.page === 1} onClick={members.previous}>
@@ -211,7 +229,16 @@ function IdentityPending({ error, role, onRetry }: { error: string | null; role?
 	);
 }
 
-export function MembersPage({ onPendingChange }: { onPendingChange: (pending: boolean) => void }) {
+export function MembersPage({
+	onPendingChange,
+	oidcIssuer,
+	passwordLogin,
+}: {
+	onPendingChange: (pending: boolean) => void;
+	oidcIssuer?: string;
+	passwordLogin: boolean;
+}) {
+	const [bindingMember, setBindingMember] = useState<MemberView | null>(null);
 	const { route, navigate } = useConsoleRoute();
 	const creating = route.page === "member-create";
 	const client = useMemo(() => createAdminClient({ request: adminRequest() }), []);
@@ -220,7 +247,13 @@ export function MembersPage({ onPendingChange }: { onPendingChange: (pending: bo
 	if (route.page === "member-usage" && route.id) return <MemberUsageRoute key={route.id} id={route.id} />;
 	if (creating) {
 		if (canWrite)
-			return <CreateMemberPage onBack={() => navigate({ page: "members" })} onPendingChange={onPendingChange} />;
+			return (
+				<CreateMemberPage
+					passwordLogin={passwordLogin}
+					onBack={() => navigate({ page: "members" })}
+					onPendingChange={onPendingChange}
+				/>
+			);
 		return (
 			<section className={styles.stack}>
 				<Button onClick={() => navigate({ page: "members" })}>返回成员列表</Button>
@@ -235,7 +268,9 @@ export function MembersPage({ onPendingChange }: { onPendingChange: (pending: bo
 					<h2 id="members-heading" className={styles.pageTitle}>
 						成员管理
 					</h2>
-					<p className={styles.pageSub}>管理本地成员账号，成员可使用用户名和密码登录体验页。</p>
+					<p className={styles.pageSub}>
+						{passwordLogin ? "管理本地成员及其登录信息。" : "员工使用绑定的企业账号登录体验页。"}
+					</p>
 				</div>
 				{canWrite && (
 					<Button type="primary" onClick={() => navigate({ page: "member-create" })}>
@@ -255,8 +290,20 @@ export function MembersPage({ onPendingChange }: { onPendingChange: (pending: bo
 			<MembersList
 				onCreate={() => navigate({ page: "member-create" })}
 				onUsage={(member) => navigate({ page: "member-usage", id: member.member_id })}
+				onBinding={oidcIssuer && identity.data ? setBindingMember : undefined}
 				canWrite={canWrite}
 			/>
+			{bindingMember && oidcIssuer && (
+				<MemberOidcBindingDialog
+					key={bindingMember.member_id}
+					member={bindingMember}
+					client={client}
+					issuer={oidcIssuer}
+					canWrite={canWrite}
+					onClose={() => setBindingMember(null)}
+					onPendingChange={onPendingChange}
+				/>
+			)}
 		</section>
 	);
 }

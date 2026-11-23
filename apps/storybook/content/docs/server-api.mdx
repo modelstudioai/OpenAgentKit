@@ -24,7 +24,7 @@ description: 数据面 /api/kit/*、控制面 /api/admin/*、SSE 协议与错误
 Identity 表示 Kit 请求主体，其稳定 `subjectId` 决定会话和上传文件归属；Provider 访问权限
 由服务端凭据决定。管理端与成员体验页使用各自的身份。
 
-默认 `KIT_AUTH_MODE=member`，必须登录后访问业务 API。登录提交 `{username,password}`，
+独立服务默认 `KIT_AUTH_MODE=member`，必须登录后访问业务 API。成员密码登录提交 `{username,password}`，
 返回 `{data:{access_token,token_type:"Bearer",expires_at,member}}`，令牌 8 小时有效。
 HTTP、上传、下载和 SSE 统一携带 `Authorization: Bearer <access_token>`；不能使用百炼密钥。
 `me` 校验当前登录并返回 `{data:{identity,member,expires_at}}`；`logout` 撤销当前令牌并返回

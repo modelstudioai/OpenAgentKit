@@ -27,7 +27,15 @@ function generatePassword(username: string): string {
 	}
 }
 
-export function createMemberService({ store, audit }: { store: MemberStore; audit: AuditLog }) {
+export function createMemberService({
+	store,
+	audit,
+	passwordLogin,
+}: {
+	store: MemberStore;
+	audit: AuditLog;
+	passwordLogin: boolean;
+}) {
 	return {
 		async get(memberId: string) {
 			const member = await store.findById(memberId);
@@ -44,6 +52,8 @@ export function createMemberService({ store, audit }: { store: MemberStore; audi
 			const parsed = CreateMemberRequestSchema.safeParse(input);
 			if (!parsed.success) throw new KitError("invalid_request", parsed.error.issues[0]?.message ?? "成员参数无效");
 			const value = parsed.data;
+			if (!passwordLogin && value.password_mode === "custom")
+				throw new KitError("invalid_request", "企业登录模式下无需设置成员密码");
 			const password = value.password_mode === "auto" ? generatePassword(value.username) : value.password;
 			const passwordHash = await hashPassword(password);
 			const now = new Date().toISOString();
@@ -61,7 +71,7 @@ export function createMemberService({ store, audit }: { store: MemberStore; audi
 				passwordHash,
 			);
 			await audit.append({ subject, action: "members.create", target: member.member_id });
-			return { member, ...(value.password_mode === "auto" ? { initial_password: password } : {}) };
+			return { member, ...(passwordLogin && value.password_mode === "auto" ? { initial_password: password } : {}) };
 		},
 	};
 }

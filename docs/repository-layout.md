@@ -249,6 +249,9 @@ assets/skills/
 
 ## app 内
 
+- `apps/server/scripts/dev.mjs` 管理开发环境的 Kit Server 入口和可选的本地 Keycloak 子进程。
+  `keycloak-runtime.mjs` 下载并校验本地发行包，`keycloak-dev.mjs` 创建缺失的 Realm 和客户端。
+  本地运行时及数据库放在 Git 忽略的目录，配置见[服务端 README](../apps/server/README.md)。
 - JDK 11 与 Node SDK 的跨进程验收 PoC 位于 [apps/server/tests/java-sdk-poc/](../apps/server/tests/java-sdk-poc/README.md)，
   通过独立 Maven 工程和验收脚本显式运行。工具链、构建产物与实测证据放在 `.scratch/java-sdk-poc/`。
 - 体验页品牌由 console 的 `features/branding/` 经管理端品牌接口维护；server 的
@@ -292,9 +295,11 @@ console `src/lib/admin/use-member-usage.ts` 只订阅 Controller 并管理生命
 `store/member-sessions.ts`；`services/passwords.ts` 负责密码派生与验证，
 `services/auth-stream.ts` 负责已建立 SSE 的撤销 / 到期。文件归属在
 `services/files.ts`、`store/files.ts`，不保存文件字节或事件正文。
-SDK 的 `auth/member-auth.ts` 管理固定身份 Client 与认证状态；`auth/hooks/` 的
-`useMemberAuth` 绑定生命周期。体验页的 `features/auth/` 只负责表单、浏览器
-sessionStorage 和页面闸门，不复制 HTTP / SSE 认证逻辑。
+Keycloak 验签与授权在 `services/oidc-auth.ts`，映射和撤销记录在 `store/oidc-auth.ts`，
+Console 的绑定入口归属成员管理，对应 `routes/member-oidc-bindings.ts`。
+SDK 的 `auth/member-auth.ts` 管理身份 Client、认证状态和令牌续期后的 SSE 恢复，
+`auth/hooks/` 的 `useMemberAuth` 绑定生命周期。Web 的 `features/auth/` 负责表单、
+浏览器存储及页面闸门，`keycloak-session.ts` 负责授权跳转、回调和内存令牌。
 
 体验页两级会话目录合同在 `packages/sdk/src/protocol/session-directory.ts`；server 的
 `routes/session-directory.ts` 与 `store/session-directory.ts` 负责身份内的智能体枚举和索引分页，

@@ -147,5 +147,9 @@
     "id": "033_openagentkit_default_branding",
     "source": "version",
     "steps": true
+  },
+  {
+    "id": "034_oidc_member_auth",
+    "source": "version"
   }
 ]

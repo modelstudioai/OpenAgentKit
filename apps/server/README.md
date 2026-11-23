@@ -21,21 +21,20 @@ OpenAgentKit 的服务端：用 Hono 包装百炼 Managed Agent，向体验页�
   Provider 变化，没有凭据时可用 mock 跑完整链路。
 - **高风险动作两段式**：apply / destroy / publish / 上下架 / 删除会话先返回 plan 与确认
   令牌，缺令牌一律 `428`，服务端不代替用户确认。
-- **身份与归属**：默认成员登录，数据面按 `subjectId` 过滤；管理端区分 `admin` 与只读
+- **身份与归属**：支持 OIDC 与成员登录，数据面按 `subjectId` 过滤；管理端区分 `admin` 与只读
   `auditor`。
 
 ## 快速开始
 
-从仓库根目录执行：
+在 macOS 或 Linux 上，从仓库根目录运行下面两条命令即可启动 Server 和本地 Keycloak。
 
 ```bash
 pnpm install
-pnpm start server        # 首次引导配置，随后只启动 server :8787；已有 .env 原样复用
+pnpm dev server
 ```
 
-首次可选择 Mock（无需百炼凭据）或真实百炼（API Key + Workspace ID / Base URL）。
-启动器生成随机 `ADMIN_TOKEN` 并写入根 `.env`，不在终端打印令牌或 API Key。
-不带目标的 `pnpm start` 同时启动体验页与管理端；已有配置可继续用 `pnpm dev server`。
+需要生成随机 Kit 管理员令牌或接入真实百炼时，可以用 `pnpm start server` 引导创建根 `.env`。
+已有 `.env` 会原样复用。`pnpm start` 同时启动 Server、体验页与管理端。
 
 只跑已构建的服务端：
 
@@ -56,7 +55,13 @@ node apps/server/dist/bin.js
 | `BAILIAN_API_KEY` | 空 | 百炼凭据，仅存在于服务端 |
 | `BAILIAN_BASE_URL` / `BAILIAN_WORKSPACE_ID` | 空 | 二选一，用于定位 workspace |
 | `KIT_GATEWAY` | `auto` | `auto` 有凭据走 SDK、否则 mock；也可显式 `mock` / `sdk` |
-| `KIT_AUTH_MODE` | `member` | 默认成员登录；`anonymous` 仅用于显式演示 |
+| `KIT_AUTH_MODE` | 开发入口 `oidc`，独立服务 `member` | macOS / Linux 开发时可显式选 `member` 或 `anonymous` |
+| `KIT_OIDC_ISSUER` | 空 | Keycloak Realm issuer，形如 `https://sso.example.com/realms/kit` |
+| `KIT_OIDC_CLIENT_ID` | 空 | Web 的公开 OIDC 客户端 ID |
+| `KIT_OIDC_AUDIENCE` | 空 | Kit API 的 access token audience，须与 Web 客户端 ID 不同 |
+| `KIT_KEYCLOAK_HOME` | 按需下载官方发行包 | 可指定已解压的 Keycloak 目录，相对路径以仓库根为基准 |
+| `KIT_KEYCLOAK_JAVA_HOME` | 优先复用兼容 Java | 可指定 Java 路径。`JAVA_HOME` 与 `PATH` 均无兼容 Java 时下载本地 Temurin 21 |
+| `KIT_KEYCLOAK_ADMIN_FILE` | `.scratch/keycloak-bootstrap-admin.json` | 本地管理员 JSON，字段为 `username` 与 `password`。已有本地实例可指向现有管理员文件 |
 | `KIT_DATA_DIR` | `.data` | 本地数据目录，默认 SQLite 文件位于此处 |
 | `KIT_DB_DRIVER` | `sqlite` | 可选 `sqlite`、`mysql` 或 `postgres`（别名 `pg`） |
 | `KIT_DATABASE_URL` | 空 | 使用 MySQL 或 PostgreSQL 时填写所选数据库的连接地址 |
@@ -64,6 +69,71 @@ node apps/server/dist/bin.js
 | `KIT_EVAL_WORKSPACES` | 空 | 管理端评测浏览的 workspace 根目录，逗号分隔 |
 
 完整配置与限制参数见 `src/config.ts` 与根 `.env.example`。凭据不会下发浏览器，也不会写进日志。
+
+### 接入已有 Keycloak
+
+Kit 和员工浏览器需要能访问同一个 Realm issuer。本地自动配置见[开发时联动启动](#开发时联动启动)。
+如需单独启动开发实例，可用官方镜像。先在当前 shell 导出临时管理员密码 `KC_BOOTSTRAP_ADMIN_PASSWORD`，然后运行下面的命令。
+
+```bash
+docker run --rm --name kit-keycloak \
+  -p 127.0.0.1:8080:8080 \
+  -v kit-keycloak-dev:/opt/keycloak/data \
+  -e KC_BOOTSTRAP_ADMIN_USERNAME=admin \
+  -e KC_BOOTSTRAP_ADMIN_PASSWORD \
+  quay.io/keycloak/keycloak:26.8.2 start-dev
+```
+
+开发容器使用命名卷保留 Realm 与用户。生产使用固定版本镜像、`start`、独立数据库及 HTTPS
+issuer。部署说明见 [Keycloak Docker 快速开始](https://www.keycloak.org/getting-started/getting-started-docker)
+和 [生产配置](https://www.keycloak.org/server/configuration-production)。
+
+1. 创建 `kit` Realm 和 `kit-web` OpenID Connect 客户端。关闭 Client authentication，
+   启用 Standard flow 和 PKCE S256，关闭 Direct access grants 与 Implicit flow。
+2. 客户端的 Valid redirect URIs 填写体验页的准确地址，含路径，省略查询和片段，本地默认
+   `http://127.0.0.1:5173/`。Web Origins 填写同一体验页的源（如
+   `http://127.0.0.1:5173`），同时在 Kit 的 `KIT_CORS_ORIGINS` 放行部署的 Web 和
+   Console 源。Keycloak 默认用 RS256，使用包含 `sub`、`jti` 和 `azp` 的常规 JWT access token。
+3. 为客户端添加 Audience mapper。将 Included Custom Audience 设置为 `kit-api`，
+   开启 Add to access token，关闭 Add to ID token。
+4. 在 Kit 配置中加入这三个变量并重启，保持现有登录模式完成预绑定：
+
+   ```dotenv
+   KIT_OIDC_ISSUER=http://127.0.0.1:8080/realms/kit
+   KIT_OIDC_CLIENT_ID=kit-web
+   KIT_OIDC_AUDIENCE=kit-api
+   ```
+
+   issuer 须与 Keycloak 的 discovery 文档和令牌 `iss` 精确一致。HTTP 仅支持回环地址。
+5. 在 Kit Console 的「成员」中为已有账号选择「企业绑定」，填写 Keycloak Users
+   页中的用户 ID（默认 `sub`）。绑定完成后设置 `KIT_AUTH_MODE=oidc` 并重启 Kit，
+   体验页即可使用「企业登录」。换绑后需使用绑定完成后签发的令牌。
+
+员工退出只结束本次 Kit 登录，Keycloak SSO 会话继续有效。接入钉钉或飞书时，在 Keycloak
+配置上游身份代理并将上游账号关联到已绑定的 Realm 用户，Kit 侧继续校验同一 issuer 和 subject。
+
+### 开发时联动启动
+
+macOS / Linux 的开发入口在未配置认证模式和 issuer 时默认启用本地 OIDC。
+Keycloak 监听 `127.0.0.1:8180`，自动创建缺失的 `kit` Realm 和 `kit-web` 客户端。
+客户端使用 PKCE S256 与 `kit-api` audience。Web 与本地 Keycloak 共用 `KIT_WEB_DEV_PORT`，
+默认登记 `http://localhost:5173/` 和 `http://127.0.0.1:5173/`。端口被占用时 Web 启动会报错，
+可在根 `.env` 或启动命令中指定其他端口。首次启动会登记对应地址，后续启动也会补齐已有本地客户端
+的回跳地址和 Web Origin。只配置 `KIT_AUTH_MODE=oidc` 也会采用这些默认值。
+
+首次运行用 `curl` 从 GitHub 下载固定版本的 Keycloak（约 166 MiB），通过 SHA-256 校验后用
+`tar` 解压。已有 Java 17、21 或 25 会被复用。macOS 和使用 glibc 的 Linux 在 x64 / arm64 上
+没有兼容 Java 时会下载 Temurin 21。
+发行包、下载的 Java 和 Keycloak 数据保存在 Git 忽略的 `.scratch/keycloak/`。
+本地管理员凭据生成在 `.scratch/keycloak-bootstrap-admin.json`，权限为 `0600`。
+重启时复用这些文件以及已有的 Realm 和客户端。
+
+已有本地实例可在根 `.env` 指定包含 `bin/kc.sh` 的 `KIT_KEYCLOAK_HOME`、回环 issuer 和
+`KIT_KEYCLOAK_ADMIN_FILE`，以便启动时查询和补齐资源。设置 `KIT_AUTH_MODE=member` 或
+`anonymous` 即可使用对应的开发登录模式。接入独立部署的 Keycloak 时，填写完整 OIDC 连接参数。
+
+Realm 就绪后以 `tsx watch` 启动 Kit Server。员工先在 Keycloak 创建账号，再通过 Kit Console
+「企业绑定」关联成员。源码热重启只重启 Kit，退出开发命令会结束本次启动的 Keycloak 进程。
 
 ### 选择数据库
 

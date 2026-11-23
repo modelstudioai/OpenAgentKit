@@ -7,7 +7,7 @@
  *   pnpm dev server web console     # 只起指定目标
  *
  * 目标：server(:8787) web(:5173) console(:5174) storybook(:3000)
- * 根 `.env` 会被读进子进程环境（server 自身也支持 --env-file-if-exists）。
+ * 根 `.env` 会被读进子进程环境。
  */
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -80,11 +80,16 @@ const dependencies = spawnSync(
 if (dependencies.error) console.error(`[dev] 无法启动依赖构建：${dependencies.error.message}`);
 if (dependencies.status !== 0) process.exit(dependencies.status ?? 1);
 
+const manageServerGroup = ["darwin", "linux"].includes(process.platform) && names.includes("server");
+let stopping = false;
+
 const children = names.map((name) => {
 	const target = ALL_TARGETS[name];
+	const group = manageServerGroup && name === "server";
 	const child = spawn("pnpm", target.args, {
 		cwd: root,
 		env,
+		detached: group,
 		stdio: ["ignore", "pipe", "pipe"],
 	});
 	const prefix = `[${name}]`;
@@ -98,15 +103,43 @@ const children = names.map((name) => {
 	pipe(child.stderr);
 	child.on("exit", (code) => {
 		console.log(`${prefix} exited(${code})`);
-		for (const other of children) other?.kill("SIGTERM");
-		process.exit(code ?? 0);
+		stop(code ?? 0);
 	});
-	return child;
+	child.on("error", (error) => {
+		console.error(`${prefix} ${error.message}`);
+		stop(1);
+	});
+	return { child, group };
 });
 
 console.log(`[dev] 已启动：${names.join(" ")}`);
 
-process.on("SIGINT", () => {
-	for (const child of children) child.kill("SIGTERM");
-	process.exit(0);
-});
+function terminate({ child, group }, signal) {
+	if (!group || !child.pid) {
+		child.kill(signal);
+		return;
+	}
+	// pnpm 与 shell 位于同一专用进程组，让停止信号到达 Kit 和 JVM。
+	try {
+		process.kill(-child.pid, signal);
+	} catch (error) {
+		if (error.code === "ESRCH") return;
+		if (error.code !== "EPERM") throw error;
+		child.kill(signal);
+	}
+}
+
+function stop(code) {
+	if (stopping) return;
+	stopping = true;
+	for (const service of children) terminate(service, "SIGTERM");
+	if (!manageServerGroup) process.exit(code);
+	process.exitCode = code;
+	setTimeout(() => {
+		for (const service of children) terminate(service, "SIGKILL");
+		process.exit(code);
+	}, 12_000).unref();
+}
+
+process.on("SIGINT", () => stop(0));
+process.on("SIGTERM", () => stop(0));

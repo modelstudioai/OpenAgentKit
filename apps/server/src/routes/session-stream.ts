@@ -52,8 +52,12 @@ async function forwardFrames(
 
 /** 归属检查在调用方完成；此处负责认证到期/撤销与 HTTP 连接的共同生命周期。 */
 export async function streamSession(c: Context<AppEnv>, sessionId: string, after?: string): Promise<Response> {
-	const { sessions, memberAuth } = c.get("services");
-	const grant = await createAuthStreamGuard(memberAuth, c.get("memberSession"), c.get("authExpiresAt"));
+	const { sessions, memberAuth, oidcAuth } = c.get("services");
+	const oidcMember = c.get("oidcMember");
+	const grant =
+		oidcMember && oidcAuth
+			? await oidcAuth.bindStream(oidcMember)
+			: await createAuthStreamGuard(memberAuth, c.get("memberSession"), c.get("authExpiresAt"));
 	return streamSSE(c, async (stream) => {
 		const connection = bindCancellation(stream, c.req.raw.signal, grant.signal);
 		try {

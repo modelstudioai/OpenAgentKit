@@ -364,11 +364,8 @@ for (const [dialect, url, program] of [
 				);
 				const db = await fixture.connect();
 				try {
-					expect(await db.all("SELECT id FROM _kit_migrations ORDER BY id")).toEqual([
-						{ id },
-						{ id: "033_openagentkit_default_branding" },
-						{ id: "kit_history_adopted" },
-					]);
+					const expectedIds = [id, "kit_history_adopted", ...program.upgrades.map((upgrade) => upgrade.id)].sort();
+					expect(await db.all("SELECT id FROM _kit_migrations ORDER BY id")).toEqual(expectedIds.map((id) => ({ id })));
 					expect(await db.get("SELECT monthly_credits FROM quota_policy WHERE id = 1")).toMatchObject({
 						monthly_credits: 321,
 					});
@@ -418,3 +415,46 @@ for (const [dialect, url, program] of [
 		45_000,
 	);
 }
+
+const mysqlUrl = process.env.KIT_TEST_MYSQL_URL;
+it.skipIf(!mysqlUrl)(
+	"MySQL 恢复曾因 OIDC TEXT 键建表失败的迁移，修复过程中断后仍可重启",
+	async () => {
+		const fixture = await openExternal("mysql", mysqlUrl!);
+		const id = "034_oidc_member_auth";
+		const beforeOidc = mysqlProgram.upgrades.findIndex((upgrade) => upgrade.id === id);
+		expect(beforeOidc).toBeGreaterThanOrEqual(0);
+		try {
+			await fixture.run({
+				...mysqlProgram,
+				upgrades: mysqlProgram.upgrades.slice(0, beforeOidc),
+				current: mysqlProgram.current.filter((table) => !table.name.startsWith("kit_oidc_")),
+			});
+			await fixture.db.execute(
+				"INSERT INTO _kit_migration_progress (slot, id, step_index, inflight, fingerprint) VALUES (1, ?, 0, 1, ?)",
+				id,
+				"bf9eb32864267c249db7ef954829ded485e42a9532af3fee04b95de4ac45a9b4",
+			);
+			await expect(
+				fixture.run(mysqlProgram, {
+					...fixture.db,
+					async execute(sql, ...values) {
+						await fixture.db.execute(sql, ...values);
+						if (sql.startsWith("CREATE TABLE `kit_oidc_member_bindings`")) throw new Error("injected interruption");
+					},
+				}),
+			).rejects.toThrow(/034_oidc_member_auth 第 1 步失败/);
+			const db = await fixture.connect();
+			try {
+				expect(await db.all("SELECT id FROM _kit_migrations WHERE id = ?", id)).toEqual([{ id }]);
+				expect(await db.all("SELECT id FROM _kit_migration_progress")).toEqual([]);
+				expect(await db.all("SELECT subject_key FROM kit_oidc_member_bindings")).toEqual([]);
+			} finally {
+				await db.close();
+			}
+		} finally {
+			await fixture.close();
+		}
+	},
+	45_000,
+);

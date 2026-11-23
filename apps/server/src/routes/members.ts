@@ -70,11 +70,15 @@ export function registerMemberRoutes(app: OpenAPIHono<AppEnv>) {
 			tags: ["admin"],
 			request: { body: { required: true, content: { "application/json": { schema: CreateMemberRequestSchema } } } },
 			responses: {
+				...errors,
 				201: {
-					description: "已创建；仅自动生成模式返回一次初始密码",
+					description: "已创建。启用密码登录且选择自动生成时返回一次初始密码",
 					content: { "application/json": { schema: CreateMemberResponseSchema } },
 				},
-				...errors,
+				400: {
+					...errors[400],
+					description: "成员参数无效，或企业登录模式提交了自定义密码",
+				},
 			},
 		}),
 		async (c) => {

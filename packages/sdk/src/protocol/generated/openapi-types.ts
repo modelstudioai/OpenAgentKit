@@ -72,9 +72,24 @@ export interface paths {
                                 gateway: "sdk" | "mock";
                                 auth: {
                                     /** @enum {string} */
+                                    mode: "oidc";
+                                    /** @enum {boolean} */
+                                    passwordLogin: false;
+                                    oidc: {
+                                        /** Format: uri */
+                                        issuer: string;
+                                        clientId: string;
+                                    };
+                                } | {
+                                    /** @enum {string} */
                                     mode: "member" | "anonymous";
                                     /** @enum {boolean} */
                                     passwordLogin: true;
+                                    oidc?: {
+                                        /** Format: uri */
+                                        issuer: string;
+                                        clientId: string;
+                                    };
                                 };
                                 capabilities: {
                                     streaming: boolean;
@@ -4225,6 +4240,7 @@ export interface paths {
                                 code: string;
                                 message: string;
                                 retryable: boolean;
+                                details?: unknown;
                             };
                         };
                     };
@@ -4240,6 +4256,23 @@ export interface paths {
                                 code: string;
                                 message: string;
                                 retryable: boolean;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description 部署仅允许企业登录，或企业账号尚未绑定 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                                details?: unknown;
                             };
                         };
                     };
@@ -4255,6 +4288,23 @@ export interface paths {
                                 code: string;
                                 message: string;
                                 retryable: boolean;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description 暂时无法验证企业登录 */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                                details?: unknown;
                             };
                         };
                     };
@@ -4283,7 +4333,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description 当前有效身份；可信 JWT 可不关联本地成员 */
+                /** @description 当前有效身份；成员登录与 OIDC 登录返回已关联的本地成员资料 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -4362,6 +4412,7 @@ export interface paths {
                                 code: string;
                                 message: string;
                                 retryable: boolean;
+                                details?: unknown;
                             };
                         };
                     };
@@ -4377,6 +4428,23 @@ export interface paths {
                                 code: string;
                                 message: string;
                                 retryable: boolean;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description 部署仅允许企业登录，或企业账号尚未绑定 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                                details?: unknown;
                             };
                         };
                     };
@@ -4392,6 +4460,23 @@ export interface paths {
                                 code: string;
                                 message: string;
                                 retryable: boolean;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description 暂时无法验证企业登录 */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                                details?: unknown;
                             };
                         };
                     };
@@ -4424,12 +4509,28 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description 当前本地登录态已撤销；过期或已退出时仍成功 */
+                /** @description 当前 Kit 访问令牌已在本地撤销；过期或已退出时仍成功 */
                 204: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description 暂时无法验证企业登录 */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                                details?: unknown;
+                            };
+                        };
+                    };
                 };
             };
         };
@@ -10288,7 +10389,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description 已创建；仅自动生成模式返回一次初始密码 */
+                /** @description 已创建。启用密码登录且选择自动生成时返回一次初始密码 */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -10348,7 +10449,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description 成员参数或分页游标无效 */
+                /** @description 成员参数无效，或企业登录模式提交了自定义密码 */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -10877,6 +10978,330 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/members/{memberId}/oidc-binding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    memberId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 当前 Keycloak 绑定 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                sub: string;
+                                /** Format: uri */
+                                issuer: string;
+                                member_id: string;
+                                bound_at: string;
+                            } | null;
+                        };
+                    };
+                };
+                /** @description 绑定参数无效 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                            };
+                        };
+                    };
+                };
+                /** @description 缺少管理员身份 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                            };
+                        };
+                    };
+                };
+                /** @description 当前管理身份无权执行此操作 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                            };
+                        };
+                    };
+                };
+                /** @description 成员不存在或部署未配置 Keycloak */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                            };
+                        };
+                    };
+                };
+                /** @description 成员或 Keycloak 用户已存在其他绑定 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    memberId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        sub: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description 当前 Keycloak 绑定 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                sub: string;
+                                /** Format: uri */
+                                issuer: string;
+                                member_id: string;
+                                bound_at: string;
+                            } | null;
+                        };
+                    };
+                };
+                /** @description 绑定参数无效 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                            };
+                        };
+                    };
+                };
+                /** @description 缺少管理员身份 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                            };
+                        };
+                    };
+                };
+                /** @description 当前管理身份无权执行此操作 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                            };
+                        };
+                    };
+                };
+                /** @description 成员不存在或部署未配置 Keycloak */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                            };
+                        };
+                    };
+                };
+                /** @description 成员或 Keycloak 用户已存在其他绑定 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    memberId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 已解除当前成员的 Keycloak 绑定 */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description 绑定参数无效 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                            };
+                        };
+                    };
+                };
+                /** @description 缺少管理员身份 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                            };
+                        };
+                    };
+                };
+                /** @description 当前管理身份无权执行此操作 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                            };
+                        };
+                    };
+                };
+                /** @description 成员不存在或部署未配置 Keycloak */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                            };
+                        };
+                    };
+                };
+                /** @description 成员或 Keycloak 用户已存在其他绑定 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;

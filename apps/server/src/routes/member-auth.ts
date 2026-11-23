@@ -7,11 +7,18 @@ import {
 } from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 
-const errorBody = z.object({ error: z.object({ code: z.string(), message: z.string(), retryable: z.boolean() }) });
+const errorBody = z.object({
+	error: z.object({ code: z.string(), message: z.string(), retryable: z.boolean(), details: z.unknown().optional() }),
+});
 const errors = {
 	400: { description: "登录参数无效", content: { "application/json": { schema: errorBody } } },
 	401: { description: "用户名或密码错误，或登录已失效", content: { "application/json": { schema: errorBody } } },
+	403: {
+		description: "部署仅允许企业登录，或企业账号尚未绑定",
+		content: { "application/json": { schema: errorBody } },
+	},
 	429: { description: "登录尝试过于频繁", content: { "application/json": { schema: errorBody } } },
+	502: { description: "暂时无法验证企业登录", content: { "application/json": { schema: errorBody } } },
 };
 
 export function registerMemberAuthRoutes(app: OpenAPIHono<AppEnv>) {
@@ -30,6 +37,7 @@ export function registerMemberAuthRoutes(app: OpenAPIHono<AppEnv>) {
 			},
 		}),
 		async (c) => {
+			if (c.get("services").config.authMode === "oidc") throw new KitError("forbidden", "请使用企业登录");
 			try {
 				return c.json({ data: await c.get("services").memberAuth.login(c.req.valid("json")) }, 200);
 			} catch (error) {
@@ -52,7 +60,7 @@ export function registerMemberAuthRoutes(app: OpenAPIHono<AppEnv>) {
 			tags: ["kit"],
 			responses: {
 				200: {
-					description: "当前有效身份；可信 JWT 可不关联本地成员",
+					description: "当前有效身份；成员登录与 OIDC 登录返回已关联的本地成员资料",
 					content: { "application/json": { schema: z.object({ data: MemberAuthViewSchema }) } },
 				},
 				...errors,
@@ -61,6 +69,9 @@ export function registerMemberAuthRoutes(app: OpenAPIHono<AppEnv>) {
 		async (c) => {
 			const identity = c.get("identity");
 			if (!c.req.header("authorization")) throw new KitError("unauthorized", "请先登录");
+			const oidcMember = c.get("oidcMember");
+			if (oidcMember)
+				return c.json({ data: { identity, member: oidcMember.member, expires_at: oidcMember.expiresAt } }, 200);
 			const memberSession = c.get("memberSession");
 			if (memberSession) {
 				const token = (c.req.header("authorization") as string).slice(7);
@@ -75,13 +86,19 @@ export function registerMemberAuthRoutes(app: OpenAPIHono<AppEnv>) {
 			method: "post",
 			path: "/api/kit/auth/logout",
 			tags: ["kit"],
-			responses: { 204: { description: "当前本地登录态已撤销；过期或已退出时仍成功" } },
+			responses: {
+				204: { description: "当前 Kit 访问令牌已在本地撤销；过期或已退出时仍成功" },
+				502: errors[502],
+			},
 		}),
 		async (c) => {
 			const authorization = c.req.header("authorization");
-			await c
-				.get("services")
-				.memberAuth.logout(authorization?.startsWith("Bearer ") ? authorization.slice(7) : undefined);
+			const token = authorization?.startsWith("Bearer ") ? authorization.slice(7) : undefined;
+			const { config, memberAuth, oidcAuth } = c.get("services");
+			if (config.authMode === "oidc") {
+				if (!oidcAuth) throw new KitError("internal", "缺少 Keycloak OIDC 配置");
+				await oidcAuth.logout(token);
+			} else await memberAuth.logout(token);
 			return c.body(null, 204);
 		},
 	);

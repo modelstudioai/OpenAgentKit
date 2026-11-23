@@ -152,8 +152,10 @@ export {
 } from "./branding.ts";
 export {
 	isProtocolCompatible,
+	KitAuthConfigSchema,
 	type KitRuntimeConfig,
 	KitRuntimeConfigSchema,
+	type OidcClientConfig,
 	PROTOCOL_VERSION,
 	PROTOCOL_VERSION_HEADER,
 } from "./config.ts";
@@ -208,6 +210,13 @@ export {
  */
 export type { paths as OpenApiPaths } from "./generated/openapi-types.ts";
 export * from "./groups.ts";
+export {
+	type MemberOidcBinding,
+	MemberOidcBindingInputSchema,
+	MemberOidcBindingResponseSchema,
+	MemberOidcBindingSchema,
+	OidcSubjectSchema,
+} from "./oidc.ts";
 export * from "./preset-packs.ts";
 export * from "./project.ts";
 export * from "./project-agents.ts";

@@ -31,7 +31,7 @@
   },
   "scripts": {
     "build": "pnpm db:render && tsup",
-    "dev": "pnpm db:render && tsx watch --env-file-if-exists=../../.env src/bin.ts",
+    "dev": "pnpm db:render && node scripts/dev.mjs",
     "start": "node --env-file-if-exists=../../.env dist/bin.js",
     "typecheck": "pnpm db:render && tsc --noEmit",
     "test": "pnpm db:render && vitest run",
@@ -46,6 +46,7 @@
     "@hono/zod-openapi": "^1.6.3",
     "@openagentpack/sdk": "0.10.0",
     "hono": "^4.13.13",
+    "jose": "6.2.18",
     "jszip": "3.10.2",
     "mysql2": "^3.24.6",
     "pg": "^8.23.1",

@@ -21,7 +21,15 @@ const EMPTY_DRAFT: MemberDraft = {
 	password: "",
 };
 
-function CreatedMember({ result, onBack }: { result: CreateMemberResponse["data"]; onBack: () => void }) {
+function CreatedMember({
+	result,
+	passwordLogin,
+	onBack,
+}: {
+	result: CreateMemberResponse["data"];
+	passwordLogin: boolean;
+	onBack: () => void;
+}) {
 	return (
 		<section aria-labelledby="member-created-heading" className={styles.stack}>
 			<h2 id="member-created-heading" className={styles.pageTitle}>
@@ -37,7 +45,7 @@ function CreatedMember({ result, onBack }: { result: CreateMemberResponse["data"
 					<dd className={styles.termValue}>{result.member.display_name}</dd>
 				</div>
 			</dl>
-			{result.initial_password && (
+			{passwordLogin && result.initial_password && (
 				<div className={styles.passwordPanel}>
 					<h3 className={styles.panelTitle}>初始密码</h3>
 					<p className={styles.mutedText}>初始密码仅显示这一次，请妥善保存。返回列表或离开此页后无法再次查看。</p>
@@ -50,7 +58,11 @@ function CreatedMember({ result, onBack }: { result: CreateMemberResponse["data"
 					</Typography.Text>
 				</div>
 			)}
-			<p className={styles.mutedText}>成员已加入本地目录，可使用用户名和密码登录体验页。</p>
+			<p className={styles.mutedText}>
+				{passwordLogin
+					? "成员可使用用户名和密码登录体验页。"
+					: "请在成员列表完成 Keycloak 绑定，成员即可使用企业登录。"}
+			</p>
 			<Button type="primary" onClick={onBack}>
 				返回成员列表
 			</Button>
@@ -67,9 +79,11 @@ function FieldError({ field, errors }: { field: keyof MemberDraft; errors: Recor
 }
 
 export function CreateMemberPage({
+	passwordLogin,
 	onBack,
 	onPendingChange,
 }: {
+	passwordLogin: boolean;
 	onBack: () => void;
 	onPendingChange: (pending: boolean) => void;
 }) {
@@ -81,13 +95,14 @@ export function CreateMemberPage({
 		setErrors((current) => ({ ...current, [field]: "" }));
 	};
 	const submit = async () => {
+		const passwordMode = passwordLogin ? draft.password_mode : "auto";
 		const parsed = CreateMemberRequestSchema.safeParse({
 			username: draft.username,
 			display_name: draft.display_name,
 			...(draft.email.trim() ? { email: draft.email.trim() } : {}),
 			auth_type: "local",
-			password_mode: draft.password_mode,
-			...(draft.password_mode === "custom" ? { password: draft.password } : {}),
+			password_mode: passwordMode,
+			...(passwordMode === "custom" ? { password: draft.password } : {}),
 		});
 		if (!parsed.success) {
 			const next: Record<string, string> = {};
@@ -101,7 +116,7 @@ export function CreateMemberPage({
 		setErrors({});
 		if (await creation.create(parsed.data)) setDraft(EMPTY_DRAFT);
 	};
-	if (creation.result) return <CreatedMember result={creation.result} onBack={onBack} />;
+	if (creation.result) return <CreatedMember result={creation.result} passwordLogin={passwordLogin} onBack={onBack} />;
 	return (
 		<form
 			noValidate
@@ -194,53 +209,56 @@ export function CreateMemberPage({
 				</div>
 				<div>
 					<p className={styles.sectionLabel}>认证方式</p>
-					<p className={styles.staticField}>本地账号</p>
+					<p className={styles.staticField}>{passwordLogin ? "本地账号" : "Keycloak 企业登录"}</p>
 				</div>
-				<fieldset className={styles.passwordSection}>
-					<legend className={styles.legendTitle}>密码设置</legend>
-					<Radio.Group
-						disabled={creation.pending}
-						value={draft.password_mode}
-						onChange={(event) => {
-							if (event.target.value === "auto") {
-								update("password_mode", "auto");
-								update("password", "");
-								return;
-							}
-							update("password_mode", "custom");
-						}}
-					>
-						<Radio value="auto">自动生成密码</Radio>
-						<Radio value="custom">自定义密码</Radio>
-					</Radio.Group>
-					{draft.password_mode === "auto" ? (
-						<p className={styles.autoPasswordHint}>系统将生成初始密码，并在创建成功后显示一次。</p>
-					) : (
-						<div className={styles.fieldRow}>
-							<label htmlFor="member-password">
-								初始密码{" "}
-								<span aria-hidden="true" className={styles.requiredMark}>
-									*
-								</span>
-							</label>
-							<Input.Password
-								id="member-password"
-								name="password"
-								autoComplete="new-password"
-								required
-								maxLength={32}
-								value={draft.password}
-								onChange={(event) => update("password", event.target.value)}
-								aria-invalid={!!errors.password}
-								aria-describedby="member-password-hint member-password-error"
-							/>
-							<p id="member-password-hint" className={styles.fieldHint}>
-								8–32 个非空格 ASCII 字符，须同时包含大写字母、小写字母、数字和特殊字符，不能包含用户名（不区分大小写）。
-							</p>
-							<FieldError field="password" errors={errors} />
-						</div>
-					)}
-				</fieldset>
+				{passwordLogin && (
+					<fieldset className={styles.passwordSection}>
+						<legend className={styles.legendTitle}>密码设置</legend>
+						<Radio.Group
+							disabled={creation.pending}
+							value={draft.password_mode}
+							onChange={(event) => {
+								if (event.target.value === "auto") {
+									update("password_mode", "auto");
+									update("password", "");
+									return;
+								}
+								update("password_mode", "custom");
+							}}
+						>
+							<Radio value="auto">自动生成密码</Radio>
+							<Radio value="custom">自定义密码</Radio>
+						</Radio.Group>
+						{draft.password_mode === "auto" ? (
+							<p className={styles.autoPasswordHint}>系统将生成初始密码，并在创建成功后显示一次。</p>
+						) : (
+							<div className={styles.fieldRow}>
+								<label htmlFor="member-password">
+									初始密码{" "}
+									<span aria-hidden="true" className={styles.requiredMark}>
+										*
+									</span>
+								</label>
+								<Input.Password
+									id="member-password"
+									name="password"
+									autoComplete="new-password"
+									required
+									maxLength={32}
+									value={draft.password}
+									onChange={(event) => update("password", event.target.value)}
+									aria-invalid={!!errors.password}
+									aria-describedby="member-password-hint member-password-error"
+								/>
+								<p id="member-password-hint" className={styles.fieldHint}>
+									8–32 个非空格 ASCII
+									字符，须同时包含大写字母、小写字母、数字和特殊字符，不能包含用户名（不区分大小写）。
+								</p>
+								<FieldError field="password" errors={errors} />
+							</div>
+						)}
+					</fieldset>
+				)}
 			</fieldset>
 		</form>
 	);

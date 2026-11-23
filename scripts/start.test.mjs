@@ -34,13 +34,13 @@ function fixture(t, answers = []) {
 	};
 }
 
-test("首次选择 Mock 后生成管理员令牌与成员登录配置，无需云凭据", async (t) => {
+test("首次选择 Mock 后生成管理员令牌，认证模式由开发入口决定", async (t) => {
 	const config = fixture(t, [""]);
 	assert.equal(await initializeEnv(config.root, config), true);
 	const path = join(config.root, ".env");
 	const env = parseEnv(readFileSync(path, "utf8"));
 	assert.equal(env.KIT_GATEWAY, "mock");
-	assert.equal(env.KIT_AUTH_MODE, "member");
+	assert.equal(env.KIT_AUTH_MODE, "");
 	assert.equal(env.KIT_DATA_DIR, ".scratch/local-demo/data");
 	assert.match(env.ADMIN_TOKEN, /^[a-f0-9]{64}$/);
 	assert.equal(env.BAILIAN_API_KEY, "");
@@ -60,7 +60,7 @@ for (const [address, value, field, unusedField] of [
 		assert.equal(await initializeEnv(config.root, config), true);
 		const env = parseEnv(readFileSync(join(config.root, ".env"), "utf8"));
 		assert.equal(env.KIT_GATEWAY, "sdk");
-		assert.equal(env.KIT_AUTH_MODE, "member");
+		assert.equal(env.KIT_AUTH_MODE, "");
 		assert.equal(env.KIT_DATA_DIR, ".data");
 		assert.equal(env.BAILIAN_API_KEY, apiKey);
 		assert.equal(env[field], value);
@@ -106,7 +106,7 @@ test("拒绝空凭据、换行注入与无效地址后，完成引导才创建�
 	]);
 	assert.equal(await initializeEnv(config.root, config), true);
 	const env = parseEnv(readFileSync(join(config.root, ".env"), "utf8"));
-	assert.equal(env.KIT_AUTH_MODE, "member");
+	assert.equal(env.KIT_AUTH_MODE, "");
 	assert.equal(env.BAILIAN_API_KEY, "test-key");
 	assert.equal(env.BAILIAN_BASE_URL, "https://example.com/agents");
 	assert.equal(config.closed, true);

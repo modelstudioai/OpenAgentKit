@@ -6,14 +6,15 @@
 
 ## 为什么不用 EventSource
 
-体验页需要携带 `Authorization`（成员令牌或可信 JWT）、需要在同一连接语义下做 POST 与中断、需要
+体验页需要携带 `Authorization`、需要在同一连接语义下做 POST 与中断、需要
 自己控制重连节奏；`EventSource` 三者都做不到。因此统一使用 `fetch` + `ReadableStream`
 读取 SSE 文本流，由 `@openagentkit/sdk/protocol` 的 `createSseParser()` 解析。
 
 ## 帧与连接（协议 2.0）
 
-默认数据面要求登录，成员身份使用 `Authorization: Bearer <Kit 登录令牌>`，不放在 URL。
-登录 / 恢复 / 退出的 HTTP 合同见 `docs/interfaces.md`。退出或令牌到期后，已建立的成员
+默认数据面要求登录。成员通过 `Authorization: Bearer <access_token>` 传递登录令牌，
+由 Kit 密码登录或 Keycloak 签发，URL 禁止附带令牌。
+登录、恢复、退出的 HTTP 合同见 `docs/interfaces.md`。退出、解绑或令牌到期后，已建立的成员
 SSE 发出 `error`（`code: unauthorized`、`retryable: false`）并关闭；客户端清理该身份的
 状态并重新登录，不按断流恢复重连。仅关闭订阅不会向 Provider 发送 interrupt。
 如果订阅在单帧异步鉴权期间被取消，服务端丢弃该帧。
@@ -93,6 +94,8 @@ SDK 负责 server→Provider 连接恢复；controller 负责浏览器→Kit Ser
 | 情况 | 处理 |
 | --- | --- |
 | 网络错误 / 意外 EOF / 静默超时 / 可重试流错误 | 带 after 退避重连；不重发用户消息或审批 |
+| Keycloak access token 续期或 me 校验暂时失败 | 在旧令牌有效期内继续使用该身份和 SSE，退避重试续期或校验；到期仍未验证新令牌则结束登录 |
+| Keycloak access token 续期成功 | 验证 me 仍属于同一成员后，关闭使用旧令牌的 SSE 并带 after 和新令牌重连；保留当前业务状态 |
 | 401/403、协议版本冲突、不可重试 Provider 错误 | 停止自动重试，提示具体原因 |
 | reset | 原子重建 Provider 事件集合，保留乐观 overlay |
 | done | 关闭传输，不把未完成消息直接标为完成 |

@@ -51,6 +51,13 @@ const longText = new Set([
 
 function externalText(table: Table, column: Column, dialect: "mysql" | "postgres") {
 	const name = column.name;
+	// SHA-256 摘要参与 MySQL 主键和唯一键。保留已应用的 PostgreSQL 列类型。
+	if (
+		dialect === "mysql" &&
+		table.name === "kit_oidc_member_bindings" &&
+		(name === "subject_key" || name === "issuer_key")
+	)
+		return "VARCHAR(64)";
 	const width = textWidths.get(name);
 	if (width) return `VARCHAR(${width})`;
 	if (name === "id") return "VARCHAR(128)";
@@ -115,7 +122,7 @@ function mysqlPlainIndex(table: Table, index: Index): Index {
 }
 
 function externalIndexes(table: Table, dialect: "mysql" | "postgres") {
-	return table.indexes.map((index) => {
+	const indexes = table.indexes.map((index) => {
 		if (index.name === "idx_usage_turns_idempotency" && index.where === "client_message_id IS NOT NULL") {
 			// 三库的 UNIQUE 均允许多行 NULL，外部库的完整索引能够直接用于冲突判定。
 			const { where: _, ...plain } = index;
@@ -135,6 +142,10 @@ function externalIndexes(table: Table, dialect: "mysql" | "postgres") {
 			? { name: index.name, columns: ["active_owner"], unique: true }
 			: mysqlPlainIndex(table, index);
 	});
+	// 显式登记外键索引，保证 InnoDB 建表后的结构与迁移定义一致。
+	if (dialect === "mysql" && table.name === "kit_oidc_member_bindings")
+		indexes.push({ name: "idx_oidc_member_bindings_member", columns: ["member_id"], unique: false });
+	return indexes;
 }
 
 export function forDialect(schema: Schema, dialect: Dialect): Schema {

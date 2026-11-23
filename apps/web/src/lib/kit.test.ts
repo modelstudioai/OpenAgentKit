@@ -7,6 +7,7 @@ function location(options: { injected?: string; query?: string } = {}) {
 	vi.stubGlobal("window", {
 		location: {
 			origin: "https://web.example.test",
+			hash: "",
 			search: options.query ? `?agent=demo&api=${encodeURIComponent(options.query)}` : "?agent=demo",
 		},
 		__OPENAGENTPACK_KIT__: options.injected ? { apiBaseUrl: options.injected } : undefined,

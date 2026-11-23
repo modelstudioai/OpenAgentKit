@@ -8,11 +8,13 @@ export function MemberLoginForm({
 	pending,
 	error,
 	onLogin,
+	onOidcLogin,
 	onRetry,
 }: {
 	pending: boolean;
 	error: string | null;
 	onLogin: (input: { username: string; password: string }) => Promise<void>;
+	onOidcLogin?: () => Promise<void>;
 	onRetry: () => Promise<void>;
 }) {
 	const [username, setUsername] = useState("");
@@ -25,6 +27,10 @@ export function MemberLoginForm({
 				onSubmit={(event) => {
 					event.preventDefault();
 					if (pending) return;
+					if (onOidcLogin) {
+						void onOidcLogin().catch(() => undefined);
+						return;
+					}
 					void onLogin({ username: username.trim(), password })
 						.catch(() => undefined)
 						.finally(() => {
@@ -40,7 +46,7 @@ export function MemberLoginForm({
 						成员登录
 					</h1>
 					<p className="mt-3 text-[length:var(--kit-text-label)] leading-6 text-[var(--kit-fg-muted)]">
-						使用管理员为你创建的用户名和密码登录。
+						{onOidcLogin ? "使用已绑定的企业账号登录。" : "使用管理员为你创建的用户名和密码登录。"}
 					</p>
 				</header>
 				{error && (
@@ -48,37 +54,41 @@ export function MemberLoginForm({
 				)}
 				<fieldset disabled={pending} className="min-w-0 space-y-5">
 					<legend className="sr-only">成员账号</legend>
-					<div>
-						<label htmlFor="login-username" className="text-[length:var(--kit-text-label)] font-medium">
-							用户名
-						</label>
-						<input
-							id="login-username"
-							name="username"
-							autoComplete="username"
-							required
-							maxLength={32}
-							value={username}
-							onChange={(event) => setUsername(event.target.value)}
-							className={fieldClass}
-						/>
-					</div>
-					<div>
-						<label htmlFor="login-password" className="text-[length:var(--kit-text-label)] font-medium">
-							密码
-						</label>
-						<input
-							id="login-password"
-							name="password"
-							type="password"
-							autoComplete="current-password"
-							required
-							maxLength={128}
-							value={password}
-							onChange={(event) => setPassword(event.target.value)}
-							className={fieldClass}
-						/>
-					</div>
+					{!onOidcLogin && (
+						<>
+							<div>
+								<label htmlFor="login-username" className="text-[length:var(--kit-text-label)] font-medium">
+									用户名
+								</label>
+								<input
+									id="login-username"
+									name="username"
+									autoComplete="username"
+									required
+									maxLength={32}
+									value={username}
+									onChange={(event) => setUsername(event.target.value)}
+									className={fieldClass}
+								/>
+							</div>
+							<div>
+								<label htmlFor="login-password" className="text-[length:var(--kit-text-label)] font-medium">
+									密码
+								</label>
+								<input
+									id="login-password"
+									name="password"
+									type="password"
+									autoComplete="current-password"
+									required
+									maxLength={128}
+									value={password}
+									onChange={(event) => setPassword(event.target.value)}
+									className={fieldClass}
+								/>
+							</div>
+						</>
+					)}
 					<button
 						type="submit"
 						aria-busy={pending}
@@ -87,7 +97,7 @@ export function MemberLoginForm({
 						{pending ? (
 							<span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current motion-safe:animate-pulse" />
 						) : null}
-						{pending ? "处理中…" : "登录"}
+						{pending ? "处理中…" : onOidcLogin ? "企业登录" : "登录"}
 					</button>
 				</fieldset>
 			</form>

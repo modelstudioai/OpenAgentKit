@@ -30,6 +30,7 @@ type MysqlTransaction = (work: () => Promise<void>) => Promise<void>;
 const progressTable = "_kit_migration_progress";
 const migrationTable = "_kit_migrations";
 const legacyIds = { mysql: "001_initial_mysql_schema", postgres: "001_initial_postgres_schema" };
+const oidcTextKeysFingerprint = "bf9eb32864267c249db7ef954829ded485e42a9532af3fee04b95de4ac45a9b4";
 
 function stepError(error: unknown, id: string, step: number): never {
 	if (error instanceof MigrationError) throw error;
@@ -211,26 +212,39 @@ async function advance(db: MigrationConnection, index: number, inflight = false)
 	await db.execute(`UPDATE ${progressTable} SET step_index = ?, inflight = ? WHERE slot = 1`, index, Number(inflight));
 }
 
-async function applyMysqlVersion(
-	db: MigrationConnection,
-	version: Migration,
-	transaction: MysqlTransaction,
-	saved?: Progress,
-) {
+async function prepareMysqlProgress(db: MigrationConnection, version: Migration, saved?: Progress) {
 	const fingerprint = createHash("sha256").update(JSON.stringify(version.steps)).digest("hex");
-	if (
-		saved != null &&
-		(saved.fingerprint !== fingerprint || saved.step_index < 0 || saved.step_index > version.steps.length)
-	) {
-		throw new MigrationError(`MySQL 待恢复迁移与当前代码不符：${version.id}`);
-	}
-	if (!saved) {
+	if (saved) {
+		const first = version.steps[0];
+		// 旧版 034 的 TEXT 键无法建表。确认该步尚未落库后登记修正的指纹，再沿用 DDL 恢复。
+		if (
+			version.id === "034_oidc_member_auth" &&
+			saved.fingerprint === oidcTextKeysFingerprint &&
+			saved.step_index === 0 &&
+			first &&
+			"sql" in first &&
+			!(await states(db, "mysql", first)).before
+		) {
+			await db.execute(`UPDATE ${progressTable} SET fingerprint = ? WHERE slot = 1`, fingerprint);
+		} else if (saved.fingerprint !== fingerprint || saved.step_index < 0 || saved.step_index > version.steps.length) {
+			throw new MigrationError(`MySQL 待恢复迁移与当前代码不符：${version.id}`);
+		}
+	} else {
 		await db.execute(
 			`INSERT INTO ${progressTable} (slot, id, step_index, inflight, fingerprint) VALUES (1, ?, 0, 0, ?)`,
 			version.id,
 			fingerprint,
 		);
 	}
+}
+
+async function applyMysqlVersion(
+	db: MigrationConnection,
+	version: Migration,
+	transaction: MysqlTransaction,
+	saved?: Progress,
+) {
+	await prepareMysqlProgress(db, version, saved);
 	const start = saved?.step_index ?? 0;
 	for (let index = start; index < version.steps.length; index++) {
 		const step = version.steps[index]!;

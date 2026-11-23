@@ -102,6 +102,25 @@ CREATE TABLE "kit_members" (
 
 CREATE INDEX "idx_members_created" ON "kit_members" ("created_at", "member_id");
 
+CREATE TABLE "kit_oidc_member_bindings" (
+  "subject_key" TEXT NOT NULL,
+  "issuer_key" TEXT NOT NULL,
+  "member_id" TEXT NOT NULL,
+  "subject" TEXT NOT NULL,
+  "bound_at" TEXT NOT NULL,
+  PRIMARY KEY ("subject_key"),
+  UNIQUE ("issuer_key", "member_id"),
+  FOREIGN KEY ("member_id") REFERENCES "kit_members" ("member_id")
+);
+
+CREATE TABLE "kit_oidc_token_revocations" (
+  "token_hash" TEXT NOT NULL,
+  "expires_at" TEXT NOT NULL,
+  PRIMARY KEY ("token_hash")
+);
+
+CREATE INDEX "idx_oidc_token_revocations_expiry" ON "kit_oidc_token_revocations" ("expires_at");
+
 CREATE TABLE "kit_group_members" (
   "group_id" TEXT NOT NULL,
   "member_id" TEXT NOT NULL,

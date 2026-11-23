@@ -1,3 +1,4 @@
+import type { KitRuntimeConfig } from "@openagentkit/sdk/protocol";
 import { App as AntdApp, ConfigProvider } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import { useState } from "react";
@@ -29,14 +30,14 @@ function getSimplePage(tab: ConsoleTab) {
 	return tab in PAGE_COMPONENTS ? PAGE_COMPONENTS[tab as keyof typeof PAGE_COMPONENTS] : null;
 }
 
-export function App() {
+export function App({ auth }: { auth?: KitRuntimeConfig["auth"] }) {
 	// button/wave 对齐百炼 BailianConfigProvider：按钮无点击波纹、两字按钮不自动拆分
 	return (
 		<ConfigProvider theme={antdTheme} locale={zhCN} button={{ autoInsertSpace: false }} wave={{ disabled: true }}>
 			<AntdApp>
 				<TemplateExitConfirmationProvider>
 					<ConsoleRouter>
-						<ConsoleApp />
+						<ConsoleApp auth={auth} />
 					</ConsoleRouter>
 				</TemplateExitConfirmationProvider>
 			</AntdApp>
@@ -44,7 +45,7 @@ export function App() {
 	);
 }
 
-function ConsoleApp() {
+function ConsoleApp({ auth }: { auth?: KitRuntimeConfig["auth"] }) {
 	const { route, navigate, complete, locked: navigationLocked, setLocked: setNavigationLocked } = useConsoleRoute();
 	const tab = consoleRouteTab(route);
 	const [token, setToken] = useState(adminToken());
@@ -83,7 +84,11 @@ function ConsoleApp() {
 					}}
 				/>
 			) : (
-				<MembersPage onPendingChange={setNavigationLocked} />
+				<MembersPage
+					onPendingChange={setNavigationLocked}
+					oidcIssuer={auth?.oidc?.issuer}
+					passwordLogin={auth?.passwordLogin ?? true}
+				/>
 			)}
 			{tab !== "template-create" && tab !== "template-list" ? (
 				<p className={styles.pageFootnote}>智能体资产用于创建、编辑和调试模版，智能体管理提供上架与下架操作。</p>
