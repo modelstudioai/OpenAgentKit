@@ -236,18 +236,48 @@ function forEachFlow(root: HTMLElement, visit: (node: Node) => boolean | undefin
 	walk(root);
 }
 
-/** 编辑区 DOM → 草稿文本：chip 还原为 `/name ` 标记，br 还原为换行。 */
-export function serializeEditable(root: HTMLElement): string {
+/** 浏览器原生换行会生成 div/p 行块（Enter 与 Playwright fill 均如此），按行拼接。 */
+function isBlockElement(node: Node): node is HTMLElement {
+	return node.nodeType === Node.ELEMENT_NODE && /^(DIV|P)$/.test((node as HTMLElement).tagName);
+}
+
+function inlineText(node: Node): string {
+	if (isSkillChip(node)) return `${SKILL_INPUT_PREFIX}${node.dataset.skill} `;
+	if (node.nodeName === "BR") return "\n";
+	if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? "";
 	let out = "";
-	const walk = (node: Node) => {
-		for (const child of Array.from(node.childNodes)) {
-			if (isSkillChip(child)) out += `${SKILL_INPUT_PREFIX}${child.dataset.skill} `;
-			else if (child.nodeName === "BR") out += "\n";
-			else if (child.nodeType === Node.TEXT_NODE) out += child.textContent ?? "";
-			else walk(child);
-		}
+	for (const child of Array.from(node.childNodes)) out += inlineText(child);
+	return out;
+}
+
+function blockLines(parent: Node): string[] {
+	const lines: string[] = [];
+	let current = "";
+	let hasInline = false;
+	const flush = () => {
+		if (!hasInline) return;
+		lines.push(current);
+		current = "";
+		hasInline = false;
 	};
-	walk(root);
+	for (const child of Array.from(parent.childNodes)) {
+		if (isBlockElement(child)) {
+			flush();
+			// 空行由浏览器渲染成只含一个 br 的行块；它是一个空行而不是额外换行。
+			if (child.childNodes.length === 1 && child.firstChild?.nodeName === "BR") lines.push("");
+			else lines.push(...blockLines(child));
+			continue;
+		}
+		current += inlineText(child);
+		hasInline = true;
+	}
+	flush();
+	return lines;
+}
+
+/** 编辑区 DOM → 草稿文本：chip 还原为 `/name ` 标记，br 与行块还原为换行。 */
+export function serializeEditable(root: HTMLElement): string {
+	const out = blockLines(root).join("\n");
 	return /^\n*$/.test(out) ? "" : out;
 }
 
@@ -462,9 +492,9 @@ export const Sender = defineComponent({
 		};
 
 		const handleKeyDown = (event: KeyboardEvent) => {
-			props.onKeyDown?.(event);
 			// 输入法合成中的回车用于确认候选词；Safari 合成结束后会补发 keyCode 229。
 			if (event.isComposing || event.keyCode === 229 || event.defaultPrevented) return;
+			props.onKeyDown?.(event);
 			if (event.key === "Backspace" && editable.value) {
 				const element = inputRef.value;
 				if (element) {

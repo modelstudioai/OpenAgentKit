@@ -6,7 +6,7 @@ import { type ComputedRef, computed, onScopeDispose, ref } from "vue";
  * 与 React 版保持同一深链语义：`?agent=` 直达会话，`?view=usage` 直达用量页；
  * 其余地址回落广场首页。后续新增视图时在此扩展 ViewId 与 parseRoute。
  */
-export type ViewId = "plaza" | "chat" | "usage";
+export type ViewId = "plaza" | "new" | "chat" | "usage";
 
 export interface RouteTarget {
 	view?: ViewId;
@@ -38,6 +38,7 @@ export function parseRoute(search: string): RouteState {
 	const agent = params.get("agent");
 	if (agent) return { view: "chat", agentSlug: agent, sessionId: params.get("session") };
 	if (params.get("view") === "usage") return { view: "usage", agentSlug: null, sessionId: null };
+	if (params.get("view") === "new") return { view: "new", agentSlug: null, sessionId: null };
 	return { view: "plaza", agentSlug: null, sessionId: null };
 }
 
@@ -54,7 +55,7 @@ export function routeSearch(next: RouteTarget, base: string = window.location.se
 	params.delete("session");
 	const agent = next.agent !== undefined ? next.agent : next.view === "chat" ? current : null;
 	if (agent) params.set("agent", agent);
-	else if (next.view === "usage") params.set("view", "usage");
+	else if (next.view === "usage" || next.view === "new") params.set("view", next.view);
 	const session = next.session !== undefined ? next.session : next.view === "chat" ? currentSession : null;
 	if (session) params.set("session", session);
 	const qs = params.toString();

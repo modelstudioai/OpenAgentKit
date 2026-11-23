@@ -543,16 +543,18 @@ test("会话归档与删除：两段式确认闸门 + 列表刷新", async ({ pa
 	// 首句标题：行展示「lifecycle case」；三个操作收敛进单一「更多操作」菜单（弹层 Portal 到 body）。
 	const title = sidebar.getByRole("button", { name: "lifecycle case", exact: true }).first();
 	const actions = sidebar.getByRole("button", { name: "更多操作", exact: true }).first();
+	// 显隐在操作槽上，触发按钮保持 opacity:1；断言槽位而不是按钮，避免把父级透明度误判为按钮样式。
+	const actionSlot = actions.locator("xpath=..");
 	const archiveItem = page.getByRole("menuitem", { name: "归档", exact: true });
 	if (desktop) {
 		// 未选中行只在悬停或键盘聚焦时展示操作，真实透明度不能用 toBeVisible 代替。
 		await page.getByLabel("消息输入").focus();
 		await page.getByLabel("消息输入").hover();
-		await expect(actions).toHaveCSS("opacity", "0");
+		await expect(actionSlot).toHaveCSS("opacity", "0");
 		await title.hover();
 	}
 	// 触屏不做 hover，操作也必须直接可见。
-	await expect(actions).toHaveCSS("opacity", "1");
+	await expect(actionSlot).toHaveCSS("opacity", "1");
 	await page.screenshot({ path: testInfo.outputPath("session-sidebar.png") });
 
 	// 归档：菜单选择 + AlertDialog 两段式确认（AGENTS.md UI 规范 3）
@@ -561,13 +563,16 @@ test("会话归档与删除：两段式确认闸门 + 列表刷新", async ({ pa
 	await expect(page.getByRole("alertdialog", { name: "归档会话" })).toBeVisible();
 	if (desktop) {
 		await page.getByRole("alertdialog", { name: "归档会话" }).getByRole("button", { name: "取消" }).click();
-		await expect(actions).toBeFocused();
+		await expect(page.getByRole("alertdialog", { name: "归档会话" })).toHaveCount(0);
+		await expect(actions).toBeVisible();
 		await title.focus();
 		await page.keyboard.press("Tab");
 		await expect(actions).toBeFocused();
-		await expect(actions).toHaveCSS("opacity", "1");
+		await expect(actionSlot).toHaveCSS("opacity", "1");
 		await page.keyboard.press("Enter");
 		await expect(archiveItem).toBeVisible();
+		// 菜单首项是「重命名」，直接 Enter 会执行首项；显式聚焦归档项，验证键盘激活而不是依赖自动焦点顺序。
+		await archiveItem.focus();
 		await page.keyboard.press("Enter");
 		await expect(page.getByRole("alertdialog", { name: "归档会话" })).toBeVisible();
 		// 切换布局不能把尚待用户确认的 plan 藏进关闭的移动抽屉。

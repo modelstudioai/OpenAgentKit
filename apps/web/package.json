@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "clean": "rm -rf dist",
-    "e2e": "pnpm --filter @openagentpack/kit-server build && node e2e/clean-data.mjs && playwright test"
+    "e2e": "pnpm --filter @openagentpack/kit-server build && node e2e/clean-data.mjs && playwright test",
+    "e2e:vue": "pnpm --filter @openagentpack/kit-server build && pnpm --filter @openagentpack/kit-chat-ui-vue... build && node e2e/clean-vue-data.mjs && playwright test -c playwright.vue.config.ts"
   },
   "dependencies": {
     "@openagentpack/kit-chat-ui": "workspace:*",

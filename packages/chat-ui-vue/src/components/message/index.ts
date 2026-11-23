@@ -2,6 +2,7 @@ import type { ChatMultiAgent } from "@openagentkit/sdk/chat";
 import type { ChatMessage, MessagePart } from "@openagentkit/sdk/messages";
 import { parseSkillDirective } from "@openagentkit/sdk/protocol";
 import { computed, defineComponent, h, type PropType, type VNode } from "vue";
+import { Actions, ActionsCopy } from "../actions/index.ts";
 import { resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
 import { Markdown } from "../markdown/index.ts";
 import { ExecutionGroup, isProcessPart, type ProcessPart } from "../process/execution-group/index.ts";
@@ -180,18 +181,8 @@ function renderActions(
 	onCopy: ((text: string) => void | Promise<void>) | undefined,
 ): VNode | null {
 	if (message.role !== "assistant" || message.status !== "done" || !text.trim()) return null;
-	return h("div", { class: "mt-2 flex items-center gap-2" }, [
-		h(
-			"button",
-			{
-				type: "button",
-				"aria-label": strings.actionsAriaLabel,
-				class:
-					"rounded-[var(--kit-radius-xs)] px-1.5 py-0.5 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)] hover:bg-[var(--kit-bg-subtle)]",
-				onClick: () => void onCopy?.(text),
-			},
-			"复制",
-		),
+	return h(Actions, { ariaLabel: strings.actionsAriaLabel, className: "mt-2" }, [
+		h(ActionsCopy, { text, onCopy }),
 		message.createdAt
 			? h(
 					"time",

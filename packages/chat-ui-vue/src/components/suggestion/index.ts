@@ -147,6 +147,7 @@ export const Suggestion = defineComponent({
 						{
 							id: "kit-suggestion-list",
 							role: "listbox",
+							"aria-label": strings.value.shortcut,
 							class: `absolute bottom-full left-0 z-20 mb-2 flex max-w-full overflow-x-auto rounded-[var(--kit-radius-sm)] border border-[var(--kit-border)] bg-[var(--kit-surface)] shadow-[var(--kit-shadow)] ${props.block ? "w-full" : "min-w-48"}`,
 						},
 						[

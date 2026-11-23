@@ -67,7 +67,17 @@ function SectionToggle(label: string, open: boolean, onToggle: () => void, child
 					open ? "grid-rows-[repeat(1,minmax(0,1fr))]" : "grid-rows-[0px]"
 				}`,
 			},
-			[h("div", { inert: !open || undefined, class: "min-h-0 overflow-hidden" }, children)],
+			[
+				h(
+					"div",
+					{
+						inert: !open || undefined,
+						style: open ? undefined : { display: "none" },
+						class: "min-h-0 overflow-hidden",
+					},
+					children,
+				),
+			],
 		),
 	];
 }
@@ -285,7 +295,11 @@ export const SessionSidebar = defineComponent({
 							[
 								h(
 									"div",
-									{ inert: !open || undefined, class: "ml-5 min-h-0 overflow-hidden" },
+									{
+										inert: !open || undefined,
+										style: open ? undefined : { display: "none" },
+										class: "ml-5 min-h-0 overflow-hidden",
+									},
 									pageBody(
 										group,
 										"groups",
@@ -335,6 +349,7 @@ export const SessionSidebar = defineComponent({
 			return h(
 				"aside",
 				{
+					"data-testid": "experience-sidebar",
 					class: `flex min-h-0 w-full shrink-0 flex-col border-r border-[var(--kit-border-subtle)] bg-[var(--kit-bg-subtle)] md:w-72 ${props.className ?? ""}`,
 				},
 				[

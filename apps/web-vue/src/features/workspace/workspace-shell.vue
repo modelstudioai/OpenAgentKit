@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useAgentCatalog, useAgentResources } from "@openagentkit/sdk/agents/hooks-vue";
+import { deriveTitle } from "@openagentkit/sdk/chat";
 import { useChat } from "@openagentkit/sdk/chat/hooks-vue";
 import { useArtifactActions, useAttachments } from "@openagentkit/sdk/files/hooks-vue";
 import { useIsMobile } from "@openagentkit/sdk/hooks-vue";
@@ -24,11 +25,12 @@ import {
 	type SessionSidebarPage,
 	type SessionSidebarSection,
 } from "@openagentpack/kit-chat-ui-vue";
-import { computed, ref, watch } from "vue";
+import { computed, defineComponent, nextTick, ref, type VNode, watch } from "vue";
 import { useTranslation } from "../../i18n/index.ts";
 import type { Branding } from "../../lib/branding.ts";
 import { createArtifactHost, resolveHostCapabilities } from "../../lib/host.ts";
 import { useRoute } from "../../lib/use-route.ts";
+import ArtifactCard from "../chat/artifact-card.vue";
 import AsidePanel from "../chat/aside-panel.vue";
 import ExperienceSender from "../chat/experience-sender.vue";
 import PlazaView from "../plaza/plaza-view.vue";
@@ -43,6 +45,15 @@ const props = defineProps<{
 
 const emit = defineEmits<{ logout: [] }>();
 const { t } = useTranslation(["workspace", "auth", "layout", "chat"]);
+
+/** 把 Layout 通过 header 插槽交给业务页头的 VNode 挂载到模板内。 */
+const VNodeHost = defineComponent({
+	name: "VNodeHost",
+	props: { node: { type: Object as () => VNode | null, default: null } },
+	setup(props) {
+		return () => props.node;
+	},
+});
 const { view, agentSlug, sessionId, navigate } = useRoute();
 const goToUsage = () => navigate({ view: "usage" });
 
@@ -59,6 +70,8 @@ const selectedAgent = ref("");
 const selectedFrom = ref<{ sessionId: string; section: SessionSidebarSection } | null>(null);
 const editing = ref<{ id: string; section: SessionSidebarSection } | null>(null);
 const actionError = ref<string | null>(null);
+/** 会话行操作菜单的触发按钮：弹窗取消后焦点必须回到它。 */
+const actionTrigger = ref<HTMLElement | null>(null);
 const sending = ref(false);
 const sendError = ref<string | null>(null);
 const chat = useChat(() => ({ sessionId: sessionId.value, provider: props.chatProvider }));
@@ -71,6 +84,11 @@ const mobileTitle = computed(() => {
 	if (view.value === "plaza") return t("layout:views.plaza");
 	if (view.value === "usage") return t("layout:views.usage");
 	return currentAgent.value?.display_name ?? props.branding.productName;
+});
+const statusLabel = computed(() => {
+	if (chat.turnRunning.value) return "生成中";
+	if (chat.phase.value === "failed" || chat.streamError.value) return "执行失败";
+	return "空闲";
 });
 
 const isMobile = useIsMobile();
@@ -263,14 +281,35 @@ function loadMore({ section, groupId }: { section: SessionSidebarSection; groupI
 	directory.snapshot.value.groups.find((group) => group.slug === groupId)?.loadMore();
 }
 
+function rememberActionTrigger(event: MouseEvent) {
+	if (event.currentTarget instanceof HTMLElement) actionTrigger.value = event.currentTarget;
+	// 菜单在下一个 tick 挂载；把焦点交给首项，键盘 Enter 才能直接执行命令。
+	let attempts = 0;
+	const focusFirst = () => {
+		const item = document.querySelector<HTMLElement>('[role="menu"] [role="menuitem"]');
+		if (item) {
+			item.focus({ preventScroll: true });
+			return;
+		}
+		if (attempts++ < 20) requestAnimationFrame(focusFirst);
+	};
+	void nextTick(() => requestAnimationFrame(focusFirst));
+}
+
+function cancelAction() {
+	directory.cancelAction();
+	const target = actionTrigger.value;
+	if (!target) return;
+	void nextTick(() => requestAnimationFrame(() => target.focus({ preventScroll: true })));
+}
+
 function confirmAction() {
 	if (!actionBusy.value) void directory.confirmAction();
 }
 
 function startNewChat(closeSidebar: () => void) {
-	const slug = currentAgent.value?.slug ?? selectedAgent.value;
-	if (!slug) return;
-	void newSessionForAgent(slug).then((opened) => opened && closeSidebar());
+	navigate({ view: "new" });
+	closeSidebar();
 }
 
 async function uploadFiles(files: File[]) {
@@ -307,22 +346,25 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 	sending.value = true;
 	sendError.value = null;
 	try {
+		const readyFiles = stagedFiles.value.filter((file) => file.available);
+		const attachmentRefs = readyFiles.map((file) => ({ file_id: file.file_id, filename: file.filename }));
 		let activeSessionId = sessionId.value;
 		if (!activeSessionId) {
 			const slug = currentAgent.value?.slug;
 			if (!slug) return false;
-			const created = await props.client.createSession({ agentSlug: slug });
+			const created = await props.client.createSession({
+				agentSlug: slug,
+				title: deriveTitle(text),
+				...(attachmentRefs.length ? { files: attachmentRefs } : {}),
+			});
 			activeSessionId = created.session_id;
 			navigate({ view: "chat", agent: slug, session: activeSessionId }, { replace: true });
 			await directory.reload();
 		}
-		const readyFiles = stagedFiles.value.filter((file) => file.available);
 		// 先建会话再发送：useChat.send 显式接收 sessionId，不依赖路由更新后的 watcher 时序。
 		await chat.send(text, {
 			sessionId: activeSessionId,
-			...(readyFiles.length
-				? { attachments: readyFiles.map((file) => ({ file_id: file.file_id, filename: file.filename })) }
-				: {}),
+			...(attachmentRefs.length ? { attachments: attachmentRefs } : {}),
 			skills,
 		});
 		attachments.consume(readyFiles.map((file) => file.file_id));
@@ -340,7 +382,6 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 <template>
 	<Layout
 		:mobile-title="mobileTitle"
-		:sidebar-label="t('workspace:sidebarLabel')"
 		:aside-open="asideOpen"
 		:aside-label="t('chat:header.asideLabel')"
 		@aside-open-change="(open) => (asideOpen = open)"
@@ -395,6 +436,7 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 								:aria-label="t('layout:moreActions')"
 								:title="t('layout:moreActions')"
 								class="grid size-full cursor-pointer place-items-center rounded-[var(--kit-radius-sm)] outline-none"
+								@click="rememberActionTrigger"
 							>
 								<svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" class="h-4 w-4">
 									<circle cx="5" cy="12" r="1.5" />
@@ -544,8 +586,8 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 			</SessionSidebar>
 		</template>
 
-		<template v-if="view === 'chat'" #header>
-			<header class="flex min-h-11 shrink-0 items-center gap-2 border-b border-[var(--kit-border-subtle)] px-3 md:px-4">
+		<template v-if="view === 'chat'" #header="{ menuToggle }">
+			<header class="flex min-h-11 shrink-0 items-center gap-2 px-3 md:px-4">
 				<button
 					type="button"
 					data-testid="nav-plaza"
@@ -559,6 +601,7 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 						<path d="m12 19-7-7 7-7" />
 					</svg>
 				</button>
+				<VNodeHost v-if="menuToggle" :node="menuToggle" />
 				<span class="min-w-0 flex-1 truncate text-[length:var(--kit-text-base)] font-semibold">
 					{{ currentAgent?.display_name ?? member?.display_name ?? branding.productName }}
 				</span>
@@ -576,12 +619,17 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 						<path d="M15 4v16" />
 					</svg>
 				</button>
-				<span class="text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">Vue</span>
+				<span role="status" :title="statusLabel" class="shrink-0 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">{{ statusLabel }}</span>
 			</header>
 		</template>
 
 		<UsageView v-if="view === 'usage'" :client="props.client" @open-agent="openAgent" />
-		<PlazaView v-else-if="view === 'plaza'" :client="props.client" @open="openAgent" />
+		<PlazaView
+			v-else-if="view === 'plaza' || view === 'new'"
+			:client="props.client"
+			:heading="view !== 'new'"
+			@open="openAgent"
+		/>
 		<div v-else class="flex min-h-0 flex-1 flex-col">
 			<div
 				v-if="sendError"
@@ -630,12 +678,30 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 						:on-stop="() => void chat.stop()"
 					/>
 				</template>
+				<template #artifact="{ part }">
+					<ArtifactCard
+						:artifact="part.artifact"
+						:on-open="openArtifact"
+						:on-download="downloadArtifact"
+					/>
+				</template>
 				<template #empty>
-					<div class="flex min-w-0 flex-1 items-center justify-center py-6">
+					<div class="flex min-w-0 flex-1 flex-col items-center justify-center gap-4 py-6">
 						<EmptyState
 							:title="currentAgent.opening_remarks || t('workspace:chatWith', { name: currentAgent.display_name })"
 							:hint="t('workspace:chatHint')"
 						/>
+						<div v-if="currentAgent.suggested_prompts.length" class="flex flex-wrap justify-center gap-2">
+							<button
+								v-for="prompt in currentAgent.suggested_prompts"
+								:key="prompt"
+								type="button"
+								class="rounded-full border border-[var(--kit-border)] bg-[var(--kit-surface)] px-3 py-1.5 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)] hover:border-[var(--kit-accent)] hover:text-[var(--kit-fg)]"
+								@click="send(prompt)"
+							>
+								{{ prompt }}
+							</button>
+						</div>
 					</div>
 				</template>
 			</Chat>
@@ -650,6 +716,6 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 		:busy="actionBusy"
 		:confirm-label="dialogConfirmLabel"
 		:on-confirm="confirmAction"
-		:on-cancel="directory.cancelAction"
+		:on-cancel="cancelAction"
 	/>
 </template>
