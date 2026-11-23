@@ -369,13 +369,25 @@ test("手机成员登录：未登录不能进入体验页，登录后可对话�
 	await expect(page.getByLabel("消息输入")).toHaveCount(0);
 });
 
-test("英文登录页的凭据错误按界面语言提示", { tag: "@desktop" }, async ({ page, request }) => {
-	const username = `login-en-${Date.now().toString(36)}`;
-	await createMember(request, username, "English Error Member");
-	await page.goto(experienceUrl({ lang: "en" }));
-	await expect(page.locator("html")).toHaveAttribute("lang", "en");
-	await page.getByLabel("Username", { exact: true }).fill(username);
-	await page.getByLabel("Password", { exact: true }).fill("Wrong!Password2026");
-	await page.getByRole("button", { name: "Sign in", exact: true }).click();
-	await expect(page.getByText("Incorrect username or password", { exact: true })).toBeVisible();
-});
+for (const legacyResponse of [false, true]) {
+	const responseName = legacyResponse ? "旧版无错误键" : "带错误键";
+	test(`英文登录页的凭据错误按界面语言提示（${responseName}）`, { tag: "@desktop" }, async ({ page, request }) => {
+		const username = `login-en-${Date.now().toString(36)}`;
+		await createMember(request, username, username);
+		if (legacyResponse) {
+			await page.route(`${apiBase}/api/kit/auth/login`, async (route) => {
+				const response = await route.fetch();
+				expect(response.status()).toBe(401);
+				const json = await response.json();
+				delete json.error.message_key;
+				await route.fulfill({ response, json });
+			});
+		}
+		await page.goto(experienceUrl({ lang: "en" }));
+		await expect(page.locator("html")).toHaveAttribute("lang", "en");
+		await page.getByLabel("Username", { exact: true }).fill(username);
+		await page.getByLabel("Password", { exact: true }).fill("Wrong!Password2026");
+		await page.getByRole("button", { name: "Sign in", exact: true }).click();
+		await expect(page.getByText("Incorrect username or password", { exact: true })).toBeVisible();
+	});
+}
