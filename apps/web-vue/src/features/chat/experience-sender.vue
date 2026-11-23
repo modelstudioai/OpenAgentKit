@@ -27,6 +27,7 @@ const props = defineProps<{
 	/** 会话/新会话作用域变化时清空草稿；不重挂组件，避免打断技能选择。 */
 	resetKey?: string;
 	onDrop: (files: File[]) => void | Promise<void>;
+	onPickFile?: (accept?: string) => void;
 	onRemove: (fileId: string) => void;
 	onSend: (text: string, skills?: string[]) => Promise<boolean>;
 	onStop: () => void;
@@ -45,9 +46,6 @@ const selection = ref<SenderSelection>({ start: 0, end: 0 });
 const senderRef = ref<{
 	replaceRange: (start: number, end: number, text: string) => void;
 } | null>(null);
-const fileInput = ref<HTMLInputElement | null>(null);
-const pendingAccept = ref<string | undefined>(undefined);
-
 const skillNames = computed(() => props.skills?.map((skill) => skill.name) ?? []);
 const skillItems = computed(() =>
 	(props.skills ?? []).map((skill) => ({
@@ -60,18 +58,7 @@ const skillItems = computed(() =>
 
 function pickFile(accept?: string) {
 	if (props.disabled || props.items.some((item) => item.status === "uploading")) return;
-	pendingAccept.value = accept;
-	if (fileInput.value) {
-		fileInput.value.value = "";
-		fileInput.value.click();
-	}
-}
-
-function selectFiles(event: Event) {
-	const input = event.target as HTMLInputElement;
-	const files = Array.from(input.files ?? []);
-	input.value = "";
-	if (files.length > 0) void props.onDrop(files);
+	props.onPickFile?.(accept);
 }
 
 function chooseSkill(item: { value: string }, context?: { start: number; end: number }) {
@@ -88,7 +75,6 @@ async function submit(text: string, derived?: string[]) {
 
 <template>
 	<div>
-		<input ref="fileInput" type="file" hidden :accept="pendingAccept" @change="selectFiles" />
 		<Suggestion
 			block
 			:items="skillItems"

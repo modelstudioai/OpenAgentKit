@@ -1,16 +1,25 @@
 <script setup lang="ts">
 import type { MemberAuthController } from "@openagentkit/sdk/auth";
 import { ErrorState } from "@openagentpack/kit-chat-ui-vue";
+import { watch } from "vue";
 import MemberAuthGate from "./features/auth/member-auth-gate.vue";
 import WorkspaceShell from "./features/workspace/workspace-shell.vue";
 import ChatUILocaleBridge from "./i18n/chat-ui-bridge.vue";
 import type { Branding } from "./lib/branding.ts";
 
-defineProps<{
+const props = defineProps<{
 	controller: MemberAuthController | null;
 	branding: Branding;
 	bootstrapError?: string | null;
 }>();
+
+watch(
+	() => props.branding.productName,
+	(productName) => {
+		document.title = productName.trim() || "OpenAgentKit";
+	},
+	{ immediate: true },
+);
 
 function reload() {
 	window.location.reload();

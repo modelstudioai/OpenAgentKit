@@ -33,6 +33,10 @@ import {
 import { computed, defineComponent, nextTick, ref, type VNode, watch } from "vue";
 import { useTranslation } from "../../i18n/index.ts";
 import type { Branding } from "../../lib/branding.ts";
+import {
+	requestCompletionNotificationPermission,
+	showCompletionNotification,
+} from "../../lib/browser-notifications.ts";
 import { createArtifactHost, resolveHostCapabilities } from "../../lib/host.ts";
 import { useRoute } from "../../lib/use-route.ts";
 import LanguageSwitcher from "../auth/language-switcher.vue";
@@ -84,6 +88,8 @@ const actionTrigger = ref<HTMLElement | null>(null);
 const sending = ref(false);
 const sendError = ref<string | null>(null);
 const quotaError = ref<QuotaExceededDetails | null>(null);
+const completedSessionId = ref<string | null>(null);
+const brandLogoFailed = ref(false);
 const chat = useChat(() => ({ sessionId: sessionId.value, provider: props.chatProvider }));
 
 const currentAgent = computed(() => {
@@ -110,6 +116,40 @@ const mobileTitle = computed(() => {
 	if (view.value === "chat") return headerTitle.value;
 	return currentAgent.value?.display_name ?? props.branding.productName;
 });
+/** 侧栏打开行实时状态：流式/审批/失败优先，刚完成标记只属于当前停留的会话。 */
+const activeStatus = computed(() => {
+	if (chat.streamError.value && chat.connection.value !== "reconnecting") return undefined;
+	const phase = chat.phase.value;
+	if (phase === "running" || phase === "stopping" || (!phase && chat.turnRunning.value)) return "running";
+	if (phase === "requires_action") return "attention";
+	if (phase === "failed") return "failed";
+	if (completedSessionId.value === sessionId.value) return "completed";
+	return undefined;
+});
+watch([sessionId, () => chat.phase.value], (next, prev) => {
+	const [currentSession, phase] = next;
+	const [previousSession, previousPhase] = prev;
+	if (previousSession !== currentSession) {
+		completedSessionId.value = null;
+		return;
+	}
+	if (phase === "running") completedSessionId.value = null;
+	else if (phase === "idle" && (previousPhase === "running" || previousPhase === "requires_action")) {
+		completedSessionId.value = currentSession;
+		showCompletionNotification({
+			title: t("chat:notification.completedTitle", {
+				name: currentAgent.value?.display_name ?? props.branding.productName,
+			}),
+			body: t("chat:notification.completedBody"),
+			tag: currentSession ?? "kit-chat",
+			...(props.branding.logoUrl ? { icon: props.branding.logoUrl } : {}),
+		});
+	}
+});
+watch(
+	() => props.branding.logoUrl,
+	() => (brandLogoFailed.value = false),
+);
 const isMobile = useIsMobile();
 const asideOpen = ref(!isMobile.value);
 watch(isMobile, (mobile) => {
@@ -253,6 +293,14 @@ watch(
 	{ immediate: true },
 );
 
+function brandLogoSrc(value: string): string {
+	try {
+		return new URL(value, window.location.href).toString();
+	} catch {
+		return value;
+	}
+}
+
 function goToPlaza() {
 	navigate({ view: "plaza" });
 }
@@ -364,6 +412,11 @@ function removeAttachment(fileId: string) {
 	attachments.remove(fileId);
 }
 
+async function pickAndUpload(accept?: string) {
+	const files = await host.pickFiles?.({ multiple: true, accept });
+	if (files?.length) await uploadFiles(files);
+}
+
 async function copyMessageText(text: string) {
 	if (!(await host.copyText?.(text))) throw new Error(t("chat:errors.copyFailed"));
 }
@@ -384,8 +437,31 @@ async function downloadArtifact(fileId: string) {
 	}
 }
 
+async function createSessionWithAttachments(
+	slug: string,
+	text: string,
+	files: { file_id: string; filename: string }[],
+): Promise<{ session_id: string }> {
+	for (let attempt = 1; ; attempt += 1) {
+		try {
+			return await props.client.createSession({
+				agentSlug: slug,
+				title: deriveTitle(text),
+				...(files.length ? { files } : {}),
+			});
+		} catch (error) {
+			const shape = error as { code?: string; retryable?: boolean };
+			const retry = files.length > 0 && shape?.code === "conflict" && shape.retryable === true && attempt < 3;
+			if (!retry) throw error;
+			await new Promise((resolve) => setTimeout(resolve, 3000));
+		}
+	}
+}
+
 async function send(text: string, skills?: string[]): Promise<boolean> {
 	if (sending.value) return false;
+	// 在发送这一用户手势内申请通知权限；浏览器不支持或拒绝时静默跳过。
+	void requestCompletionNotificationPermission();
 	sending.value = true;
 	sendError.value = null;
 	try {
@@ -395,11 +471,7 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 		if (!activeSessionId) {
 			const slug = currentAgent.value?.slug;
 			if (!slug) return false;
-			const created = await props.client.createSession({
-				agentSlug: slug,
-				title: deriveTitle(text),
-				...(attachmentRefs.length ? { files: attachmentRefs } : {}),
-			});
+			const created = await createSessionWithAttachments(slug, text, attachmentRefs);
 			activeSessionId = created.session_id;
 			navigate({ view: "chat", agent: slug, session: activeSessionId }, { replace: true });
 			await directory.reload();
@@ -453,6 +525,7 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 				:groups="groups"
 				:recent="recent"
 				:active-id="sessionId"
+				:active-status="activeStatus"
 				:active-section="activeSection"
 				:active-group-id="activeGroupId"
 				:editing="editing"
@@ -505,7 +578,17 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 				</template>
 				<template #header>
 					<div class="flex min-h-14 shrink-0 items-center gap-3 px-5 py-3">
+						<img
+							v-if="branding.logoUrl && !brandLogoFailed"
+							data-testid="brand-logo"
+							:src="brandLogoSrc(branding.logoUrl)"
+							alt=""
+							aria-hidden="true"
+							class="size-8 shrink-0 rounded-[var(--kit-radius-sm)] object-contain"
+							@error="brandLogoFailed = true"
+						/>
 						<div
+							v-else
 							data-testid="brand-logo-fallback"
 							aria-hidden="true"
 							class="grid size-8 shrink-0 place-items-center rounded-[var(--kit-radius-sm)] bg-[var(--kit-fg)] text-[length:var(--kit-text-label)] font-semibold text-[var(--kit-bg)]"
@@ -726,6 +809,7 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 						:disabled="!currentAgent || attachmentItems.some((item) => item.status === 'uploading') || quotaError !== null"
 						:processing="processingFiles"
 						:on-drop="uploadFiles"
+						:on-pick-file="pickAndUpload"
 						:on-remove="removeAttachment"
 						:on-send="send"
 						:on-stop="() => void chat.stop()"
