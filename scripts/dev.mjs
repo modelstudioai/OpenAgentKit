@@ -83,11 +83,25 @@ const dependencies = spawnSync(
 if (dependencies.error) console.error(`[dev] 无法启动依赖构建：${dependencies.error.message}`);
 if (dependencies.status !== 0) process.exit(dependencies.status ?? 1);
 
+// POSIX 下每个目标单独成组：Ctrl-C 时 pnpm 的直接子进程 vite/tsx 留在原进程组，
+// 只杀 pnpm 会留下占端口的孤儿进程。Windows 不启用 detached，退回 child.kill。
+const detached = process.platform !== "win32";
+const stopChild = (child) => {
+	if (!child?.pid) return;
+	try {
+		if (detached) process.kill(-child.pid, "SIGTERM");
+		else child.kill("SIGTERM");
+	} catch {
+		// 进程已退出或组不存在：忽略重复清理。
+	}
+};
+
 const children = names.map((name) => {
 	const target = ALL_TARGETS[name];
 	const child = spawn("pnpm", target.args, {
 		cwd: root,
 		env,
+		detached,
 		stdio: ["ignore", "pipe", "pipe"],
 	});
 	const prefix = `[${name}]`;
@@ -101,7 +115,7 @@ const children = names.map((name) => {
 	pipe(child.stderr);
 	child.on("exit", (code) => {
 		console.log(`${prefix} exited(${code})`);
-		for (const other of children) other?.kill("SIGTERM");
+		for (const other of children) if (other !== child) stopChild(other);
 		process.exit(code ?? 0);
 	});
 	return child;
@@ -109,7 +123,9 @@ const children = names.map((name) => {
 
 console.log(`[dev] 已启动：${names.join(" ")}`);
 
-process.on("SIGINT", () => {
-	for (const child of children) child.kill("SIGTERM");
+const shutdown = () => {
+	for (const child of children) stopChild(child);
 	process.exit(0);
-});
+};
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
