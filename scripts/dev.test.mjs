@@ -107,7 +107,7 @@ test("冷启动先完成依赖构建，再启动默认四个服务", (t) => {
 			.slice(2)
 			.map((entry) => entry.target)
 			.sort(),
-		["@openagentpack/kit-server", "console", "storybook", "web"],
+		["@openagentpack/kit-server", "console", "web", "web-vue"],
 	);
 });
 
