@@ -1,6 +1,7 @@
 /** 键必须与 zh-CN 双向对齐（pnpm check:i18n 强制）；语言名按惯例用该语言自称，两种词表中保持一致。 */
 export default {
 	serverErrors: {
+		invalidCredentials: "Incorrect username or password",
 		invalid_request: "The request parameters are invalid",
 		unauthorized: "Your session has expired. Sign in again.",
 		forbidden: "This identity cannot perform this action",

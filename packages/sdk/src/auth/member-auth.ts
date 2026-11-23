@@ -34,6 +34,7 @@ export interface MemberAuthSnapshot {
 	chatProvider: ChatProvider | null;
 	generation: number;
 	error: string | null;
+	errorDetail: KitError | null;
 	pending: boolean;
 }
 
@@ -41,6 +42,14 @@ interface Epoch {
 	abort: AbortController;
 	client: KitClient;
 	chatProvider: ChatProvider | null;
+}
+
+function loginFailureState(error: unknown, pendingLogout: boolean): Pick<MemberAuthSnapshot, "error" | "errorDetail"> {
+	if (pendingLogout) return { error: "服务端退出未完成，本地已锁定，请检查连接后重试。", errorDetail: null };
+	return {
+		error: error instanceof Error ? error.message : "登录失败，请重试",
+		errorDetail: error instanceof KitError ? error : null,
+	};
 }
 
 /**
@@ -66,6 +75,7 @@ export function createMemberAuthController(options: MemberAuthOptions) {
 		chatProvider: null,
 		generation: 0,
 		error: null,
+		errorDetail: null,
 		pending: false,
 	};
 	let epoch: Epoch | null = null;
@@ -93,6 +103,7 @@ export function createMemberAuthController(options: MemberAuthOptions) {
 			member: null,
 			generation: snapshot.generation + 1,
 			error: null,
+			errorDetail: null,
 		});
 	}
 	function clearStorage() {
@@ -301,8 +312,7 @@ export function createMemberAuthController(options: MemberAuthOptions) {
 		}
 		if (disposed) return;
 		detach(pendingLogout ? "error" : "signed-out");
-		const message = error instanceof Error ? error.message : "登录失败，请重试";
-		publish({ error: pendingLogout ? "服务端退出未完成，本地已锁定，请检查连接后重试。" : message });
+		publish(loginFailureState(error, Boolean(pendingLogout)));
 		throw error;
 	}
 	async function login(input: MemberLoginRequest) {

@@ -75,7 +75,9 @@ export function createMemberAuthService({
 				checkingPasswords -= 1;
 			}
 			if (!valid || !credential || credential.member.status !== "active") {
-				throw new KitError("unauthorized", "用户名或密码错误");
+				throw new KitError("unauthorized", "用户名或密码错误", {
+					messageKey: "serverErrors.invalidCredentials",
+				});
 			}
 			const accessToken = `${MEMBER_TOKEN_PREFIX}${randomBytes(32).toString("base64url")}`;
 			const now = new Date();

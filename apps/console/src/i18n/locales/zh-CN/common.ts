@@ -45,6 +45,7 @@ export default {
 		invalid: "字段格式或引用不符合要求",
 	},
 	serverErrors: {
+		invalidCredentials: "用户名或密码错误",
 		invalid_request: "请求参数无效",
 		unauthorized: "登录状态已失效，请重新登录",
 		forbidden: "当前身份无权执行此操作",

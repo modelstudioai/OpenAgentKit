@@ -549,7 +549,7 @@ export function createMemberAuthController(options: MemberAuthOptions): { getSna
 ```
 
 
-<!-- source-sha256: 445a244f58041b227620bc9d126f928672b9f7d523f3b529b9fe349ab312e9a3; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
+<!-- source-sha256: 2d6aa4b0a261b60a134d0b1d64b03960b4b245c2357c571d040c559154ae6d6e; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
 
 ## MemberAuthController
 
@@ -575,7 +575,7 @@ export type MemberAuthController = { getSnapshot: () => MemberAuthSnapshot; subs
 | `retry` | 是 | `() => Promise<void>` |
 | `dispose` | 是 | `() => void` |
 
-<!-- source-sha256: 445a244f58041b227620bc9d126f928672b9f7d523f3b529b9fe349ab312e9a3; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
+<!-- source-sha256: 2d6aa4b0a261b60a134d0b1d64b03960b4b245c2357c571d040c559154ae6d6e; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
 
 ## MemberAuthOptions
 
@@ -600,7 +600,7 @@ import type { MemberAuthOptions } from "@openagentkit/sdk/auth";
 | `createChatProvider` | 否 | `((request: RequestClient) => ChatProvider) \| undefined` |
 | `createClient` | 否 | `((request: RequestClient) => KitClient) \| undefined` |
 
-<!-- source-sha256: 445a244f58041b227620bc9d126f928672b9f7d523f3b529b9fe349ab312e9a3; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
+<!-- source-sha256: 2d6aa4b0a261b60a134d0b1d64b03960b4b245c2357c571d040c559154ae6d6e; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
 
 ## MemberAuthSnapshot
 
@@ -624,9 +624,10 @@ import type { MemberAuthSnapshot } from "@openagentkit/sdk/auth";
 | `chatProvider` | 是 | `ChatProvider \| null` |
 | `generation` | 是 | `number` |
 | `error` | 是 | `string \| null` |
+| `errorDetail` | 是 | `KitError \| null` |
 | `pending` | 是 | `boolean` |
 
-<!-- source-sha256: 445a244f58041b227620bc9d126f928672b9f7d523f3b529b9fe349ab312e9a3; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
+<!-- source-sha256: 2d6aa4b0a261b60a134d0b1d64b03960b4b245c2357c571d040c559154ae6d6e; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
 
 ## MemberSessionStorage
 
@@ -647,7 +648,7 @@ import type { MemberSessionStorage } from "@openagentkit/sdk/auth";
 | `load` | 是 | `() => StoredMemberSession \| null` |
 | `save` | 是 | `(session: StoredMemberSession \| null) => void` |
 
-<!-- source-sha256: 445a244f58041b227620bc9d126f928672b9f7d523f3b529b9fe349ab312e9a3; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
+<!-- source-sha256: 2d6aa4b0a261b60a134d0b1d64b03960b4b245c2357c571d040c559154ae6d6e; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
 
 ## StoredMemberSession
 
@@ -668,7 +669,7 @@ import type { StoredMemberSession } from "@openagentkit/sdk/auth";
 | `access_token` | 是 | `string` |
 | `expires_at` | 是 | `string` |
 
-<!-- source-sha256: 445a244f58041b227620bc9d126f928672b9f7d523f3b529b9fe349ab312e9a3; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
+<!-- source-sha256: 2d6aa4b0a261b60a134d0b1d64b03960b4b245c2357c571d040c559154ae6d6e; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
 
 ## useMemberAuth
 
@@ -681,7 +682,7 @@ import type { StoredMemberSession } from "@openagentkit/sdk/auth";
 
 
 ```ts
-export function useMemberAuth(controller: MemberAuthController): { login: (input: MemberLoginRequest) => Promise<void>; logout: () => Promise<void>; retry: () => Promise<void>; status: "checking" | "signed-out" | "signed-in" | "anonymous" | "error"; member: MemberView | null; client: KitClient | null; chatProvider: ChatProvider | null; generation: number; error: string | null; pending: boolean; };
+export function useMemberAuth(controller: MemberAuthController): { login: (input: MemberLoginRequest) => Promise<void>; logout: () => Promise<void>; retry: () => Promise<void>; status: "checking" | "signed-out" | "signed-in" | "anonymous" | "error"; member: MemberView | null; client: KitClient | null; chatProvider: ChatProvider | null; generation: number; error: string | null; errorDetail: KitError | null; pending: boolean; };
 ```
 
 

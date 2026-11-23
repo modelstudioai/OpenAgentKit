@@ -46,6 +46,7 @@ export default {
 		invalid: "The field format or reference is invalid",
 	},
 	serverErrors: {
+		invalidCredentials: "Incorrect username or password",
 		invalid_request: "The request parameters are invalid",
 		unauthorized: "Your session has expired. Sign in again.",
 		forbidden: "This identity cannot perform this action",

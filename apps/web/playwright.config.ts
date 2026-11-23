@@ -28,7 +28,7 @@ export default defineConfig({
 		{ name: "desktop", use: { ...devices["Desktop Chrome"], channel: E2E_CHANNEL } },
 		{
 			name: "mobile",
-			testMatch: /experience\.spec\.ts/,
+			testMatch: /(experience|browser-notification)\.spec\.ts/,
 			use: {
 				browserName: "chromium",
 				channel: E2E_CHANNEL,
