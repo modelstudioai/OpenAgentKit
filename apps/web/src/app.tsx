@@ -3,7 +3,7 @@ import type { MemberAuthController } from "@openagentkit/sdk/auth";
 import { useChat, useComposer } from "@openagentkit/sdk/chat/hooks";
 import { useArtifactActions, useAttachments } from "@openagentkit/sdk/files/hooks";
 import { useIsMobile } from "@openagentkit/sdk/hooks";
-import type { AgentSummary, SessionDetail, SessionSummary } from "@openagentkit/sdk/protocol";
+import type { AgentSummary, ArtifactDescriptor, SessionDetail, SessionSummary } from "@openagentkit/sdk/protocol";
 import { useKitClient } from "@openagentkit/sdk/providers/kit/react";
 import type { PendingSessionAction } from "@openagentkit/sdk/sessions";
 import { useSessionDetails } from "@openagentkit/sdk/sessions/hooks";
@@ -34,6 +34,7 @@ import { UsageView } from "./features/usage/usage-view.tsx";
 import { type Branding, DEFAULT_BRAND_PRODUCT_NAME } from "./lib/branding.ts";
 import { requestCompletionNotificationPermission, showCompletionNotification } from "./lib/browser-notifications.ts";
 import { createArtifactHost, resolveHostCapabilities } from "./lib/host.ts";
+import { loadSessionArtifacts, mergeArtifacts } from "./lib/session-artifacts.ts";
 import { type NavigateFn, useRoute } from "./lib/use-route.ts";
 import { type SessionDirectory, useSessionDirectory } from "./lib/use-session-directory.ts";
 
@@ -331,11 +332,45 @@ function ChatView({
 		[composer.send, directory.refreshStatuses, handleComposerError],
 	);
 	const artifactHost = useMemo(() => createArtifactHost(host), [host]);
+	// Files API 补历史会话产物；事件里的 artifact 仍由 Chat 投影提供。
+	const [remoteArtifacts, setRemoteArtifacts] = useState<ArtifactDescriptor[]>([]);
+	const [artifactVersion, setArtifactVersion] = useState(0);
+	const artifactPhase = useRef(chat.phase);
+	const artifactsSession = useRef<string | null>(null);
+	useEffect(() => {
+		const previous = artifactPhase.current;
+		artifactPhase.current = chat.phase;
+		if (previous !== "idle" && chat.phase === "idle") setArtifactVersion((value) => value + 1);
+	}, [chat.phase]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: artifactVersion 是回合结束后的显式刷新触发器
+	useEffect(() => {
+		if (!sessionId) {
+			artifactsSession.current = null;
+			setRemoteArtifacts([]);
+			return;
+		}
+		if (artifactsSession.current !== sessionId) {
+			artifactsSession.current = sessionId;
+			setRemoteArtifacts([]);
+		}
+		let active = true;
+		const controller = new AbortController();
+		loadSessionArtifacts(client, sessionId, controller.signal)
+			.then((files) => {
+				if (active) setRemoteArtifacts(files);
+			})
+			.catch(() => undefined);
+		return () => {
+			active = false;
+			controller.abort();
+		};
+	}, [client, sessionId, artifactVersion]);
+	const artifacts = useMemo(() => mergeArtifacts(remoteArtifacts, chat.artifacts), [remoteArtifacts, chat.artifacts]);
 	const artifactActions = useArtifactActions({
 		client,
 		host: artifactHost,
 		sessionId: sessionId ?? undefined,
-		artifacts: chat.artifacts,
+		artifacts,
 	});
 	const openArtifact = useCallback(
 		(id: string, contentType?: string) =>
@@ -373,7 +408,7 @@ function ChatView({
 						resources={resources}
 						memories={memories}
 						multiAgent={chat.multiAgent}
-						artifacts={chat.artifacts}
+						artifacts={artifacts}
 						onArtifactOpen={(fileId, contentType) => void openArtifact(fileId, contentType)}
 						onArtifactDownload={(fileId) => void downloadArtifact(fileId)}
 					/>

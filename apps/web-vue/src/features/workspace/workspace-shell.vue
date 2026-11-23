@@ -4,7 +4,7 @@ import { deriveTitle } from "@openagentkit/sdk/chat";
 import { useChat } from "@openagentkit/sdk/chat/hooks-vue";
 import { useArtifactActions, useAttachments } from "@openagentkit/sdk/files/hooks-vue";
 import { useIsMobile } from "@openagentkit/sdk/hooks-vue";
-import type { MemberView, SessionSummary } from "@openagentkit/sdk/protocol";
+import type { ArtifactDescriptor, MemberView, SessionSummary } from "@openagentkit/sdk/protocol";
 import type { ChatProvider } from "@openagentkit/sdk/providers";
 import type { KitClient } from "@openagentkit/sdk/providers/kit";
 import type { SessionAction } from "@openagentkit/sdk/sessions";
@@ -39,6 +39,7 @@ import {
 	showCompletionNotification,
 } from "../../lib/browser-notifications.ts";
 import { createArtifactHost, resolveHostCapabilities } from "../../lib/host.ts";
+import { loadSessionArtifacts, mergeArtifacts } from "../../lib/session-artifacts.ts";
 import { useRoute } from "../../lib/use-route.ts";
 import LanguageSwitcher from "../auth/language-switcher.vue";
 import MemberAccount from "../auth/member-account.vue";
@@ -215,11 +216,37 @@ const senderSkills = computed(() =>
 const memories = computed(() => resources.value?.memory_stores ?? null);
 const host = resolveHostCapabilities();
 const artifactHost = createArtifactHost(host);
+const remoteArtifacts = ref<ArtifactDescriptor[]>([]);
+const artifactsSession = ref<string | null>(null);
+watch(
+	[sessionId, () => chat.phase.value],
+	async ([sid], _previous, onCleanup) => {
+		if (!sid) {
+			artifactsSession.value = null;
+			remoteArtifacts.value = [];
+			return;
+		}
+		if (artifactsSession.value !== sid) {
+			artifactsSession.value = sid;
+			remoteArtifacts.value = [];
+		}
+		const controller = new AbortController();
+		onCleanup(() => controller.abort());
+		try {
+			const files = await loadSessionArtifacts(props.client, sid, controller.signal);
+			if (sessionId.value === sid) remoteArtifacts.value = files;
+		} catch {
+			// 产物查询失败不回退消息流；详情面板保持已有/事件产物。
+		}
+	},
+	{ immediate: true },
+);
+const artifacts = computed(() => mergeArtifacts(remoteArtifacts.value, chat.artifacts.value));
 const artifactActions = useArtifactActions(() => ({
 	client: props.client,
 	host: artifactHost,
 	sessionId: sessionId.value ?? undefined,
-	artifacts: chat.artifacts.value,
+	artifacts: artifacts.value,
 }));
 const sessionDetails = useSessionDetails(() => ({
 	client: props.client,
@@ -527,7 +554,7 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 				:agent="currentAgent"
 				:resources="resources"
 				:memories="memories"
-				:artifacts="chat.artifacts.value"
+				:artifacts="artifacts"
 				:multi-agent="chat.multiAgent.value"
 				:on-close="() => (asideOpen = false)"
 				:on-artifact-open="openArtifact"

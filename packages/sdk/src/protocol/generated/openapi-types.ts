@@ -2000,6 +2000,162 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/kit/sessions/{sessionId}/artifacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    sessionId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 会话产物 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                file_id: string;
+                                filename: string;
+                                content_type?: string;
+                                size?: number;
+                            }[];
+                        };
+                    };
+                };
+                /** @description invalid_request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable?: boolean;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable?: boolean;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description forbidden / quota_exceeded */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable?: boolean;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable?: boolean;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description conflict / request_pending */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable?: boolean;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description confirmation_required */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable?: boolean;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description provider_error */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable?: boolean;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/kit/sessions/{sessionId}/messages": {
         parameters: {
             query?: never;

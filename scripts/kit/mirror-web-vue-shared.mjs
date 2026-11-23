@@ -21,6 +21,7 @@ const files = [
 	"src/lib/host.ts",
 	"src/lib/beijing-time.ts",
 	"src/lib/format-token-count.ts",
+	"src/lib/session-artifacts.ts",
 	"src/i18n/server-error.ts",
 	"src/features/auth/member-session-storage.ts",
 ];
