@@ -59,7 +59,7 @@ function artifactBadge(name: string | undefined, type: string | undefined): stri
 		</div>
 		<div class="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:py-5">
 			<details open class="kit-collapse group/agent min-w-0">
-				<summary class="-mx-2 flex min-w-0 cursor-pointer list-none select-none items-center gap-2 rounded-[var(--kit-radius-sm)] px-2 py-1 [&::-webkit-details-marker]:hidden">
+				<summary class="-mx-2 flex min-w-0 cursor-pointer list-none select-none items-center gap-2 rounded-[var(--kit-radius-sm)] px-2 py-1 transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] [&::-webkit-details-marker]:hidden">
 					<span class="text-[length:var(--kit-text-label)] font-medium text-[var(--kit-fg-muted)]">{{ t("aside.agentInfo") }}</span>
 					<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="ml-auto size-3.5 transition-transform group-open/agent:rotate-90">
 						<path d="m9 6 6 6-6 6" />
@@ -76,9 +76,9 @@ function artifactBadge(name: string | undefined, type: string | undefined): stri
 			<SubAgentPanel :multi-agent="multiAgent" />
 
 			<details v-if="resourceRows.length > 0" open class="kit-collapse group/res mt-6 min-w-0">
-				<summary class="-mx-2 flex min-w-0 cursor-pointer list-none select-none items-center gap-2 rounded-[var(--kit-radius-sm)] px-2 py-1 [&::-webkit-details-marker]:hidden">
+				<summary class="-mx-2 flex min-w-0 cursor-pointer list-none select-none items-center gap-2 rounded-[var(--kit-radius-sm)] px-2 py-1 transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] [&::-webkit-details-marker]:hidden">
 					<span class="text-[length:var(--kit-text-label)] font-medium text-[var(--kit-fg-muted)]">{{ t("aside.resources.skillsMcp") }}</span>
-					<span class="text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)]">· {{ resourceRows.length }}</span>
+					<span class="text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)] tabular-nums">· {{ resourceRows.length }}</span>
 					<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="ml-auto size-3.5 transition-transform group-open/res:rotate-90">
 						<path d="m9 6 6 6-6 6" />
 					</svg>
@@ -123,9 +123,9 @@ function artifactBadge(name: string | undefined, type: string | undefined): stri
 			</details>
 
 			<details v-if="toolRows.length > 0" open class="kit-collapse group/tools mt-6 min-w-0">
-				<summary class="-mx-2 flex min-w-0 cursor-pointer list-none select-none items-center gap-2 rounded-[var(--kit-radius-sm)] px-2 py-1 [&::-webkit-details-marker]:hidden">
+				<summary class="-mx-2 flex min-w-0 cursor-pointer list-none select-none items-center gap-2 rounded-[var(--kit-radius-sm)] px-2 py-1 transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] [&::-webkit-details-marker]:hidden">
 					<span class="text-[length:var(--kit-text-label)] font-medium text-[var(--kit-fg-muted)]">{{ t("aside.resources.tools") }}</span>
-					<span class="text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)]">· {{ toolRows.length }}</span>
+					<span class="text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)] tabular-nums">· {{ toolRows.length }}</span>
 					<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="ml-auto size-3.5 transition-transform group-open/tools:rotate-90">
 						<path d="m9 6 6 6-6 6" />
 					</svg>
@@ -157,9 +157,9 @@ function artifactBadge(name: string | undefined, type: string | undefined): stri
 			</details>
 
 			<details v-if="memories?.length" open class="kit-collapse group/memory mt-6 min-w-0">
-				<summary class="-mx-2 flex min-w-0 cursor-pointer list-none select-none items-center gap-2 rounded-[var(--kit-radius-sm)] px-2 py-1 [&::-webkit-details-marker]:hidden">
+				<summary class="-mx-2 flex min-w-0 cursor-pointer list-none select-none items-center gap-2 rounded-[var(--kit-radius-sm)] px-2 py-1 transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] [&::-webkit-details-marker]:hidden">
 					<span class="text-[length:var(--kit-text-label)] font-medium text-[var(--kit-fg-muted)]">{{ t("aside.resources.memory") }}</span>
-					<span class="text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)]">· {{ memories.length }}</span>
+					<span class="text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)] tabular-nums">· {{ memories.length }}</span>
 					<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="ml-auto size-3.5 transition-transform group-open/memory:rotate-90">
 						<path d="m9 6 6 6-6 6" />
 					</svg>
@@ -175,9 +175,9 @@ function artifactBadge(name: string | undefined, type: string | undefined): stri
 			</details>
 
 			<details open class="kit-collapse group/artifacts mt-6 min-w-0">
-				<summary class="-mx-2 flex min-w-0 cursor-pointer list-none select-none items-center gap-2 rounded-[var(--kit-radius-sm)] px-2 py-1 [&::-webkit-details-marker]:hidden">
+				<summary class="-mx-2 flex min-w-0 cursor-pointer list-none select-none items-center gap-2 rounded-[var(--kit-radius-sm)] px-2 py-1 transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] [&::-webkit-details-marker]:hidden">
 					<span class="text-[length:var(--kit-text-label)] font-medium text-[var(--kit-fg-muted)]">{{ t("aside.artifacts") }}</span>
-					<span v-if="artifacts.length" class="text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)]">· {{ artifacts.length }}</span>
+					<span v-if="artifacts.length" class="text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)] tabular-nums">· {{ artifacts.length }}</span>
 					<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="ml-auto size-3.5 transition-transform group-open/artifacts:rotate-90">
 						<path d="m9 6 6 6-6 6" />
 					</svg>

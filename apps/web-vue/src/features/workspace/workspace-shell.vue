@@ -22,6 +22,7 @@ import {
 	MenuItem,
 	MenuTrigger,
 	MessageListSkeleton,
+	Prompts,
 	SessionSidebar,
 	type SessionSidebarGroup,
 	type SessionSidebarPage,
@@ -126,6 +127,19 @@ const activeStatus = computed(() => {
 	if (completedSessionId.value === sessionId.value) return "completed";
 	return undefined;
 });
+/** 会话流硬错误期间，索引里的状态不可信：压掉该行滞留状态，避免把错误显示成运行中。 */
+const staleStatusId = computed(() =>
+	chat.streamError.value && chat.connection.value !== "reconnecting" ? sessionId.value : null,
+);
+function distrustSessions(sessions: SessionSummary[]): SessionSummary[] {
+	const stale = staleStatusId.value;
+	if (!stale) return sessions;
+	return sessions.map((session) =>
+		session.session_id === stale
+			? { ...session, status: session.status === "archived" ? session.status : undefined }
+			: session,
+	);
+}
 watch([sessionId, () => chat.phase.value], (next, prev) => {
 	const [currentSession, phase] = next;
 	const [previousSession, previousPhase] = prev;
@@ -218,7 +232,7 @@ const groups = computed<SessionSidebarGroup[]>(() => {
 	return directory.snapshot.value.groups.map((group) => ({
 		id: group.slug,
 		name: agentName(group.slug),
-		sessions: group.sessions,
+		sessions: distrustSessions(group.sessions),
 		initialized: group.initialized,
 		loading: group.loading,
 		loadingMore: group.loadingMore,
@@ -229,7 +243,7 @@ const groups = computed<SessionSidebarGroup[]>(() => {
 	}));
 });
 const recent = computed<SessionSidebarPage>(() => ({
-	sessions: directory.snapshot.value.recent.sessions,
+	sessions: distrustSessions(directory.snapshot.value.recent.sessions),
 	initialized: directory.snapshot.value.recent.initialized,
 	loading: directory.snapshot.value.recent.loading,
 	loadingMore: directory.snapshot.value.recent.loadingMore,
@@ -520,7 +534,7 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 				:on-artifact-download="downloadArtifact"
 			/>
 		</template>
-		<template #sidebar="{ closeSidebar }">
+		<template #sidebar="{ closeSidebar, closeButton }">
 			<SessionSidebar
 				:groups="groups"
 				:recent="recent"
@@ -602,16 +616,7 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 						>
 							{{ branding.productName }}
 						</span>
-						<button
-							type="button"
-							:aria-label="t('workspace:sidebarLabel')"
-							class="grid size-8 shrink-0 place-items-center rounded-[var(--kit-radius-sm)] text-[var(--kit-fg-muted)] hover:bg-[var(--kit-bg-subtle)] hover:text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] md:hidden"
-							@click="closeSidebar"
-						>
-							<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-4">
-								<path d="m6 6 12 12M6 18 18 6" />
-							</svg>
-						</button>
+						<VNodeHost v-if="closeButton" :node="closeButton" />
 					</div>
 					<div class="shrink-0 px-3 pb-1">
 						<button
@@ -832,22 +837,25 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 				</template>
 				<template #empty>
 					<MessageListSkeleton v-if="sessionId && sessionDetails.snapshot.value.loading" />
-					<div v-else class="flex min-w-0 flex-1 flex-col items-center justify-center gap-4 py-6">
-						<EmptyState
-							:title="currentAgent.opening_remarks || t('workspace:chatWith', { name: currentAgent.display_name })"
-							:hint="t('workspace:chatHint')"
-						/>
-						<div v-if="currentAgent.suggested_prompts.length" class="flex flex-wrap justify-center gap-2">
-							<button
-								v-for="prompt in [...new Set(currentAgent.suggested_prompts)]"
-								:key="prompt"
-								type="button"
-								:disabled="quotaError !== null || processingFiles"
-								class="rounded-full border border-[var(--kit-border)] bg-[var(--kit-surface)] px-3 py-1.5 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)] hover:border-[var(--kit-accent)] hover:text-[var(--kit-fg)] disabled:cursor-not-allowed disabled:opacity-50"
-								@click="send(prompt)"
-							>
-								{{ prompt }}
-							</button>
+					<div v-else class="flex min-w-0 flex-1 items-center justify-center py-6">
+						<div class="w-full min-w-0">
+							<EmptyState
+								:title="currentAgent.opening_remarks || t('workspace:chatWith', { name: currentAgent.display_name })"
+								:hint="t('workspace:chatHint')"
+							/>
+							<Prompts
+								class="w-full"
+								wrap
+								:items="
+									[...new Set(currentAgent.suggested_prompts)].map((prompt) => ({
+										key: prompt,
+										label: prompt,
+										disabled: quotaError !== null || processingFiles,
+									}))
+								"
+								:class-names="{ list: 'justify-center' }"
+								:on-item-click="({ data }) => void send(data.key)"
+							/>
 						</div>
 					</div>
 				</template>
