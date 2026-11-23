@@ -100,6 +100,12 @@ export {
 	processingIndicatorStrings,
 } from "./components/processing-indicator/index.ts";
 export {
+	Prompts,
+	type PromptsItem,
+	type PromptsItemBase,
+	type PromptsSemantic,
+} from "./components/prompts/index.ts";
+export {
 	ClearButton,
 	LoadingButton,
 	SendButton,
