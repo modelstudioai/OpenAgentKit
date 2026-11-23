@@ -7,7 +7,7 @@ import type { ArtifactDescriptor, MemberView, SessionSummary } from "@openagentk
 import type { ChatProvider } from "@openagentkit/sdk/providers";
 import type { KitClient } from "@openagentkit/sdk/providers/kit";
 import type { SessionAction } from "@openagentkit/sdk/sessions";
-import { useSessionDetails, useSessionDirectory } from "@openagentkit/sdk/sessions/hooks-vue";
+import { useSessionDetails, useSessionDirectory, useSessionSearch } from "@openagentkit/sdk/sessions/hooks-vue";
 import { type QuotaExceededDetails, readQuotaExceeded } from "@openagentkit/sdk/usage";
 import {
 	type AttachmentItem,
@@ -139,6 +139,27 @@ function distrustSessions(sessions: SessionSummary[]): SessionSummary[] {
 			: session,
 	);
 }
+/**
+ * 后端会话检索：防抖、游标分页与取消都归 useSessionSearch（与 React 同一控制器）。
+ * 目录每页只取 10 条且分组按需展开，只做本地过滤会搜不到未加载的历史会话。
+ */
+const searchResults = useSessionSearch(search, { client: props.client });
+/** 防抖未落地时折叠成 loading 且不展示上一轮结果；行状态沿用目录口径清洗。 */
+const searchPage = computed<SessionSidebarPage | null>(() => {
+	if (!search.value.trim()) return null;
+	const state = searchResults.snapshot.value;
+	const pending = state.pending;
+	return {
+		sessions: pending ? [] : distrustSessions(state.sessions),
+		loading: pending || state.loading,
+		loadingMore: pending ? false : state.loadingMore,
+		hasMore: pending ? false : state.hasMore,
+		error: state.error,
+		onRetry: searchResults.retry,
+		onLoadMore: searchResults.loadMore,
+	};
+});
+
 watch([sessionId, () => chat.phase.value], (next, prev) => {
 	const [currentSession, phase] = next;
 	const [previousSession, previousPhase] = prev;
@@ -555,6 +576,7 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 				:editing="editing"
 				:action-error="actionError"
 				:search-input="search"
+				:search="searchPage"
 				:loading="directory.snapshot.value.loading"
 				:error="directory.snapshot.value.error"
 				:agent-name="agentName"

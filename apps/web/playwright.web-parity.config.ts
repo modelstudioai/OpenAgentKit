@@ -4,16 +4,16 @@ import { defineConfig, devices } from "@playwright/test";
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const apiBaseUrl = "http://localhost:8805";
 
-/** 附件挂载与 409 重试双跑：同一份服务端状态，React 与 Vue 依次跑同一条竞态流程。 */
+/** Vue 对齐专项双跑（匿名 mock）：附件挂载/409 重试与会话搜索等跨端合同，同一份服务端状态依次跑 React 与 Vue。 */
 export default defineConfig({
 	testDir: "./e2e",
-	testMatch: "attachment-retry.experience.spec.ts",
+	testMatch: /(^|\/)(attachment-retry|session-search)\.experience\.spec\.ts$/,
 	timeout: 90_000,
 	expect: { timeout: 20_000 },
 	workers: 1,
 	retries: 0,
 	reporter: [["list"]],
-	outputDir: `${root}/.scratch/attachment-retry-ui/output`,
+	outputDir: `${root}/.scratch/web-parity-ui/output`,
 	use: { ...devices["Desktop Chrome"], channel: "chrome", locale: "zh-CN", trace: "off" },
 	projects: [
 		{
@@ -40,7 +40,7 @@ export default defineConfig({
 				ADMIN_TOKEN: "e2e-token",
 				KIT_RATE_LIMIT_RPS: "100",
 				KIT_RATE_LIMIT_BURST: "200",
-				KIT_DATA_DIR: `${root}/.scratch/attachment-retry-ui/data-${process.pid}-${Date.now()}`,
+				KIT_DATA_DIR: `${root}/.scratch/web-parity-ui/data-${process.pid}-${Date.now()}`,
 				PORT: "8805",
 				KIT_CORS_ORIGINS: "http://localhost:5243,http://localhost:5245",
 			},
