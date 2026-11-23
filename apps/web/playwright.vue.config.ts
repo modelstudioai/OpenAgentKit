@@ -16,7 +16,7 @@ export default defineConfig({
 	retries: 0,
 	reporter: [["list"]],
 	use: { baseURL: "http://localhost:5175", locale: "zh-CN", trace: "on-first-retry" },
-	grep: /体验外壳|首屏 → 发送|回答复制|反馈富内容|点击示例问题|斜杠技能|切换 Agent|侧栏分区|断网一次|会话归档与删除|附件：上传暂存/,
+	grep: /体验外壳|首屏 → 发送|回答复制|反馈富内容|点击示例问题|斜杠技能|切换 Agent|侧栏分区|断网一次|会话归档与删除|工具审批|附件：上传暂存/,
 	projects: [{ name: "vue-desktop", use: { ...devices["Desktop Chrome"], channel } }],
 	webServer: [
 		{

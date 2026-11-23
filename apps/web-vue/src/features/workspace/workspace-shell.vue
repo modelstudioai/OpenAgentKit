@@ -24,6 +24,7 @@ import {
 	type SessionSidebarGroup,
 	type SessionSidebarPage,
 	type SessionSidebarSection,
+	ToolApprovalGroup,
 	Tooltip,
 } from "@openagentpack/kit-chat-ui-vue";
 import { computed, defineComponent, nextTick, ref, type VNode, watch } from "vue";
@@ -686,6 +687,14 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 						:artifact="part.artifact"
 						:on-open="openArtifact"
 						:on-download="downloadArtifact"
+					/>
+				</template>
+				<template v-if="chat.approvals.value.length > 0" #approvals>
+					<ToolApprovalGroup
+						:approvals="chat.approvals.value"
+						:on-decision="chat.submitApproval"
+						:on-refresh="chat.refreshApprovals"
+						:on-stop="() => void chat.stop()"
 					/>
 				</template>
 				<template #empty>
