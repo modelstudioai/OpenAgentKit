@@ -137,12 +137,13 @@ Operation 是长耗时控制面动作的异步任务记录，包含 `operation_i
 
 ## SSE 帧
 
-协议 2.x：`event: reset | ready | event | done | error | ping | operation`。SSE 标准 `id` 是
-Kit 的不透明传输游标，重连用 `?after=<cursor>`；业务 `event_id` 表示快照身份，同 ID
-新快照更新原消息。游标失效时 `reset → event* → ready` 原子重建，idle 后订阅继续保持。
+协议 3.x 支持 `reset`、`ready`、`event`、`done`、`error`、`ping` 和 `operation`。
+员工与管理员调试的 `/stream` 均订阅实时更新，`/events` 分页读取历史。SSE `id` 是续传游标，
+业务 `event_id` 标识快照。游标失效时收到 `reset → ready`，客户端再分页重建历史。
+普通回合结束后订阅继续保持。
 
 启动读取 `/api/config` 检查主版本，消息发送、Session stream 与审批 GET/POST 必须携带
-`x-kit-protocol-version: 2.0.0`，缺失或不兼容返回 409。控制面 Operation 流仍以 done 结束，
+`x-kit-protocol-version: 3.0.0`，缺失或不兼容返回 409。控制面 Operation 流仍以 done 结束，
 不使用 Session 的 reset 语义。详见仓库 `docs/protocol.md`。
 
 ## 工具审批

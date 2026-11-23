@@ -349,6 +349,12 @@ test("断网一次后自动重连续传", async ({ page }) => {
 	await page.getByRole("button", { name: "发送" }).click();
 	// 第一次流被掐断后，controller 退避重连，最终仍应拿到回答
 	await expect(page.getByText(/mock gateway 的流式回答/).first()).toBeVisible({ timeout: 30_000 });
+	const history = page.waitForResponse(
+		(response) => /\/api\/kit\/sessions\/[^/]+\/events\?/.test(response.url()) && response.ok(),
+	);
+	await page.reload();
+	await history;
+	await expect(page.getByText(/mock gateway 的流式回答/).first()).toBeVisible();
 });
 
 // 长内容必须完整保留；宽表和代码只在自身横滚，不挤宽阅读列、审批或输入框。

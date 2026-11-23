@@ -1,7 +1,8 @@
 # 前后端接入合同
 
 `ChatProvider` 有五个必需方法。复用 Kit 的公开事件和审批类型，确切声明见 [API 参考](api.md)。
-Provider 也可接收可选的 `transformMessage` 策略，两个内置工厂均使用 `transformSessionEvent`。
+标准事件接入还需要 `listEvents`，用于在会话订阅就绪后独立读取历史。Provider 也可接收
+可选的 `transformMessage` 策略，两个内置工厂均使用 `transformSessionEvent`。
 自定义展示时参考[消息转换](message-transform.md)，五个网络方法保持同一合同。
 
 多 Agent 历史通过两个可选操作接入。`listThreads` 返回 `SessionThreadsResponse`，
@@ -20,6 +21,7 @@ Provider 也可接收可选的 `transformMessage` 策略，两个内置工厂均
 | 方法 | 必需行为 |
 | --- | --- |
 | `stream(sessionId, options)` | 通过一条持久、可取消的订阅交付 SDK `SessionEvent` 快照和生命周期回调 |
+| `listEvents(sessionId, options)` | 纯实时接入的必需方法，升序分页返回 `EventsPage` |
 | `sendMessage(sessionId, body)` | 提交文本与 `client_message_id`，返回真实的 `session_id`、`accepted` 和 `event_ids` |
 | `interrupt(sessionId)` | 请求中断远端执行，返回 `{ interrupted }` |
 | `toolApprovals(sessionId)` | 查询当前待审批批次和调用，返回完整的冻结参数 |
@@ -29,7 +31,8 @@ Provider 也可接收可选的 `transformMessage` 策略，两个内置工厂均
 
 ## 订阅生命周期
 
-- `onReset()` 开始完整重建。交付所有权威快照后再调用 `onReady({ sessionId, replayed, cursor? })`。
+- 标准实时流的 `onReady({ sessionId, replayed, cursor? })` 表示订阅已建立。首次进入或收到 `onReset()` 时，
+  Controller 随后调用 `listEvents` 重建历史。原始流 Provider 在内部重建历史后通知就绪。
 - `onEvent(event, cursor?)` 交付一个 SDK `SessionEvent`。同一 `event_id` 的新快照替换已有正文，
   保留显式空值。
 - `onPing(t)` 报告传输仍活跃，心跳不进入业务事件集合。

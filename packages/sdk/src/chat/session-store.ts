@@ -1,5 +1,6 @@
 import { transformSessionEvent } from "../messages/merge.ts";
 import type { ChatMessage, MessageStatus, MessageTransformer } from "../messages/types.ts";
+import { snapshotFingerprint } from "../protocol/event-snapshots.ts";
 import {
 	type ArtifactDescriptor,
 	type AttachmentRef,
@@ -94,17 +95,6 @@ export interface SessionStore {
 const running = (phase: TurnPhase) => phase === "running" || phase === "requires_action" || phase === "stopping";
 const approvalKey = (approval: Pick<ToolApproval, "batch_id" | "call_id">) =>
 	JSON.stringify([approval.batch_id, approval.call_id]);
-
-/** JSON 对象的字段顺序不代表快照版本；数组顺序仍保留其业务含义。 */
-function snapshotFingerprint(event: SessionEvent): string {
-	return JSON.stringify(event, (_key, value: unknown) => {
-		if (value && typeof value === "object" && !Array.isArray(value))
-			return Object.fromEntries(
-				Object.entries(value).sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0)),
-			);
-		return value;
-	});
-}
 
 /** 私有有序 ledger 持有 SDK 快照；UI 是可重建投影，乐观消息保存在独立 overlay。 */
 export function createSessionStore(

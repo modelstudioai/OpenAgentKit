@@ -8,7 +8,7 @@ import { loadConfig } from "../src/config.ts";
 import { createKitServices } from "../src/services/index.ts";
 import { openDatabase } from "../src/store/db.ts";
 
-const headers = { "content-type": "application/json", "x-kit-protocol-version": "2.0.0", cookie: "kit_subject=owner" };
+const headers = { "content-type": "application/json", "x-kit-protocol-version": "3.0.0", cookie: "kit_subject=owner" };
 async function setup(text = "approval") {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-approval-"));
 	const services = createKitServices(

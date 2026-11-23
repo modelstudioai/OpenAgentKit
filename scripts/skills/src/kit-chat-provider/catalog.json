@@ -3,7 +3,7 @@
 		"name": "createSessionEventChatProvider",
 		"export": "createSessionEventChatProvider",
 		"module": "providers/session-events",
-		"description": "通过可配置的 HTTP 操作连接返回标准 SessionEvent 快照和公开生命周期帧的后端。",
+		"description": "通过可配置的历史分页和实时订阅接入标准 SessionEvent 后端。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/normalized-provider.ts",
 		"notes": [
@@ -17,7 +17,7 @@
 		"name": "SessionEventChatProviderOptions",
 		"export": "SessionEventChatProviderOptions",
 		"module": "providers/session-events",
-		"description": "注入 RequestClient，配置一个订阅操作、四个必需的请求操作、可选线程查询及消息转换策略。",
+		"description": "注入 RequestClient，配置必填 listEvents、实时订阅、四个业务操作及可选线程查询。",
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/normalized-provider.ts"
 	},
@@ -144,10 +144,19 @@
 		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
 		"example": "examples/normalized-provider.ts",
 		"notes": [
-			"历史和实时更新完成权威对账后才报告 ready。",
+			"标准事件流的 ready 表示实时订阅就绪，Controller 通过 listEvents 读取历史。",
 			"由控制器重连，续传使用不透明的更新游标。",
 			"意外 EOF 属于可恢复的传输故障，业务完成由会话状态决定。"
 		]
+	},
+	{
+		"name": "ChatProvider.listEvents",
+		"export": "ChatProvider",
+		"member": "listEvents",
+		"module": "providers",
+		"description": "纯实时接入的历史分页操作，按升序返回 EventsPage。",
+		"doc": "apps/storybook/content/docs/sdk/custom-backend.mdx",
+		"example": "examples/backend-http.ts"
 	},
 	{
 		"name": "ChatProvider.sendMessage",

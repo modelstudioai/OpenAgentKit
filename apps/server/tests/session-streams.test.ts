@@ -30,6 +30,24 @@ async function untilReady(iterator: AsyncGenerator<SseFrame>) {
 }
 
 describe("持久 Session 订阅", () => {
+	it("连接就绪边界收到的实时事件在 ready 后交付", async () => {
+		const gateway = createMockGateway();
+		const session = await gateway.createSession({ agentId: "a" });
+		gateway.streamEvents = async function* (_id, options) {
+			yield event("early", "刚到达");
+			options?.onReady?.();
+			await new Promise<void>((resolve) => options?.signal?.addEventListener("abort", () => resolve(), { once: true }));
+		};
+		const streams = createSessionStreams(gateway, createEventBufferRegistry(), 1000);
+		const iterator = streams.frames(session.session_id, {});
+		expect((await iterator.next()).value).toMatchObject({
+			type: "ready",
+			data: { cursor: expect.stringMatching(/:0$/) },
+		});
+		expect((await iterator.next()).value).toMatchObject({ type: "event", data: { event_id: "early" } });
+		await iterator.return(undefined);
+	});
+
 	it("首条业务事件前即可 ready；多个客户端共用连接，最后退出才取消", async () => {
 		const gateway = createMockGateway();
 		const session = await gateway.createSession({ agentId: "a" });
@@ -65,10 +83,11 @@ describe("持久 Session 订阅", () => {
 		expect(buffers.size()).toBe(0);
 	});
 
-	it("全分页历史与实时交叉，完成快照不会被迟到部分降级", async () => {
+	it("发送核验分页阻塞时 ready 和实时事件照常到达，历史补读不推进实时游标", async () => {
 		const gateway = createMockGateway();
 		const session = await gateway.createSession({ agentId: "a" });
 		const historyGate = latch();
+		const emit = latch();
 		gateway.listEvents = vi.fn(async (_id, options) => {
 			if (!options?.pageToken) {
 				await historyGate.promise;
@@ -78,23 +97,77 @@ describe("持久 Session 订阅", () => {
 		});
 		gateway.streamEvents = async function* (_id, options) {
 			options?.onReady?.();
+			await emit.promise;
 			yield event("same", "你");
-			historyGate.release();
 			await new Promise<void>((resolve) => options?.signal?.addEventListener("abort", () => resolve(), { once: true }));
 		};
-		const streams = createSessionStreams(gateway, createEventBufferRegistry(), 1000);
+		const buffers = createEventBufferRegistry();
+		const streams = createSessionStreams(gateway, buffers, 1000);
 		const iterator = streams.frames(session.session_id, {});
-		const frames = await untilReady(iterator);
-		expect(frames.map((frame) => frame.type)).toEqual(["reset", "event", "event", "ready"]);
-		expect(frames.filter((frame) => frame.type === "event").map((frame) => frame.data.content)).toEqual([
-			[{ type: "text", text: "你好" }],
-			[{ type: "text", text: "第二页" }],
-		]);
+		expect((await untilReady(iterator)).map(({ type }) => type)).toEqual(["ready"]);
+		expect(gateway.listEvents).not.toHaveBeenCalled();
+		const send = vi.fn(async () => buffers.get(session.session_id)?.events);
+		const sending = streams.use(session.session_id, send);
+		await vi.waitFor(() => expect(gateway.listEvents).toHaveBeenCalledOnce());
+		emit.release();
+		const live = (await iterator.next()).value;
+		expect(live).toMatchObject({ type: "event", data: { content: [{ type: "text", text: "你" }] } });
+		expect(send).not.toHaveBeenCalled();
+		historyGate.release();
+		await expect(sending).resolves.toEqual([event("same", "你好", true), event("second", "第二页", true)]);
 		expect(gateway.listEvents).toHaveBeenLastCalledWith(
 			session.session_id,
 			expect.objectContaining({ pageToken: "opaque-token" }),
 		);
+		if (live?.type !== "event") throw new Error("缺少实时事件");
+		const observer = streams.frames(session.session_id, { after: live.cursor });
+		expect(await untilReady(observer)).toMatchObject([{ type: "ready", data: { cursor: live.cursor, replayed: 0 } }]);
+		await observer.return(undefined);
 		await iterator.return(undefined);
+	});
+
+	it("内部历史先读到的事件仍可实时交付和续传，相同实时快照只投递一次", async () => {
+		const gateway = createMockGateway();
+		const { session_id: id } = await gateway.createSession({ agentId: "a" });
+		const emit = latch();
+		const delayed = event("delayed", "已持久化但未推送", true);
+		const following = event("following", "后续消息", true);
+		vi.spyOn(gateway, "listEvents")
+			.mockResolvedValueOnce({ events: [], next_page_token: null })
+			.mockResolvedValue({ events: [delayed], next_page_token: null });
+		gateway.streamEvents = async function* (_id, options) {
+			options?.onReady?.();
+			await emit.promise;
+			yield delayed;
+			yield delayed;
+			yield following;
+			if (!options?.signal?.aborted)
+				await new Promise<void>((resolve) =>
+					options?.signal?.addEventListener("abort", () => resolve(), { once: true }),
+				);
+		};
+		const streams = createSessionStreams(gateway, createEventBufferRegistry(), 1000);
+		const iterator = streams.frames(id, {});
+		try {
+			const ready = (await untilReady(iterator)).at(-1);
+			if (ready?.type !== "ready" || !ready.data.cursor) throw new Error("缺少就绪游标");
+			expect((await gateway.listEvents(id)).events).toEqual([]);
+			await streams.use(id, async () => undefined);
+			emit.release();
+			const first = (await iterator.next()).value;
+			const second = (await iterator.next()).value;
+			expect(first).toMatchObject({ type: "event", data: delayed });
+			expect(second).toMatchObject({ type: "event", data: following });
+			const resumed = streams.frames(id, { after: ready.data.cursor });
+			try {
+				expect(await untilReady(resumed)).toMatchObject([first, second, { type: "ready", data: { replayed: 2 } }]);
+			} finally {
+				await resumed.return(undefined);
+			}
+		} finally {
+			emit.release();
+			await iterator.return(undefined);
+		}
 	});
 
 	it("运行中最后订阅者离开后继续跟踪，终态回写并释放上游", async () => {
@@ -161,6 +234,7 @@ describe("持久 Session 订阅", () => {
 		const streams = createSessionStreams(gateway, buffers, 1000, { onStatus });
 		const iterator = streams.frames(session.session_id, {});
 		await untilReady(iterator);
+		await streams.use(session.session_id, async () => undefined);
 		const buffer = buffers.ensure(session.session_id);
 		streams.acceptTurn(session.session_id, {
 			eventIds: ["cm-detached"],
@@ -198,7 +272,7 @@ describe("持久 Session 订阅", () => {
 		expect(send).not.toHaveBeenCalled();
 	});
 
-	it("同 ID 缓冲状态与历史无版本证据时拒绝 ready 和发送", async () => {
+	it("同 ID 状态与历史冲突时拒绝发送，独立实时订阅仍就绪", async () => {
 		const gateway = createMockGateway();
 		const session = await gateway.createSession({ agentId: "a" });
 		const read = latch();
@@ -222,10 +296,10 @@ describe("持久 Session 订阅", () => {
 		const first = iterator.next();
 		const send = vi.fn(async () => true);
 		const rejected = expect(streams.use(session.session_id, send)).rejects.toMatchObject({ code: "provider_error" });
-		expect((await first).value).toMatchObject({ type: "error", data: { retryable: false } });
+		expect((await first).value).toMatchObject({ type: "ready" });
 		await rejected;
 		expect(send).not.toHaveBeenCalled();
-		expect((await iterator.next()).done).toBe(true);
+		await iterator.return(undefined);
 	});
 
 	it("缓冲中的明确完成快照可推进未完成历史并允许发送", async () => {
@@ -243,14 +317,12 @@ describe("持久 Session 订阅", () => {
 			read.release();
 			await new Promise<void>((resolve) => options?.signal?.addEventListener("abort", () => resolve(), { once: true }));
 		};
-		const streams = createSessionStreams(gateway, createEventBufferRegistry(), 1000);
+		const buffers = createEventBufferRegistry();
+		const streams = createSessionStreams(gateway, buffers, 1000);
 		const iterator = streams.frames(session.session_id, {});
-		const frames = await untilReady(iterator);
-		expect(frames.filter((frame) => frame.type === "event").map((frame) => frame.data.content)).toEqual([
-			[{ type: "text", text: "完整正文" }],
-		]);
-		const send = vi.fn(async () => true);
-		await expect(streams.use(session.session_id, send)).resolves.toBe(true);
+		await untilReady(iterator);
+		const send = vi.fn(async () => buffers.get(session.session_id)?.events);
+		await expect(streams.use(session.session_id, send)).resolves.toEqual([event("answer", "完整正文", true)]);
 		expect(send).toHaveBeenCalledOnce();
 		await iterator.return(undefined);
 	});
@@ -280,15 +352,16 @@ describe("持久 Session 订阅", () => {
 		expect(wasAborted).toBe(true);
 	});
 
-	it("初始化期间取消释放缓存，迟到的历史结果不能重建正文", async () => {
+	it("查询会话期间取消，迟到结果不会创建上游流", async () => {
 		const gateway = createMockGateway();
 		const session = await gateway.createSession({ agentId: "a" });
 		const reading = latch();
 		const finish = latch();
-		gateway.listEvents = async () => {
+		const upstream = vi.spyOn(gateway, "streamEvents");
+		gateway.getSession = async () => {
 			reading.release();
 			await finish.promise;
-			return { events: [event("late", "不应留存")], next_page_token: null };
+			return session;
 		};
 		const buffers = createEventBufferRegistry();
 		const abort = new AbortController();
@@ -299,6 +372,7 @@ describe("持久 Session 订阅", () => {
 		expect((await first).done).toBe(true);
 		finish.release();
 		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(upstream).not.toHaveBeenCalled();
 		expect(buffers.size()).toBe(0);
 	});
 
@@ -358,25 +432,29 @@ describe("恢复与资源边界", () => {
 		},
 	);
 
-	it("reset 回放中断后仍完整回放；缓存最新快照的序号不影响原子替换", async () => {
+	it("有效游标补发实时变更，过期游标只发 reset 和 ready", async () => {
 		const gateway = createMockGateway();
 		const session = await gateway.createSession({ agentId: "a" });
+		const emit = latch();
+		gateway.streamEvents = async function* (_id, options) {
+			options?.onReady?.();
+			await emit.promise;
+			yield event("a", "你好", true);
+			await new Promise<void>((resolve) => options?.signal?.addEventListener("abort", () => resolve(), { once: true }));
+		};
 		const buffers = createEventBufferRegistry();
 		const streams = createSessionStreams(gateway, buffers, 1000);
 		const keeper = streams.frames(session.session_id, {});
-		await untilReady(keeper);
-		buffers.append(session.session_id, event("a", "你"));
-		buffers.append(session.session_id, event("b", "其他"));
-		buffers.append(session.session_id, event("a", "你好", true));
-		const interrupted = streams.frames(session.session_id, { after: "expired:1" });
-		expect((await interrupted.next()).value?.type).toBe("reset");
-		expect((await interrupted.next()).value?.type).toBe("event");
-		await interrupted.return(undefined);
-		const resumed = streams.frames(session.session_id, { after: "expired:1" });
-		const frames = await untilReady(resumed);
-		expect(frames.filter((frame) => frame.type === "event").map((frame) => frame.data.event_id)).toEqual(["a", "b"]);
-		expect(frames.at(-1)).toMatchObject({ type: "ready", data: { cursor: buffers.cursor(session.session_id) } });
+		const ready = (await untilReady(keeper)).at(-1);
+		if (ready?.type !== "ready" || !ready.data.cursor) throw new Error("缺少就绪游标");
+		emit.release();
+		const live = (await keeper.next()).value;
+		const resumed = streams.frames(session.session_id, { after: ready.data.cursor });
+		expect(await untilReady(resumed)).toMatchObject([live as SseFrame, { type: "ready", data: { replayed: 1 } }]);
 		await resumed.return(undefined);
+		const expired = streams.frames(session.session_id, { after: "expired:1" });
+		expect((await untilReady(expired)).map(({ type }) => type)).toEqual(["reset", "ready"]);
+		await expired.return(undefined);
 		await keeper.return(undefined);
 	});
 
@@ -384,9 +462,16 @@ describe("恢复与资源边界", () => {
 		const gateway = createMockGateway();
 		const session = await gateway.createSession({ agentId: "a" });
 		const buffers = createEventBufferRegistry();
+		const emit = latch();
+		gateway.streamEvents = async function* (_id, options) {
+			options?.onReady?.();
+			await emit.promise;
+			yield event("huge", "a".repeat(8 * 1024 * 1024));
+			await new Promise<void>((resolve) => options?.signal?.addEventListener("abort", () => resolve(), { once: true }));
+		};
 		const iterator = createSessionStreams(gateway, buffers, 1000).frames(session.session_id, {});
 		await untilReady(iterator);
-		buffers.append(session.session_id, event("huge", "a".repeat(8 * 1024 * 1024)));
+		emit.release();
 		expect((await iterator.next()).value).toMatchObject({ type: "error", data: { retryable: true } });
 		await iterator.return(undefined);
 	});
@@ -443,6 +528,7 @@ describe("索引状态回调", () => {
 		const streams = createSessionStreams(gateway, createEventBufferRegistry(), 1000, { onStatus });
 		const iterator = streams.frames(session.session_id, {});
 		await untilReady(iterator);
+		await streams.use(session.session_id, async () => undefined);
 		await vi.waitFor(() => expect(onStatus).toHaveBeenCalledTimes(1));
 		expect(onStatus).toHaveBeenCalledWith(session.session_id, "idle");
 		await iterator.return(undefined);

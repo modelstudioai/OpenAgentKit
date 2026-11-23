@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { KitError, type SessionEvent, type ToolApprovalsResponse } from "../protocol/index.ts";
+import { type EventsPage, KitError, type SessionEvent, type ToolApprovalsResponse } from "../protocol/index.ts";
 import type { ChatProvider, StreamSessionOptions } from "../providers/contract.ts";
 import { createChatController } from "./controller.ts";
 
-function fixture() {
+function fixture(listEvents?: ChatProvider["listEvents"]) {
 	let streamOptions: StreamSessionOptions = {};
 	let finish: () => void = () => undefined;
 	let fail: (error: unknown) => void = () => undefined;
@@ -20,6 +20,7 @@ function fixture() {
 	const submitToolApproval = vi.fn(async () => ({ session_id: "s1", accepted: true, event_ids: ["approval-1"] }));
 	const client = {
 		stream,
+		...(listEvents ? { listEvents } : {}),
 		sendMessage,
 		interrupt: vi.fn(async () => ({ interrupted: true })),
 		toolApprovals: vi.fn(async () => approvals),
@@ -47,6 +48,147 @@ function fixture() {
 		},
 	};
 }
+
+const historyMessage = (eventId: string, text: string, status = "completed"): SessionEvent => ({
+	event_id: eventId,
+	type: "message",
+	role: "assistant",
+	content: [{ type: "text", text }],
+	metadata: { event_status: status },
+});
+
+describe("独立历史与实时订阅", () => {
+	it("先连实时流，完整读取历史后一次性合并交叉到达的快照", async () => {
+		let finishPage!: (page: EventsPage) => void;
+		const secondPage = new Promise<EventsPage>((resolve) => {
+			finishPage = resolve;
+		});
+		const list = vi
+			.fn<NonNullable<ChatProvider["listEvents"]>>()
+			.mockResolvedValueOnce({ data: [historyMessage("a", "旧消息")], next_page_token: "opaque-next" })
+			.mockReturnValueOnce(secondPage);
+		const f = fixture(list);
+		const connected = f.controller.connect();
+		expect(list).not.toHaveBeenCalled();
+		f.ready("epoch:0");
+		await vi.waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+		expect(list).toHaveBeenLastCalledWith("s1", expect.objectContaining({ pageToken: "opaque-next", limit: 100 }));
+		f.event(historyMessage("b", "完整快照"), "epoch:1");
+		f.event(historyMessage("c", "新消息"), "epoch:2");
+		expect(f.controller.getSnapshot()).toMatchObject({ messages: [], canSend: false });
+		finishPage({ data: [historyMessage("b", "部分", "in_progress")], next_page_token: null });
+		await connected;
+		expect(f.controller.getSnapshot()).toMatchObject({
+			canSend: true,
+			lastCursor: "epoch:2",
+			messages: [{ parts: [expect.objectContaining({ text: "旧消息完整快照新消息" })] }],
+		});
+		f.controller.dispose();
+	});
+
+	it("有效游标续传，reset 后重新分页，期间保留原有消息", async () => {
+		let finishPage!: (page: EventsPage) => void;
+		const nextHistory = new Promise<EventsPage>((resolve) => {
+			finishPage = resolve;
+		});
+		const list = vi
+			.fn<NonNullable<ChatProvider["listEvents"]>>()
+			.mockResolvedValueOnce({ data: [historyMessage("a", "历史")], next_page_token: null })
+			.mockReturnValueOnce(nextHistory);
+		const f = fixture(list);
+		const connected = f.controller.connect();
+		f.ready("epoch:0");
+		await connected;
+		f.event(historyMessage("b", "实时"), "epoch:1");
+		const error = new KitError("provider_error", "断流", { retryable: true });
+		f.fail(error);
+		await vi.waitFor(() => expect(f.stream).toHaveBeenCalledTimes(2));
+		expect(f.stream).toHaveBeenLastCalledWith("s1", expect.objectContaining({ after: "epoch:1" }));
+		f.ready("epoch:1");
+		expect(list).toHaveBeenCalledOnce();
+		f.fail(error);
+		await vi.waitFor(() => expect(f.stream).toHaveBeenCalledTimes(3));
+		f.reset();
+		f.ready("next:0");
+		expect(f.controller.getSnapshot()).toMatchObject({
+			canSend: false,
+			messages: [{ parts: [expect.objectContaining({ text: "历史实时" })] }],
+		});
+		finishPage({ data: [historyMessage("c", "补齐后的历史")], next_page_token: null });
+		await f.controller.connect();
+		expect(list).toHaveBeenCalledTimes(2);
+		expect(f.controller.getSnapshot()).toMatchObject({
+			lastCursor: "next:0",
+			messages: [{ parts: [expect.objectContaining({ text: "补齐后的历史" })] }],
+		});
+		expect(f.sendMessage).not.toHaveBeenCalled();
+		f.controller.dispose();
+	});
+
+	it("关闭会话同时取消历史与实时，已发出的迟到页不提交", async () => {
+		let finishPage!: (page: EventsPage) => void;
+		const page = new Promise<EventsPage>((resolve) => {
+			finishPage = resolve;
+		});
+		const list = vi.fn<NonNullable<ChatProvider["listEvents"]>>().mockReturnValue(page);
+		const f = fixture(list);
+		const rejected = expect(f.controller.connect()).rejects.toBeDefined();
+		f.ready("epoch:0");
+		const signal = list.mock.calls[0]?.[1]?.signal;
+		expect(signal?.aborted).toBe(false);
+		f.controller.dispose();
+		await rejected;
+		expect(signal?.aborted).toBe(true);
+		expect(f.stream.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+		finishPage({ data: [historyMessage("late", "迟到")], next_page_token: null });
+		await Promise.resolve();
+		expect(f.controller.getSnapshot().messages).toEqual([]);
+	});
+
+	it("历史分页失败不会发布半份历史，退避时重新订阅并分页", async () => {
+		const list = vi
+			.fn<NonNullable<ChatProvider["listEvents"]>>()
+			.mockResolvedValueOnce({ data: [historyMessage("incomplete", "半份历史")], next_page_token: "next" })
+			.mockRejectedValueOnce(new KitError("provider_error", "下一页暂不可用", { retryable: true }))
+			.mockResolvedValueOnce({ data: [historyMessage("complete", "完整历史")], next_page_token: null });
+		const f = fixture(list);
+		const connected = f.controller.connect();
+		f.ready("first:0");
+		await vi.waitFor(() => expect(f.stream).toHaveBeenCalledTimes(2));
+		expect(f.stream.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+		expect(f.controller.getSnapshot()).toMatchObject({ messages: [], canSend: false, lastCursor: null });
+		f.ready("next:0");
+		await connected;
+		expect(f.controller.getSnapshot()).toMatchObject({
+			lastCursor: "next:0",
+			messages: [{ parts: [expect.objectContaining({ text: "完整历史" })] }],
+		});
+		f.controller.dispose();
+	});
+
+	it("历史分页从实时 ready 开始计时，超时取消本次历史读取和订阅", async () => {
+		vi.useFakeTimers();
+		const list = vi.fn<NonNullable<ChatProvider["listEvents"]>>(() => new Promise(() => {}));
+		const f = fixture(list);
+		const connected = f.controller.connect().catch(() => undefined);
+		try {
+			await vi.advanceTimersByTimeAsync(20_000);
+			f.ready("epoch:0");
+			const signal = list.mock.calls[0]?.[1]?.signal;
+			expect(signal).toBeDefined();
+			await vi.advanceTimersByTimeAsync(29_999);
+			expect(signal?.aborted).toBe(false);
+			await vi.advanceTimersByTimeAsync(1);
+			expect(signal?.aborted).toBe(true);
+			expect(f.stream.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+			expect(f.controller.getSnapshot().streamError?.message).toBe("读取会话历史超时");
+		} finally {
+			f.controller.dispose();
+			await connected;
+			vi.useRealTimers();
+		}
+	});
+});
 const pending: ToolApprovalsResponse = {
 	requires_action: true,
 	batch_id: "b1",
