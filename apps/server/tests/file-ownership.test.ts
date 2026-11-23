@@ -166,4 +166,61 @@ describe("文件授权与成员隔离", () => {
 		).toBe(404);
 		expect(download).not.toHaveBeenCalled();
 	});
+
+	it("Agent 沙箱产物不进事件流：凭本人会话的 Files 清单放行，并补真实文件名与 MIME", async () => {
+		const { app, services } = await makeApp();
+		const sessionId = await sessionIdOf(await createSession(app));
+		const otherSessionId = await sessionIdOf(await createSession(app, other));
+		const artifact = { file_id: "file_agent_pdf", filename: "使用指南.pdf", content_type: "application/pdf", size: 9 };
+		vi.spyOn(services.gateway, "listEvents").mockResolvedValue({ events: [], next_page_token: null });
+		const listed = vi
+			.spyOn(services.gateway, "listSessionFiles")
+			.mockImplementation(async (id) => (id === sessionId ? [artifact] : []));
+		// Provider 元数据查不到时的退化响应：裸 file_id 与 octet-stream，前端无法按类型预览。
+		const download = vi.spyOn(services.gateway, "downloadFile").mockResolvedValue({
+			body: new TextEncoder().encode("pdf bytes"),
+			contentType: "application/octet-stream",
+			filename: artifact.file_id,
+		});
+		const url = `/api/kit/files/${artifact.file_id}/download`;
+		const allowed = await app.request(`${url}?session_id=${sessionId}`, { headers: headersFor(owner) });
+		expect(allowed.status).toBe(200);
+		expect(await allowed.text()).toBe("pdf bytes");
+		expect(allowed.headers.get("content-type")).toBe("application/pdf");
+		expect(allowed.headers.get("content-disposition")).toContain(
+			`filename*=UTF-8''${encodeURIComponent(artifact.filename)}`,
+		);
+		listed.mockClear();
+		download.mockClear();
+		// 归属仍是唯一凭据：他人会话与清单外的 file_id 都不查询 Provider 文件正文。
+		expect((await app.request(`${url}?session_id=${sessionId}`, { headers: headersFor(other) })).status).toBe(404);
+		expect((await app.request(`${url}?session_id=${otherSessionId}`, { headers: headersFor(owner) })).status).toBe(404);
+		expect(
+			(
+				await app.request(`/api/kit/files/file_not_in_session/download?session_id=${sessionId}`, {
+					headers: headersFor(owner),
+				})
+			).status,
+		).toBe(404);
+		expect((await app.request(url, { headers: headersFor(owner) })).status).toBe(404);
+		expect(download).not.toHaveBeenCalled();
+	});
+
+	it("会话产物清单只对本人会话可见", async () => {
+		const { app, services } = await makeApp();
+		const sessionId = await sessionIdOf(await createSession(app));
+		const otherSessionId = await sessionIdOf(await createSession(app, other));
+		const listed = vi
+			.spyOn(services.gateway, "listSessionFiles")
+			.mockResolvedValue([
+				{ file_id: "file_agent_pdf", filename: "使用指南.pdf", content_type: "application/pdf", size: 9 },
+			]);
+		const own = await app.request(`/api/kit/sessions/${sessionId}/artifacts`, { headers: headersFor(owner) });
+		expect(own.status).toBe(200);
+		expect((await own.json()) as unknown).toEqual({ data: [expect.objectContaining({ file_id: "file_agent_pdf" })] });
+		expect(
+			(await app.request(`/api/kit/sessions/${otherSessionId}/artifacts`, { headers: headersFor(owner) })).status,
+		).toBe(404);
+		expect(listed).toHaveBeenCalledTimes(1);
+	});
 });

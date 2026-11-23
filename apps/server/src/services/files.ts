@@ -45,17 +45,30 @@ export function createFileService(deps: {
 			const info = await gateway.fileStatus(fileId);
 			return { file_id: fileId, status: info.status ?? null, available: info.available };
 		},
+		/**
+		 * 下载鉴权：本人上传附件、事件流交付文件，或本人会话的 Agent 产物（Provider Files `scope=session`）。
+		 * Session ID 本身不是文件访问凭据，必须先确认会话归属，再取任一数据面证据；三条路径都不成立即 404。
+		 */
 		async download(subjectId: string, fileId: string, sessionId?: string, purpose: SessionPurpose = "experience") {
 			if (await store.isUploadedBy(fileId, subjectId, purpose)) return gateway.downloadFile(fileId);
-			// Session ID 本身不是文件访问凭据：先确认会话归属，再从 Provider 完整历史验证交付文件。
 			if (!sessionId || !(await sessionIndex.owns(sessionId, subjectId, purpose))) {
 				throw new KitError("not_found", "文件不存在");
 			}
 			const events = await readSessionHistory(gateway, sessionId);
-			if (!events.some((event) => artifactsOf(event).some((artifact) => artifact.file_id === fileId))) {
-				throw new KitError("not_found", "文件不存在");
+			if (events.some((event) => artifactsOf(event).some((artifact) => artifact.file_id === fileId))) {
+				return gateway.downloadFile(fileId);
 			}
-			return gateway.downloadFile(fileId);
+			// Agent 在沙箱内生成的产物只登记在 Provider Files 的会话目录，不进入事件流，按清单放行。
+			const artifact = (await gateway.listSessionFiles(sessionId)).find((file) => file.file_id === fileId);
+			if (!artifact) throw new KitError("not_found", "文件不存在");
+			const file = await gateway.downloadFile(fileId);
+			// 产物不在上传目录，downloadFile 查不到元数据时会退化成 octet-stream 与裸 file_id，
+			// 用刚校验过的会话清单补真实文件名与 MIME，前端才能按类型预览。
+			return {
+				...file,
+				...(artifact.content_type ? { contentType: artifact.content_type } : {}),
+				...(artifact.filename ? { filename: artifact.filename } : {}),
+			};
 		},
 	};
 }

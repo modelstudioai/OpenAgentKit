@@ -365,7 +365,7 @@ export function registerDebugRoutes(app: OpenAPIHono<AppEnv>) {
 			},
 			responses: {
 				200: {
-					description: "本人调试上传或调试会话已交付文件；校验用途、归属与 Provider 历史",
+					description: "本人调试上传或调试会话已交付文件与产物；校验用途、归属与 Provider 证据",
 					content: { "application/octet-stream": { schema: z.string() } },
 				},
 				...errors,

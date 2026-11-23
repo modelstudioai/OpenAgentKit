@@ -100,7 +100,7 @@
 | `sessions.tool-approvals.respond` | `POST /api/kit/sessions/:sessionId/tool-approvals` | `{ batch_id, call_id, result: allow/deny, deny_message? }`；单项决策，原因最多 200 字符；实时校验，过期/重复 409。本地成员 allow 还检查该轮开始月的限额，deny 不受额度阻止；提交成功不等于执行成功 | ✅ |
 | `files.upload` | `POST /api/kit/files` | multipart（字段名 `file`）上传附件 → `{ file_id, filename, size }`；记录当前 subjectId，只有本人可挂载；黑名单扩展名（`.mjs`，实测 provider 415 拒绝）返回 400 `invalid_request`；超过 `KIT_UPLOAD_MAX_BYTES`（默认 20 MiB）返回 413 | ✅ |
 | `files.status` | `GET /api/kit/files/:fileId` | 本人上传附件的安全扫描状态 → `{ file_id, status, available }`（`checking → available`，实测 15~20s）；越权 / 非本人上传 404。客户端在上传后轮询到 `available` 再发送，服务端发送前的扫描闸门保留为兜底 | ✅ |
-| `files.download` | `GET /api/kit/files/:fileId/download` | 鉴权代理下载：本人上传文件可直接下载；Artifact 须带 `?session_id=`，验证本人 Session 的 Provider 历史确有该文件；越权 / 无归属证据 404，屏蔽预签名 URL | ✅ |
+| `files.download` | `GET /api/kit/files/:fileId/download` | 鉴权代理下载：本人上传文件可直接下载；Artifact 须带 `?session_id=`，验证本人 Session 的 Provider 事件历史确有该文件，或它出现在该会话的 Files 产物清单（`scope_id=sessionId`）中；越权 / 无归属证据 404，屏蔽预签名 URL | ✅ |
 | `plaza.get` | `GET /api/kit/plaza` | 广场视图：已上架条目 + 每条目 `stats{mine,turns_30d,last_used_at}` + 顶层 `featured[]`/`popular[]`/`categories[]`；`?category=&q=` 过滤；popular 无用量数据时回退 ordering | ✅ |
 | `quota.get` | `GET /api/kit/quota` | 匿名/JWT 的兼容月度 Credits；本地成员只返回 Turn 运营计数，Credits 限额为不限量，应使用 `usageLimits.get` 查询有效限额；`?days=`（1..400，缺省 30）指定 `daily` 逐日 Turns 窗口（年维度热力一次查询近 53 周） | ✅ |
 | `usageLimits.get` | `GET /api/kit/usage-limits` | 当前本地成员 `{data: MemberUsageLimitView}`（含 `daily` 逐日增量供每日用量热力及 `day_state` 今日限额状态；`?days=`（1..400，缺省 30）指定 daily 窗口长度，含今天 UTC 零值补全）；匿名/JWT 返回 `{data:null}`，失败不得解释为非成员；禁止缓存 | ✅ |

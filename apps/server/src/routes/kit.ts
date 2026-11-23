@@ -586,7 +586,7 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 			},
 			responses: {
 				200: {
-					description: "本人上传的附件，或本人会话历史中已交付的文件（须携带 session_id）",
+					description: "本人上传的附件，或本人会话已交付的文件与 Agent 产物（须携带 session_id）",
 					content: { "application/octet-stream": { schema: z.string() } },
 				},
 				...errors,

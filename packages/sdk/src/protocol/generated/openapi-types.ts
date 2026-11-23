@@ -3445,7 +3445,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description 本人上传的附件，或本人会话历史中已交付的文件（须携带 session_id） */
+                /** @description 本人上传的附件，或本人会话已交付的文件与 Agent 产物（须携带 session_id） */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -21622,7 +21622,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description 本人调试上传或调试会话已交付文件；校验用途、归属与 Provider 历史 */
+                /** @description 本人调试上传或调试会话已交付文件与产物；校验用途、归属与 Provider 证据 */
                 200: {
                     headers: {
                         [name: string]: unknown;
