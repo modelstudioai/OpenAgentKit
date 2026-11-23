@@ -11,6 +11,7 @@ export default defineConfig({
 	testDir: "./e2e",
 	// 成员登录有独立配置；此处继续验证显式匿名演示模式。
 	testIgnore: [
+		"**/vue-anchor.spec.ts",
 		"**/member-login.spec.ts",
 		"**/member-usage.spec.ts",
 		"**/member-usage-flow.spec.ts",

@@ -660,6 +660,7 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 				v-else-if="currentAgent"
 				:messages="chat.messages.value"
 				variant="workspace"
+				anchor-rail
 				:turn-running="chat.turnRunning.value"
 				:sending="sending"
 				:can-send="sessionId ? chat.canSend.value : true"
