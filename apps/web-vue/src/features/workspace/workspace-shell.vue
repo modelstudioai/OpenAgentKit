@@ -30,6 +30,8 @@ import { useTranslation } from "../../i18n/index.ts";
 import type { Branding } from "../../lib/branding.ts";
 import { createArtifactHost, resolveHostCapabilities } from "../../lib/host.ts";
 import { useRoute } from "../../lib/use-route.ts";
+import LanguageSwitcher from "../auth/language-switcher.vue";
+import MemberAccount from "../auth/member-account.vue";
 import ArtifactCard from "../chat/artifact-card.vue";
 import AsidePanel from "../chat/aside-panel.vue";
 import ExperienceSender from "../chat/experience-sender.vue";
@@ -528,29 +530,9 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 				</template>
 				<template #footer>
 					<div class="flex shrink-0 items-center gap-1 border-t border-[var(--kit-border-subtle)] px-3 py-2">
-						<div class="flex min-w-0 items-center gap-2">
-							<span
-								aria-hidden="true"
-								class="grid size-7 shrink-0 place-items-center rounded-full border border-[var(--kit-border)] bg-[var(--kit-surface)] text-[length:var(--kit-text-meta)] font-semibold text-[var(--kit-fg-muted)]"
-							>
-								{{ (member?.display_name ?? "U").charAt(0).toUpperCase() }}
-							</span>
-							<span class="min-w-0 max-w-28 truncate text-[length:var(--kit-text-label)] font-medium">
-								{{ member?.display_name ?? branding.productName }}
-							</span>
-						</div>
-						<button
-							type="button"
-							:aria-label="t('auth:logout')"
-							:title="t('auth:logout')"
-							class="grid size-8 shrink-0 place-items-center rounded-[var(--kit-radius-sm)] text-[var(--kit-fg-muted)] hover:bg-[var(--kit-nav-active)] hover:text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
-							@click="emit('logout')"
-						>
-							<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-4">
-								<path d="M9 18l6-6-6-6M15 12H3" stroke-linecap="round" stroke-linejoin="round" />
-								<path d="M14 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5" stroke-linecap="round" />
-							</svg>
-						</button>
+						<MemberAccount :member="member" :on-logout="() => emit('logout')">
+							<template #language><LanguageSwitcher /></template>
+						</MemberAccount>
 						<span class="min-w-0 flex-1" />
 						<button
 							type="button"
