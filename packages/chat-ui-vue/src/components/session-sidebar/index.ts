@@ -1,5 +1,17 @@
 import type { SessionSummary } from "@openagentkit/sdk/protocol";
-import { computed, defineComponent, h, type PropType, ref, type VNodeChild, watch } from "vue";
+import {
+	computed,
+	defineComponent,
+	h,
+	onMounted,
+	onUnmounted,
+	type PropType,
+	type Ref,
+	ref,
+	type VNode,
+	type VNodeChild,
+	watch,
+} from "vue";
 import { format, resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
 import { SessionList } from "../session-list/index.ts";
 import { ErrorState } from "../states/index.ts";
@@ -48,7 +60,9 @@ const HOVER_ROW =
 	"transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none hover:bg-[var(--kit-nav-active)]";
 
 /** 可折叠分区标题：整行可点收起展开，内容随 grid-rows 过渡（收起时 inert 隔离键盘）。 */
-function SectionToggle(label: string, open: boolean, onToggle: () => void, children: VNodeChild[]) {
+function SectionToggle(label: string | VNode, open: boolean, onToggle: () => void, children: VNodeChild[]) {
+	// 标题允许富节点（检索分组头是「头像 + 名称 + 计数」），字符串与节点各走合法的 children 形态。
+	const title = typeof label === "string" ? label : [label];
 	return [
 		h(
 			"button",
@@ -58,7 +72,7 @@ function SectionToggle(label: string, open: boolean, onToggle: () => void, child
 				onClick: onToggle,
 				class: `flex min-h-8 w-full cursor-pointer items-center rounded-[var(--kit-radius-sm)] px-2 py-1 text-left text-[length:var(--kit-text-caption)] font-medium text-[var(--kit-fg-muted)] ${HOVER_ROW} hover:text-[var(--kit-fg)] ${FOCUS_RING}`,
 			},
-			label,
+			title,
 		),
 		h(
 			"div",
@@ -82,6 +96,55 @@ function SectionToggle(label: string, open: boolean, onToggle: () => void, child
 	];
 }
 
+/**
+ * 触底自动加载：只在明确向下（滚动/滚轮/上滑）时补一页，事件与判定与 React 版一致。
+ * 不做「渲染即触发」，否则结果不足一屏也会一路拉到底。
+ */
+function useLoadOnScroll(
+	root: Ref<HTMLElement | null>,
+	end: Ref<HTMLElement | null>,
+	enabled: () => boolean,
+	loadMore: () => void,
+) {
+	onMounted(() => {
+		const element = root.value;
+		if (!element) return;
+		let top = element.scrollTop;
+		let touchY: number | null = null;
+		const atBottom = () => {
+			if (!enabled()) return;
+			const tail = end.value?.getBoundingClientRect();
+			const viewport = element.getBoundingClientRect();
+			if (tail && tail.top <= viewport.bottom && tail.bottom >= viewport.top) loadMore();
+		};
+		const onScroll = () => {
+			if (element.scrollTop > top) atBottom();
+			top = element.scrollTop;
+		};
+		const onWheel = (event: WheelEvent) => {
+			if (event.deltaY > 0) atBottom();
+		};
+		const onTouchStart = (event: TouchEvent) => {
+			touchY = event.touches[0]?.clientY ?? null;
+		};
+		const onTouchEnd = (event: TouchEvent) => {
+			const y = event.changedTouches[0]?.clientY;
+			if (touchY !== null && y !== undefined && y < touchY) atBottom();
+			touchY = null;
+		};
+		element.addEventListener("scroll", onScroll, { passive: true });
+		element.addEventListener("wheel", onWheel, { passive: true });
+		element.addEventListener("touchstart", onTouchStart, { passive: true });
+		element.addEventListener("touchend", onTouchEnd, { passive: true });
+		onUnmounted(() => {
+			element.removeEventListener("scroll", onScroll);
+			element.removeEventListener("wheel", onWheel);
+			element.removeEventListener("touchstart", onTouchStart);
+			element.removeEventListener("touchend", onTouchEnd);
+		});
+	});
+}
+
 /** 会话侧栏：搜索、智能体分组、最近会话与分页入口；具体数据与菜单由调用方注入。 */
 export const SessionSidebar = defineComponent({
 	name: "SessionSidebar",
@@ -95,6 +158,8 @@ export const SessionSidebar = defineComponent({
 		activeStatus: { type: String as () => "running" | "attention" | "failed" | "completed", default: undefined },
 		activeGroupId: { type: String as PropType<string | null>, default: null },
 		searchInput: { type: String, default: "" },
+		/** 后端检索结果页；注入后搜索改由服务端覆盖全部历史会话，缺省回落为已加载行的本地过滤。 */
+		search: { type: Object as PropType<SessionSidebarPage | null>, default: null },
 		editing: { type: Object as () => SessionSidebarEditing | null, default: null },
 		actionError: { type: String as PropType<string | null>, default: null },
 		agentName: { type: Function as PropType<(slug: string) => string>, default: undefined },
@@ -145,6 +210,39 @@ export const SessionSidebar = defineComponent({
 			);
 		};
 		const sectionOf = () => props.activeSection ?? "groups";
+		/** 注入后端检索页时走服务端结果；只有没注入时才在已加载行里本地过滤（copy-in 场景的降级）。 */
+		const searching = computed(() => props.searchInput.trim().length > 0);
+		const showServerSearch = computed(() => searching.value && props.search != null);
+		const collapsedSearchGroups = ref(new Set<string>());
+		const scrollRoot = ref<HTMLElement | null>(null);
+		const searchEnd = ref<HTMLElement | null>(null);
+		/** 检索结果按 agent 分组：命中可能横跨多个智能体，分组头带条数，与目录分组同样是可折叠视图。 */
+		const searchGroups = computed(() => {
+			const byAgent = new Map<string, SessionSummary[]>();
+			for (const session of props.search?.sessions ?? []) {
+				const rows = byAgent.get(session.agent_slug) ?? [];
+				rows.push(session);
+				byAgent.set(session.agent_slug, rows);
+			}
+			return [...byAgent.entries()];
+		});
+		const toggleSearchGroup = (slug: string) => {
+			const next = new Set(collapsedSearchGroups.value);
+			if (next.has(slug)) next.delete(slug);
+			else next.add(slug);
+			collapsedSearchGroups.value = next;
+		};
+		useLoadOnScroll(
+			scrollRoot,
+			searchEnd,
+			() =>
+				showServerSearch.value &&
+				props.search?.hasMore === true &&
+				!props.search.loading &&
+				!props.search.loadingMore &&
+				!props.search.error,
+			() => props.search?.onLoadMore?.(),
+		);
 
 		const pageError = (page: SessionSidebarPage) =>
 			h("div", { class: "px-2 py-2" }, [
@@ -210,6 +308,87 @@ export const SessionSidebar = defineComponent({
 			else if (!page.loading && !page.loadingMore && !page.error) children.push(pageEmpty(emptyText));
 			if (page.hasMore && !page.error) children.push(pageLoadMore(page, section));
 			return children;
+		};
+
+		/** 检索过程提示：错误优先，其次加载态，都成立过且无结果才算「没有匹配」，避免把失败说成空。 */
+		const searchNoticeNodes = (search: SessionSidebarPage) => {
+			if (search.error) return [pageError(search)];
+			if (search.loading || search.loadingMore) return [pageStatus(search)];
+			if (searchGroups.value.length === 0) {
+				return [
+					h(
+						"p",
+						{ class: "px-2 py-2 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]" },
+						strings.value.noMatch,
+					),
+				];
+			}
+			return [];
+		};
+
+		/** 后端检索结果：覆盖全部历史会话，按 agent 分组可折叠；行只读，游标加载更多与滚动触底并行。 */
+		const searchResultsNodes = () => {
+			const search = props.search;
+			if (!search) return [];
+			const children: VNodeChild[] = [
+				h(
+					"p",
+					{ class: "px-2 pb-1 text-[length:var(--kit-text-caption)] font-medium text-[var(--kit-fg-muted)]" },
+					strings.value.allSessions,
+				),
+			];
+			for (const [slug, sessions] of searchGroups.value) {
+				children.push(
+					...SectionToggle(
+						h("span", { class: "flex min-w-0 items-center gap-2", "data-testid": `search-agent-${slug}` }, [
+							GroupAvatar(nameOf(slug)),
+							h(
+								"span",
+								{ class: "min-w-0 flex-1 truncate text-[length:var(--kit-text-label)] font-medium" },
+								nameOf(slug),
+							),
+							h(
+								"span",
+								{
+									class: "shrink-0 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)] tabular-nums",
+								},
+								String(sessions.length),
+							),
+						]),
+						!collapsedSearchGroups.value.has(slug),
+						() => toggleSearchGroup(slug),
+						[
+							h(SessionList, {
+								variant: "workspace",
+								sessions,
+								activeId: props.activeId,
+								activeStatus: props.activeStatus,
+								ariaLabel: format(strings.value.searchResultsAria, { name: nameOf(slug) }),
+								onSelect: (session: SessionSummary) => emit("select", session, "groups"),
+							}),
+						],
+					),
+				);
+			}
+			children.push(...searchNoticeNodes(search));
+			children.push(
+				h("div", { ref: searchEnd }, [
+					search.hasMore && !search.error
+						? h(
+								"button",
+								{
+									type: "button",
+									"data-testid": "session-search-results-load-more",
+									disabled: search.loading || search.loadingMore,
+									class: `flex w-full cursor-pointer items-center justify-center rounded-[var(--kit-radius-sm)] px-2 py-2 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)] ${HOVER_ROW} hover:text-[var(--kit-fg)] disabled:cursor-wait disabled:opacity-50 ${FOCUS_RING}`,
+									onClick: () => search.onLoadMore?.(),
+								},
+								strings.value.loadMore,
+							)
+						: null,
+				]),
+			);
+			return [h("div", { "data-testid": "session-search-results" }, children)];
 		};
 
 		// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: 侧栏按搜索、分组、最近与分页结构平铺，与 React 版保持同一阅读顺序
@@ -416,26 +595,29 @@ export const SessionSidebar = defineComponent({
 					h(
 						"div",
 						{
+							ref: scrollRoot,
 							"data-testid": "session-directory-scroll",
 							class: "min-h-0 flex-1 overflow-y-auto px-3 pb-3",
 						},
-						[
-							...SectionToggle(strings.value.agents, groupsOpen, () => toggleSection("agents"), groupsContent),
-							...SectionToggle(
-								strings.value.recent,
-								!closedSections.value.has("recent"),
-								() => toggleSection("recent"),
-								[
-									...pageBody(
-										props.recent,
-										"recent",
-										recentRows,
-										strings.value.recentSessions,
-										strings.value.firstUseHint,
+						showServerSearch.value
+							? searchResultsNodes()
+							: [
+									...SectionToggle(strings.value.agents, groupsOpen, () => toggleSection("agents"), groupsContent),
+									...SectionToggle(
+										strings.value.recent,
+										!closedSections.value.has("recent"),
+										() => toggleSection("recent"),
+										[
+											...pageBody(
+												props.recent,
+												"recent",
+												recentRows,
+												strings.value.recentSessions,
+												strings.value.firstUseHint,
+											),
+										],
 									),
 								],
-							),
-						],
 					),
 					slots.footer?.(),
 				],
