@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures.ts";
-import { newSession, openSessionList, seedListedAgent } from "./helpers.ts";
+import { ADMIN_TOKEN, newSession, openSessionList, seedListedAgent } from "./helpers.ts";
 
 test.beforeEach(async ({ request }, testInfo) => {
 	test.skip(testInfo.project.name === "mobile", "移动端本轮不做：恢复随移动端适配批次");
@@ -48,6 +48,73 @@ test("体验外壳：侧栏常驻广场与聊天，usage 深链可达且不溢�
 	await expect(page.getByTestId("usage-meter")).toBeVisible();
 	await expect(sidebar).toBeVisible();
 	await assertPageFits();
+});
+
+// 32×32 RGBA PNG：验证品牌 Logo 走的是「真实图片资产」路径，而不是只挂一个 <img> 标签。
+const LOGO_PNG =
+	"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAOUlEQVR42u3WwQkAIAwEwXSSEq3YWmITQiLOwf7neVHNCwCAsYBc+2oAAAAAAAAAAADvAbxigG8AB8oWfKTBUTa9AAAAAElFTkSuQmCC";
+
+// 品牌 Logo 是员工端唯一的图片资产入口，覆盖四种可观测状态：未配置 → 上传图 → 失效地址回退 → 重新上传恢复。
+// 品牌只在启动时随 /api/config 读一次，因此每次变更都要整页重载；断言重点放在「图片真被解码」而非仅存在 <img>，
+// 这是 React 与 Vue 共用 data-testid、但渲染分支各写一遍的地方，只修一边就会在这里露出来。
+test("品牌 Logo：真实上传图片解码渲染，失效地址回退首字母且可恢复", async ({ page, request, baseURL }) => {
+	const apiBase = new URL(baseURL as string).origin;
+	const adminHeaders = { authorization: `Bearer ${ADMIN_TOKEN}` };
+	const sidebar = page.getByTestId("experience-sidebar");
+	const setBranding = async (body: Record<string, unknown>) => {
+		const saved = await request.put("/api/admin/branding", { headers: adminHeaders, data: body });
+		expect(saved.ok()).toBe(true);
+	};
+	const openApp = async () => {
+		await page.goto(`/?api=${encodeURIComponent(apiBase)}`);
+		await expect(sidebar).toBeVisible();
+	};
+	const logo = sidebar.getByTestId("brand-logo");
+	const fallback = sidebar.getByTestId("brand-logo-fallback");
+	try {
+		// 无 Logo：只有首字母标记，不预留空图片位。
+		await setBranding({ productName: "E2E 员工端", logoUrl: null });
+		await openApp();
+		await expect(logo).toHaveCount(0);
+		await expect(fallback).toHaveText("E");
+
+		// 真实上传：浏览器必须解码成功，且尺寸/裁切与 React 版一致（size-8 + object-contain）。
+		const uploaded = await request.post("/api/admin/branding/logo", {
+			headers: adminHeaders,
+			multipart: { file: { name: "logo.png", mimeType: "image/png", buffer: Buffer.from(LOGO_PNG, "base64") } },
+		});
+		expect(uploaded.status()).toBe(201);
+		await openApp();
+		await expect(logo).toBeVisible();
+		await expect(logo).toHaveAttribute("src", /\/api\/branding\/logo\?v=/);
+		await expect(logo).toHaveAttribute("alt", "");
+		await expect(logo).toHaveAttribute("aria-hidden", "true");
+		await expect
+			.poll(() => logo.evaluate((element) => (element as HTMLImageElement).naturalWidth), { message: "Logo 未解码" })
+			.toBe(32);
+		const box = await logo.boundingBox();
+		expect([box?.width, box?.height]).toEqual([32, 32]);
+		expect(await logo.evaluate((element) => getComputedStyle(element).objectFit)).toBe("contain");
+
+		// 换成失效地址：回退首字母（管理端写 URL 会同时清掉已上传二进制，符合「二选一」语义）。
+		await setBranding({ productName: "E2E 员工端", logoUrl: "/brand/missing-logo.png" });
+		await openApp();
+		await expect(logo).toHaveCount(0);
+		await expect(fallback).toHaveText("E");
+
+		// 重新上传应恢复：服务端「写 URL 会清掉已上传二进制」，客户端也要能再次渲染真实图片。
+		const reuploaded = await request.post("/api/admin/branding/logo", {
+			headers: adminHeaders,
+			multipart: { file: { name: "logo.png", mimeType: "image/png", buffer: Buffer.from(LOGO_PNG, "base64") } },
+		});
+		expect(reuploaded.ok()).toBe(true);
+		await openApp();
+		await expect(logo).toBeVisible();
+		await expect.poll(() => logo.evaluate((element) => (element as HTMLImageElement).naturalWidth)).toBe(32);
+	} finally {
+		// 品牌是单行全局配置，必须还原，否则同库后续用例的侧栏断言会被污染。
+		await setBranding({ productName: "OpenAgentKit", logoUrl: null });
+	}
 });
 
 // 长名称和不可断行错误不能遮挡窄屏导航、Agent 切换或完整状态信息。
