@@ -13,7 +13,7 @@ import {
 	SkillGlyph,
 	Suggestion,
 } from "@openagentpack/kit-chat-ui-vue";
-import { computed, h, ref } from "vue";
+import { computed, h, ref, watch } from "vue";
 import { useTranslation } from "../../i18n/index.ts";
 
 const props = defineProps<{
@@ -24,6 +24,8 @@ const props = defineProps<{
 	canSend: boolean;
 	disabled: boolean;
 	processing: boolean;
+	/** 会话/新会话作用域变化时清空草稿；不重挂组件，避免打断技能选择。 */
+	resetKey?: string;
 	onDrop: (files: File[]) => void | Promise<void>;
 	onRemove: (fileId: string) => void;
 	onSend: (text: string, skills?: string[]) => Promise<boolean>;
@@ -32,6 +34,13 @@ const props = defineProps<{
 const { t } = useTranslation("chat");
 
 const value = ref("");
+watch(
+	() => props.resetKey,
+	() => {
+		value.value = "";
+		selection.value = { start: 0, end: 0 };
+	},
+);
 const selection = ref<SenderSelection>({ start: 0, end: 0 });
 const senderRef = ref<{
 	replaceRange: (start: number, end: number, text: string) => void;

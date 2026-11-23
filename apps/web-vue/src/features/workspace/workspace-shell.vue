@@ -9,6 +9,7 @@ import type { ChatProvider } from "@openagentkit/sdk/providers";
 import type { KitClient } from "@openagentkit/sdk/providers/kit";
 import type { SessionAction } from "@openagentkit/sdk/sessions";
 import { useSessionDetails, useSessionDirectory } from "@openagentkit/sdk/sessions/hooks-vue";
+import { type QuotaExceededDetails, readQuotaExceeded } from "@openagentkit/sdk/usage";
 import {
 	type AttachmentItem,
 	Chat,
@@ -20,10 +21,12 @@ import {
 	MenuContent,
 	MenuItem,
 	MenuTrigger,
+	MessageListSkeleton,
 	SessionSidebar,
 	type SessionSidebarGroup,
 	type SessionSidebarPage,
 	type SessionSidebarSection,
+	StatusIndicator,
 	ToolApprovalGroup,
 	Tooltip,
 } from "@openagentpack/kit-chat-ui-vue";
@@ -37,7 +40,9 @@ import MemberAccount from "../auth/member-account.vue";
 import ArtifactCard from "../chat/artifact-card.vue";
 import AsidePanel from "../chat/aside-panel.vue";
 import ExperienceSender from "../chat/experience-sender.vue";
+import NewChatRecent from "../plaza/new-chat-recent.vue";
 import PlazaView from "../plaza/plaza-view.vue";
+import QuotaBanner from "../usage/quota-banner.vue";
 import UsageView from "../usage/usage-view.vue";
 
 const props = defineProps<{
@@ -78,6 +83,7 @@ const actionError = ref<string | null>(null);
 const actionTrigger = ref<HTMLElement | null>(null);
 const sending = ref(false);
 const sendError = ref<string | null>(null);
+const quotaError = ref<QuotaExceededDetails | null>(null);
 const chat = useChat(() => ({ sessionId: sessionId.value, provider: props.chatProvider }));
 
 const currentAgent = computed(() => {
@@ -104,12 +110,6 @@ const mobileTitle = computed(() => {
 	if (view.value === "chat") return headerTitle.value;
 	return currentAgent.value?.display_name ?? props.branding.productName;
 });
-const statusLabel = computed(() => {
-	if (chat.turnRunning.value) return "生成中";
-	if (chat.phase.value === "failed" || chat.streamError.value) return "执行失败";
-	return "空闲";
-});
-
 const isMobile = useIsMobile();
 const asideOpen = ref(!isMobile.value);
 watch(isMobile, (mobile) => {
@@ -198,6 +198,18 @@ const recent = computed<SessionSidebarPage>(() => ({
 	onRetry: directory.snapshot.value.recent.retry,
 	onLoadMore: directory.snapshot.value.recent.loadMore,
 }));
+
+/** 新建聊天页「最近使用」：按会话目录里的 Agent 活动序取前 5 个，回目录补全名称与图标。 */
+const recentAgents = computed(() => {
+	const rows = [];
+	for (const group of directory.snapshot.value.groups) {
+		const agent = agents.agents.value.find((item) => item.slug === group.slug);
+		if (!agent) continue;
+		rows.push(agent);
+		if (rows.length === 5) break;
+	}
+	return rows;
+});
 const activeSection = computed<SessionSidebarSection>(() =>
 	selectedFrom.value?.sessionId === sessionId.value ? selectedFrom.value.section : "groups",
 );
@@ -402,6 +414,12 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 		directory.refreshStatuses();
 		return true;
 	} catch (error) {
+		const exceeded = readQuotaExceeded(error);
+		if (exceeded) {
+			quotaError.value = exceeded;
+			sendError.value = null;
+			return false;
+		}
 		sendError.value = error instanceof Error ? error.message : String(error);
 		return false;
 	} finally {
@@ -621,7 +639,13 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 				>
 					{{ headerTitle }}
 				</Tooltip>
-				<span role="status" :title="statusLabel" class="shrink-0 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">{{ statusLabel }}</span>
+				<StatusIndicator
+					:connected="chat.connected.value"
+					:turn-running="chat.turnRunning.value"
+					:phase="chat.phase.value"
+					:connection="chat.connection.value"
+					:error="chat.streamError.value"
+				/>
 				<button
 					type="button"
 					:aria-pressed="asideOpen"
@@ -645,7 +669,9 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 			:client="props.client"
 			:heading="view !== 'new'"
 			@open="openAgent"
-		/>
+		>
+			<NewChatRecent v-if="view === 'new'" :agents="recentAgents" @open="openAgent" />
+		</PlazaView>
 		<div v-else class="flex min-h-0 flex-1 flex-col">
 			<div
 				v-if="sendError"
@@ -664,6 +690,13 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 					</svg>
 				</button>
 			</div>
+			<QuotaBanner
+				v-if="quotaError"
+				:client="props.client"
+				:details="quotaError"
+				:on-recovered="() => (quotaError = null)"
+				:on-open-usage="() => navigate({ view: 'usage' })"
+			/>
 			<div v-if="agents.error.value" class="p-6">
 				<ErrorState :message="agents.error.value" :on-retry="agents.reload" />
 			</div>
@@ -684,13 +717,13 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 			>
 				<template #sender>
 					<ExperienceSender
-						:key="sessionId ?? 'new'"
+						:reset-key="sessionId ?? 'new'"
 						:items="attachmentItems"
 						:skills="senderSkills"
 						:turn-running="chat.turnRunning.value"
 						:sending="sending"
 						:can-send="sessionId ? chat.canSend.value : true"
-						:disabled="!currentAgent || attachmentItems.some((item) => item.status === 'uploading')"
+						:disabled="!currentAgent || attachmentItems.some((item) => item.status === 'uploading') || quotaError !== null"
 						:processing="processingFiles"
 						:on-drop="uploadFiles"
 						:on-remove="removeAttachment"
@@ -714,17 +747,19 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 					/>
 				</template>
 				<template #empty>
-					<div class="flex min-w-0 flex-1 flex-col items-center justify-center gap-4 py-6">
+					<MessageListSkeleton v-if="sessionId && sessionDetails.snapshot.value.loading" />
+					<div v-else class="flex min-w-0 flex-1 flex-col items-center justify-center gap-4 py-6">
 						<EmptyState
 							:title="currentAgent.opening_remarks || t('workspace:chatWith', { name: currentAgent.display_name })"
 							:hint="t('workspace:chatHint')"
 						/>
 						<div v-if="currentAgent.suggested_prompts.length" class="flex flex-wrap justify-center gap-2">
 							<button
-								v-for="prompt in currentAgent.suggested_prompts"
+								v-for="prompt in [...new Set(currentAgent.suggested_prompts)]"
 								:key="prompt"
 								type="button"
-								class="rounded-full border border-[var(--kit-border)] bg-[var(--kit-surface)] px-3 py-1.5 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)] hover:border-[var(--kit-accent)] hover:text-[var(--kit-fg)]"
+								:disabled="quotaError !== null || processingFiles"
+								class="rounded-full border border-[var(--kit-border)] bg-[var(--kit-surface)] px-3 py-1.5 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)] hover:border-[var(--kit-accent)] hover:text-[var(--kit-fg)] disabled:cursor-not-allowed disabled:opacity-50"
 								@click="send(prompt)"
 							>
 								{{ prompt }}
