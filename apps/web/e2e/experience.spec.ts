@@ -283,6 +283,34 @@ test("反馈富内容：代码高亮、Mermaid 图表和源码切换", async ({ 
 	await expect.poll(() => messages.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
 });
 
+// Shift+Enter 是「换行」而不是「发送」：Enter 的提交判定必须回答“该不该提交”，
+// 只回答“这键我处理过了”的话，插入换行的同一次按键会把消息一起发出去。
+test("Shift+Enter 只换行不发送，Enter 才把多行草稿一次发出", async ({ page }) => {
+	await page.goto("/?agent=e2e-agent");
+	let sends = 0;
+	const posted: string[] = [];
+	page.on("request", (request) => {
+		if (request.method() === "POST" && new URL(request.url()).pathname.endsWith("/messages")) {
+			sends += 1;
+			posted.push(request.postData() ?? "");
+		}
+	});
+	const composer = page.getByLabel("消息输入");
+	await composer.click();
+	await composer.fill("第一行");
+	await page.keyboard.press("Shift+Enter");
+	await page.keyboard.type("第二行");
+
+	// 判据用草稿本身：提交会清空编辑区，而「断言此刻没有请求」存在竞态（发送是异步的）。
+	await expect(composer).toHaveText(/第一行[\s\S]*第二行/, { useInnerText: true });
+
+	await page.keyboard.press("Enter");
+	await expect(page.getByText(/mock gateway 的流式回答/).first()).toBeVisible({ timeout: 15_000 });
+	await expect.poll(() => sends).toBe(1);
+	// 两行必须仍是同一条消息，且换行以换行符保留在正文里。
+	expect(JSON.parse(posted[0] ?? "{}")).toMatchObject({ text: "第一行\n第二行" });
+});
+
 // 保护开场引导：真实点击示例问题即发送该问题，引导随首条消息退场。
 // 只在目录响应里注入示例问题，会话链路仍走 mock server。
 test("点击示例问题 → 发送并开始流式回答", async ({ page }) => {

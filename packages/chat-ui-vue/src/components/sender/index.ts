@@ -387,7 +387,7 @@ function submitKeyDown(event: KeyboardEvent, submitType: SenderSubmitType): bool
 	const shouldSubmit = submitType === "enter" ? !event.shiftKey : event.shiftKey;
 	event.preventDefault();
 	if (!shouldSubmit) document.execCommand("insertLineBreak");
-	return true;
+	return shouldSubmit;
 }
 
 function canSubmit(state: {

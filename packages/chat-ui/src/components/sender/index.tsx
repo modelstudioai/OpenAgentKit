@@ -542,14 +542,15 @@ function setCaretAtTextOffset(root: HTMLElement, offset: number): void {
 	selection.addRange(range);
 }
 
-/** Enter 提交判定：submitType=enter 时 Enter 提交、Shift+Enter 换行（shiftEnter 反之）；
- *  contenteditable 的默认回车会产生块级元素，换行统一改为插入 br。 */
+/** Enter 提交判定：返回“该不该提交”，而不是“这键我处理过了”——返回后者会让 Shift+Enter
+ *  插入换行的同一次按键把消息一起发出去。contenteditable 的默认回车产生块级元素，
+ *  因此换行统一阻止默认行为后改为插入 br。 */
 function submitKeyDown(event: KeyboardEvent<HTMLDivElement>, submitType: SenderSubmitType): boolean {
 	if (event.key !== "Enter" || submitType === false) return false;
 	const shouldSubmit = submitType === "enter" ? !event.shiftKey : event.shiftKey;
 	event.preventDefault();
 	if (!shouldSubmit) document.execCommand("insertLineBreak");
-	return true;
+	return shouldSubmit;
 }
 
 /** value↔DOM 同步：编辑动作（原子退格、选技能）改 value 后由 effect 重建 DOM 并恢复光标。
