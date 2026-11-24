@@ -67,6 +67,8 @@ node apps/server/dist/bin.js
 
 ### 选择数据库
 
+也可以用 `$kit-database` 让 coding agent 按项目配置接入数据库并核对启动结果。[数据库接入 Skill](../../assets/skills/kit-database/SKILL.md)
+
 默认启动使用 `KIT_DATA_DIR/kit.sqlite`。如需外部数据库，先创建 Kit 专用库，并授予连接账户
 在该库中建表和读写的权限。在根 `.env` 或服务端进程环境中设置以下一组变量，重启后会在所选库中初始化表结构。
 

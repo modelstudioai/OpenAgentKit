@@ -1,0 +1,4 @@
+{
+  "name": "kit-database",
+  "description": "为 OpenAgentKit 的 Kit Server 选择或配置 SQLite、MySQL 与 PostgreSQL。适用于设置 KIT_DB_DRIVER 和 KIT_DATABASE_URL、初始化目标库、验证启动迁移和排查数据库连接问题。"
+}

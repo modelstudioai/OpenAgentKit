@@ -93,7 +93,7 @@ import {
 	type UsageSummary,
 	type UsageTrend,
 } from "@openagentkit/sdk/protocol";
-import type { StreamSessionOptions, ThreadQueryOptions } from "@openagentkit/sdk/providers";
+import type { EventQueryOptions, StreamSessionOptions, ThreadQueryOptions } from "@openagentkit/sdk/providers";
 import { streamProtocolFrames } from "@openagentkit/sdk/providers/kit";
 import { createRequest, type RequestClient, type RequestOptions } from "@openagentkit/sdk/request";
 
@@ -139,10 +139,11 @@ export function createAdminClient(options: AdminClientOptions) {
 			})
 			.then((result) => result.data);
 	const sessionPath = (id: string) => `/api/admin/debug/sessions/${encodeURIComponent(id)}`;
-	function threadQuery(query: ThreadQueryOptions) {
+	function eventQuery(query: EventQueryOptions) {
 		const params = new URLSearchParams();
 		if (query.limit !== undefined) params.set("limit", String(query.limit));
 		if (query.pageToken) params.set("page_token", query.pageToken);
+		if (query.afterId) params.set("after_id", query.afterId);
 		return params.size ? `?${params}` : "";
 	}
 	const groupPath = (id: string) => `/api/admin/groups/${encodeURIComponent(id)}`;
@@ -483,13 +484,15 @@ export function createAdminClient(options: AdminClientOptions) {
 			createTemplateSession: (body: CreateTemplateDebugSessionRequest) =>
 				write<DebugSessionDetail>("/api/admin/debug/sessions", "POST", body),
 			session: (id: string, signal?: AbortSignal) => get<DebugSessionDetail>(sessionPath(id), signal),
+			listEvents: (id: string, query: EventQueryOptions = {}) =>
+				request.json<EventsPage>(`${sessionPath(id)}/events${eventQuery(query)}`, { signal: query.signal }),
 			listThreads: (id: string, query: ThreadQueryOptions = {}) =>
-				request.json<SessionThreadsResponse>(`${sessionPath(id)}/threads${threadQuery(query)}`, {
+				request.json<SessionThreadsResponse>(`${sessionPath(id)}/threads${eventQuery(query)}`, {
 					signal: query.signal,
 				}),
 			listThreadEvents: (id: string, threadId: string, query: ThreadQueryOptions = {}) =>
 				request
-					.json<EventsPage>(`${sessionPath(id)}/threads/${encodeURIComponent(threadId)}/events${threadQuery(query)}`, {
+					.json<EventsPage>(`${sessionPath(id)}/threads/${encodeURIComponent(threadId)}/events${eventQuery(query)}`, {
 						signal: query.signal,
 					})
 					.then((page) => ({ ...page, data: page.data.toReversed() })),

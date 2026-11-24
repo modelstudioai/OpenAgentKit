@@ -526,6 +526,7 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 			if (!row) throw new KitError("not_found", "会话不存在");
 			const query = c.req.valid("query");
 			const page = await sessions.events(row.session_id, {
+				signal: c.req.raw.signal,
 				...(query.after_id ? { afterId: query.after_id } : {}),
 				...(query.page_token ? { pageToken: query.page_token } : {}),
 				...(query.limit ? { limit: query.limit } : {}),
@@ -546,7 +547,7 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 			},
 			responses: {
 				200: {
-					description: "SSE 事件流（reset/ready/event/done/error/ping）",
+					description: "实时 SSE。after 续传实时变更，reset 后通过事件分页恢复历史",
 					content: { "text/event-stream": { schema: z.string() } },
 				},
 				...errors,

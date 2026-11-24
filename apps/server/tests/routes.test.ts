@@ -21,7 +21,7 @@ function makeApp() {
 	return { app: createApp(services), services };
 }
 
-const json = { "content-type": "application/json", "x-kit-protocol-version": "2.0.0" };
+const json = { "content-type": "application/json", "x-kit-protocol-version": "3.0.0" };
 
 it("智能体版本注册到控制面：已存在历史版本可读，未认证或非法 ID 被拒", async () => {
 	const { app, services } = makeApp();
@@ -339,7 +339,7 @@ describe("数据面路由", () => {
 		expect(failed.data.slug).toBe("assistant");
 	});
 
-	it("建会话 → 发消息 → SSE 持续到客户端断开且含用户回显", async () => {
+	it("员工历史独立分页，SSE 先就绪再传用户回显和实时回复", async () => {
 		const { app, services } = makeApp();
 		await services.catalog.upsert({
 			slug: "assistant",
@@ -355,29 +355,45 @@ describe("数据面路由", () => {
 		});
 		expect(created.status).toBe(201);
 		const { data: session } = (await created.json()) as { data: { session_id: string } };
+		const path = `/api/kit/sessions/${session.session_id}`;
+		await services.gateway.sendMessage(session.session_id, { text: "历史消息" });
+		await vi.waitFor(async () => expect((await services.gateway.getSession(session.session_id))?.status).toBe("idle"));
+		const listEvents = vi.spyOn(services.gateway, "listEvents");
+		expect(
+			(
+				await app.request(`${path}/stream`, {
+					headers: { ...json, cookie, "x-kit-protocol-version": "2.0.0" },
+				})
+			).status,
+		).toBe(409);
+		const stream = await app.request(`${path}/stream`, { headers: { ...json, cookie } });
+		expect(stream.status).toBe(200);
+		const reader = stream.body!.getReader();
+		const decoder = new TextDecoder();
+		const first = decoder.decode((await reader.read()).value);
+		expect(first).toContain("event: ready");
+		expect(first).not.toContain("event: event");
+		expect(listEvents).not.toHaveBeenCalled();
+		const history = await app.request(`${path}/events`, { headers: { ...json, cookie } });
+		expect(history.status).toBe(200);
+		expect(await history.text()).toContain("历史消息");
 
-		const sent = await app.request(`/api/kit/sessions/${session.session_id}/messages`, {
+		const sent = await app.request(`${path}/messages`, {
 			method: "POST",
 			headers: { ...json, cookie },
 			body: JSON.stringify({ text: "hello", client_message_id: "cm1" }),
 		});
 		expect(sent.status).toBe(202);
 
-		const stream = await app.request(`/api/kit/sessions/${session.session_id}/stream`, {
-			headers: { ...json, cookie },
-		});
-		expect(stream.status).toBe(200);
-		const reader = stream.body!.getReader();
 		let text = "";
 		while (!text.includes('"status":"idle"')) {
 			const chunk = await reader.read();
 			if (chunk.done) break;
-			text += new TextDecoder().decode(chunk.value);
+			text += decoder.decode(chunk.value, { stream: true });
 		}
 		await reader.cancel();
-		expect(text).toContain("event: reset");
-		expect(text).toContain("event: ready");
 		expect(text).toContain("event: event");
+		expect(text).not.toContain("历史消息");
 		expect(text).not.toContain("event: done");
 		expect(text).toContain('"role":"user"');
 		expect(text).toContain("session_status");

@@ -34,7 +34,7 @@ async function exerciseBackend(backend?: { driver: "mysql" | "postgres"; url?: s
 				method,
 				headers: {
 					"content-type": "application/json",
-					"x-kit-protocol-version": "2.0.0",
+					"x-kit-protocol-version": "3.0.0",
 					...(token ? { authorization: `Bearer ${token}` } : {}),
 				},
 				...(body === undefined ? {} : { body: JSON.stringify(body) }),

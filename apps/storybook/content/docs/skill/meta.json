@@ -1,4 +1,4 @@
 {
   "title": "Skill",
-  "pages": ["index", "install", "kit-components", "use-kit-chat", "kit-chat-provider"]
+  "pages": ["index", "install", "kit-components", "use-kit-chat", "kit-chat-provider", "kit-database"]
 }

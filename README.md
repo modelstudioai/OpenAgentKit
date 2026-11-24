@@ -66,7 +66,7 @@
 | UI 组件 `@openagentpack/kit-chat-ui` | Chat、Message、Sender、Attachments、FileCard、ToolApprovalCard 等 | 组合对话、输入、附件、文件和审批界面；支持将组件及声明依赖复制到业务项目中修改 |
 | 会话运行时 `@openagentkit/sdk` 的功能入口 | 流解析、请求、后端适配、消息状态、重连与会话动作 | 接入既有后端，管理流式数据与会话交互；非 React 应用可直接订阅会话状态 |
 | React hooks `@openagentkit/sdk/<功能>/hooks` | `useChat`、`useSessions`、`useAgentCatalog` 等 | 将连接、消息、发送、停止与审批绑定到 React 页面 |
-| 开发 Skill | `kit-components`、`use-kit-chat`、`kit-chat-provider` | 指导 coding agent 选组件、组合交互并适配后端，配有 API 参考与可编译示例 |
+| 开发 Skill | `kit-components`、`use-kit-chat`、`kit-chat-provider`、`kit-database` | 指导 coding agent 组合组件、管理会话、接入对话后端和配置服务端数据库 |
 
 SDK 按功能导入，例如 `@openagentkit/sdk/chat`、`@openagentkit/sdk/chat/hooks`
 与 `@openagentkit/sdk/sessions/hooks`，不提供根聚合入口。
