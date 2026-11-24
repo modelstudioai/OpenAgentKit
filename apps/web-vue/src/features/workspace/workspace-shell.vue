@@ -30,7 +30,7 @@ import {
 	ToolApprovalGroup,
 	Tooltip,
 } from "@openagentpack/kit-chat-ui-vue";
-import { computed, defineComponent, nextTick, ref, type VNode, watch } from "vue";
+import { computed, defineComponent, nextTick, onScopeDispose, ref, type VNode, watch } from "vue";
 import { useTranslation } from "../../i18n/index.ts";
 import type { Branding } from "../../lib/branding.ts";
 import {
@@ -38,7 +38,7 @@ import {
 	showCompletionNotification,
 } from "../../lib/browser-notifications.ts";
 import { createArtifactHost, resolveHostCapabilities } from "../../lib/host.ts";
-import { loadSessionArtifacts, mergeArtifacts } from "../../lib/session-artifacts.ts";
+import { createArtifactPoller, loadSessionArtifacts, mergeArtifacts } from "../../lib/session-artifacts.ts";
 import { useRoute } from "../../lib/use-route.ts";
 import LanguageSwitcher from "../auth/language-switcher.vue";
 import MemberAccount from "../auth/member-account.vue";
@@ -116,9 +116,7 @@ const mobileTitle = computed(() => {
 	if (view.value === "chat") return headerTitle.value;
 	return currentAgent.value?.display_name ?? props.branding.productName;
 });
-const sessionUnavailable = computed(
-	() => Boolean(chat.streamError.value) && chat.connection.value !== "reconnecting",
-);
+const sessionUnavailable = computed(() => Boolean(chat.streamError.value) && chat.connection.value !== "reconnecting");
 /** 侧栏打开行实时状态：流式/审批/失败优先，刚完成标记只属于当前停留的会话。 */
 const activeStatus = computed(() => {
 	if (sessionUnavailable.value) return undefined;
@@ -247,9 +245,26 @@ const memories = computed(() => resources.value?.memory_stores ?? null);
 const host = resolveHostCapabilities();
 const artifactHost = createArtifactHost(host);
 const remoteArtifacts = ref<ArtifactDescriptor[]>([]);
+const artifactVersion = ref(0);
 const artifactsSession = ref<string | null>(null);
+const artifactPoller = createArtifactPoller(() => (artifactVersion.value += 1));
+// 沙箱产物不进事件流：执行期间按间隔补取，回合收尾再补一次；时机口径与 React 端一致。
 watch(
-	[sessionId, () => chat.phase.value],
+	[() => chat.turnRunning.value, sessionId],
+	([running, sid], previous) => {
+		if (running && sid) {
+			artifactPoller.start();
+			return;
+		}
+		const wasRunning = artifactPoller.running;
+		artifactPoller.stop();
+		if (wasRunning && sid && previous) artifactVersion.value += 1;
+	},
+	{ immediate: true },
+);
+onScopeDispose(() => artifactPoller.stop());
+watch(
+	[sessionId, artifactVersion],
 	async ([sid], _previous, onCleanup) => {
 		if (!sid) {
 			artifactsSession.value = null;

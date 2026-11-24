@@ -34,7 +34,7 @@ import { UsageView } from "./features/usage/usage-view.tsx";
 import { type Branding, DEFAULT_BRAND_PRODUCT_NAME } from "./lib/branding.ts";
 import { requestCompletionNotificationPermission, showCompletionNotification } from "./lib/browser-notifications.ts";
 import { createArtifactHost, resolveHostCapabilities } from "./lib/host.ts";
-import { loadSessionArtifacts, mergeArtifacts } from "./lib/session-artifacts.ts";
+import { createArtifactPoller, loadSessionArtifacts, mergeArtifacts } from "./lib/session-artifacts.ts";
 import { type NavigateFn, useRoute } from "./lib/use-route.ts";
 import { type SessionDirectory, useSessionDirectory } from "./lib/use-session-directory.ts";
 
@@ -335,13 +335,21 @@ function ChatView({
 	// Files API 补历史会话产物；事件里的 artifact 仍由 Chat 投影提供。
 	const [remoteArtifacts, setRemoteArtifacts] = useState<ArtifactDescriptor[]>([]);
 	const [artifactVersion, setArtifactVersion] = useState(0);
-	const artifactPhase = useRef(chat.phase);
 	const artifactsSession = useRef<string | null>(null);
+	const artifactPoller = useMemo(() => createArtifactPoller(() => setArtifactVersion((value) => value + 1)), []);
+	// 沙箱产物不进事件流：执行期间按间隔补取，回合收尾再补一次，面板才能跟上生成节奏。
 	useEffect(() => {
-		const previous = artifactPhase.current;
-		artifactPhase.current = chat.phase;
-		if (previous !== "idle" && chat.phase === "idle") setArtifactVersion((value) => value + 1);
-	}, [chat.phase]);
+		// 收尾判定只能由 effect 本体做：写在 cleanup 里会先 stop 掉轮询器，wasRunning 恒为 false，
+		// 回合结束的补取就丢了（E2E「只在 Files 目录出现的产物」就是这么抓出来的）。
+		if (chat.turnRunning && sessionId) {
+			artifactPoller.start();
+			return;
+		}
+		const wasRunning = artifactPoller.running;
+		artifactPoller.stop();
+		if (wasRunning && sessionId) setArtifactVersion((value) => value + 1);
+	}, [artifactPoller, chat.turnRunning, sessionId]);
+	useEffect(() => () => artifactPoller.stop(), [artifactPoller]);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: artifactVersion 是回合结束后的显式刷新触发器
 	useEffect(() => {
 		if (!sessionId) {
