@@ -15,7 +15,6 @@ import type {
 	SendMessageRequest,
 	SendMessageResponse,
 	SessionDetail,
-	SessionEvent,
 	SessionSummary,
 	SessionThreadsResponse,
 	ToolApprovalDecision,
@@ -27,7 +26,7 @@ import { createTransport, type TransportOptions } from "./transport.ts";
 
 export interface LegacyKitClientOptions extends TransportOptions {}
 
-import type { StreamSessionOptions, ThreadQueryOptions } from "../contract.ts";
+import type { EventQueryOptions, StreamSessionOptions, ThreadQueryOptions } from "../contract.ts";
 
 export type { StreamSessionOptions } from "../contract.ts";
 
@@ -49,6 +48,11 @@ export function createLegacyKitClient(options: LegacyKitClientOptions) {
 				{ signal },
 			)
 			.then((r) => ({ sessions: r.data, nextPageToken: r.next_page_token }));
+	const listEvents = (sessionId: string, query: EventQueryOptions = {}) =>
+		transport.request<EventsPage>(
+			`/api/kit/sessions/${encodeURIComponent(sessionId)}/events${qs({ after_id: query.afterId, limit: query.limit, page_token: query.pageToken })}`,
+			{ signal: query.signal },
+		);
 
 	return {
 		transport,
@@ -173,15 +177,8 @@ export function createLegacyKitClient(options: LegacyKitClientOptions) {
 				})
 				.then((r) => r.data),
 
-		events: (
-			sessionId: string,
-			query: { afterId?: string; limit?: number; pageToken?: string } = {},
-		): Promise<EventsPage> =>
-			transport
-				.request<{ data: SessionEvent[]; next_page_token: string | null }>(
-					`/api/kit/sessions/${encodeURIComponent(sessionId)}/events${qs({ after_id: query.afterId, limit: query.limit, page_token: query.pageToken })}`,
-				)
-				.then((r) => ({ data: r.data, next_page_token: r.next_page_token })),
+		events: listEvents,
+		listEvents,
 
 		listThreads: (sessionId: string, query: ThreadQueryOptions = {}): Promise<SessionThreadsResponse> =>
 			transport.request(

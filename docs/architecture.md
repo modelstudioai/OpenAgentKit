@@ -420,13 +420,13 @@ Provider 只有累计统计，状态结束与统计写入未被证明原子同�
 
 以下是默认 Kit Server 链路，既有 `useChat(sessionId)` 调用方式不变。
 
-1. 页面选择会话，controller 建立持久的 `/api/kit/sessions/:id/stream` 订阅。
-   server 为该会话共享一个上游 pump：先连接并暂存实时快照，再读完分页历史，归并后发出
-   `reset → event* → ready`。只有收到 `ready` 才允许发送消息或审批响应。
-2. 用户发送消息，SDK 保存独立的乐观消息；server 校验归属并等待 pump 就绪，然后调用
+1. 页面选择会话，Controller 建立 `/stream` 实时订阅。员工端走 `/api/kit/sessions/:id`，
+   管理员调试走 `/api/admin/debug/sessions/:id`。上游就绪后服务端发 `ready`，
+   Controller 再通过各自的 `/events` 读完历史分页，同时缓冲实时事件。合并后发布并开放发送。
+2. 用户发送消息，SDK 保存独立的乐观消息。服务端校验归属，上游就绪后按需核验运行状态，再调用
    `gateway.sendEvent()`。消息与审批 POST 都只发送一次，断流恢复不会重发业务请求。
 3. gateway 通过 SDK 的 `snapshot` 模式消费完整 `SessionEvent`。server 在内存中维护
-   最新事件索引与有界变更日志。每次有效更新分配 `epoch:sequence`，以 SSE `id` 下发；
+   业务状态索引和独立的有界实时日志。每次有效实时更新分配 `epoch:sequence`，以 SSE `id` 下发；
    `event_id` 是事件身份，不能用于充当传输游标。
 4. SDK 对同 `event_id` 做快照替换并重建投影，保持首次展示顺序与稳定分片 ID；React adapter
    订阅消息、子线程、产物、执行阶段和审批待办；chat-ui 按分片顺序渲染。
@@ -435,12 +435,12 @@ Provider 只有累计统计，状态结束与统计写入未被证明原子同�
 6. 审批待办由最新主状态的 batch/call 标识定位。审批卡展示冻结的实际工具参数，允许与拒绝
    均为一步直提、每次只处理一项；server 再读 Provider 历史校验归属、当前待办与重复响应，
    经 gateway 写入 `tool_approval_response`。未知工具协议只读展示。详见 `docs/protocol.md`。
-7. 浏览器断线只恢复 Kit 订阅；SDK 负责 Provider 连接恢复。有效 `after` 游标重放变更日志，
-   无效或过期游标触发全量 `reset`，SDK 在 `ready` 时原子替换历史并保留乐观消息。
-   最后一个订阅者离开时释放上游连接。事件始终不落库。
+7. 上游断流结束本代订阅，浏览器带 `after` 重连。有效游标重放实时变更，失效时
+   Controller 在 `reset → ready` 后通过 `/events` 重建历史并保留乐观消息。
+   最后一个订阅者离开时，仍运行的回合由服务端有界跟踪。事件正文保存在内存中。
 
 默认附件与产物下载继续由 `/api/kit/files/:fileId/download` 代理，浏览器不持有 Provider 凭据或
-预签名 URL。Kit 协议 v2 要求前后端同步升级（ADR-0006）；SDK 版本交付状态记录在验收记录中。
+预签名 URL。Kit 协议 v3 要求 Server、SDK、Web/H5 和 Console 同步升级（ADR-0028）。
 
 ## YAML 资源批次与管理员调试
 
@@ -490,7 +490,7 @@ Kit Server → KitClient → createKitChatProvider ─────────�
                               转换策略        调用并持有消息     ChatMessage
 ```
 
-- `createKitChatProvider(client)` 转发既有 Client 的五项会话能力，保持请求路径、Kit 控制帧
+- `createKitChatProvider(client)` 转发 Client 的独立历史分页及五项会话能力，保持请求路径、Kit 控制帧
   与游标行为。KitClient 也结构兼容此合同，既有 Controller 调用无需迁移。
 - 两个 Provider 工厂显式使用 `transformSessionEvent` 作为 `transformMessage`。该纯转换将
   `SessionEvent` 整理成消息与 Artifact，位于 `messages/`，不调用 SDK 运行时。
@@ -507,6 +507,7 @@ Kit Server → KitClient → createKitChatProvider ─────────�
   事件、不维护跨调用缓存，保留稳定消息和分片身份，支持同 ID 替换、清空及产物撤回。
 - Controller 统一安排订阅重试，保持乐观消息、快照替换、执行状态及审批编排。适配器每次
   只处理一次连接，不另开重试循环、不重发消息和审批。
+- 标准事件 Provider 必填 `listEvents`。Controller 在实时连接就绪后读历史分页并归并缓冲事件。
 - `useChat({ sessionId, provider })` 可以脱离 `KitProvider`。显式实例优先于 Context；
   实例与会话稳定时保持连接，切换或卸载释放旧订阅并隔离迟到回调。
 - 自建后端负责会话权限、实际发送与审批校验、历史完整性及真实上游订阅就绪保证。
@@ -567,10 +568,8 @@ ProviderGateway，不改变 SDK 或 ChatProvider 合同。成员列表只读取�
 
 本节描述默认 Kit Server → SDK 的网络接口；自建后端原始流的恢复由上述 ChatProvider 链路负责。
 
-Kit 的 ready 闸门保证首次上游订阅和历史合并完成后再提交。当前 SDK 只有成功连接的
-`onReady`，没有公开的断链状态回调，因此 SDK 内部短暂退避期间 Kit 无法可靠阻止所有新 POST；
-恢复后由 SDK 历史补拉收敛，业务 POST 不自动重发。若需要严格禁止这段时间的提交，须先扩展
-SDK 公开连接状态，本轮不读取 internal 实现。
+Kit Gateway 将上游连接错误交给 SSE 消费方处理。浏览器恢复订阅，游标失效后用独立历史分页收敛。
+提交前由服务端等待上游就绪并校验会话运行状态。自动恢复只涉及读取和订阅。
 
 SDK 恢复时避免把无分片水位的 in_progress 历史与新 delta 直接相加；中间文本可能暂时被
 当前连接的局部快照替换，最终以 completed 全量快照收敛，不承诺断流期间逐字无损连续。

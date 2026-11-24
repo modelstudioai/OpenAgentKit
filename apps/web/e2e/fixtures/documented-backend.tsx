@@ -17,6 +17,12 @@ const request = createRequest({
 });
 const provider = createSessionEventChatProvider({
 	request,
+	listEvents: {
+		buildRequest: ({ sessionId, pageToken }) => ({
+			path: `/v1/conversations/${encodeURIComponent(sessionId)}/events?cursor=${encodeURIComponent(pageToken ?? "")}`,
+		}),
+		mapResponse: async (response) => (await response.json()).payload,
+	},
 	stream: {
 		buildRequest: ({ sessionId, after }) => ({
 			path: `/v1/conversations/${encodeURIComponent(sessionId)}/watch?cursor=${encodeURIComponent(after ?? "")}`,

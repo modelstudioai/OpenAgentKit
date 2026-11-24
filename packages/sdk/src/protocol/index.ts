@@ -167,7 +167,13 @@ export {
 	KitError,
 	type KitErrorBody,
 } from "./errors.ts";
-export { mergeEventSnapshots } from "./event-snapshots.ts";
+export {
+	mergeEventSnapshots,
+	reconcileSnapshotHistory,
+	reconcileUnorderedSnapshot,
+	sameSnapshot,
+	snapshotConflict,
+} from "./event-snapshots.ts";
 export {
 	type ArtifactDescriptor,
 	artifactOf,

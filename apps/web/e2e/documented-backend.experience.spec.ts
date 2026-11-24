@@ -73,21 +73,21 @@ test("文档 SDK 通过实际 HTTP/SSE 连接独立后端，显示回复且只�
 			await route(req, res);
 			return;
 		}
+		if (req.url?.startsWith("/v1/conversations/example-session/events?")) {
+			json(res, {
+				data: [{ event_id: "state", type: "session_status", metadata: { status: "idle" } }],
+				next_page_token: null,
+			});
+			return;
+		}
 		if (req.url?.startsWith("/v1/conversations/example-session/watch")) {
 			res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" });
 			streams.add(res);
 			res.on("close", () => streams.delete(res));
-			res.write(encodeFrame({ type: "reset", data: { session_id: "example-session" } }));
-			res.write(
-				encodeFrame({
-					type: "event",
-					data: { event_id: "state", type: "session_status", metadata: { status: "idle" } },
-				}),
-			);
 			res.write(
 				encodeFrame({
 					type: "ready",
-					data: { session_id: "example-session", after: null, replayed: 1, cursor: null },
+					data: { session_id: "example-session", after: null, replayed: 0, cursor: "example:0" },
 				}),
 			);
 			return;
@@ -127,6 +127,7 @@ test("文档 SDK 通过实际 HTTP/SSE 连接独立后端，显示回复且只�
 			`/e2e/fixtures/documented-backend.html?backend=${encodeURIComponent(`http://127.0.0.1:${address.port}`)}`,
 		);
 		await expect(page.getByRole("status", { name: "" }).filter({ hasText: "示例后端已连接" })).toBeVisible();
+		expect(dataCalls).toContain("GET /v1/conversations/example-session/events?cursor=");
 		await page.getByLabel("消息输入", { exact: true }).fill("公开 SDK 接入");
 		await page.getByRole("button", { name: "发送", exact: true }).click();
 		await expect(page.getByText("独立后端已收到：公开 SDK 接入", { exact: true })).toBeVisible();

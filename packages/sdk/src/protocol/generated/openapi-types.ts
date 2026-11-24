@@ -3138,7 +3138,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description SSE 事件流（reset/ready/event/done/error/ping） */
+                /** @description 实时 SSE。after 续传实时变更，reset 后通过事件分页恢复历史 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -20289,7 +20289,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description 复用 Kit Session SSE 协议与 after 游标 */
+                /** @description 实时 SSE。after 续传实时变更，reset 后通过调试事件分页恢复历史 */
                 200: {
                     headers: {
                         [name: string]: unknown;

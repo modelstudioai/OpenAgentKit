@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "OpenAgentKit Server",
-    "version": "2.0.0"
+    "version": "3.0.0"
   },
   "tags": [
     {
@@ -187,7 +187,7 @@
           {
             "schema": {
               "type": "string",
-              "example": "2.0.0",
+              "example": "3.0.0",
               "description": "必填的 Kit 协议版本；当前要求 2.x，缺失或主版本不匹配返回 409。"
             },
             "required": true,
@@ -483,7 +483,7 @@
           {
             "schema": {
               "type": "string",
-              "example": "2.0.0",
+              "example": "3.0.0",
               "description": "必填的 Kit 协议版本；当前要求 2.x，缺失或主版本不匹配返回 409。"
             },
             "required": true,
@@ -4377,7 +4377,7 @@
           {
             "schema": {
               "type": "string",
-              "example": "2.0.0",
+              "example": "3.0.0",
               "description": "必填的 Kit 协议版本；当前要求 2.x，缺失或主版本不匹配返回 409。"
             },
             "required": true,
@@ -6624,7 +6624,7 @@
           {
             "schema": {
               "type": "string",
-              "example": "2.0.0",
+              "example": "3.0.0",
               "description": "必填的 Kit 协议版本；当前要求 2.x，缺失或主版本不匹配返回 409。"
             },
             "required": true,
@@ -6635,7 +6635,7 @@
         ],
         "responses": {
           "200": {
-            "description": "SSE 事件流（reset/ready/event/done/error/ping）",
+            "description": "实时 SSE。after 续传实时变更，reset 后通过事件分页恢复历史",
             "content": {
               "text/event-stream": {
                 "schema": {
@@ -44229,7 +44229,7 @@
           {
             "schema": {
               "type": "string",
-              "example": "2.0.0",
+              "example": "3.0.0",
               "description": "必填的 Kit 协议版本；当前要求 2.x，缺失或主版本不匹配返回 409。"
             },
             "required": true,
@@ -44626,7 +44626,7 @@
           {
             "schema": {
               "type": "string",
-              "example": "2.0.0",
+              "example": "3.0.0",
               "description": "必填的 Kit 协议版本；当前要求 2.x，缺失或主版本不匹配返回 409。"
             },
             "required": true,
@@ -44637,7 +44637,7 @@
         ],
         "responses": {
           "200": {
-            "description": "复用 Kit Session SSE 协议与 after 游标",
+            "description": "实时 SSE。after 续传实时变更，reset 后通过调试事件分页恢复历史",
             "content": {
               "text/event-stream": {
                 "schema": {
@@ -45577,7 +45577,7 @@
           {
             "schema": {
               "type": "string",
-              "example": "2.0.0",
+              "example": "3.0.0",
               "description": "必填的 Kit 协议版本；当前要求 2.x，缺失或主版本不匹配返回 409。"
             },
             "required": true,
@@ -45968,7 +45968,7 @@
           {
             "schema": {
               "type": "string",
-              "example": "2.0.0",
+              "example": "3.0.0",
               "description": "必填的 Kit 协议版本；当前要求 2.x，缺失或主版本不匹配返回 409。"
             },
             "required": true,

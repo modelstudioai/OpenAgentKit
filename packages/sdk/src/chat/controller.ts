@@ -6,6 +6,7 @@ import {
 	ToolApprovalDecisionSchema,
 } from "../protocol/index.ts";
 import type { ChatProvider } from "../providers/contract.ts";
+import { streamWithSessionHistory } from "./history-stream.ts";
 import { type ChatMultiAgent, createMultiAgentRuntime } from "./multi-agent.ts";
 import { type BackoffOptions, createBackoff, sleep } from "./reconnect.ts";
 import { createSessionStore, type SessionSnapshot, type SessionStore } from "./session-store.ts";
@@ -144,7 +145,7 @@ export function createChatController(
 		while (!disposed) {
 			store.setConnection(attempt++ ? "reconnecting" : "connecting");
 			try {
-				await client.stream(sessionId, streamOptions(backoff));
+				await streamWithSessionHistory(client, sessionId, streamOptions(backoff));
 				connected = false;
 				store.setConnection("disconnected");
 				settle(new KitError("conflict", "会话订阅已经结束"));

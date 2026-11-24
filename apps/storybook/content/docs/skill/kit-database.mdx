@@ -1,0 +1,16 @@
+---
+title: kit-database
+description: 配置 Kit Server 的 SQLite、MySQL 或 PostgreSQL，核对启动迁移与目标库
+---
+
+`kit-database` 指导 coding agent 配置 Kit Server 的存储后端。可以直接使用默认 SQLite，
+也可以接入已有的 MySQL 或 PostgreSQL。Skill 给出了连接环境变量、目标库权限和启动验证步骤。
+
+[下载 Skill](/skills/kit-database.tgz) · [阅读 SKILL.md](/skills/kit-database/SKILL.md)
+
+按[安装与更新](/docs/skill/install)复制完整目录。使用时告诉 coding agent 选择的数据库
+和希望验证的结果，连接凭据通过项目的本地配置或部署环境提供。
+
+```text
+用 $kit-database 将 Kit Server 接入我的 MySQL，复用现有配置并核对目标库的迁移记录。
+```

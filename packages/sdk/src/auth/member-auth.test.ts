@@ -125,6 +125,10 @@ describe("本地成员认证生命周期", () => {
 		const createProvider = vi.fn<NonNullable<MemberAuthOptions["createChatProvider"]>>((request) =>
 			createSessionEventChatProvider({
 				request,
+				listEvents: {
+					buildRequest: () => ({ path: "/business/history" }),
+					mapResponse: async (response) => (await response.json()).data,
+				},
 				stream: { buildRequest: () => ({ path: "/business/stream" }) },
 				sendMessage: {
 					buildRequest: ({ body }) => ({
