@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, relative, resolve, sep } from "node:path";
+import { dirname, extname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertChatUiCoverage, createApiModel } from "./api-model.mjs";
 import {
@@ -104,6 +104,12 @@ function renderApi(name, entries, model, root, renderedDocs) {
 	return `${lines.join("\n").trim()}\n`;
 }
 
+const exampleExtension = /\.(?:tsx?|vue)$/;
+
+function renderExampleCode(file) {
+	return `\`\`\`${extname(file).slice(1)}\n${readFileSync(file, "utf8").trimEnd()}\n\`\`\``;
+}
+
 function renderExamples(directory, examples) {
 	return [
 		"# 可编译示例",
@@ -115,7 +121,7 @@ function renderExamples(directory, examples) {
 			"",
 			`[源文件](../${portablePath(relative(directory, file))})`,
 			"",
-			`\`\`\`${file.endsWith(".tsx") ? "tsx" : "ts"}\n${readFileSync(file, "utf8").trimEnd()}\n\`\`\``,
+			renderExampleCode(file),
 			"",
 		]),
 	].join("\n");
@@ -134,8 +140,8 @@ export function renderDocsExamples(text, root) {
 		const [name] = path.split("/");
 		if (!names.has(name)) throw new Error(`Unknown Skill example: ${path}`);
 		const file = inside(skillSourceRoot(root, name), resolve(root, "scripts/skills/src", path));
-		if (!/\.tsx?$/.test(file)) throw new Error(`Expected a TypeScript example: ${path}`);
-		return `{/* skill-example: ${path} */}\n\n\`\`\`${file.endsWith(".tsx") ? "tsx" : "ts"}\n${readFileSync(file, "utf8").trimEnd()}\n\`\`\`\n\n{/* /skill-example */}`;
+		if (!exampleExtension.test(file)) throw new Error(`Expected a TS, TSX or Vue example: ${path}`);
+		return `{/* skill-example: ${path} */}\n\n${renderExampleCode(file)}\n\n{/* /skill-example */}`;
 	});
 }
 
@@ -198,9 +204,9 @@ function buildSkillOutputs(root, name, model, renderedDocs) {
 	const references = resolve(source, "references");
 	const examples = resolve(source, "examples");
 	const exampleFiles = existsSync(examples) ? filesUnder(examples) : [];
-	const typedExamples = exampleFiles.filter((file) => /\.tsx?$/.test(file));
-	if (typedExamples.length) {
-		skillFiles.set("references/examples.md", renderExamples(source, typedExamples));
+	const compilableExamples = exampleFiles.filter((file) => exampleExtension.test(file));
+	if (compilableExamples.length) {
+		skillFiles.set("references/examples.md", renderExamples(source, compilableExamples));
 	}
 	for (const file of existsSync(references) ? filesUnder(references) : []) {
 		const text = readFileSync(file, "utf8");

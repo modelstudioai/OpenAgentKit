@@ -26,6 +26,13 @@ for (const { name, directory, args, source, files } of [
 			"processing-indicator/index.ts",
 		],
 	},
+	{
+		name: "使用 --framework vue 复制附件输入与词典",
+		directory: true,
+		args: ["attachments", "--framework", "vue"],
+		source: "chat-ui-vue",
+		files: ["attachments/index.ts", "attachments/strings.ts", "kit-i18n/index.ts"],
+	},
 ]) {
 	test(`kit:add ${name}`, (t) => {
 		const project = mkdtempSync(join(tmpdir(), "kit-add-"));

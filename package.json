@@ -44,7 +44,7 @@
     "gen:web-vue-shared": "node scripts/kit/mirror-web-vue-shared.mjs",
     "check:web-vue-shared": "node scripts/kit/mirror-web-vue-shared.mjs --check",
     "check:skills": "node scripts/skills/generate.mjs",
-    "typecheck:skills": "tsc -p scripts/skills/tsconfig.json --noEmit",
+    "typecheck:skills": "vue-tsc -p scripts/skills/tsconfig.json --noEmit",
     "pack:skills": "node scripts/skills/pack.mjs",
     "changeset": "changeset",
     "clean": "turbo run clean && rm -rf node_modules",
@@ -63,7 +63,9 @@
     "esbuild": "0.25.12",
     "react": "^19.3.0",
     "turbo": "^2.11.7",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vue": "^3.5.0",
+    "vue-tsc": "^3.0.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

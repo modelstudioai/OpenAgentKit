@@ -40,7 +40,7 @@
 			"file": "src/components/code-highlighter/index.ts",
 			"deps": ["kit-i18n"],
 			"extraFiles": ["src/components/code-highlighter/strings.ts", "src/components/slot-text.ts"],
-			"npmDependencies": ["lowlight"]
+			"npmDependencies": ["@types/hast", "lowlight"]
 		},
 		"mermaid": {
 			"file": "src/components/mermaid/index.ts",
@@ -56,13 +56,18 @@
 				"src/components/slot-text.ts",
 				"src/components/markdown/index.ts"
 			],
-			"npmDependencies": ["rehype-sanitize", "remark-gfm", "remark-parse", "remark-rehype", "unified"]
+			"npmDependencies": ["@types/hast", "rehype-sanitize", "remark-gfm", "remark-parse", "remark-rehype", "unified"]
 		},
 		"sender": {
 			"file": "src/components/sender/index.ts",
 			"deps": ["kit-i18n"],
 			"extraFiles": ["src/components/sender/strings.ts"],
 			"npmDependencies": ["@openagentkit/sdk"]
+		},
+		"attachments": {
+			"file": "src/components/attachments/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/attachments/strings.ts"]
 		},
 		"actions": {
 			"file": "src/components/actions/index.ts",

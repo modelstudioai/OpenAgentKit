@@ -219,7 +219,7 @@ scripts/skills/
     skill.md        SKILL.md 正文
     catalog.json    API Skill 的公开接口索引
     references/     按需提供中文行为说明
-    examples/       按需提供 TS/TSX 示例，参与类型检查并同步到文档站
+    examples/       按需提供 TS、TSX 或 Vue 单文件示例，参与类型检查并同步到文档站
   generate.mjs      生成、校验与 API 模型入口
   pack.mjs          确定性离线打包
   tests/            生成、链接、打包与浏览器边界测试

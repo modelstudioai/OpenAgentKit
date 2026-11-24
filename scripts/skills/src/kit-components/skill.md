@@ -1,9 +1,39 @@
 # Kit 对话组件
 
+## 确定目标框架
+
+1. 用户已在本次任务中明确指定 React 或 Vue 时，以该选择为准。
+2. 用户未指定时，检查已有目标项目的页面、应用入口和 `package.json` 中的 `react` 或 `vue`
+   依赖。Monorepo 按目标应用所在的 workspace 判断。能确定时直接采用该框架。
+3. 仍无法确定时进入 Question 阶段。新建项目且用户未指定框架时也进入该阶段。
+4. 框架确定后，按对应组件包的 `peerDependencies` 核对目标项目的实际版本。React 路径要求
+   `react` 和 `react-dom` 满足 `^18 || ^19`，Vue 路径要求 `vue` 满足 `^3.5.0`。新建项目选用
+   兼容版本。已有项目版本不兼容时，说明实际版本和支持范围，由用户决定升级或在独立应用中接入后再继续。
+
+按已确定的框架选择组件包、SDK 适配入口及示例。同一目标同时使用 `kit-components` 和
+`use-kit-chat` 时，复用该选择。
+
+### Question 阶段
+
+询问「这次对话页面用 React 还是 Vue 3？」。宿主提供提问工具时，列出 `React` 和 `Vue 3`
+两个选项。也可以直接在对话中提问。等用户给出明确答复后，先核对版本，再选择示例和生成代码。
+
+## Vue 3 接入
+
+- 使用 `@openagentpack/kit-chat-ui-vue` 的公开组件和 Vue 具名插槽。[Vue 三栏布局](examples/layout.vue)
+  组合 `Layout`、`SessionList`、`Chat` 和 Agent 信息区，会话数据和回调由调用方提供。
+- 组件包通过仓库 workspace 使用。独立项目可按 [Vue 源码复制指南](references/vue-copy-in.md)
+  准备 Kit SDK 和类型依赖，再复制所需组件。附件输入可复制 `attachments` 条目。
+- 在 Tailwind v4 样式入口引入 `@openagentpack/kit-chat-ui-vue/theme.css`。copy-in 项目引入复制的
+  `theme.css`。通过 `@source` 扫描组件及示例实际所在目录的 `.vue`、`.ts` 文件。
+- 需要绑定真实会话、发送或工具审批时，使用 `use-kit-chat` Skill 的 Vue 接入示例。
+
+## React 接入
+
 用 `@openagentpack/kit-chat-ui` 的公开组件搭建所需界面。示例使用包导入。
 通过 copy-in 引入的项目应改为从本地组件路径导入。
 
-## 选择页面组合
+### 选择页面组合
 
 - **完整会话页或工作台**可从[工作台布局](examples/layout.tsx)开始。将 `SessionSidebar` 放进
   `Layout.sidebar`，当前会话的 `Chat` 放进 `children`，Agent 信息和资源放进 `Layout.aside`。
@@ -21,7 +51,7 @@
 的相关章节。[API 参考](references/api.md)覆盖公开运行时导出、静态子组件和导出类型。
 [示例参考](references/examples.md)与下列可编译源文件同源。
 
-## 使用规则
+### 使用规则
 
 1. 把 `useChat` 结果和应用回调传给组件。核心层负责 Stream、Request、Provider 和 Chat，
    React 将会话状态绑定到组件生命周期。组件只负责展示与交互，请求、百炼 SSE 解析、凭据和会话创建归上层。
@@ -38,7 +68,7 @@
 6. 使用 Tailwind 工具类和已有 `--kit-*` token。即使组件位于 workspace 或链接包中，
    也要确保 Tailwind 能扫描组件源码。
 
-## 示例
+### 示例
 
 - [工作台布局](examples/layout.tsx)包含会话导航、中央 Chat 插槽、Agent 信息和资源、响应式面板及调用方控制的弹窗。
 - [由 Hook 驱动的对话](examples/chat-runtime.tsx)展示多 Agent 历史、默认输入框和主 Agent 工具审批。

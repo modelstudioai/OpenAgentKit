@@ -1,14 +1,48 @@
 ---
 name: use-kit-chat
-description: "将 React 对话页面接入 OpenAgentKit 的 useChat，串起会话目录、消息与输入框、Agent 资源和产物交互。适用于 Kit Server 或已有的自定义 ChatProvider。"
+description: "将 React 或 Vue 3 对话页面接入 OpenAgentKit 的 useChat，处理会话列表、消息、发送与工具审批。适用于 Kit Server 或已有的自定义 ChatProvider。"
 ---
 
 # 接入 Kit 对话
 
 让一个 `useChat` 实例持有一个会话，再将状态传给页面的消息、输入和审批组件。
-`ChatProvider` 连接业务后端，React 的 `KitProvider` 为应用提供默认 KitClient Context。
+`ChatProvider` 连接业务后端。
 
-## 选择接入入口
+## 确定目标框架
+
+1. 用户已在本次任务中明确指定 React 或 Vue 时，以该选择为准。
+2. 用户未指定时，检查已有目标项目的页面、应用入口和 `package.json` 中的 `react` 或 `vue`
+   依赖。Monorepo 按目标应用所在的 workspace 判断。能确定时直接采用该框架。
+3. 仍无法确定时进入 Question 阶段。新建项目且用户未指定框架时也进入该阶段。
+4. 框架确定后，按对应组件包的 `peerDependencies` 核对目标项目的实际版本。React 路径要求
+   `react` 和 `react-dom` 满足 `^18 || ^19`，Vue 路径要求 `vue` 满足 `^3.5.0`。新建项目选用
+   兼容版本。已有项目版本不兼容时，说明实际版本和支持范围，由用户决定升级或在独立应用中接入后再继续。
+
+按已确定的框架选择组件包、SDK 适配入口及示例。同一目标同时使用 `kit-components` 和
+`use-kit-chat` 时，复用该选择。
+
+### Question 阶段
+
+询问「这次对话页面用 React 还是 Vue 3？」。宿主提供提问工具时，列出 `React` 和 `Vue 3`
+两个选项。也可以直接在对话中提问。等用户给出明确答复后，先核对版本，再选择示例和生成代码。
+
+## Vue 3 接入
+
+- 从 `@openagentkit/sdk/chat/hooks-vue` 导入 `useChat` 和 `useComposer`。用响应式 getter 传入当前
+  `sessionId`、稳定的 `ChatProvider` 和 `KitClient`。未选择会话时传 `null`。
+- [Vue 会话示例](examples/experience.vue)使用 `@openagentkit/sdk/sessions/hooks-vue` 查询会话，
+  提供列表错误提示和重试。示例结合 `Chat` 和 `ToolApprovalGroup` 展示新建、发送、停止及工具审批。
+  首次发送失败后保留草稿，会话创建成功后选中该会话并刷新列表。
+- Kit Server 的 `KitClient` 由宿主根据运行时配置及身份初始化。可用 `createKitChatProvider(client)`
+  构造配套 Provider，再将两个实例传给示例。宿主切换身份时重挂会话页面。
+- 使用 Vue 组件时导入 `@openagentpack/kit-chat-ui-vue/theme.css`，并让 Tailwind v4 扫描示例及组件源码。
+  三栏布局和 copy-in 入口见 `kit-components` Skill 的 Vue 接入部分。
+
+## React 接入
+
+React 的 `KitProvider` 为应用提供默认 KitClient Context。
+
+### 选择接入入口
 
 - **完整会话页或工作台**可从[三栏会话页](examples/experience.tsx)开始。左侧 `SessionSidebar`、
   中间 `Chat` 和右侧 [Agent 资源面板](examples/agent-resources-panel.tsx)共享同一套 Agent 和会话选择。
@@ -25,7 +59,7 @@ description: "将 React 对话页面接入 OpenAgentKit 的 useChat，串起会�
   让显式 Provider 复用相同的固定身份与取消边界，再将 `auth.chatProvider` 传给 `useChat`。
 - **已有自定义后端适配器**可直接使用 `useChat({ sessionId, provider })`，
   无需 `KitProvider`，见[自建后端示例](examples/custom-chat.tsx)。
-- **非 React 宿主**从 `@openagentkit/sdk/chat` 导入 `createChatController`，
+- **其他框架或自定义宿主**从 `@openagentkit/sdk/chat` 导入 `createChatController`，
   显式订阅及销毁，见[控制器示例](examples/controller.ts)。
 - 拿到真实会话 ID 前传入 `null`。创建和列出会话通过独立接口完成。
 - **Kit Server 的发现和用量**在 `KitProvider` 中使用 `usePlaza`、`useQuota` 和 `useQuotaRequests`，
@@ -36,7 +70,7 @@ description: "将 React 对话页面接入 OpenAgentKit 的 useChat，串起会�
 
 保持 Client 和 Provider 实例稳定。重渲染沿用同一个 Provider，审批展示复用当前的 `useChat` 实例。
 
-## 实现交互
+### 实现交互
 
 1. 查询 [API 参考](references/api.md)了解所用版本的公开合同。
 2. 用 `MessageList` 渲染 `messages`。自定义渲染器须使用稳定的消息和分片 ID，

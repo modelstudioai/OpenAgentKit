@@ -9,7 +9,9 @@ Kit 的中文 Skill 指导 coding agent 选择组件、管理聊天状态、接�
 每个 Skill 都可以独立复制使用，涉及公开 API 的 Skill 附有接口参考和可编译示例。
 
 Skill 是写代码时读取的指南，不是运行时插件，也不会替应用创建会话或调用百炼。
-页面的实际行为仍由 `kit-chat-ui`、Kit SDK 各功能入口及其 `/hooks` 和业务后端完成。
+React 页面使用 `kit-chat-ui` 和 SDK 的 `/hooks`，Vue 3 页面使用 `kit-chat-ui-vue` 和 `/hooks-vue`。
+`kit-components` 和 `use-kit-chat` 优先使用用户指定的框架，再根据已有目标项目判断。
+仍无法确定时进入 Question 阶段询问用户。
 
 ## 选择 Skill
 

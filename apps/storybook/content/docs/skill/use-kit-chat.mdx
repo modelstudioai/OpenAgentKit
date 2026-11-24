@@ -3,14 +3,144 @@ title: use-kit-chat
 description: 使用中文 Skill 接入 useChat，管理发送、停止、会话切换和工具审批
 ---
 
-`use-kit-chat` 指导 coding agent 把 `@openagentkit/sdk/chat/hooks` 的聊天状态接入页面，
-覆盖默认 Kit Server 和显式 `ChatProvider` 两种入口。它消费已有 Provider，不重新实现
-底层 SSE 转换。Provider 定义消息转换策略，Chat 持有事件快照并调用策略，hook 绑定状态与
-React 生命周期；页面直接消费返回的 `ChatMessage`。
+`use-kit-chat` 指导 coding agent 将聊天状态接入目标应用。React 使用 `@openagentkit/sdk/chat/hooks`，
+Vue 3 使用 `@openagentkit/sdk/chat/hooks-vue`。两种接入共用 Chat Controller 和 `ChatProvider`，
+页面直接消费返回的 `ChatMessage`。
+用户未明确指定框架时，Skill 先分析目标项目。仍无法确定框架时，再进入 Question 阶段询问。
+确认框架后，先检查目标应用的版本兼容性，再接入。
 
 [下载 Skill](/skills/use-kit-chat.tgz) ·
 [阅读 Skill](/skills/use-kit-chat/SKILL.md) ·
-[API 参考](/skills/use-kit-chat/references/api.md)
+[React 与核心 API 参考](/skills/use-kit-chat/references/api.md)
+
+## Vue 3 会话示例
+
+宿主提供稳定的 `KitClient`、`ChatProvider` 和 Agent slug。示例通过 `useSessions` 列出会话并支持加载失败重试，
+通过 `useComposer` 在第一次发送时创建会话，用 `useChat` 绑定消息、停止和工具审批。
+
+[下载 Vue 会话示例](/skills/use-kit-chat/examples/experience.vue)
+
+{/* skill-example: use-kit-chat/examples/experience.vue */}
+
+```vue
+<script setup lang="ts">
+import { useChat, useComposer } from "@openagentkit/sdk/chat/hooks-vue";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
+import type { KitClient } from "@openagentkit/sdk/providers/kit";
+import { useSessions } from "@openagentkit/sdk/sessions/hooks-vue";
+import { Chat, ToolApprovalGroup } from "@openagentpack/kit-chat-ui-vue";
+import { computed, ref, watch } from "vue";
+
+const props = defineProps<{
+	client: KitClient;
+	provider: ChatProvider;
+	agentSlug: string;
+}>();
+
+const sessionId = ref<string | null>(null);
+const draftKey = ref(0);
+const stopError = ref<string | null>(null);
+const {
+	sessions,
+	loading: sessionsLoading,
+	error: sessionsError,
+	reload: reloadSessions,
+} = useSessions(() => ({ client: props.client, agentSlug: props.agentSlug, limit: 10 }));
+const chat = useChat(() => ({ sessionId: sessionId.value, provider: props.provider }));
+const { messages, multiAgent, turnRunning, approvals } = chat;
+const { snapshot: delivery, send } = useComposer(() => ({
+	client: props.client,
+	agentSlug: props.agentSlug,
+	sessionId: sessionId.value,
+	files: [],
+	send: chat.send,
+	onSessionCreated: (id) => {
+		// 首条消息可能失败，保留同一个输入框直到发送成功。
+		sessionId.value = id;
+		if (props.client.supports("sessions")) void reloadSessions();
+	},
+}));
+
+const canSend = computed(
+	() => !delivery.value.pending && (sessionId.value ? chat.canSend.value : props.client.supports("createSession")),
+);
+const errorMessage = computed(() => {
+	const failure = delivery.value.error;
+	if (failure) return failure instanceof Error ? failure.message : "消息发送失败";
+	return stopError.value ?? chat.streamError.value?.message;
+});
+
+function selectSession(id: string | null) {
+	sessionId.value = id;
+	draftKey.value += 1;
+	stopError.value = null;
+}
+
+function handleSelection(event: Event) {
+	selectSession((event.currentTarget as HTMLSelectElement).value || null);
+}
+
+watch(() => props.agentSlug, () => selectSession(null));
+
+async function sendMessage(text: string, skills?: string[]) {
+	stopError.value = null;
+	// 将失败交给 Chat 处理，保留当前草稿。
+	await send(text, skills);
+}
+
+async function stopTurn() {
+	stopError.value = null;
+	try {
+		await chat.stop();
+	} catch (error) {
+		stopError.value = error instanceof Error ? error.message : "停止生成失败";
+	}
+}
+</script>
+
+<template>
+	<div class="flex h-dvh min-h-0 flex-col" data-kit-appearance="workspace">
+		<label class="flex items-center gap-2 p-3">
+			会话
+			<select class="min-w-0" :value="sessionId ?? ''" @change="handleSelection">
+				<option value="">新会话</option>
+				<option v-for="session in sessions" :key="session.session_id" :value="session.session_id">
+					{{ session.title || session.agent_slug }}
+				</option>
+			</select>
+		</label>
+		<div v-if="sessionsError" class="flex items-center gap-2 px-3">
+			<p role="alert" class="text-[var(--kit-danger)]">会话列表加载失败。</p>
+			<button type="button" class="underline" @click="reloadSessions">重试加载会话</button>
+		</div>
+		<p v-else-if="sessionsLoading" role="status" class="px-3">正在加载会话</p>
+		<p v-if="errorMessage" role="alert" class="px-3 text-[var(--kit-danger)]">{{ errorMessage }}</p>
+		<Chat
+			:key="draftKey"
+			variant="workspace"
+			:scroll-key="sessionId"
+			:messages="messages"
+			:multi-agent="multiAgent"
+			:turn-running="turnRunning"
+			:sending="delivery.pending"
+			:can-send="canSend"
+			:on-send="sendMessage"
+			:on-stop="stopTurn"
+		>
+			<template v-if="approvals.length" #approvals>
+				<ToolApprovalGroup
+					:approvals="approvals"
+					:on-decision="chat.submitApproval"
+					:on-refresh="chat.refreshApprovals"
+					:on-stop="stopTurn"
+				/>
+			</template>
+		</Chat>
+	</div>
+</template>
+```
+
+{/* /skill-example */}
 
 ## 两种入口
 
@@ -155,8 +285,8 @@ function ChatPanel({ sessionId }: { sessionId: string | null }) {
 
 ## 无 React 的宿主
 
-Skill 提供 core 的 `createChatController` 示例。宿主直接订阅状态并释放实例，React 页面
-继续使用 Hook；核心状态和动作来自同一实现。
+Vue 3 页面可使用上文的 Vue 组合式函数。需要自行管理订阅的宿主可参考 `createChatController` 示例，
+直接订阅状态并释放实例。
 示例也列出可选的独立 Store：它接受消息转换策略，但事件交付与生命周期必须由调用方负责。
 
 {/* skill-example: use-kit-chat/examples/controller.ts */}

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { resolve } from "node:path";
+import { extname, resolve } from "node:path";
 import { test } from "node:test";
 import { assertChatUiCoverage, createApiModel } from "../api-model.mjs";
 import { createArchive } from "../archive.mjs";
@@ -217,16 +217,25 @@ test("one generation synchronizes SDK and component examples with their source f
 		const examples = [
 			["kit-chat-provider", "request.ts", "sdk/request.mdx"],
 			["kit-components", "layout.tsx", "components/layout.mdx"],
+			["kit-components", "layout.vue", "skill/kit-components.mdx"],
+			["use-kit-chat", "experience.vue", "skill/use-kit-chat.mdx"],
 		];
-		for (const [skill, example] of examples) {
+		const updated = examples.map(([skill, example, doc]) => {
 			const source = resolve(skillSourceRoot(directory, skill), "examples", example);
-			writeFileSync(source, `${readFileSync(source, "utf8")}\n// 已更新的接入示例 ${example}。\n`);
-		}
+			const marker = `已更新的接入示例 ${example}。`;
+			const comment = example.endsWith(".vue") ? `<!-- ${marker} -->` : `// ${marker}`;
+			const contents = `${readFileSync(source, "utf8").trimEnd()}\n\n${comment}\n`;
+			writeFileSync(source, contents);
+			return { skill, example, doc, contents };
+		});
 		const model = createApiModel(repositoryRoot);
 		const outputs = buildOutputs(directory, model);
-		for (const [, example, doc] of examples) {
-			const text = outputs.get(resolve(directory, "apps/storybook/content/docs", doc));
-			assert.ok(text?.includes(`已更新的接入示例 ${example}`), `${doc} must embed its source example`);
+		for (const { skill, example, doc, contents } of updated) {
+			const skillRoot = skillOutputRoot(directory, skill);
+			const fence = `\`\`\`${extname(example).slice(1)}\n${contents.trimEnd()}\n\`\`\``;
+			assert.equal(outputs.get(resolve(skillRoot, "examples", example)), contents);
+			assert.ok(outputs.get(resolve(skillRoot, "references/examples.md"))?.includes(fence));
+			assert.ok(outputs.get(resolve(directory, "apps/storybook/content/docs", doc))?.includes(fence));
 		}
 		synchronizeOutputs(outputs, { root: directory, write: true });
 		assert.equal(synchronizeOutputs(buildOutputs(directory, model), { root: directory }).changed, 0);

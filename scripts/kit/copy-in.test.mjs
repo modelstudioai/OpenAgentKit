@@ -33,6 +33,13 @@ for (const packageName of ["chat-ui", "chat-ui-vue"]) {
 	});
 }
 
+test("Vue Markdown 和代码高亮声明复制到独立项目所需的 hast 类型", () => {
+	const registry = readRegistry(join(REPO_ROOT, "packages/chat-ui-vue"));
+	for (const name of ["code-highlighter", "markdown"]) {
+		assert.ok(registry.components[name]?.npmDependencies?.includes("@types/hast"), `${name} 直接引用 hast 类型`);
+	}
+});
+
 test("组件及 process/ 子组件的落点保留独立目录层级", () => {
 	assert.equal(
 		componentDestPath("src/components/process/sub-agent-card/index.tsx"),
