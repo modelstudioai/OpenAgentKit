@@ -116,9 +116,12 @@ const mobileTitle = computed(() => {
 	if (view.value === "chat") return headerTitle.value;
 	return currentAgent.value?.display_name ?? props.branding.productName;
 });
+const sessionUnavailable = computed(
+	() => Boolean(chat.streamError.value) && chat.connection.value !== "reconnecting",
+);
 /** 侧栏打开行实时状态：流式/审批/失败优先，刚完成标记只属于当前停留的会话。 */
 const activeStatus = computed(() => {
-	if (chat.streamError.value && chat.connection.value !== "reconnecting") return undefined;
+	if (sessionUnavailable.value) return undefined;
 	const phase = chat.phase.value;
 	if (phase === "running" || phase === "stopping" || (!phase && chat.turnRunning.value)) return "running";
 	if (phase === "requires_action") return "attention";
@@ -127,8 +130,16 @@ const activeStatus = computed(() => {
 	return undefined;
 });
 /** 会话流硬错误期间，索引里的状态不可信：压掉该行滞留状态，避免把错误显示成运行中。 */
-const staleStatusId = computed(() =>
-	chat.streamError.value && chat.connection.value !== "reconnecting" ? sessionId.value : null,
+const staleStatusId = computed(() => (sessionUnavailable.value ? sessionId.value : null));
+watch(
+	[sessionId, chat.phase, sessionUnavailable],
+	([id, phase, failed]) => directory.observeChat({ sessionId: id, phase, failed }),
+	{ immediate: true },
+);
+watch(
+	[sessionId, activeStatus],
+	([id, status], _previous, onCleanup) => onCleanup(directory.watchStatuses(id, status !== undefined)),
+	{ immediate: true },
 );
 function distrustSessions(sessions: SessionSummary[]): SessionSummary[] {
 	const stale = staleStatusId.value;
@@ -497,6 +508,15 @@ async function downloadArtifact(fileId: string) {
 	}
 }
 
+const draftScope = ref(0);
+let createdSessionId: string | null = null;
+watch([agentSlug, sessionId], ([, id], [, previousId]) => {
+	// 本次发送创建的会话沿用当前草稿，等消息被接受后再清空。
+	const ownCreation = previousId === null && id !== null && id === createdSessionId;
+	createdSessionId = null;
+	if (!ownCreation) draftScope.value += 1;
+});
+
 /**
  * 发送编排复用 SDK composer：409 退避重试、并发闸门和「切换目标即中断在途建会话」只在
  * packages/sdk/src/chat/composer.ts 存在一份，与 React 同源。此前这里自带一份重试副本，
@@ -504,14 +524,15 @@ async function downloadArtifact(fileId: string) {
  */
 const composer = useComposer(() => ({
 	client: props.client,
-	agentSlug: currentAgent.value?.slug ?? null,
+	agentSlug: view.value === "chat" ? currentAgentSlug.value : null,
 	sessionId: sessionId.value,
 	files: stagedFiles.value,
 	send: chat.send,
 	onAccepted: (ids: string[]) => attachments.consume(ids),
 	onSessionCreated: (id: string) => {
 		// 新会话立刻写进地址（replace）并刷新目录，侧栏分组随之出现。
-		navigate({ view: "chat", agent: currentAgent.value?.slug ?? null, session: id }, { replace: true });
+		createdSessionId = id;
+		navigate({ view: "chat", agent: currentAgentSlug.value, session: id }, { replace: true });
 		void directory.reload();
 	},
 }));
@@ -539,7 +560,7 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 		directory.refreshStatuses();
 		return true;
 	} catch (error) {
-		handleComposerError(error);
+		if (!(error instanceof DOMException && error.name === "AbortError")) handleComposerError(error);
 		return false;
 	}
 }
@@ -837,7 +858,7 @@ async function send(text: string, skills?: string[]): Promise<boolean> {
 			>
 				<template #sender>
 					<ExperienceSender
-						:reset-key="sessionId ?? 'new'"
+						:reset-key="draftScope"
 						:items="attachmentItems"
 						:skills="senderSkills"
 						:turn-running="chat.turnRunning.value"

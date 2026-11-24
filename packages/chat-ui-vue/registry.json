@@ -2,7 +2,7 @@
 	"$schema": "https://openagentpack.dev/schema/kit-chat-ui-registry.json",
 	"name": "kit-chat-ui-vue",
 	"version": 1,
-	"usage": "pnpm kit:add <component> 会把 Vue 组件源码复制进你的项目（copy-in），可自由修改；升级时按 docs 的 diff 指引合并。",
+	"usage": "pnpm kit:add <component> --framework vue --dir <project> 会把 Vue 组件源码复制进指定项目（copy-in），可自由修改；升级时按 docs 的 diff 指引合并。",
 	"components": {
 		"kit-i18n": {
 			"file": "src/components/kit-i18n/index.ts",
@@ -64,9 +64,22 @@
 			"extraFiles": ["src/components/sender/strings.ts"],
 			"npmDependencies": ["@openagentkit/sdk"]
 		},
+		"actions": {
+			"file": "src/components/actions/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/actions/strings.ts"]
+		},
 		"message": {
 			"file": "src/components/message/index.ts",
-			"deps": ["kit-i18n", "markdown", "sender"],
+			"deps": [
+				"kit-i18n",
+				"markdown",
+				"sender",
+				"actions",
+				"process-execution-group",
+				"process-sub-agent-card",
+				"processing-indicator"
+			],
 			"extraFiles": ["src/components/message/strings.ts"],
 			"npmDependencies": ["@openagentkit/sdk"]
 		},
@@ -97,7 +110,7 @@
 		},
 		"process-tool-summary": {
 			"file": "src/components/process/tool-summary/index.ts",
-			"deps": [],
+			"deps": ["kit-i18n"],
 			"extraFiles": ["src/components/process/tool-summary/strings.ts"]
 		},
 		"process-reasoning-block": {
@@ -115,6 +128,12 @@
 			"file": "src/components/process/execution-group/index.ts",
 			"deps": ["kit-i18n", "process-step", "process-reasoning-block", "process-tool-call-card"],
 			"extraFiles": ["src/components/process/execution-group/strings.ts"]
+		},
+		"process-sub-agent-card": {
+			"file": "src/components/process/sub-agent-card/index.ts",
+			"deps": ["kit-i18n", "markdown", "process-reasoning-block", "process-tool-call-card"],
+			"extraFiles": ["src/components/process/sub-agent-card/strings.ts"],
+			"npmDependencies": ["@openagentkit/sdk"]
 		},
 		"processing-indicator": {
 			"file": "src/components/processing-indicator/index.ts",
@@ -146,7 +165,7 @@
 		},
 		"session-sidebar": {
 			"file": "src/components/session-sidebar/index.ts",
-			"deps": ["kit-i18n", "session-list"],
+			"deps": ["kit-i18n", "session-list", "states"],
 			"extraFiles": ["src/components/session-sidebar/strings.ts"],
 			"npmDependencies": ["@openagentkit/sdk"]
 		},
