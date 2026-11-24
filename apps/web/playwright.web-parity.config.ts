@@ -7,7 +7,7 @@ const apiBaseUrl = "http://localhost:8805";
 /** Vue 对齐专项双跑（匿名 mock）：附件挂载/409 重试与会话搜索等跨端合同，同一份服务端状态依次跑 React 与 Vue。 */
 export default defineConfig({
 	testDir: "./e2e",
-	testMatch: /(^|\/)(attachment-retry|session-search)\.experience\.spec\.ts$/,
+	testMatch: /(^|\/)(attachment-retry|session-artifacts|session-search)\.experience\.spec\.ts$/,
 	timeout: 90_000,
 	expect: { timeout: 20_000 },
 	workers: 1,
