@@ -6,6 +6,7 @@ import {
 	ToolApprovalsResponseSchema,
 } from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
+import { requireExecutableSession } from "../services/session-catalog.ts";
 import { ProtocolVersionHeadersSchema } from "./protocol-header.ts";
 
 const error = {
@@ -54,15 +55,17 @@ export function registerToolApprovalRoutes(app: OpenAPIHono<AppEnv>) {
 					description: "决定已提交，执行结果由 Provider 事件确认",
 					content: { "application/json": { schema: z.object({ data: SendMessageResponseSchema }) } },
 				},
+				403: error,
 				...responses,
 			},
 		}),
 		async (c) => {
-			const { sessionIndex, sessions, audit } = c.get("services");
+			const { catalog, sessionIndex, sessions, audit } = c.get("services");
 			const subject = c.get("identity").subjectId;
 			const row = await sessionIndex.getForSubject(c.req.param("sessionId"), subject);
 			if (!row) throw new KitError("not_found", "会话不存在");
 			const decision = c.req.valid("json");
+			await requireExecutableSession(catalog, row);
 			const result = await sessions.respondToolApproval(row.session_id, decision);
 			await audit.append({
 				subject,

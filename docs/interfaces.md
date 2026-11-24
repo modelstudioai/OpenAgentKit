@@ -81,8 +81,8 @@
 | --- | --- | --- | --- |
 | `agents.list` | `GET /api/kit/agents` | 已上架 Catalog Entry 列表（slug/展示名/图标/描述/开场白/示例问题/主题/能力） | ✅ |
 | `agents.get` | `GET /api/kit/agents/:slug` | 单个已上架条目；未上架 404；懒读取远端 Agent 资源投影 `resources`（tools/skills/mcp_servers，仅成员侧展示），Provider 失败时省略该字段；目录记忆配置投影 `memory_stores`（仅名称/描述，无库 ID、权限或条目），未配置或读取失败时省略 | ✅ |
-| `sessions.agents.list` | `GET /api/kit/session-agents` | 当前 subjectId 的全部未归档体验会话关联的智能体 slug，返回 `{data:string[]}`；按各组最近活动倒序，不受会话单页数量限制；仅展示仍有未删除 Catalog 条目的 slug（不看上架状态），不包含其他身份、调试会话或仅有归档的组；只读本地索引，不查询 Provider | ✅ |
-| `sessions.list` | `GET /api/kit/sessions` | 当前 subjectId 的体验会话摘要，`?agent_slug=&limit=&page_token=&include_archived=&q=`；按 `COALESCE(last_event_at,created_at)`、`session_id` 双字段倒序分页，返回 `{data,next_page_token}`。`limit` 为 1..200（缺省 50），`include_archived=false` 在分页前排除归档，缺省仍包含归档。`q` 为 1..100 字符关键词，在分页前按标题、智能体 slug 及当前 Catalog 展示名过滤，只覆盖本人体验会话索引。游标绑定身份、智能体筛选、归档条件及关键词，条件不匹配或游标无效返回 400；最后一页返回 null。仅查询运营索引，不读取事件正文。`last_event_at` 由发消息推进，订阅水合与归档仅同步状态，点开回看不改排序；运行态由完整事件账本和受理中的 pending turn 共同投影，重复的旧 idle 不得结束新回合。共享泵在订阅者离开后继续跟踪 running 回合到终态；仅对没有上游泵的存量 running 行在 2 分钟后兜底对账，详情 idle 仍需历史投影确认非 running，同一会话 60 秒内不重复探测，失败保留原值，最终一致 | ✅ |
+| `sessions.agents.list` | `GET /api/kit/session-agents` | 当前 subjectId 的未归档体验会话中，与未软删目录条目 ID 关联的 slug，返回 `{data:string[]}`；包含已下架的条目，按各组最近活动倒序，全量读取本地索引 | ✅ |
+| `sessions.list` | `GET /api/kit/sessions` | 当前 subjectId 的体验会话摘要，`?agent_slug=&active_entry_only=true&limit=&page_token=&include_archived=&q=`；按 `COALESCE(last_event_at,created_at)`、`session_id` 双字段倒序分页，返回 `{data,next_page_token}`。`limit` 为 1..200（缺省 50），`include_archived=false` 在分页前排除归档，缺省仍包含归档。`active_entry_only=true` 须同时提供 `agent_slug`，分组只读取该 slug 当前未软删条目 ID 绑定的会话。`q` 为 1..100 字符关键词，在分页前按标题、智能体 slug 及会话关联的当前 Catalog 展示名过滤。游标绑定身份、智能体筛选、归档条件、关键词及分组条目 ID，条件不匹配或游标无效返回 400；最后一页返回 null。仅查询运营索引，不读取事件正文。`last_event_at` 由发消息推进，订阅水合与归档仅同步状态，点开回看不改排序；运行态由完整事件账本和受理中的 pending turn 共同投影，重复的旧 idle 不得结束新回合。共享泵在订阅者离开后继续跟踪 running 回合到终态；仅对没有上游泵的存量 running 行在 2 分钟后兜底对账，详情 idle 仍需历史投影确认非 running，同一会话 60 秒内不重复探测，失败保留原值，最终一致 | ✅ |
 | `sessions.create` | `POST /api/kit/sessions` | `{ agent_slug, title?, files? }` → 建 Provider Session 并落本地索引；`files` 为已上传附件，服务层在建会话后经运行时挂载进 sandbox（创建载荷不带文件——创建时 file_resource 回显成功但沙箱不物化，实测 2026-11-03；mount_path 省略时按 `/mnt/session/uploads/<文件名>` 解析，重名自动 `-2`；挂载失败回滚已挂载并删除刚建会话），详情回显 `files`；已有会话追加挂载走 `sessions.messages.send` 的 `attachments`。provider wire 形状与沙箱物化矩阵见 `docs/research/bailian-session-file-mount.md` | ✅ |
 | `sessions.get` | `GET /api/kit/sessions/:sessionId` | 会话详情 + 归属校验（非本人 404，不泄露存在性）；含挂载的 `files`（本地索引为权威，运行时挂载 provider 不回显），Provider 返回时含累计 `usage` 与秒单位 `stats`，缺失不补零 | ✅ |
 | `sessions.update` | `PATCH /api/kit/sessions/:sessionId` | 改标题（本地索引 + Provider 同步） | ✅ |
@@ -96,7 +96,7 @@
 | `sessions.threads.events` | `GET /api/kit/sessions/:sessionId/threads/:threadId/events` | 子 Agent 完整快照事件分页，最新在前；`?limit=&page_token=`；仅接受 `sthr_*`，与 Session 一起交给 Provider 校验 | ✅ |
 | `sessions.stream` | `GET /api/kit/sessions/:sessionId/stream` | 协议 3.0 实时 SSE，`?after=` 续传实时变更，失效后通过 `sessions.events.list` 加载历史 | ✅ |
 | `sessions.tool-approvals.list` | `GET /api/kit/sessions/:sessionId/tool-approvals` | 当前 requires_action、批次、待办调用与请求详情；归属检查，历史请求不自动激活 | ✅ |
-| `sessions.tool-approvals.respond` | `POST /api/kit/sessions/:sessionId/tool-approvals` | `{ batch_id, call_id, result: allow/deny, deny_message? }`；单项决策，原因最多 200 字符；实时校验，过期/重复 409。本地成员 allow 还检查该轮开始月的限额，deny 不受额度阻止；提交成功不等于执行成功 | ✅ |
+| `sessions.tool-approvals.respond` | `POST /api/kit/sessions/:sessionId/tool-approvals` | `{ batch_id, call_id, result: allow/deny, deny_message? }`；单项决策，原因最多 200 字符；会话原绑定的条目已软删或丢失时返回 403，过期或重复返回 409。本地成员 allow 还检查该轮开始月的限额，deny 不受额度阻止；执行结果由 Provider 事件确认 | ✅ |
 | `files.upload` | `POST /api/kit/files` | multipart（字段名 `file`）上传附件 → `{ file_id, filename, size }`；记录当前 subjectId，只有本人可挂载；黑名单扩展名（`.mjs`，实测 provider 415 拒绝）返回 400 `invalid_request`；超过 `KIT_UPLOAD_MAX_BYTES`（默认 20 MiB）返回 413 | ✅ |
 | `files.status` | `GET /api/kit/files/:fileId` | 本人上传附件的安全扫描状态 → `{ file_id, status, available }`（`checking → available`，实测 15~20s）；越权 / 非本人上传 404。客户端在上传后轮询到 `available` 再发送，服务端发送前的扫描闸门保留为兜底 | ✅ |
 | `files.download` | `GET /api/kit/files/:fileId/download` | 鉴权代理下载：本人上传文件可直接下载；Artifact 须带 `?session_id=`，验证本人 Session 的 Provider 历史确有该文件；越权 / 无归属证据 404，屏蔽预签名 URL | ✅ |
@@ -318,7 +318,7 @@ Agent 显式版本按版本读取，旧记录版本仅作只读展示，不能�
 - 删除允许已上架与未上架模版；后台自动准备只读计划，弹窗正常正文固定为「是否删除该模版」，
   不显示模版名、`plan.diff` 或影响摘要，用户一次显式确认后执行。失败可在原弹窗展示错误与
   重试入口；重新准备计划成功后仍需显式确认，不自动执行删除。
-  模版与关联 Catalog 条目在同一事务软删（标记 `deleted_at`，迁移 `033/034`）：配置、全部
+  模版与关联 Catalog 条目在同一事务软删（标记 `deleted_at`，迁移 `034/035`）：配置、全部
   历史版本与关联行保留，管理面（列表/详情/版本/编辑/上架/删除计划）按不存在处理（404），
   用量区继续展示并带「已删除」标记；不删除 Session、远端 Agent、环境、文件、记忆或密钥库。
   既有会话仍由原归属与 Provider 合同控制，新会话入口不再可用（条目软删后员工端不可见）。
@@ -338,7 +338,7 @@ Agent 显式版本按版本读取，旧记录版本仅作只读展示，不能�
 | `catalog.listing.plan` | `POST /api/admin/agents/:slug/plan` | `{action: "listing", status}` 或 `{action: "delete"}` → `{plan_id, confirm_token, diff, destructive, expires_at}` | ✅ |
 | `catalog.setListing` | `PATCH /api/admin/agents/:slug` | `{status, plan_id, confirm_token}` 上/下架；缺令牌 `400`、伪造/重放 `428`（红线：上下架必须 plan → 确认） | ✅ |
 | `catalog.update` | `PUT /api/admin/agents/:slug` | 改展示信息与体验页配置（展示名/描述/图标/开场白/示例问题/能力/主题/可见性/排序/版本绑定/环境/文件/记忆/密钥库）；`agent_version` 与 `remote_environment_id` 省略保留、`null` 清除对应覆盖；改名与其他条目重名返回 `409 conflict`，保留自身原名可保存；**status 不在此路径改**，body 里夹带也忽略 | ✅ |
-| `catalog.delete` | `DELETE /api/admin/agents/:slug` | 软删条目（标记 `deleted_at`，不改上下架状态），需 `{plan_id, confirm_token}`（plan 的 `action:"delete"`）；缺令牌 `400`、伪造 `428`、条目不存在（含已删）`404`。条目从员工端与管理列表消失并解除模版关联；Provider 上的 Agent、历史会话与用量账本不受影响；slug 与展示名随之释放可复用，用量区保留展示并带「已删除」标记 | ✅ |
+| `catalog.delete` | `DELETE /api/admin/agents/:slug` | 在同一事务内软删条目并解除模版上架关联，需 `{plan_id, confirm_token}`（plan 的 `action:"delete"`）；缺令牌 `400`、伪造 `428`、条目不存在（含已删）`404`。Provider Agent、历史会话与用量账本均保留；slug 与展示名释放后可复用，用量区保留展示并带「已删除」标记 | ✅ |
 | `catalog.preview` | — | 体验页预览配置；当前用体验页 `?agent=<slug>` 深链代替 | 🚧 未实现 |
 | `catalog.embed` | — | 生成嵌入代码片段（widget） | 📅 后续 |
 
@@ -346,12 +346,12 @@ Agent 显式版本按版本读取，旧记录版本仅作只读展示，不能�
 下划线与连字符。英文字母允许大小写，原样保存并区分大小写，支持直接使用 Provider 的
 `agent_...` ID；已有小写连字符 ID 继续有效。创建后 ID 不可修改。
 
-软删释放身份（迁移 `034`）：`slug` 的部分唯一索引与展示名冲突检查都排除已删行，
-删除后可新建同 ID 或同名条目；重新上架按 slug 复用 freed 身份创建新条目。用量账本按
-slug 关联条目时优先取活动行，无活动行时取最近更新的已删行并携带 `deleted` 标记；
-员工端会话分组只展示仍有未删除目录行的 slug：已删条目与无目录行的历史孤儿分组都隐藏；
-会话保留只读——仍可通过会话列表、搜索与「最近」查看历史，但发消息返回 403
-（`sessions.messages.send`），下架未删的智能体会话不受影响。
+软删释放身份（迁移 `035`）。`slug` 的唯一约束与展示名冲突检查都排除已删行，
+删除后可新建同 slug 或同名条目。模版限额和逐日账按稳定的 `catalog_entry_id` 计量，
+旧账迁移规则见[协议](./protocol.md#session-月度限额)。
+员工端会话分组按会话绑定的条目 ID 展示未软删条目的历史，包含已下架的条目。
+已软删条目和无法确认归属的旧会话仍可通过会话列表、搜索与「最近」回看；
+新消息及工具审批决定返回 403。同 slug 重建后按新条目独立分组。
 
 展示名按原字符串精确比较，范围包含已上架与未上架条目。历史同名数据不自动改名或删除，
 仍可保留原名修改其他信息，但新建和改名不能产生新的重名条目。
@@ -408,8 +408,8 @@ Kit 不查询或复制库内 Credential，不提供创建库、生成密钥或�
 | `admin.members.list` | `GET /api/admin/members` | 本地成员公开资料、`groups` 摘要与 `usage_summary`；`?search=&limit=&page_token=` 搜索并以不透明游标分页；先返回缓存，按需后台刷新当前页成员的全部会话；不返回密码或派生值 | ✅ |
 | `admin.members.get` | `GET /api/admin/members/:memberId` | 按稳定 ID 返回 `{data: MemberView}` 公开资料，供成员用量深链恢复；管理员与 auditor 可读，不存在返回 404，不返回密码或派生值 | ✅ |
 | `admin.members.create` | `POST /api/admin/members` | 创建本地账号：`username`、`display_name`、可选 `email`、`auth_type: local`、`password_mode: auto\|custom`；custom 须带 `password`。返回 `{data:{member,initial_password?}}`，只有 auto 首次创建响应含初始密码；同名 `409 conflict`，审计不记密码 | ✅ |
-| `admin.members.usage` | `GET /api/admin/members/:memberId/usage` | `{data: MemberUsageSummary}`；可选 `agent_slug` 筛选，`refresh=1` 强制调度后台刷新并立即返回当前缓存与进度；管理员与 auditor 可读 | ✅ |
-| `admin.members.sessions` | `GET /api/admin/members/:memberId/sessions` | 成员会话累计用量明细，含已删除快照；`?agent_slug=&cursor=&limit=`，limit 默认 20、最多 100；返回 `{data,next_cursor?}`；汇总不受明细分页大小限制 | ✅ |
+| `admin.members.usage` | `GET /api/admin/members/:memberId/usage` | `{data: MemberUsageSummary}`；可选 `agent_slug` 和 `catalog_entry_id` 筛选。`refresh=1` 强制调度后台刷新并立即返回当前缓存与进度；管理员与 auditor 可读 | ✅ |
+| `admin.members.sessions` | `GET /api/admin/members/:memberId/sessions` | 成员会话累计用量明细，含已删除快照；可选 `agent_slug`、`catalog_entry_id`、`cursor`、`limit`，limit 默认 20、最多 100；返回 `{data,next_cursor?}`；汇总不受明细分页大小限制 | ✅ |
 | `admin.usage.templates` | `GET /api/admin/usage/templates` | 以模版为主键聚合体验会话用量：只统计从该模版上架条目发起的会话（跨成员、含已删除）；模版全量返回（含已软删模版，行带 `deleted` 标记），0 会话也出现，行含 `remote_agent_id`（模版绑定智能体，控制台用它按 agent_id 过滤模型/工具用量明细）；与成员用量的 `agent_slug` 明细同口径；`?search=` 过滤模版名/智能体名/模版 ID。读取即登记新会话并按成员后台补采，返回当前缓存；管理员与 auditor 可读 | ✅ |
 | `admin.usage.templateSessions` | `GET /api/admin/usage/templates/:templateId/sessions` | 模版会话用量明细（跨成员、含已删除快照）；`?cursor=&limit=`，limit 默认 20、最多 100；行附带成员 `member_display_name`/`member_username`；返回 `{data,next_cursor?}`；模版不存在 404 | ✅ |
 | `admin.usage.templateTrend` | `GET /api/admin/usage/templates/daily-trend` | 模版用量逐日趋势（管理端「使用趋势」柱状图）：来自限额账本条目逐日账 `kit_usage_limit_agent_days`，`tokens`=输入+输出 Token 增量、`active_seconds`=执行时长增量，按采集确认日（UTC 日键）归属，自模版限额账本启用起记录、不含更早历史；`?template_id=&days=`，`days` 仅支持 7/14/28（缺省 7），`template_id` 缺省为全部模版条目求和（非模版条目不计入；同一条目被多模版引用时随各模版重复计入，与「全部=各模版求和」一致）；区间零值补全到今天，返回 `{data:{days,from_day,to_day,since_day,data:[{day,tokens,active_seconds}]}}`（`since_day` 为逐日账最早记录日，无记录为 null）；模版不存在 404，管理员与 auditor 可读 | ✅ |
@@ -474,16 +474,19 @@ Kit 不查询或复制库内 Credential，不提供创建库、生成密钥或�
   缺失与错误均不能当成零，时长保持秒单位，不读取 SSE 正文推算 token。
 - `MemberUsageSummary` 包含 `session_count`、`deleted_session_count`、各指标
   `metrics.{name}.{value,covered_sessions}`、`refreshed_at?`、`refresh_status` 和
-  `completed_sessions`；`agents` 始终是该成员全部 Agent 的 `{slug, display_name, deleted?}` 列表，用于筛选器；
-  `display_name` 来自 catalog 条目：条目软删后仍解析展示名并携带 `deleted: true`（界面显示
-  「已删除」标记），slug 无任何条目行时为 `null`，界面回退显示 slug。
+  `completed_sessions`。`agents` 始终返回该成员全部会话对应的目录候选
+  `{slug, catalog_entry_id, display_name, deleted?}`。同 slug 的新旧条目分别列出，
+  已软删条目仍返回展示名并标记 `deleted: true`。未绑定的候选返回 `catalog_entry_id: null`，
+  名称无法解析时界面显示 slug。
+  指定 `catalog_entry_id` 按条目筛选，显式传 `catalog_entry_id=` 查询未绑定会话，
+  仅传 `agent_slug` 则包含该 slug 的全部会话。
   `refresh_status` 为 `idle | refreshing | partial | failed`。无会话返回 0；存在会话但
   某指标全部未知时 `value=null`，部分已知时只汇总已知值并附覆盖数。上次采集成功但本次失败
   可以保留旧数值，成员列表与详情均须同时显示状态和采集时间；即使 coverage 完整，也
   不能将 `partial` / `failed` 的旧值显示成已全部更新。
 - 明细包含 `session_id`、`member_id`、`agent_slug`、标题、状态、创建时间、可选 `usage/stats`、
   `captured_at`、`deleted_at`，以及 `pending | complete | partial | failed | not_found`
-  采集状态。游标绑定成员与 Agent 筛选，切换筛选须从第一页开始；汇总与明细使用相同筛选。
+  采集状态。游标绑定成员、slug 和条目筛选，切换筛选须从第一页开始；汇总与明细使用相同筛选。
   翻页失败时保留本次目标页码与错误，禁用使用旧游标的继续前翻；重试读取同一目标页。
   重试与前后翻页必须保持页码、游标与会话明细对应。
 - 统计只关联本地目录中真实存在的成员与 experience 会话，不包含匿名、外部 JWT、管理员

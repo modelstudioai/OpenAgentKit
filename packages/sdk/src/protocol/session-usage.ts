@@ -40,10 +40,12 @@ export const MemberUsageSummarySchema = z.object({
 		active_seconds: UsageMetricSummarySchema,
 		duration_seconds: UsageMetricSummarySchema,
 	}),
-	/** 始终包含成员全部 Agent，供筛选器使用，包含保留的已删除会话；条目已标记删除时 deleted=true，display_name 仍可解析。 */
+	/** 始终包含成员会话关联的全部目录条目，供筛选器使用。 */
 	agents: z.array(
 		z.object({
 			slug: z.string(),
+			/** 会话绑定的目录条目 ID；没有可确认的绑定时为 null。 */
+			catalog_entry_id: z.string().nullable().optional(),
 			display_name: z.string().nullable(),
 			deleted: z.boolean().optional(),
 		}),
@@ -86,14 +88,17 @@ export const MemberSessionUsageSchema = z.object({
 	collection_status: z.enum(["pending", "complete", "partial", "failed", "not_found"]),
 });
 export type MemberSessionUsage = z.infer<typeof MemberSessionUsageSchema>;
-export const MemberUsageQuerySchema = z.object({
+const MemberUsageFilterSchema = z.object({
 	agent_slug: z.string().min(1).max(128).optional(),
+	/** 空字符串仅筛选未绑定目录条目的会话。 */
+	catalog_entry_id: z.string().max(128).optional(),
+});
+export const MemberUsageQuerySchema = MemberUsageFilterSchema.extend({
 	refresh: z.literal("1").optional(),
 });
 export type MemberUsageQuery = z.infer<typeof MemberUsageQuerySchema>;
 export const MemberUsageResponseSchema = z.object({ data: MemberUsageSummarySchema });
-export const MemberSessionsQuerySchema = z.object({
-	agent_slug: z.string().min(1).max(128).optional(),
+export const MemberSessionsQuerySchema = MemberUsageFilterSchema.extend({
 	cursor: z.string().max(2048).optional(),
 	limit: z.coerce.number().int().min(1).max(100).default(20),
 });

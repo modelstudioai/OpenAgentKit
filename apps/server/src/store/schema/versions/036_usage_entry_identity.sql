@@ -295,6 +295,14 @@ CREATE TABLE "kit_usage_limit_agent_days" (
   PRIMARY KEY ("catalog_entry_id", "day")
 );
 
+CREATE TABLE "kit_usage_limit_agent_days_legacy" (
+  "agent_slug" TEXT NOT NULL,
+  "day" TEXT NOT NULL,
+  "tokens" INTEGER NOT NULL DEFAULT 0,
+  "active_seconds" REAL NOT NULL DEFAULT 0,
+  PRIMARY KEY ("agent_slug", "day")
+);
+
 CREATE TABLE "kit_usage_limit_agent_months" (
   "catalog_entry_id" TEXT NOT NULL,
   "month" TEXT NOT NULL,
@@ -303,6 +311,16 @@ CREATE TABLE "kit_usage_limit_agent_months" (
   "tokens_unknown" INTEGER NOT NULL DEFAULT 0,
   "active_seconds_unknown" INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY ("catalog_entry_id", "month")
+);
+
+CREATE TABLE "kit_usage_limit_agent_months_legacy" (
+  "agent_slug" TEXT NOT NULL,
+  "month" TEXT NOT NULL,
+  "tokens" INTEGER NOT NULL DEFAULT 0,
+  "active_seconds" REAL NOT NULL DEFAULT 0,
+  "tokens_unknown" INTEGER NOT NULL DEFAULT 0,
+  "active_seconds_unknown" INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY ("agent_slug", "month")
 );
 
 CREATE TABLE "kit_usage_limit_days" (

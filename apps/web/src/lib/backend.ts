@@ -58,7 +58,14 @@ export function createExampleClient(request: RequestClient) {
 		sessionAgents: { buildRequest: () => ({ path: "/api/kit/session-agents", init: { headers } }), mapResponse: data },
 		sessions: {
 			buildRequest: ([input = {}]) => ({
-				path: `/api/kit/sessions${query({ agent_slug: input.agentSlug, limit: input.limit, page_token: input.pageToken, include_archived: input.includeArchived, q: input.q })}`,
+				path: `/api/kit/sessions${query({
+					agent_slug: input.agentSlug,
+					active_entry_only: input.activeEntryOnly ? true : undefined,
+					limit: input.limit,
+					page_token: input.pageToken,
+					include_archived: input.includeArchived,
+					q: input.q,
+				})}`,
 				init: { headers },
 			}),
 			mapResponse: async (response) => {

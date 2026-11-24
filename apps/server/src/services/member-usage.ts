@@ -119,7 +119,7 @@ export function createMemberUsageService({
 		async summary(memberId: string, options: MemberUsageQuery = {}) {
 			await prepare(memberId);
 			await schedule(memberId, options.refresh === "1");
-			return await store.summary(memberId, options.agent_slug, jobs.get(memberId)?.startedAt);
+			return await store.summary(memberId, options, jobs.get(memberId)?.startedAt);
 		},
 		async list(memberId: string, options: MemberSessionsQuery) {
 			await prepare(memberId);

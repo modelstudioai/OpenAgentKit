@@ -26,6 +26,7 @@ import {
 	type MemberSessionsPage,
 	type MembersQuery,
 	type MemberUsageLimitView,
+	type MemberUsageQuery,
 	type MemberUsageSummary,
 	type MemberView,
 	type OperationView,
@@ -114,6 +115,8 @@ export interface DeclarationWrite {
 	declaration: Record<string, unknown>;
 }
 
+type MemberUsageFilter = Pick<MemberUsageQuery, "agent_slug" | "catalog_entry_id">;
+
 /** 控制面客户端与体验页身份独立；复用 Request 和 Kit v2 帧，不持有浏览器存储。 */
 export function createAdminClient(options: AdminClientOptions) {
 	const raw = "request" in options ? options.request : createRequest({ ...options, mapHttpError: errorFromResponse });
@@ -163,6 +166,12 @@ export function createAdminClient(options: AdminClientOptions) {
 		if (query.page_token) params.set("page_token", query.page_token);
 		if (query.membership) params.set("membership", query.membership);
 		return params.size ? `?${params}` : "";
+	}
+	function memberUsageParams(query: MemberUsageFilter) {
+		const params = new URLSearchParams();
+		if (query.agent_slug) params.set("agent_slug", query.agent_slug);
+		if (query.catalog_entry_id !== undefined) params.set("catalog_entry_id", query.catalog_entry_id);
+		return params;
 	}
 	function resourceClient(projectPath: (name: string) => string) {
 		const declarationPath = (name: string, type: DeclarationType, id: string) =>
@@ -415,9 +424,8 @@ export function createAdminClient(options: AdminClientOptions) {
 				return request.json<AdminMembersPage>(`/api/admin/members${params.size ? `?${params}` : ""}`, { signal });
 			},
 			create: (input: CreateMemberRequest) => write<CreateMemberResponse["data"]>("/api/admin/members", "POST", input),
-			usage: (id: string, query: { agent_slug?: string; refresh?: boolean } = {}, signal?: AbortSignal) => {
-				const params = new URLSearchParams();
-				if (query.agent_slug) params.set("agent_slug", query.agent_slug);
+			usage: (id: string, query: MemberUsageFilter & { refresh?: boolean } = {}, signal?: AbortSignal) => {
+				const params = memberUsageParams(query);
 				if (query.refresh) params.set("refresh", "1");
 				return get<MemberUsageSummary>(
 					`/api/admin/members/${encodeURIComponent(id)}/usage${params.size ? `?${params}` : ""}`,
@@ -426,11 +434,10 @@ export function createAdminClient(options: AdminClientOptions) {
 			},
 			sessions: (
 				id: string,
-				query: { agent_slug?: string; cursor?: string; limit?: number } = {},
+				query: MemberUsageFilter & { cursor?: string; limit?: number } = {},
 				signal?: AbortSignal,
 			) => {
-				const params = new URLSearchParams();
-				if (query.agent_slug) params.set("agent_slug", query.agent_slug);
+				const params = memberUsageParams(query);
 				if (query.cursor) params.set("cursor", query.cursor);
 				if (query.limit) params.set("limit", String(query.limit));
 				return request.json<MemberSessionsPage>(

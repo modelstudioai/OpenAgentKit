@@ -37,6 +37,7 @@ test("分组：展开才读取十条，触底分页且独立缓存，较早会�
 			if (query.get("q")) {
 				expect(query.get("limit")).toBe("50");
 				expect(query.get("include_archived")).toBe("false");
+				expect(query.has("active_entry_only")).toBe(false);
 				return route.fulfill({
 					json: {
 						data: rows.filter((row) => row.title?.includes(query.get("q") as string)),
@@ -47,6 +48,7 @@ test("分组：展开才读取十条，触底分页且独立缓存，较早会�
 			expect(query.get("limit")).toBe("10");
 			expect(query.get("include_archived")).toBe("false");
 			const slug = query.get("agent_slug");
+			expect(query.get("active_entry_only")).toBe(slug ? "true" : null);
 			if (!slug) return route.fulfill({ json: { data: [], next_page_token: null } });
 			const token = query.get("page_token");
 			if (slug === small) {

@@ -75,6 +75,12 @@ const planSchema = z.object({
 const LISTING_ACTION = "catalog.listing";
 const DELETE_ACTION = "catalog.delete";
 
+class UsageTrendPaginationError extends KitError {
+	constructor() {
+		super("provider_error", "用量趋势缺少下一页游标，请稍后重试", { retryable: true });
+	}
+}
+
 export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 	app.use("/api/admin/*", (c, next) => {
 		requireAdmin(c, c.get("services").config);
@@ -302,23 +308,21 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 			},
 			responses: {
 				200: {
-					description: "条目已标记删除（软删，确认令牌已消费）",
+					description: "条目已软删并解除模版上架关联（确认令牌已消费）",
 					content: { "application/json": { schema: z.object({ data: z.object({ deleted: z.boolean() }) }) } },
 				},
 				...errors,
 			},
 		},
 		async (c) => {
-			const { catalog, templates, gate, audit } = c.get("services");
+			const { catalog, gate, audit } = c.get("services");
 			const { subject } = requireAdmin(c, c.get("services").config);
 			const slug = c.req.param("slug") ?? "";
 			const entry = await catalog.getBySlug(slug);
 			if (!entry || entry.deleted) throw new KitError("not_found", "agent 不存在");
 			const body = c.req.valid("json");
 			await gate.consume({ planId: body.plan_id, action: DELETE_ACTION, subject, token: body.confirm_token });
-			const deleted = await catalog.markDeleted(entry.id);
-			// 原硬删经外键级联解除模版关联；软删改为显式解除，模版回到未上架展示。
-			await templates.detachListingByCatalog(entry.id);
+			const deleted = await catalog.markDeletedAndDetachListing(entry.id);
 			await audit.append({
 				subject,
 				action: "catalog.delete",
@@ -601,18 +605,22 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 	): Promise<UsageTrend> {
 		const agentIds = await templates.boundAgentIds();
 		const granularity: UsageGranularity = query.granularity ?? "day";
-		if (!agentIds.length) return emptyUsageTrend(usageTimeRange(query), granularity);
+		const time_range = usageTimeRange(query);
+		if (!agentIds.length) return emptyUsageTrend(time_range, granularity);
 		const settled = await Promise.allSettled(
-			agentIds.map((agent_id) => usageTrendAggregated(gateway, usageTrendRequest({ ...query, agent_id }))),
+			agentIds.map((agent_id) =>
+				usageTrendAggregated(gateway, { dimension: "agent", agent_id, granularity, time_range }),
+			),
 		);
-		// 分页游标缺失是服务端聚合不变量被破坏（KitError），不属于可标注的单智能体不可用，照旧整体拒绝。
+		// 上游明确还有下一页时，缺少游标会截断成功来源的数据，应整体返回协议错误。
 		const fatal = settled.find(
-			(result): result is PromiseRejectedResult => result.status === "rejected" && result.reason instanceof KitError,
+			(result): result is PromiseRejectedResult =>
+				result.status === "rejected" && result.reason instanceof UsageTrendPaginationError,
 		);
 		if (fatal) throw fatal.reason;
 		const merged =
 			mergeTrends(settled.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []))) ??
-			emptyUsageTrend(usageTimeRange(query), granularity);
+			emptyUsageTrend(time_range, granularity);
 		const coverage = coverageOf(agentIds, settled);
 		return coverage ? { ...merged, coverage } : merged;
 	}
@@ -635,8 +643,7 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 			});
 			first ??= page.data;
 			points.push(...page.data.points);
-			if (page.data.has_more && !page.data.next_page_token)
-				throw new KitError("provider_error", "用量趋势缺少下一页游标，请稍后重试", { retryable: true });
+			if (page.data.has_more && !page.data.next_page_token) throw new UsageTrendPaginationError();
 			pageToken = page.data.next_page_token;
 		} while (pageToken);
 		return { ...first, points, has_more: false, next_page_token: null };
@@ -678,6 +685,7 @@ export function registerAdminRoutes(app: OpenAPIHono<AppEnv>) {
 						"用量分桶趋势：传 agent_id 为 agent 维度；都不传为模版口径（服务端逐模版绑定智能体——含已删模版、去重——以 agent 维度查询并按时间桶合并为各模版求和，非模版智能体不计入，无模版绑定时返回空点；单个智能体查询失败不打挂整个请求，返回已成功部分的合并并在 data.coverage 标注 {complete:false, missing_agent_ids}，缺省即完整；服务端分页游标缺失仍整体拒绝）（Provider 侧，UTC+8 对齐，无数据的时间桶省略）；粒度由 granularity 参数决定（hour/day/month，缺省 day）；服务端聚合全部分页返回，has_more 恒为 false",
 					content: { "application/json": { schema: z.object({ data: UsageTrendSchema }) } },
 				},
+				502: { description: "provider_error", content: { "application/json": { schema: errorBody } } },
 				...errors,
 			},
 		},

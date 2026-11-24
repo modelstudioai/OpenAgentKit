@@ -22,8 +22,9 @@ function summary(count: number, value: number | null): MemberUsageSummary {
 		) as MemberUsageSummary["metrics"],
 		agents: count
 			? [
-					{ slug: "agent-a", display_name: "Agent A" },
-					{ slug: "agent-b", display_name: null },
+					{ slug: "agent-a", catalog_entry_id: "cat-a", display_name: "Agent A" },
+					{ slug: "agent-b", catalog_entry_id: "cat-old-b", display_name: "旧版 Agent B", deleted: true },
+					{ slug: "agent-b", catalog_entry_id: "cat-new-b", display_name: "新版 Agent B" },
 				]
 			: [],
 		refresh_status: "idle",
@@ -45,7 +46,10 @@ function member(id: string, name: string, usage: MemberUsageSummary): MemberView
 }
 
 function sessionsPage(url: URL) {
-	if (url.searchParams.get("agent_slug") === "agent-b") return { data: [session("Agent B 会话", "agent-b")] };
+	if (url.searchParams.get("catalog_entry_id") === "cat-old-b")
+		return { data: [session("旧版 Agent B 会话", "agent-b", true)] };
+	if (url.searchParams.get("catalog_entry_id") === "cat-new-b")
+		return { data: [session("新版 Agent B 会话", "agent-b")] };
 	if (url.searchParams.get("cursor")) return { data: [session("最后一页的已删除会话", "agent-a", true)] };
 	return { data: [session("第一页会话", "agent-a")], next_cursor: "page-2" };
 }
@@ -192,9 +196,11 @@ test("Session 用量入口展示全部指标，明细支持 Agent 筛选、分�
 		String(testInfo.config.metadata.consoleUrl ?? "http://localhost:5174"),
 		[member("member-a", "统计成员", total)],
 		(url) => {
-			const filtered = url.searchParams.get("agent_slug") === "agent-b";
+			const entryId = url.searchParams.get("catalog_entry_id");
 			if (url.pathname.endsWith("/sessions")) return sessionsPage(url);
-			const data = summary(filtered ? 1 : 21, filtered ? 300 : refreshStarted ? 2200 : 2100);
+			const data = entryId
+				? summary(1, entryId === "cat-old-b" ? 300 : 400)
+				: summary(21, refreshStarted ? 2200 : 2100);
 			if (url.searchParams.get("refresh") === "1") {
 				refreshCalls += 1;
 				refreshStarted = true;
@@ -217,13 +223,18 @@ test("Session 用量入口展示全部指标，明细支持 Agent 筛选、分�
 	await expect(page.getByRole("heading", { name: "统计成员的会话用量" })).toBeVisible();
 	await expect(page.getByTestId("usage-input_tokens")).toContainText("2,100");
 	await page.getByRole("navigation", { name: "成员会话分页" }).getByRole("button", { name: "下一页" }).click();
-	await expect(page.getByRole("region", { name: "会话用量明细", exact: true })).toContainText("已删除（用量保留）");
+	await expect(page.getByRole("region", { name: "会话用量明细", exact: true })).toContainText("已删除 · 用量保留");
 	await expect(page.getByTestId("usage-input_tokens")).toContainText("2,100");
 	await page.getByLabel("Agent 筛选").click();
-	await page.getByText("agent-b", { exact: true }).click();
+	await page.getByText(/^旧版 Agent B\s*已删除$/).click();
 	await expect(page.getByTestId("usage-input_tokens")).toContainText("300");
-	await expect(page.getByRole("heading", { name: "Agent B 会话", exact: true })).toBeVisible();
+	await expect(page.getByRole("heading", { name: "旧版 Agent B 会话", exact: true })).toBeVisible();
 	await expect(page.getByRole("navigation", { name: "成员会话分页" })).toHaveCount(0);
+	await page.getByLabel("Agent 筛选").click();
+	await page.getByText("新版 Agent B", { exact: true }).click();
+	await expect(page.getByTestId("usage-input_tokens")).toContainText("400");
+	await expect(page.getByRole("heading", { name: "新版 Agent B 会话", exact: true })).toBeVisible();
+	await expect(page.getByRole("heading", { name: "旧版 Agent B 会话", exact: true })).toHaveCount(0);
 	await page.getByLabel("Agent 筛选").click();
 	await page.getByText("全部 Agent", { exact: true }).click();
 	await expect(page.getByRole("heading", { name: "第一页会话", exact: true })).toBeVisible();
@@ -258,8 +269,8 @@ test("Session 用量：空成员为零，未返回与部分覆盖明确标注，
 		await page.evaluate(() => document.documentElement.clientWidth),
 	);
 	await missing.getByRole("button", { name: "会话明细" }).click();
-	await expect(page.getByTestId("usage-input_tokens")).toContainText("100（部分缺失）");
-	await expect(page.getByTestId("usage-input_tokens")).toContainText("覆盖 1 / 2 个会话");
+	await expect(page.getByTestId("usage-input_tokens")).toContainText("100");
+	await expect(page.getByTestId("usage-input_tokens")).toContainText("覆盖 1 / 2 个会话 · 部分缺失");
 	await expect(page.getByTestId("usage-output_tokens")).toContainText("待获取");
 	await expect(page.getByText(/合计可能不完整/)).toBeVisible();
 	expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(

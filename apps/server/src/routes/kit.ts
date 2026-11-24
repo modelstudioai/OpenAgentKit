@@ -18,6 +18,7 @@ import {
 } from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 import { mergeSessionFiles } from "../services/catalog-files.ts";
+import { requireExecutableSession } from "../services/session-catalog.ts";
 import { ProtocolVersionHeadersSchema } from "./protocol-header.ts";
 import { registerSessionDirectoryRoutes } from "./session-directory.ts";
 import { streamSession } from "./session-stream.ts";
@@ -48,20 +49,6 @@ const errors = {
 function requireListedEntry(entry: CatalogAgentView | null): CatalogAgentView {
 	if (entry?.status !== "listed" || entry.deleted) throw new KitError("not_found", "agent 不存在或未上架");
 	return entry;
-}
-
-/** 会话级只读闸门：按会话落下的条目 ID 判定（slug 软删后可复用，不能按 slug 反查当前条目）。
- * 已删条目、旧硬删孤儿（无条目 ID）或条目 ID 解析不到目录行的会话保留只读，不能发新消息。 */
-function requireSendableSessionAgent(
-	catalog: { get(id: string): Promise<CatalogAgentView | null> },
-	catalogEntryId: string | null,
-	agentSlug: string | null,
-): Promise<void> {
-	if (!agentSlug) return Promise.resolve();
-	const entry = catalogEntryId ? catalog.get(catalogEntryId) : Promise.resolve(null);
-	return entry.then((resolved) => {
-		if (!resolved || resolved.deleted) throw new KitError("forbidden", "该智能体已删除，会话仅可查看历史");
-	});
 }
 
 export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
@@ -247,7 +234,7 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 			const { catalog, sessionIndex, sessions, files } = c.get("services");
 			const row = await sessionIndex.getForSubject(c.req.param("sessionId"), c.get("identity").subjectId);
 			if (!row) throw new KitError("not_found", "会话不存在");
-			await requireSendableSessionAgent(catalog, row.catalog_entry_id, row.agent_slug);
+			await requireExecutableSession(catalog, row);
 			const body = c.req.valid("json");
 			// 附件随消息运行时挂载（POST /sessions/:id/resources，实测 2026-11-02）：
 			// 归属校验与建会话同源；挂载→发送→失败自动卸载回滚由会话服务负责。

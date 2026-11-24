@@ -228,10 +228,6 @@ export function createTemplateStore(db: StoreDatabase) {
 				if (!marked.changes) throw new KitError("conflict", "模版已变更，请重试并再次确认删除");
 			});
 		},
-		/** 条目被单独软删时解除模版关联（对齐原硬删的 ON DELETE CASCADE）；模版回到未上架展示。 */
-		async detachListingByCatalog(catalogId: string): Promise<void> {
-			await db.run("DELETE FROM kit_template_listings WHERE catalog_id = ?", catalogId);
-		},
 		/** 全部模版（含已删）绑定的远端智能体 ID，去重；供「全部」视角用量按模版口径扇出聚合。 */
 		async boundAgentIds(): Promise<string[]> {
 			const rows = (await db.all(

@@ -425,6 +425,7 @@ export function SessionUsagePage() {
 			{tab === "templates" ? (
 				<TemplateUsagePanel
 					rows={selectedTemplate ? [selectedTemplate] : templateRows}
+					allTemplates={!selectedTemplate}
 					loading={templatesList.loading || (!templatesList.data && !templatesList.error)}
 					error={templatesList.error}
 					onRetry={() => {
