@@ -20,6 +20,7 @@
 - [RequestOptions](#requestoptions)
 - [ChatProvider](#chatprovider)
 - [ChatProvider.stream](#chatproviderstream)
+- [ChatProvider.listEvents](#chatproviderlistevents)
 - [ChatProvider.sendMessage](#chatprovidersendmessage)
 - [ChatProvider.interrupt](#chatproviderinterrupt)
 - [ChatProvider.toolApprovals](#chatprovidertoolapprovals)
@@ -62,7 +63,7 @@
 
 ## createSessionEventChatProvider
 
-通过可配置的 HTTP 操作连接返回标准 SessionEvent 快照和公开生命周期帧的后端。
+通过可配置的历史分页和实时订阅接入标准 SessionEvent 后端。
 
 从 `@openagentkit/sdk/providers/session-events` 导入 `createSessionEventChatProvider`。
 公开入口为 `packages/sdk/src/providers/session-events/index.ts`，声明位于 `packages/sdk/src/providers/session-events/provider.ts`。
@@ -75,15 +76,15 @@
 - 协议版本头通过请求配置显式传入。禁止自动重试写请求。
 
 ```ts
-export function createSessionEventChatProvider(options: SessionEventChatProviderOptions): ChatProvider;
+export function createSessionEventChatProvider(options: SessionEventChatProviderOptions): ChatProvider & Required<Pick<ChatProvider, "listEvents">>;
 ```
 
 
-<!-- source-sha256: e1db0727ecdae87e12c72bf185fb6c3bc6a6ea2dfc58b5d937000c2398f57cd0; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 4bb2596eaf0c93fa5f93da6b7dec03c6a7011567a2c2f838e01952161de78d5d; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## SessionEventChatProviderOptions
 
-注入 RequestClient，配置一个订阅操作、四个必需的请求操作、可选线程查询及消息转换策略。
+注入 RequestClient，配置必填 listEvents、实时订阅、四个业务操作及可选线程查询。
 
 从 `@openagentkit/sdk/providers/session-events` 导入 `SessionEventChatProviderOptions`。
 公开入口为 `packages/sdk/src/providers/session-events/index.ts`，声明位于 `packages/sdk/src/providers/session-events/provider.ts`。
@@ -98,6 +99,7 @@ import type { SessionEventChatProviderOptions } from "@openagentkit/sdk/provider
 | 字段 | 必填 | 类型 |
 | --- | --- | --- |
 | `request` | 是 | `RequestClient` |
+| `listEvents` | 是 | `BackendOperation<{ sessionId: string; } & Omit<EventQueryOptions, "signal">, EventsPage>` |
 | `stream` | 是 | `SessionEventStreamOperation` |
 | `sendMessage` | 是 | `BackendOperation<{ sessionId: string; body: SendMessageRequest; }, { session_id: string; accepted: boolean; event_ids: string[]; }>` |
 | `interrupt` | 是 | `BackendOperation<{ sessionId: string; }, { interrupted: boolean; }>` |
@@ -109,7 +111,7 @@ import type { SessionEventChatProviderOptions } from "@openagentkit/sdk/provider
 | `connectTimeoutMs` | 否 | `number \| undefined` |
 | `idleTimeoutMs` | 否 | `number \| undefined` |
 
-<!-- source-sha256: e1db0727ecdae87e12c72bf185fb6c3bc6a6ea2dfc58b5d937000c2398f57cd0; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 4bb2596eaf0c93fa5f93da6b7dec03c6a7011567a2c2f838e01952161de78d5d; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## SessionEventStreamOperation
 
@@ -129,7 +131,7 @@ import type { SessionEventStreamOperation } from "@openagentkit/sdk/providers/se
 | --- | --- | --- |
 | `buildRequest` | 是 | `(input: { sessionId: string; after?: string \| null; }, context: BackendRequestContext) => BackendRequestSpec \| Promise<BackendRequestSpec>` |
 
-<!-- source-sha256: e1db0727ecdae87e12c72bf185fb6c3bc6a6ea2dfc58b5d937000c2398f57cd0; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 4bb2596eaf0c93fa5f93da6b7dec03c6a7011567a2c2f838e01952161de78d5d; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## BackendOperation
 
@@ -150,7 +152,7 @@ import type { BackendOperation } from "@openagentkit/sdk/providers";
 | `buildRequest` | 是 | `(input: Input, context: BackendRequestContext) => BackendRequestSpec \| Promise<BackendRequestSpec>` |
 | `mapResponse` | 是 | `(response: Response, context: BackendRequestContext & { input: Input; }) => Output \| Promise<Output>` |
 
-<!-- source-sha256: 95e4e1902f98e59c4d858a99fc748604ff240102a24e9ba4837041b4d7e51e7d; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 95e4e1902f98e59c4d858a99fc748604ff240102a24e9ba4837041b4d7e51e7d; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## BackendRequestContext
 
@@ -170,7 +172,7 @@ import type { BackendRequestContext } from "@openagentkit/sdk/providers";
 | --- | --- | --- |
 | `signal` | 否 | `AbortSignal \| undefined` |
 
-<!-- source-sha256: 95e4e1902f98e59c4d858a99fc748604ff240102a24e9ba4837041b4d7e51e7d; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 95e4e1902f98e59c4d858a99fc748604ff240102a24e9ba4837041b4d7e51e7d; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## BackendRequestSpec
 
@@ -191,7 +193,7 @@ import type { BackendRequestSpec } from "@openagentkit/sdk/providers";
 | `path` | 是 | `string` |
 | `init` | 否 | `Omit<RequestInit, "signal"> \| undefined` |
 
-<!-- source-sha256: 95e4e1902f98e59c4d858a99fc748604ff240102a24e9ba4837041b4d7e51e7d; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 95e4e1902f98e59c4d858a99fc748604ff240102a24e9ba4837041b4d7e51e7d; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## createSseStream
 
@@ -353,6 +355,7 @@ import type { ChatProvider } from "@openagentkit/sdk/providers";
 | 字段 | 必填 | 类型 |
 | --- | --- | --- |
 | `transformMessage` | 否 | `MessageTransformer \| undefined` |
+| `listEvents` | 否 | `((sessionId: string, options?: EventQueryOptions) => Promise<EventsPage>) \| undefined` |
 | `listThreads` | 否 | `((sessionId: string, options?: ThreadQueryOptions) => Promise<SessionThreadsResponse>) \| undefined` |
 | `listThreadEvents` | 否 | `((sessionId: string, threadId: string, options?: ThreadQueryOptions) => Promise<EventsPage>) \| undefined` |
 | `stream` | 是 | `(sessionId: string, options?: StreamSessionOptions) => Promise<void>` |
@@ -361,7 +364,7 @@ import type { ChatProvider } from "@openagentkit/sdk/providers";
 | `toolApprovals` | 是 | `(sessionId: string) => Promise<ToolApprovalsResponse>` |
 | `submitToolApproval` | 是 | `(sessionId: string, decision: ToolApprovalDecision) => Promise<SendMessageResponse>` |
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 321c50f154d11300f499af0247a896a9daf157504c052cc59f1694d636ade6df; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## ChatProvider.stream
 
@@ -372,7 +375,7 @@ import type { ChatProvider } from "@openagentkit/sdk/providers";
 说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
 [可编译示例](../examples/normalized-provider.ts)
 
-- 历史和实时更新完成权威对账后才报告 ready。
+- 标准事件流的 ready 表示实时订阅就绪，Controller 通过 listEvents 读取历史。
 - 由控制器重连，续传使用不透明的更新游标。
 - 意外 EOF 属于可恢复的传输故障，业务完成由会话状态决定。
 
@@ -382,7 +385,25 @@ import type { ChatProvider } from "@openagentkit/sdk/providers";
 ```
 
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 321c50f154d11300f499af0247a896a9daf157504c052cc59f1694d636ade6df; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
+
+## ChatProvider.listEvents
+
+纯实时接入的历史分页操作，按升序返回 EventsPage。
+
+从 `@openagentkit/sdk/providers` 导入 `ChatProvider`。
+公开入口为 `packages/sdk/src/providers/index.ts`，声明位于 `packages/sdk/src/providers/contract.ts`。
+说明来自 `apps/storybook/content/docs/sdk/custom-backend.mdx`。
+[可编译示例](../examples/backend-http.ts)
+
+
+```ts
+// ChatProvider.listEvents 的类型
+((sessionId: string, options?: EventQueryOptions) => Promise<EventsPage>) | undefined
+```
+
+
+<!-- source-sha256: 321c50f154d11300f499af0247a896a9daf157504c052cc59f1694d636ade6df; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## ChatProvider.sendMessage
 
@@ -401,7 +422,7 @@ import type { ChatProvider } from "@openagentkit/sdk/providers";
 ```
 
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 321c50f154d11300f499af0247a896a9daf157504c052cc59f1694d636ade6df; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## ChatProvider.interrupt
 
@@ -419,7 +440,7 @@ import type { ChatProvider } from "@openagentkit/sdk/providers";
 ```
 
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 321c50f154d11300f499af0247a896a9daf157504c052cc59f1694d636ade6df; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## ChatProvider.toolApprovals
 
@@ -438,7 +459,7 @@ import type { ChatProvider } from "@openagentkit/sdk/providers";
 ```
 
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 03e164c0199edd9510cc7c6ebd1036abc697a376d45c2586623da56a188c80aa -->
+<!-- source-sha256: 321c50f154d11300f499af0247a896a9daf157504c052cc59f1694d636ade6df; doc-sha256: 03e164c0199edd9510cc7c6ebd1036abc697a376d45c2586623da56a188c80aa -->
 
 ## ChatProvider.submitToolApproval
 
@@ -457,7 +478,7 @@ import type { ChatProvider } from "@openagentkit/sdk/providers";
 ```
 
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 03e164c0199edd9510cc7c6ebd1036abc697a376d45c2586623da56a188c80aa -->
+<!-- source-sha256: 321c50f154d11300f499af0247a896a9daf157504c052cc59f1694d636ade6df; doc-sha256: 03e164c0199edd9510cc7c6ebd1036abc697a376d45c2586623da56a188c80aa -->
 
 ## ChatProvider.transformMessage
 
@@ -477,7 +498,7 @@ MessageTransformer | undefined
 ```
 
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 321c50f154d11300f499af0247a896a9daf157504c052cc59f1694d636ade6df; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## transformSessionEvent
 
@@ -497,7 +518,7 @@ export function transformSessionEvent({ messages, event, identity }: MessageTran
 ```
 
 
-<!-- source-sha256: 7d5419a70b48cb015bc5eaf95e904ba9eae9c6c440ba48fb4d0bfa3d6faef0b0; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 7d5419a70b48cb015bc5eaf95e904ba9eae9c6c440ba48fb4d0bfa3d6faef0b0; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## MessageTransformer
 
@@ -514,7 +535,7 @@ export type MessageTransformer = (input: MessageTransformInput) => MessageTransf
 ```
 
 
-<!-- source-sha256: 2f667950b58a0e64a5f120121ffccbd5dbd59b0bcb45c6c653a8c0cc6b30cfb0; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 2f667950b58a0e64a5f120121ffccbd5dbd59b0bcb45c6c653a8c0cc6b30cfb0; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## MessageTransformInput
 
@@ -537,7 +558,7 @@ import type { MessageTransformInput } from "@openagentkit/sdk/messages";
 | `event` | 是 | `{ type: string; event_id?: string \| undefined; role?: string \| undefined; created_at?: string \| undefined; content?: { [x: string]: unknown; type: string; text?: string \| undefined; data?: unknown; }[] \| undefined; metadata?: Record<string, unknown> \| undefined; is_error?: boolean \| null \| undefined; code?: string \| null \| undefined; message?: string \| null \| undefined; }` |
 | `identity` | 是 | `string` |
 
-<!-- source-sha256: 2f667950b58a0e64a5f120121ffccbd5dbd59b0bcb45c6c653a8c0cc6b30cfb0; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 2f667950b58a0e64a5f120121ffccbd5dbd59b0bcb45c6c653a8c0cc6b30cfb0; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## MessageTransformResult
 
@@ -559,7 +580,7 @@ import type { MessageTransformResult } from "@openagentkit/sdk/messages";
 | `messages` | 是 | `ChatMessage[]` |
 | `artifacts` | 否 | `ArtifactDescriptor[] \| undefined` |
 
-<!-- source-sha256: 2f667950b58a0e64a5f120121ffccbd5dbd59b0bcb45c6c653a8c0cc6b30cfb0; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 2f667950b58a0e64a5f120121ffccbd5dbd59b0bcb45c6c653a8c0cc6b30cfb0; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## createKitChatProvider
 
@@ -572,11 +593,11 @@ import type { MessageTransformResult } from "@openagentkit/sdk/messages";
 
 
 ```ts
-export function createKitChatProvider(client: Pick<KitClient, "stream" | "sendMessage" | "interrupt" | "toolApprovals" | "submitToolApproval"> & Partial<Pick<KitClient, "listThreads" | "listThreadEvents">>): ChatProvider;
+export function createKitChatProvider(client: Pick<KitClient, "listEvents" | "stream" | "sendMessage" | "interrupt" | "toolApprovals" | "submitToolApproval"> & Partial<Pick<KitClient, "listThreads" | "listThreadEvents">>): ChatProvider;
 ```
 
 
-<!-- source-sha256: e2118bcc1a6d70d16191830ade262995d56e793a429672ea8a1b6b63413d3615; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 34eb6398edf2d71473f231fa00e4c5d1de6f05df46f237ce9cb91d8544e5bfde; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## StreamSessionOptions
 
@@ -605,7 +626,7 @@ import type { StreamSessionOptions } from "@openagentkit/sdk/providers";
 | `onDone` | 否 | `((info: { status: string; lastEventId: string \| null; }) => void) \| undefined` |
 | `onPing` | 否 | `((t: number) => void) \| undefined` |
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 28a2b134f45aa633a78c3ea7121a45f36a7d0f24b115f5c09016b6e855f4b254 -->
+<!-- source-sha256: 321c50f154d11300f499af0247a896a9daf157504c052cc59f1694d636ade6df; doc-sha256: 28a2b134f45aa633a78c3ea7121a45f36a7d0f24b115f5c09016b6e855f4b254 -->
 
 ## createBailianChatProvider
 
@@ -626,7 +647,7 @@ export function createBailianChatProvider(options: BailianChatProviderOptions): 
 ```
 
 
-<!-- source-sha256: fa4a77bb4e97bdb8812a1f604b3d1f74e4ec5ae37c1d8b24135f66008aee9eb9; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: fa4a77bb4e97bdb8812a1f604b3d1f74e4ec5ae37c1d8b24135f66008aee9eb9; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## BailianChatProviderOptions
 
@@ -662,7 +683,7 @@ import type { BailianChatProviderOptions } from "@openagentkit/sdk/providers/bai
 | `listThreads` | 否 | `BailianOperation<BailianThreadQuery, { data: { id: string; session_id: string; parent_thread_id: string; agent: { id: string; version?: number \| undefined; name?: string \| undefined; }; status: string; created_at: string; updated_at: string; agent_name?: string \| undefined; archived_at?: string \| null \| undefined; }[]; next_page_token: string \| null; }> \| undefined` |
 | `listThreadEvents` | 否 | `BailianOperation<BailianThreadQuery & { threadId: string; }, BailianEventsPage> \| undefined` |
 
-<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## openStream
 
@@ -688,7 +709,7 @@ BackendOperation<{ sessionId: string; }, BailianStreamResponse>
 | `buildRequest` | 是 | `(input: { sessionId: string; }, context: BackendRequestContext) => BackendRequestSpec \| Promise<BackendRequestSpec>` |
 | `mapResponse` | 是 | `(response: Response, context: BackendRequestContext & { input: { sessionId: string; }; }) => BailianStreamResponse \| Promise<BailianStreamResponse>` |
 
-<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## listEvents
 
@@ -713,7 +734,7 @@ BackendOperation<{ sessionId: string; pageToken?: string; }, BailianEventsPage>
 | `buildRequest` | 是 | `(input: { sessionId: string; pageToken?: string; }, context: BackendRequestContext) => BackendRequestSpec \| Promise<BackendRequestSpec>` |
 | `mapResponse` | 是 | `(response: Response, context: BackendRequestContext & { input: { sessionId: string; pageToken?: string; }; }) => BailianEventsPage \| Promise<BailianEventsPage>` |
 
-<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## BailianStreamResponse
 
@@ -734,7 +755,7 @@ import type { BailianStreamResponse } from "@openagentkit/sdk/providers/bailian"
 | `response` | 是 | `Response` |
 | `ready` | 是 | `Promise<void>` |
 
-<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## BailianEventsPage
 
@@ -756,7 +777,7 @@ import type { BailianEventsPage } from "@openagentkit/sdk/providers/bailian";
 | `events` | 是 | `Record<string, unknown>[]` |
 | `nextPageToken` | 否 | `string \| null \| undefined` |
 
-<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## SessionEvent
 
@@ -809,7 +830,7 @@ export type SendMessageRequest = { text: string; skills?: string[] | undefined; 
 | `attachments` | 否 | `{ file_id: string; filename?: string \| undefined; mount_path?: string \| undefined; size?: number \| undefined; }[] \| undefined` |
 | `client_message_id` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 1dc864117b708c6a5d56599b55821494870ab35e77f8d5510c5961c99f82a4fa; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
+<!-- source-sha256: 1dc864117b708c6a5d56599b55821494870ab35e77f8d5510c5961c99f82a4fa; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
 
 ## SendMessageResponse
 
@@ -831,7 +852,7 @@ export type SendMessageResponse = { session_id: string; accepted: boolean; event
 | `accepted` | 是 | `boolean` |
 | `event_ids` | 是 | `string[]` |
 
-<!-- source-sha256: 1dc864117b708c6a5d56599b55821494870ab35e77f8d5510c5961c99f82a4fa; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 1dc864117b708c6a5d56599b55821494870ab35e77f8d5510c5961c99f82a4fa; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## ToolApprovalsResponse
 
@@ -909,7 +930,7 @@ declare class KitError {
 | `stack` | 否 | `string \| undefined` |
 | `cause` | 否 | `unknown` |
 
-<!-- source-sha256: 0d3c4159a0cc3cc2979689d0c75227001ef7dd285083b525e549913cd52140f3; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 0d3c4159a0cc3cc2979689d0c75227001ef7dd285083b525e549913cd52140f3; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## BailianOperation
 
@@ -930,7 +951,7 @@ export type BailianOperation = BackendOperation<Input, Output>;
 | `buildRequest` | 是 | `(input: Input, context: BackendRequestContext) => BackendRequestSpec \| Promise<BackendRequestSpec>` |
 | `mapResponse` | 是 | `(response: Response, context: BackendRequestContext & { input: Input; }) => Output \| Promise<Output>` |
 
-<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## BailianRequestSpec
 
@@ -951,7 +972,7 @@ export type BailianRequestSpec = BackendRequestSpec;
 | `path` | 是 | `string` |
 | `init` | 否 | `Omit<RequestInit, "signal"> \| undefined` |
 
-<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## BailianRequestContext
 
@@ -971,7 +992,7 @@ export type BailianRequestContext = BackendRequestContext;
 | --- | --- | --- |
 | `signal` | 否 | `AbortSignal \| undefined` |
 
-<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## createBailianThreadOperations
 
@@ -988,7 +1009,7 @@ export function createBailianThreadOperations(options?: { basePath?: string; }):
 ```
 
 
-<!-- source-sha256: 57c980cfbad8f9874f7fea82f85630a6987db09f32cdfd876f5e6abe97bdaaee; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 57c980cfbad8f9874f7fea82f85630a6987db09f32cdfd876f5e6abe97bdaaee; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## BailianThreadOperations
 
@@ -1009,7 +1030,7 @@ import type { BailianThreadOperations } from "@openagentkit/sdk/providers/bailia
 | `listThreads` | 是 | `BailianOperation<BailianThreadQuery, { data: { id: string; session_id: string; parent_thread_id: string; agent: { id: string; version?: number \| undefined; name?: string \| undefined; }; status: string; created_at: string; updated_at: string; agent_name?: string \| undefined; archived_at?: string \| null \| undefined; }[]; next_page_token: string \| null; }>` |
 | `listThreadEvents` | 是 | `BailianOperation<BailianThreadQuery & { threadId: string; }, BailianEventsPage>` |
 
-<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## BailianThreadQuery
 
@@ -1031,7 +1052,7 @@ import type { BailianThreadQuery } from "@openagentkit/sdk/providers/bailian";
 | `limit` | 否 | `number \| undefined` |
 | `pageToken` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 76c47a6fd93c407487caf5dc8458d6d433396a83c244dd6525bc26e3685abf7c; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## ThreadQueryOptions
 
@@ -1053,7 +1074,7 @@ import type { ThreadQueryOptions } from "@openagentkit/sdk/providers";
 | `pageToken` | 否 | `string \| undefined` |
 | `signal` | 否 | `AbortSignal \| undefined` |
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 321c50f154d11300f499af0247a896a9daf157504c052cc59f1694d636ade6df; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## ChatProvider.listThreads
 
@@ -1071,7 +1092,7 @@ import type { ThreadQueryOptions } from "@openagentkit/sdk/providers";
 ```
 
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 321c50f154d11300f499af0247a896a9daf157504c052cc59f1694d636ade6df; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## ChatProvider.listThreadEvents
 
@@ -1089,7 +1110,7 @@ import type { ThreadQueryOptions } from "@openagentkit/sdk/providers";
 ```
 
 
-<!-- source-sha256: c4e84b4c02532fce8688a82d9260197872172cd0fd1b8629f24441d005963332; doc-sha256: 7c8018529fae930d92e8e17a9b66ca47a7b451905566e8e916c72aa7809eb71b -->
+<!-- source-sha256: 321c50f154d11300f499af0247a896a9daf157504c052cc59f1694d636ade6df; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## ClientOperations
 
@@ -1102,18 +1123,12 @@ import type { ThreadQueryOptions } from "@openagentkit/sdk/providers";
 
 
 ```ts
-export type ClientOperations = { agent?: BackendOperation<[slug: string, signal?: AbortSignal | undefined], { slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "data" | "general" | "writing" | "coding" | "other"; featured: boolean; id: string; remote_agent_id: string; description?: string | undefined; icon?: string | undefined; opening_remarks?: string | undefined; theme?: { accent?: string | undefined; iconBackground?: string | undefined; } | undefined; remote_agent_version?: number | undefined; resources?: { tools: { name: string; description?: string | undefined; permission?: "allow" | "ask" | undefined; }[]; skills: { name: string; description?: string | undefined; permission?: "allow" | "ask" | undefined; }[]; mcp_servers: { name: string; description?: string | undefined; permission?: "allow" | "ask" | undefined; }[]; } | undefined; memory_stores?: { name: string; description?: string | undefined; }[] | undefined; }> | undefined; sendMessage?: BackendOperation<[sessionId: string, body: { text: string; skills?: string[] | undefined; attachments?: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[] | undefined; client_message_id?: string | undefined; }], { session_id: string; accepted: boolean; event_ids: string[]; }> | undefined; interrupt?: BackendOperation<[sessionId: string], { interrupted: boolean; }> | undefined; toolApprovals?: BackendOperation<[sessionId: string], { requires_action: boolean; batch_id: string | null; pending_call_ids: string[]; requests: { batch_id: string; call_id: string; request_event_id: string | null; name: string; arguments: unknown; tool_type: string; actionable: boolean; server_label?: string | undefined; session_thread_id?: string | undefined; status?: "pending" | "submitted" | "uncertain" | undefined; result?: "allow" | "deny" | undefined; }[]; }> | undefined; submitToolApproval?: BackendOperation<[sessionId: string, decision: { batch_id: string; call_id: string; result: "allow" | "deny"; deny_message?: string | undefined; }], { session_id: string; accepted: boolean; event_ids: string[]; }> | undefined; listThreads?: BackendOperation<[sessionId: string, query?: ThreadQueryOptions | undefined], { data: { id: string; session_id: string; parent_thread_id: string; agent: { id: string; version?: number | undefined; name?: string | undefined; }; status: string; created_at: string; updated_at: string; agent_name?: string | undefined; archived_at?: string | null | undefined; }[]; next_page_token: string | null; }> | undefined; listThreadEvents?: BackendOperation<[sessionId: string, threadId: string, query?: ThreadQueryOptions | undefined], EventsPage> | undefined; config?: BackendOperation<[signal?: AbortSignal | undefined], { apiBaseUrl: string; protocolVersion: string; gateway: "sdk" | "mock"; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; }; branding: { productName: string; logoUrl?: string | undefined; accent?: string | undefined; }; auth?: { mode: "member" | "anonymous"; passwordLogin: true; } | undefined; }> | undefined; agents?: BackendOperation<[signal?: AbortSignal | undefined], { slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "data" | "general" | "writing" | "coding" | "other"; featured: boolean; description?: string | undefined; icon?: string | undefined; opening_remarks?: string | undefined; theme?: { accent?: string | undefined; iconBackground?: string | undefined; } | undefined; }[]> | undefined; plaza?: BackendOperation<[query?: { category?: PlazaCategory; q?: string; } | undefined, signal?: AbortSignal | undefined], { agents: { slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "data" | "general" | "writing" | "coding" | "other"; featured: boolean; stats: { mine: boolean; turns_30d: number; last_used_at?: string | undefined; }; description?: string | undefined; icon?: string | undefined; opening_remarks?: string | undefined; theme?: { accent?: string | undefined; iconBackground?: string | undefined; } | undefined; }[]; featured: string[]; popular: string[]; categories: { id: "data" | "general" | "writing" | "coding" | "other"; name: string; count: number; }[]; }> | undefined; usageLimits?: BackendOperation<[query?: { days?: number; } | undefined, signal?: AbortSignal | undefined], { member_id: string; month: string; reset_at: string; limits: { monthly_tokens: number | null; monthly_active_seconds: number | null; daily_tokens: number | null; daily_active_seconds: number | null; }; override: { monthly_tokens: number | null; monthly_active_seconds: number | null; daily_tokens: number | null; daily_active_seconds: number | null; } | null; tokens: { limit: number | null; used: number | null; remaining: number | null; status: "ok" | "exceeded" | "unavailable"; }; active_seconds: { limit: number | null; used: number | null; remaining: number | null; status: "ok" | "exceeded" | "unavailable"; }; day_state: { day: string; reset_at: string; tokens: { limit: number | null; used: number | null; remaining: number | null; status: "ok" | "exceeded" | "unavailable"; }; active_seconds: { limit: number | null; used: number | null; remaining: number | null; status: "ok" | "exceeded" | "unavailable"; }; }; accounting_started_at: string; daily: { day: string; tokens: number; active_seconds: number; }[]; refreshed_at?: string | undefined; } | null> | undefined; quota?: BackendOperation<[query?: { days?: number; } | undefined, signal?: AbortSignal | undefined], { month: string; reset_at: string; unlimited: boolean; base_limit: number; override_limit: number | null; packs: { id: string; month: string; credits: number; granted_by: string; created_at: string; reason?: string | undefined; }[]; limit: number; used: number; remaining: number; per_agent: { agent_slug: string; turns: number; }[]; daily: { day: string; turns: number; }[]; pending_request: { id: string; subject_id: string; requested_credits: number; status: "pending" | "approved" | "rejected"; mode: "override" | "pack" | null; granted_credits: number | null; created_at: string; reason?: string | undefined; review_note?: string | undefined; reviewed_by?: string | undefined; reviewed_at?: string | undefined; } | null; }> | undefined; quotaRequests?: BackendOperation<[signal?: AbortSignal | undefined], { id: string; subject_id: string; requested_credits: number; status: "pending" | "approved" | "rejected"; mode: "override" | "pack" | null; granted_credits: number | null; created_at: string; reason?: string | undefined; review_note?: string | undefined; reviewed_by?: string | undefined; reviewed_at?: string | undefined; }[]> | undefined; createQuotaRequest?: BackendOperation<[body: { requestedCredits: number; reason?: string; }, signal?: AbortSignal | undefined], { id: string; subject_id: string; requested_credits: number; status: "pending" | "approved" | "rejected"; mode: "override" | "pack" | null; granted_credits: number | null; created_at: string; reason?: string | undefined; review_note?: string | undefined; reviewed_by?: string | undefined; reviewed_at?: string | undefined; }> | undefined; sessions?: BackendOperation<[query?: SessionListQuery | undefined, signal?: AbortSignal | undefined], { sessions: { session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; }[]; nextPageToken: string | null; }> | undefined; sessionAgents?: BackendOperation<[signal?: AbortSignal | undefined], string[]> | undefined; createSession?: BackendOperation<[body: { agentSlug: string; title?: string; files?: AttachmentRef[]; }, signal?: AbortSignal | undefined], { session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; usage?: { input_tokens?: number | undefined; output_tokens?: number | undefined; cache_read_input_tokens?: number | undefined; cache_creation_input_tokens?: number | undefined; } | undefined; stats?: { active_seconds?: number | undefined; duration_seconds?: number | undefined; } | undefined; remote_status?: string | undefined; files?: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[] | undefined; message_files?: { event_ids: string[]; files: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[]; }[] | undefined; }> | undefined; session?: BackendOperation<[id: string, signal?: AbortSignal | undefined], { session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; usage?: { input_tokens?: number | undefined; output_tokens?: number | undefined; cache_read_input_tokens?: number | undefined; cache_creation_input_tokens?: number | undefined; } | undefined; stats?: { active_seconds?: number | undefined; duration_seconds?: number | undefined; } | undefined; remote_status?: string | undefined; files?: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[] | undefined; message_files?: { event_ids: string[]; files: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[]; }[] | undefined; }> | undefined; renameSession?: BackendOperation<[id: string, title: string, signal?: AbortSignal | undefined], { session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; usage?: { input_tokens?: number | undefined; output_tokens?: number | undefined; cache_read_input_tokens?: number | undefined; cache_creation_input_tokens?: number | undefined; } | undefined; stats?: { active_seconds?: number | undefined; duration_seconds?: number | undefined; } | undefined; remote_status?: string | undefined; files?: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[] | undefined; message_files?: { event_ids: string[]; files: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[]; }[] | undefined; }> | undefined; events?: BackendOperation<[sessionId: string, query?: { afterId?: string; limit?: number; pageToken?: string; } | undefined], EventsPage> | undefined; sessionPlan?: BackendOperation<[sessionId: string, action: "archive" | "delete", signal?: AbortSignal | undefined], { plan_id: string; confirm_token: string; destructive: boolean; expires_at: number; diff: { resource: string; action: string; destructive: boolean; }[]; }> | undefined; archiveSession?: BackendOperation<[sessionId: string, confirmation: { plan_id: string; confirm_token: string; }, signal?: AbortSignal | undefined], { archived: boolean; }> | undefined; deleteSession?: BackendOperation<[sessionId: string, confirmation: { plan_id: string; confirm_token: string; }, signal?: AbortSignal | undefined], { deleted: boolean; }> | undefined; uploadFile?: BackendOperation<[file: { name: string; bytes: Uint8Array; mimeType?: string; }, signal?: AbortSignal | undefined], { file_id: string; filename: string; size: number; }> | undefined; fileStatus?: BackendOperation<[fileId: string, signal?: AbortSignal | undefined], { file_id: string; status: string | null; available: boolean; }> | undefined; downloadFile?: BackendOperation<[fileId: string, input?: { sessionId?: string; signal?: AbortSignal; } | undefined], Response> | undefined; "auth.login"?: BackendOperation<[body: { username: string; password: string; }, signal?: AbortSignal | undefined], { access_token: string; token_type: "Bearer"; expires_at: string; member: { member_id: string; username: string; display_name: string; auth_type: "local"; status: "active"; created_at: string; updated_at: string; usage_summary?: { session_count: number; deleted_session_count: number; metrics: { input_tokens: { value: number | null; covered_sessions: number; }; output_tokens: { value: number | null; covered_sessions: number; }; cache_read_input_tokens: { value: number | null; covered_sessions: number; }; cache_creation_input_tokens: { value: number | null; covered_sessions: number; }; active_seconds: { value: number | null; covered_sessions: number; }; duration_seconds: { value: number | null; covered_sessions: number; }; }; agents: { slug: string; display_name: string | null; deleted?: boolean | undefined; }[]; refresh_status: "idle" | "refreshing" | "partial" | "failed"; completed_sessions: number; refreshed_at?: string | undefined; } | undefined; email?: string | undefined; }; }> | undefined; "auth.me"?: BackendOperation<[signal?: AbortSignal | undefined], { identity: { subjectId: string; displayName?: string | undefined; tier?: string | undefined; metadata?: Record<string, unknown> | undefined; }; member?: { member_id: string; username: string; display_name: string; auth_type: "local"; status: "active"; created_at: string; updated_at: string; usage_summary?: { session_count: number; deleted_session_count: number; metrics: { input_tokens: { value: number | null; covered_sessions: number; }; output_tokens: { value: number | null; covered_sessions: number; }; cache_read_input_tokens: { value: number | null; covered_sessions: number; }; cache_creation_input_tokens: { value: number | null; covered_sessions: number; }; active_seconds: { value: number | null; covered_sessions: number; }; duration_seconds: { value: number | null; covered_sessions: number; }; }; agents: { slug: string; display_name: string | null; deleted?: boolean | undefined; }[]; refresh_status: "idle" | "refreshing" | "partial" | "failed"; completed_sessions: number; refreshed_at?: string | undefined; } | undefined; email?: string | undefined; } | undefined; expires_at?: string | undefined; }> | undefined; "auth.logout"?: BackendOperation<[signal?: AbortSignal | undefined], void> | undefined; };
+export type ClientOperations = { agent?: BackendOperation<[slug: string, signal?: AbortSignal | undefined], { slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "data" | "general" | "writing" | "coding" | "other"; featured: boolean; id: string; remote_agent_id: string; description?: string | undefined; icon?: string | undefined; opening_remarks?: string | undefined; theme?: { accent?: string | undefined; iconBackground?: string | undefined; } | undefined; remote_agent_version?: number | undefined; resources?: { tools: { name: string; description?: string | undefined; permission?: "allow" | "ask" | undefined; }[]; skills: { name: string; description?: string | undefined; permission?: "allow" | "ask" | undefined; }[]; mcp_servers: { name: string; description?: string | undefined; permission?: "allow" | "ask" | undefined; }[]; } | undefined; memory_stores?: { name: string; description?: string | undefined; }[] | undefined; }> | undefined; config?: BackendOperation<[signal?: AbortSignal | undefined], { apiBaseUrl: string; protocolVersion: string; gateway: "sdk" | "mock"; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; }; branding: { productName: string; logoUrl?: string | undefined; accent?: string | undefined; }; auth?: { mode: "member" | "anonymous"; passwordLogin: true; } | undefined; }> | undefined; agents?: BackendOperation<[signal?: AbortSignal | undefined], { slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "data" | "general" | "writing" | "coding" | "other"; featured: boolean; description?: string | undefined; icon?: string | undefined; opening_remarks?: string | undefined; theme?: { accent?: string | undefined; iconBackground?: string | undefined; } | undefined; }[]> | undefined; plaza?: BackendOperation<[query?: { category?: PlazaCategory; q?: string; } | undefined, signal?: AbortSignal | undefined], { agents: { slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "data" | "general" | "writing" | "coding" | "other"; featured: boolean; stats: { mine: boolean; turns_30d: number; last_used_at?: string | undefined; }; description?: string | undefined; icon?: string | undefined; opening_remarks?: string | undefined; theme?: { accent?: string | undefined; iconBackground?: string | undefined; } | undefined; }[]; featured: string[]; popular: string[]; categories: { id: "data" | "general" | "writing" | "coding" | "other"; name: string; count: number; }[]; }> | undefined; usageLimits?: BackendOperation<[query?: { days?: number; } | undefined, signal?: AbortSignal | undefined], { member_id: string; month: string; reset_at: string; limits: { monthly_tokens: number | null; monthly_active_seconds: number | null; daily_tokens: number | null; daily_active_seconds: number | null; }; override: { monthly_tokens: number | null; monthly_active_seconds: number | null; daily_tokens: number | null; daily_active_seconds: number | null; } | null; tokens: { limit: number | null; used: number | null; remaining: number | null; status: "ok" | "exceeded" | "unavailable"; }; active_seconds: { limit: number | null; used: number | null; remaining: number | null; status: "ok" | "exceeded" | "unavailable"; }; day_state: { day: string; reset_at: string; tokens: { limit: number | null; used: number | null; remaining: number | null; status: "ok" | "exceeded" | "unavailable"; }; active_seconds: { limit: number | null; used: number | null; remaining: number | null; status: "ok" | "exceeded" | "unavailable"; }; }; accounting_started_at: string; daily: { day: string; tokens: number; active_seconds: number; }[]; refreshed_at?: string | undefined; } | null> | undefined; quota?: BackendOperation<[query?: { days?: number; } | undefined, signal?: AbortSignal | undefined], { month: string; reset_at: string; unlimited: boolean; base_limit: number; override_limit: number | null; packs: { id: string; month: string; credits: number; granted_by: string; created_at: string; reason?: string | undefined; }[]; limit: number; used: number; remaining: number; per_agent: { agent_slug: string; turns: number; }[]; daily: { day: string; turns: number; }[]; pending_request: { id: string; subject_id: string; requested_credits: number; status: "pending" | "approved" | "rejected"; mode: "override" | "pack" | null; granted_credits: number | null; created_at: string; reason?: string | undefined; review_note?: string | undefined; reviewed_by?: string | undefined; reviewed_at?: string | undefined; } | null; }> | undefined; quotaRequests?: BackendOperation<[signal?: AbortSignal | undefined], { id: string; subject_id: string; requested_credits: number; status: "pending" | "approved" | "rejected"; mode: "override" | "pack" | null; granted_credits: number | null; created_at: string; reason?: string | undefined; review_note?: string | undefined; reviewed_by?: string | undefined; reviewed_at?: string | undefined; }[]> | undefined; createQuotaRequest?: BackendOperation<[body: { requestedCredits: number; reason?: string; }, signal?: AbortSignal | undefined], { id: string; subject_id: string; requested_credits: number; status: "pending" | "approved" | "rejected"; mode: "override" | "pack" | null; granted_credits: number | null; created_at: string; reason?: string | undefined; review_note?: string | undefined; reviewed_by?: string | undefined; reviewed_at?: string | undefined; }> | undefined; sessions?: BackendOperation<[query?: SessionListQuery | undefined, signal?: AbortSignal | undefined], { sessions: { session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; }[]; nextPageToken: string | null; }> | undefined; sessionAgents?: BackendOperation<[signal?: AbortSignal | undefined], string[]> | undefined; createSession?: BackendOperation<[body: { agentSlug: string; title?: string; files?: AttachmentRef[]; }, signal?: AbortSignal | undefined], { session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; usage?: { input_tokens?: number | undefined; output_tokens?: number | undefined; cache_read_input_tokens?: number | undefined; cache_creation_input_tokens?: number | undefined; } | undefined; stats?: { active_seconds?: number | undefined; duration_seconds?: number | undefined; } | undefined; remote_status?: string | undefined; files?: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[] | undefined; message_files?: { event_ids: string[]; files: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[]; }[] | undefined; }> | undefined; session?: BackendOperation<[id: string, signal?: AbortSignal | undefined], { session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; usage?: { input_tokens?: number | undefined; output_tokens?: number | undefined; cache_read_input_tokens?: number | undefined; cache_creation_input_tokens?: number | undefined; } | undefined; stats?: { active_seconds?: number | undefined; duration_seconds?: number | undefined; } | undefined; remote_status?: string | undefined; files?: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[] | undefined; message_files?: { event_ids: string[]; files: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[]; }[] | undefined; }> | undefined; renameSession?: BackendOperation<[id: string, title: string, signal?: AbortSignal | undefined], { session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; usage?: { input_tokens?: number | undefined; output_tokens?: number | undefined; cache_read_input_tokens?: number | undefined; cache_creation_input_tokens?: number | undefined; } | undefined; stats?: { active_seconds?: number | undefined; duration_seconds?: number | undefined; } | undefined; remote_status?: string | undefined; files?: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[] | undefined; message_files?: { event_ids: string[]; files: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[]; }[] | undefined; }> | undefined; sendMessage?: BackendOperation<[sessionId: string, body: { text: string; skills?: string[] | undefined; attachments?: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[] | undefined; client_message_id?: string | undefined; }], { session_id: string; accepted: boolean; event_ids: string[]; }> | undefined; toolApprovals?: BackendOperation<[sessionId: string], { requires_action: boolean; batch_id: string | null; pending_call_ids: string[]; requests: { batch_id: string; call_id: string; request_event_id: string | null; name: string; arguments: unknown; tool_type: string; actionable: boolean; server_label?: string | undefined; session_thread_id?: string | undefined; status?: "pending" | "submitted" | "uncertain" | undefined; result?: "allow" | "deny" | undefined; }[]; }> | undefined; submitToolApproval?: BackendOperation<[sessionId: string, decision: { batch_id: string; call_id: string; result: "allow" | "deny"; deny_message?: string | undefined; }], { session_id: string; accepted: boolean; event_ids: string[]; }> | undefined; interrupt?: BackendOperation<[sessionId: string], { interrupted: boolean; }> | undefined; events?: BackendOperation<[sessionId: string, query?: EventQueryOptions | undefined], EventsPage> | undefined; listThreads?: BackendOperation<[sessionId: string, query?: ThreadQueryOptions | undefined], { data: { id: string; session_id: string; parent_thread_id: string; agent: { id: string; version?: number | undefined; name?: string | undefined; }; status: string; created_at: string; updated_at: string; agent_name?: string | undefined; archived_at?: string | null | undefined; }[]; next_page_token: string | null; }> | undefined; listThreadEvents?: BackendOperation<[sessionId: string, threadId: string, query?: ThreadQueryOptions | undefined], EventsPage> | undefined; sessionPlan?: BackendOperation<[sessionId: string, action: "archive" | "delete", signal?: AbortSignal | undefined], { plan_id: string; confirm_token: string; destructive: boolean; expires_at: number; diff: { resource: string; action: string; destructive: boolean; }[]; }> | undefined; archiveSession?: BackendOperation<[sessionId: string, confirmation: { plan_id: string; confirm_token: string; }, signal?: AbortSignal | undefined], { archived: boolean; }> | undefined; deleteSession?: BackendOperation<[sessionId: string, confirmation: { plan_id: string; confirm_token: string; }, signal?: AbortSignal | undefined], { deleted: boolean; }> | undefined; uploadFile?: BackendOperation<[file: { name: string; bytes: Uint8Array; mimeType?: string; }, signal?: AbortSignal | undefined], { file_id: string; filename: string; size: number; }> | undefined; fileStatus?: BackendOperation<[fileId: string, signal?: AbortSignal | undefined], { file_id: string; status: string | null; available: boolean; }> | undefined; downloadFile?: BackendOperation<[fileId: string, input?: { sessionId?: string; signal?: AbortSignal; } | undefined], Response> | undefined; "auth.login"?: BackendOperation<[body: { username: string; password: string; }, signal?: AbortSignal | undefined], { access_token: string; token_type: "Bearer"; expires_at: string; member: { member_id: string; username: string; display_name: string; auth_type: "local"; status: "active"; created_at: string; updated_at: string; usage_summary?: { session_count: number; deleted_session_count: number; metrics: { input_tokens: { value: number | null; covered_sessions: number; }; output_tokens: { value: number | null; covered_sessions: number; }; cache_read_input_tokens: { value: number | null; covered_sessions: number; }; cache_creation_input_tokens: { value: number | null; covered_sessions: number; }; active_seconds: { value: number | null; covered_sessions: number; }; duration_seconds: { value: number | null; covered_sessions: number; }; }; agents: { slug: string; display_name: string | null; deleted?: boolean | undefined; }[]; refresh_status: "idle" | "refreshing" | "partial" | "failed"; completed_sessions: number; refreshed_at?: string | undefined; } | undefined; email?: string | undefined; }; }> | undefined; "auth.me"?: BackendOperation<[signal?: AbortSignal | undefined], { identity: { subjectId: string; displayName?: string | undefined; tier?: string | undefined; metadata?: Record<string, unknown> | undefined; }; member?: { member_id: string; username: string; display_name: string; auth_type: "local"; status: "active"; created_at: string; updated_at: string; usage_summary?: { session_count: number; deleted_session_count: number; metrics: { input_tokens: { value: number | null; covered_sessions: number; }; output_tokens: { value: number | null; covered_sessions: number; }; cache_read_input_tokens: { value: number | null; covered_sessions: number; }; cache_creation_input_tokens: { value: number | null; covered_sessions: number; }; active_seconds: { value: number | null; covered_sessions: number; }; duration_seconds: { value: number | null; covered_sessions: number; }; }; agents: { slug: string; display_name: string | null; deleted?: boolean | undefined; }[]; refresh_status: "idle" | "refreshing" | "partial" | "failed"; completed_sessions: number; refreshed_at?: string | undefined; } | undefined; email?: string | undefined; } | undefined; expires_at?: string | undefined; }> | undefined; "auth.logout"?: BackendOperation<[signal?: AbortSignal | undefined], void> | undefined; };
 ```
 
 | 字段 | 必填 | 类型 |
 | --- | --- | --- |
 | `agent` | 否 | `any` |
-| `sendMessage` | 否 | `any` |
-| `interrupt` | 否 | `any` |
-| `toolApprovals` | 否 | `any` |
-| `submitToolApproval` | 否 | `any` |
-| `listThreads` | 否 | `any` |
-| `listThreadEvents` | 否 | `any` |
 | `config` | 否 | `any` |
 | `agents` | 否 | `any` |
 | `plaza` | 否 | `any` |
@@ -1126,7 +1141,13 @@ export type ClientOperations = { agent?: BackendOperation<[slug: string, signal?
 | `createSession` | 否 | `any` |
 | `session` | 否 | `any` |
 | `renameSession` | 否 | `any` |
+| `sendMessage` | 否 | `any` |
+| `toolApprovals` | 否 | `any` |
+| `submitToolApproval` | 否 | `any` |
+| `interrupt` | 否 | `any` |
 | `events` | 否 | `any` |
+| `listThreads` | 否 | `any` |
+| `listThreadEvents` | 否 | `any` |
 | `sessionPlan` | 否 | `any` |
 | `archiveSession` | 否 | `any` |
 | `deleteSession` | 否 | `any` |
@@ -1137,7 +1158,7 @@ export type ClientOperations = { agent?: BackendOperation<[slug: string, signal?
 | `auth.me` | 否 | `any` |
 | `auth.logout` | 否 | `any` |
 
-<!-- source-sha256: b1d68783a14b07a56ca56019c8d30a84c70b7fc05f9e81068aabd2506493a5d8; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
+<!-- source-sha256: f889584832ef86aac9f0354a7e6eca0672a1901ff7c46a04547f762d3d7a16e6; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
 
 ## ClientOperation
 
@@ -1150,11 +1171,11 @@ export type ClientOperations = { agent?: BackendOperation<[slug: string, signal?
 
 
 ```ts
-export type ClientOperation = "agent" | "sendMessage" | "interrupt" | "toolApprovals" | "submitToolApproval" | "listThreads" | "listThreadEvents" | "config" | "agents" | "plaza" | "usageLimits" | "quota" | "quotaRequests" | "createQuotaRequest" | "sessions" | "sessionAgents" | "createSession" | "session" | "renameSession" | "events" | "sessionPlan" | "archiveSession" | "deleteSession" | "uploadFile" | "fileStatus" | "downloadFile" | "auth.login" | "auth.me" | "auth.logout";
+export type ClientOperation = "agent" | "config" | "agents" | "plaza" | "usageLimits" | "quota" | "quotaRequests" | "createQuotaRequest" | "sessions" | "sessionAgents" | "createSession" | "session" | "renameSession" | "sendMessage" | "toolApprovals" | "submitToolApproval" | "interrupt" | "events" | "listThreads" | "listThreadEvents" | "sessionPlan" | "archiveSession" | "deleteSession" | "uploadFile" | "fileStatus" | "downloadFile" | "auth.login" | "auth.me" | "auth.logout";
 ```
 
 
-<!-- source-sha256: b1d68783a14b07a56ca56019c8d30a84c70b7fc05f9e81068aabd2506493a5d8; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
+<!-- source-sha256: f889584832ef86aac9f0354a7e6eca0672a1901ff7c46a04547f762d3d7a16e6; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
 
 ## ExplicitKitClientOptions
 
@@ -1176,7 +1197,7 @@ import type { ExplicitKitClientOptions } from "@openagentkit/sdk/providers/kit";
 | `operations` | 是 | `ClientOperations` |
 | `chatProvider` | 否 | `ChatProvider \| undefined` |
 
-<!-- source-sha256: b1d68783a14b07a56ca56019c8d30a84c70b7fc05f9e81068aabd2506493a5d8; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
+<!-- source-sha256: f889584832ef86aac9f0354a7e6eca0672a1901ff7c46a04547f762d3d7a16e6; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
 
 ## createMemberSessionStorage
 
@@ -1193,7 +1214,7 @@ export function createMemberSessionStorage(baseUrl: string, getStorage: () => { 
 ```
 
 
-<!-- source-sha256: a9276ea062f185c6bd12f652590c3c3f2399fc90ccb652beeec628d4de57ab0e; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
+<!-- source-sha256: a9276ea062f185c6bd12f652590c3c3f2399fc90ccb652beeec628d4de57ab0e; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
 
 ## normalizeMemberApiBaseUrl
 
@@ -1210,7 +1231,7 @@ export function normalizeMemberApiBaseUrl(value: string, origin: string): string
 ```
 
 
-<!-- source-sha256: a9276ea062f185c6bd12f652590c3c3f2399fc90ccb652beeec628d4de57ab0e; doc-sha256: cbb5afaf934c87fa86a6e2b5c6188d34d25230b362d3d6152ff10afd390e5719 -->
+<!-- source-sha256: a9276ea062f185c6bd12f652590c3c3f2399fc90ccb652beeec628d4de57ab0e; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
 
 ## streamProtocolFrames
 
@@ -1329,6 +1350,22 @@ import type { ErrorPayload } from "@openagentkit/sdk/protocol";
 | `retryable` | 是 | `boolean` |
 
 
+### EventQueryOptions
+
+来自 `@openagentkit/sdk/providers`。
+
+```ts
+import type { EventQueryOptions } from "@openagentkit/sdk/providers";
+```
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| `afterId` | 否 | `string \| undefined` |
+| `limit` | 否 | `number \| undefined` |
+| `pageToken` | 否 | `string \| undefined` |
+| `signal` | 否 | `AbortSignal \| undefined` |
+
+
 ### EventsPage
 
 来自 `@openagentkit/sdk/protocol`。
@@ -1348,11 +1385,12 @@ import type { EventsPage } from "@openagentkit/sdk/protocol";
 来自 `@openagentkit/sdk/providers/kit`。
 
 ```ts
-export type KitClient = { transport: { request: <T>(path: string, init?: RequestInit) => Promise<T>; response: (path: string, init?: RequestInit) => Promise<Response>; stream: (path: string, handlers?: StreamHandlers) => Promise<void>; url: (path: string) => string; }; auth: { login: (body: MemberLoginRequest, signal?: AbortSignal) => Promise<{ access_token: string; token_type: "Bearer"; expires_at: string; member: { member_id: string; username: string; display_name: string; auth_type: "local"; status: "active"; created_at: string; updated_at: string; usage_summary?: { session_count: number; deleted_session_count: number; metrics: { input_tokens: { value: number | null; covered_sessions: number; }; output_tokens: { value: number | null; covered_sessions: number; }; cache_read_input_tokens: { value: number | null; covered_sessions: number; }; cache_creation_input_tokens: { value: number | null; covered_sessions: number; }; active_seconds: { value: number | null; covered_sessions: number; }; duration_seconds: { value: number | null; covered_sessions: number; }; }; agents: { slug: string; display_name: string | null; deleted?: boolean | undefined; }[]; refresh_status: "idle" | "refreshing" | "partial" | "failed"; completed_sessions: number; refreshed_at?: string | undefined; } | undefined; email?: string | undefined; }; }>; me: (signal?: AbortSignal) => Promise<{ identity: { subjectId: string; displayName?: string | undefined; tier?: string | undefined; metadata?: Record<string, unknown> | undefined; }; member?: { member_id: string; username: string; display_name: string; auth_type: "local"; status: "active"; created_at: string; updated_at: string; usage_summary?: { session_count: number; deleted_session_count: number; metrics: { input_tokens: { value: number | null; covered_sessions: number; }; output_tokens: { value: number | null; covered_sessions: number; }; cache_read_input_tokens: { value: number | null; covered_sessions: number; }; cache_creation_input_tokens: { value: number | null; covered_sessions: number; }; active_seconds: { value: number | null; covered_sessions: number; }; duration_seconds: { value: number | null; covered_sessions: number; }; }; agents: { slug: string; display_name: string | null; deleted?: boolean | undefined; }[]; refresh_status: "idle" | "refreshing" | "partial" | "failed"; completed_sessions: number; refreshed_at?: string | undefined; } | undefined; email?: string | undefined; } | undefined; expires_at?: string | undefined; }>; logout: (signal?: AbortSignal) => Promise<void>; }; config: (signal?: AbortSignal) => Promise<{ apiBaseUrl: string; protocolVersion: string; gateway: "sdk" | "mock"; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; }; branding: { productName: string; logoUrl?: string | undefined; accent?: string | undefined; }; auth?: { mode: "member" | "anonymous"; passwordLogin: true; } | undefined; }>; agents: (signal?: AbortSignal) => Promise<{ slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "data" | "general" | "writing" | "coding" | "other"; featured: boolean; description?: string | undefined; icon?: string | undefined; opening_remarks?: string | undefined; theme?: { accent?: string | undefined; iconBackground?: string | undefined; } | undefined; }[]>; plaza: (query?: { category?: PlazaCategory; q?: string; }, signal?: AbortSignal) => Promise<{ agents: { slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "data" | "general" | "writing" | "coding" | "other"; featured: boolean; stats: { mine: boolean; turns_30d: number; last_used_at?: string | undefined; }; description?: string | undefined; icon?: string | undefined; opening_remarks?: string | undefined; theme?: { accent?: string | undefined; iconBackground?: string | undefined; } | undefined; }[]; featured: string[]; popular: string[]; categories: { id: "data" | "general" | "writing" | "coding" | "other"; name: string; count: number; }[]; }>; usageLimits: (query?: { days?: number; }, signal?: AbortSignal) => Promise<{ member_id: string; month: string; reset_at: string; limits: { monthly_tokens: number | null; monthly_active_seconds: number | null; daily_tokens: number | null; daily_active_seconds: number | null; }; override: { monthly_tokens: number | null; monthly_active_seconds: number | null; daily_tokens: number | null; daily_active_seconds: number | null; } | null; tokens: { limit: number | null; used: number | null; remaining: number | null; status: "ok" | "exceeded" | "unavailable"; }; active_seconds: { limit: number | null; used: number | null; remaining: number | null; status: "ok" | "exceeded" | "unavailable"; }; day_state: { day: string; reset_at: string; tokens: { limit: number | null; used: number | null; remaining: number | null; status: "ok" | "exceeded" | "unavailable"; }; active_seconds: { limit: number | null; used: number | null; remaining: number | null; status: "ok" | "exceeded" | "unavailable"; }; }; accounting_started_at: string; daily: { day: string; tokens: number; active_seconds: number; }[]; refreshed_at?: string | undefined; } | null>; quota: (query?: { days?: number; }, signal?: AbortSignal) => Promise<{ month: string; reset_at: string; unlimited: boolean; base_limit: number; override_limit: number | null; packs: { id: string; month: string; credits: number; granted_by: string; created_at: string; reason?: string | undefined; }[]; limit: number; used: number; remaining: number; per_agent: { agent_slug: string; turns: number; }[]; daily: { day: string; turns: number; }[]; pending_request: { id: string; subject_id: string; requested_credits: number; status: "pending" | "approved" | "rejected"; mode: "override" | "pack" | null; granted_credits: number | null; created_at: string; reason?: string | undefined; review_note?: string | undefined; reviewed_by?: string | undefined; reviewed_at?: string | undefined; } | null; }>; quotaRequests: (signal?: AbortSignal) => Promise<{ id: string; subject_id: string; requested_credits: number; status: "pending" | "approved" | "rejected"; mode: "override" | "pack" | null; granted_credits: number | null; created_at: string; reason?: string | undefined; review_note?: string | undefined; reviewed_by?: string | undefined; reviewed_at?: string | undefined; }[]>; createQuotaRequest: (body: { requestedCredits: number; reason?: string; }, signal?: AbortSignal) => Promise<{ id: string; subject_id: string; requested_credits: number; status: "pending" | "approved" | "rejected"; mode: "override" | "pack" | null; granted_credits: number | null; created_at: string; reason?: string | undefined; review_note?: string | undefined; reviewed_by?: string | undefined; reviewed_at?: string | undefined; }>; agent: (slug: string, signal?: AbortSignal) => Promise<{ slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "data" | "general" | "writing" | "coding" | "other"; featured: boolean; id: string; remote_agent_id: string; description?: string | undefined; icon?: string | undefined; opening_remarks?: string | undefined; theme?: { accent?: string | undefined; iconBackground?: string | undefined; } | undefined; remote_agent_version?: number | undefined; resources?: { tools: { name: string; description?: string | undefined; permission?: "allow" | "ask" | undefined; }[]; skills: { name: string; description?: string | undefined; permission?: "allow" | "ask" | undefined; }[]; mcp_servers: { name: string; description?: string | undefined; permission?: "allow" | "ask" | undefined; }[]; } | undefined; memory_stores?: { name: string; description?: string | undefined; }[] | undefined; }>; sessions: (query?: SessionListQuery, signal?: AbortSignal) => Promise<{ sessions: { session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; }[]; nextPageToken: string | null; }>; sessionAgents: (signal?: AbortSignal) => Promise<string[]>; sessionDirectory: (signal?: AbortSignal) => Promise<{ session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; }[]>; createSession: (body: { agentSlug: string; title?: string; files?: AttachmentRef[]; }, signal?: AbortSignal) => Promise<{ session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; usage?: { input_tokens?: number | undefined; output_tokens?: number | undefined; cache_read_input_tokens?: number | undefined; cache_creation_input_tokens?: number | undefined; } | undefined; stats?: { active_seconds?: number | undefined; duration_seconds?: number | undefined; } | undefined; remote_status?: string | undefined; files?: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[] | undefined; message_files?: { event_ids: string[]; files: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[]; }[] | undefined; }>; session: (id: string, signal?: AbortSignal) => Promise<{ session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; usage?: { input_tokens?: number | undefined; output_tokens?: number | undefined; cache_read_input_tokens?: number | undefined; cache_creation_input_tokens?: number | undefined; } | undefined; stats?: { active_seconds?: number | undefined; duration_seconds?: number | undefined; } | undefined; remote_status?: string | undefined; files?: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[] | undefined; message_files?: { event_ids: string[]; files: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[]; }[] | undefined; }>; renameSession: (id: string, title: string, signal?: AbortSignal) => Promise<{ session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; usage?: { input_tokens?: number | undefined; output_tokens?: number | undefined; cache_read_input_tokens?: number | undefined; cache_creation_input_tokens?: number | undefined; } | undefined; stats?: { active_seconds?: number | undefined; duration_seconds?: number | undefined; } | undefined; remote_status?: string | undefined; files?: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[] | undefined; message_files?: { event_ids: string[]; files: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[]; }[] | undefined; }>; sendMessage: (sessionId: string, body: SendMessageRequest) => Promise<{ session_id: string; accepted: boolean; event_ids: string[]; }>; toolApprovals: (sessionId: string) => Promise<{ requires_action: boolean; batch_id: string | null; pending_call_ids: string[]; requests: { batch_id: string; call_id: string; request_event_id: string | null; name: string; arguments: unknown; tool_type: string; actionable: boolean; server_label?: string | undefined; session_thread_id?: string | undefined; status?: "pending" | "submitted" | "uncertain" | undefined; result?: "allow" | "deny" | undefined; }[]; }>; submitToolApproval: (sessionId: string, decision: ToolApprovalDecision) => Promise<{ session_id: string; accepted: boolean; event_ids: string[]; }>; interrupt: (sessionId: string) => Promise<{ interrupted: boolean; }>; events: (sessionId: string, query?: { afterId?: string; limit?: number; pageToken?: string; }) => Promise<EventsPage>; listThreads: (sessionId: string, query?: ThreadQueryOptions) => Promise<SessionThreadsResponse>; listThreadEvents: (sessionId: string, threadId: string, query?: ThreadQueryOptions) => Promise<EventsPage>; stream: (sessionId: string, streamOptions?: StreamSessionOptions) => Promise<void>; sessionPlan: (sessionId: string, action: "archive" | "delete", signal?: AbortSignal) => Promise<{ plan_id: string; confirm_token: string; destructive: boolean; expires_at: number; diff: { resource: string; action: string; destructive: boolean; }[]; }>; archiveSession: (sessionId: string, confirmation: { plan_id: string; confirm_token: string; }, signal?: AbortSignal) => Promise<{ archived: boolean; }>; deleteSession: (sessionId: string, confirmation: { plan_id: string; confirm_token: string; }, signal?: AbortSignal) => Promise<{ deleted: boolean; }>; uploadFile: (file: { name: string; bytes: Uint8Array; mimeType?: string; }, signal?: AbortSignal) => Promise<{ file_id: string; filename: string; size: number; }>; fileDownloadUrl: (fileId: string) => string; fileStatus: (fileId: string, signal?: AbortSignal) => Promise<{ file_id: string; status: string | null; available: boolean; }>; downloadFile: (fileId: string, input?: { sessionId?: string; signal?: AbortSignal; }) => Promise<Response>; } & { supports(operation: ClientOperation): boolean; };
+export type KitClient = Omit<{ transport: { request: <T>(path: string, init?: RequestInit) => Promise<T>; response: (path: string, init?: RequestInit) => Promise<Response>; stream: (path: string, handlers?: StreamHandlers) => Promise<void>; url: (path: string) => string; }; auth: { login: (body: MemberLoginRequest, signal?: AbortSignal) => Promise<{ access_token: string; token_type: "Bearer"; expires_at: string; member: { member_id: string; username: string; display_name: string; auth_type: "local"; status: "active"; created_at: string; updated_at: string; usage_summary?: { session_count: number; deleted_session_count: number; metrics: { input_tokens: { value: number | null; covered_sessions: number; }; output_tokens: { value: number | null; covered_sessions: number; }; cache_read_input_tokens: { value: number | null; covered_sessions: number; }; cache_creation_input_tokens: { value: number | null; covered_sessions: number; }; active_seconds: { value: number | null; covered_sessions: number; }; duration_seconds: { value: number | null; covered_sessions: number; }; }; agents: { slug: string; display_name: string | null; deleted?: boolean | undefined; }[]; refresh_status: "idle" | "refreshing" | "partial" | "failed"; completed_sessions: number; refreshed_at?: string | undefined; } | undefined; email?: string | undefined; }; }>; me: (signal?: AbortSignal) => Promise<{ identity: { subjectId: string; displayName?: string | undefined; tier?: string | undefined; metadata?: Record<string, unknown> | undefined; }; member?: { member_id: string; username: string; display_name: string; auth_type: "local"; status: "active"; created_at: string; updated_at: string; usage_summary?: { session_count: number; deleted_session_count: number; metrics: { input_tokens: { value: number | null; covered_sessions: number; }; output_tokens: { value: number | null; covered_sessions: number; }; cache_read_input_tokens: { value: number | null; covered_sessions: number; }; cache_creation_input_tokens: { value: number | null; covered_sessions: number; }; active_seconds: { value: number | null; covered_sessions: number; }; duration_seconds: { value: number | null; covered_sessions: number; }; }; agents: { slug: string; display_name: string | null; deleted?: boolean | undefined; }[]; refresh_status: "idle" | "refreshing" | "partial" | "failed"; completed_sessions: number; refreshed_at?: string | undefined; } | undefined; email?: string | undefined; } | undefined; expires_at?: string | undefined; }>; logout: (signal?: AbortSignal) => Promise<void>; }; config: (signal?: AbortSignal) => Promise<{ apiBaseUrl: string; protocolVersion: string; gateway: "sdk" | "mock"; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; }; branding: { productName: string; logoUrl?: string | undefined; accent?: string | undefined; }; auth?: { mode: "member" | "anonymous"; passwordLogin: true; } | undefined; }>; agents: (signal?: AbortSignal) => Promise<{ slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "data" | "general" | "writing" | "coding" | "other"; featured: boolean; description?: string | undefined; icon?: string | undefined; opening_remarks?: string | undefined; theme?: { accent?: string | undefined; iconBackground?: string | undefined; } | undefined; }[]>; plaza: (query?: { category?: PlazaCategory; q?: string; }, signal?: AbortSignal) => Promise<{ agents: { slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "data" | "general" | "writing" | "coding" | "other"; featured: boolean; stats: { mine: boolean; turns_30d: number; last_used_at?: string | undefined; }; description?: string | undefined; icon?: string | undefined; opening_remarks?: string | undefined; theme?: { accent?: string | undefined; iconBackground?: string | undefined; } | undefined; }[]; featured: string[]; popular: string[]; categories: { id: "data" | "general" | "writing" | "coding" | "other"; name: string; count: number; }[]; }>; usageLimits: (query?: { days?: number; }, signal?: AbortSignal) => Promise<{ member_id: string; month: string; reset_at: string; limits: { monthly_tokens: number | null; monthly_active_seconds: number | null; daily_tokens: number | null; daily_active_seconds: number | null; }; override: { monthly_tokens: number | null; monthly_active_seconds: number | null; daily_tokens: number | null; daily_active_seconds: number | null; } | null; tokens: { limit: number | null; used: number | null; remaining: number | null; status: "ok" | "exceeded" | "unavailable"; }; active_seconds: { limit: number | null; used: number | null; remaining: number | null; status: "ok" | "exceeded" | "unavailable"; }; day_state: { day: string; reset_at: string; tokens: { limit: number | null; used: number | null; remaining: number | null; status: "ok" | "exceeded" | "unavailable"; }; active_seconds: { limit: number | null; used: number | null; remaining: number | null; status: "ok" | "exceeded" | "unavailable"; }; }; accounting_started_at: string; daily: { day: string; tokens: number; active_seconds: number; }[]; refreshed_at?: string | undefined; } | null>; quota: (query?: { days?: number; }, signal?: AbortSignal) => Promise<{ month: string; reset_at: string; unlimited: boolean; base_limit: number; override_limit: number | null; packs: { id: string; month: string; credits: number; granted_by: string; created_at: string; reason?: string | undefined; }[]; limit: number; used: number; remaining: number; per_agent: { agent_slug: string; turns: number; }[]; daily: { day: string; turns: number; }[]; pending_request: { id: string; subject_id: string; requested_credits: number; status: "pending" | "approved" | "rejected"; mode: "override" | "pack" | null; granted_credits: number | null; created_at: string; reason?: string | undefined; review_note?: string | undefined; reviewed_by?: string | undefined; reviewed_at?: string | undefined; } | null; }>; quotaRequests: (signal?: AbortSignal) => Promise<{ id: string; subject_id: string; requested_credits: number; status: "pending" | "approved" | "rejected"; mode: "override" | "pack" | null; granted_credits: number | null; created_at: string; reason?: string | undefined; review_note?: string | undefined; reviewed_by?: string | undefined; reviewed_at?: string | undefined; }[]>; createQuotaRequest: (body: { requestedCredits: number; reason?: string; }, signal?: AbortSignal) => Promise<{ id: string; subject_id: string; requested_credits: number; status: "pending" | "approved" | "rejected"; mode: "override" | "pack" | null; granted_credits: number | null; created_at: string; reason?: string | undefined; review_note?: string | undefined; reviewed_by?: string | undefined; reviewed_at?: string | undefined; }>; agent: (slug: string, signal?: AbortSignal) => Promise<{ slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "data" | "general" | "writing" | "coding" | "other"; featured: boolean; id: string; remote_agent_id: string; description?: string | undefined; icon?: string | undefined; opening_remarks?: string | undefined; theme?: { accent?: string | undefined; iconBackground?: string | undefined; } | undefined; remote_agent_version?: number | undefined; resources?: { tools: { name: string; description?: string | undefined; permission?: "allow" | "ask" | undefined; }[]; skills: { name: string; description?: string | undefined; permission?: "allow" | "ask" | undefined; }[]; mcp_servers: { name: string; description?: string | undefined; permission?: "allow" | "ask" | undefined; }[]; } | undefined; memory_stores?: { name: string; description?: string | undefined; }[] | undefined; }>; sessions: (query?: SessionListQuery, signal?: AbortSignal) => Promise<{ sessions: { session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; }[]; nextPageToken: string | null; }>; sessionAgents: (signal?: AbortSignal) => Promise<string[]>; sessionDirectory: (signal?: AbortSignal) => Promise<{ session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; }[]>; createSession: (body: { agentSlug: string; title?: string; files?: AttachmentRef[]; }, signal?: AbortSignal) => Promise<{ session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; usage?: { input_tokens?: number | undefined; output_tokens?: number | undefined; cache_read_input_tokens?: number | undefined; cache_creation_input_tokens?: number | undefined; } | undefined; stats?: { active_seconds?: number | undefined; duration_seconds?: number | undefined; } | undefined; remote_status?: string | undefined; files?: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[] | undefined; message_files?: { event_ids: string[]; files: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[]; }[] | undefined; }>; session: (id: string, signal?: AbortSignal) => Promise<{ session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; usage?: { input_tokens?: number | undefined; output_tokens?: number | undefined; cache_read_input_tokens?: number | undefined; cache_creation_input_tokens?: number | undefined; } | undefined; stats?: { active_seconds?: number | undefined; duration_seconds?: number | undefined; } | undefined; remote_status?: string | undefined; files?: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[] | undefined; message_files?: { event_ids: string[]; files: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[]; }[] | undefined; }>; renameSession: (id: string, title: string, signal?: AbortSignal) => Promise<{ session_id: string; agent_slug: string; created_at: string; title?: string | undefined; status?: string | undefined; last_event_at?: string | undefined; usage?: { input_tokens?: number | undefined; output_tokens?: number | undefined; cache_read_input_tokens?: number | undefined; cache_creation_input_tokens?: number | undefined; } | undefined; stats?: { active_seconds?: number | undefined; duration_seconds?: number | undefined; } | undefined; remote_status?: string | undefined; files?: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[] | undefined; message_files?: { event_ids: string[]; files: { file_id: string; filename?: string | undefined; mount_path?: string | undefined; size?: number | undefined; }[]; }[] | undefined; }>; sendMessage: (sessionId: string, body: SendMessageRequest) => Promise<{ session_id: string; accepted: boolean; event_ids: string[]; }>; toolApprovals: (sessionId: string) => Promise<{ requires_action: boolean; batch_id: string | null; pending_call_ids: string[]; requests: { batch_id: string; call_id: string; request_event_id: string | null; name: string; arguments: unknown; tool_type: string; actionable: boolean; server_label?: string | undefined; session_thread_id?: string | undefined; status?: "pending" | "submitted" | "uncertain" | undefined; result?: "allow" | "deny" | undefined; }[]; }>; submitToolApproval: (sessionId: string, decision: ToolApprovalDecision) => Promise<{ session_id: string; accepted: boolean; event_ids: string[]; }>; interrupt: (sessionId: string) => Promise<{ interrupted: boolean; }>; events: (sessionId: string, query?: EventQueryOptions) => Promise<EventsPage>; listEvents: (sessionId: string, query?: EventQueryOptions) => Promise<EventsPage>; listThreads: (sessionId: string, query?: ThreadQueryOptions) => Promise<SessionThreadsResponse>; listThreadEvents: (sessionId: string, threadId: string, query?: ThreadQueryOptions) => Promise<EventsPage>; stream: (sessionId: string, streamOptions?: StreamSessionOptions) => Promise<void>; sessionPlan: (sessionId: string, action: "archive" | "delete", signal?: AbortSignal) => Promise<{ plan_id: string; confirm_token: string; destructive: boolean; expires_at: number; diff: { resource: string; action: string; destructive: boolean; }[]; }>; archiveSession: (sessionId: string, confirmation: { plan_id: string; confirm_token: string; }, signal?: AbortSignal) => Promise<{ archived: boolean; }>; deleteSession: (sessionId: string, confirmation: { plan_id: string; confirm_token: string; }, signal?: AbortSignal) => Promise<{ deleted: boolean; }>; uploadFile: (file: { name: string; bytes: Uint8Array; mimeType?: string; }, signal?: AbortSignal) => Promise<{ file_id: string; filename: string; size: number; }>; fileDownloadUrl: (fileId: string) => string; fileStatus: (fileId: string, signal?: AbortSignal) => Promise<{ file_id: string; status: string | null; available: boolean; }>; downloadFile: (fileId: string, input?: { sessionId?: string; signal?: AbortSignal; }) => Promise<Response>; }, "listEvents"> & { listEvents: ChatProvider["listEvents"]; supports(operation: ClientOperation): boolean; };
 ```
 
 | 字段 | 必填 | 类型 |
 | --- | --- | --- |
+| `agent` | 是 | `(slug: string, signal?: AbortSignal) => Promise<{ slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "data" \| "general" \| "writing" \| "coding" \| "other"; featured: boolean; id: string; remote_agent_id: string; description?: string \| undefined; icon?: string \| undefined; opening_remarks?: string \| undefined; theme?: { accent?: string \| undefined; iconBackground?: string \| undefined; } \| undefined; remote_agent_version?: number \| undefined; resources?: { tools: { name: string; description?: string \| undefined; permission?: "allow" \| "ask" \| undefined; }[]; skills: { name: string; description?: string \| undefined; permission?: "allow" \| "ask" \| undefined; }[]; mcp_servers: { name: string; description?: string \| undefined; permission?: "allow" \| "ask" \| undefined; }[]; } \| undefined; memory_stores?: { name: string; description?: string \| undefined; }[] \| undefined; }>` |
 | `transport` | 是 | `{ request: <T>(path: string, init?: RequestInit) => Promise<T>; response: (path: string, init?: RequestInit) => Promise<Response>; stream: (path: string, handlers?: StreamHandlers) => Promise<void>; url: (path: string) => string; }` |
 | `auth` | 是 | `{ login: (body: MemberLoginRequest, signal?: AbortSignal) => Promise<{ access_token: string; token_type: "Bearer"; expires_at: string; member: { member_id: string; username: string; display_name: string; auth_type: "local"; status: "active"; created_at: string; updated_at: string; usage_summary?: { session_count: number; deleted_session_count: number; metrics: { input_tokens: { value: number \| null; covered_sessions: number; }; output_tokens: { value: number \| null; covered_sessions: number; }; cache_read_input_tokens: { value: number \| null; covered_sessions: number; }; cache_creation_input_tokens: { value: number \| null; covered_sessions: number; }; active_seconds: { value: number \| null; covered_sessions: number; }; duration_seconds: { value: number \| null; covered_sessions: number; }; }; agents: { slug: string; display_name: string \| null; deleted?: boolean \| undefined; }[]; refresh_status: "idle" \| "refreshing" \| "partial" \| "failed"; completed_sessions: number; refreshed_at?: string \| undefined; } \| undefined; email?: string \| undefined; }; }>; me: (signal?: AbortSignal) => Promise<{ identity: { subjectId: string; displayName?: string \| undefined; tier?: string \| undefined; metadata?: Record<string, unknown> \| undefined; }; member?: { member_id: string; username: string; display_name: string; auth_type: "local"; status: "active"; created_at: string; updated_at: string; usage_summary?: { session_count: number; deleted_session_count: number; metrics: { input_tokens: { value: number \| null; covered_sessions: number; }; output_tokens: { value: number \| null; covered_sessions: number; }; cache_read_input_tokens: { value: number \| null; covered_sessions: number; }; cache_creation_input_tokens: { value: number \| null; covered_sessions: number; }; active_seconds: { value: number \| null; covered_sessions: number; }; duration_seconds: { value: number \| null; covered_sessions: number; }; }; agents: { slug: string; display_name: string \| null; deleted?: boolean \| undefined; }[]; refresh_status: "idle" \| "refreshing" \| "partial" \| "failed"; completed_sessions: number; refreshed_at?: string \| undefined; } \| undefined; email?: string \| undefined; } \| undefined; expires_at?: string \| undefined; }>; logout: (signal?: AbortSignal) => Promise<void>; }` |
 | `config` | 是 | `(signal?: AbortSignal) => Promise<{ apiBaseUrl: string; protocolVersion: string; gateway: "sdk" \| "mock"; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; }; branding: { productName: string; logoUrl?: string \| undefined; accent?: string \| undefined; }; auth?: { mode: "member" \| "anonymous"; passwordLogin: true; } \| undefined; }>` |
@@ -1362,7 +1400,6 @@ export type KitClient = { transport: { request: <T>(path: string, init?: Request
 | `quota` | 是 | `(query?: { days?: number; }, signal?: AbortSignal) => Promise<{ month: string; reset_at: string; unlimited: boolean; base_limit: number; override_limit: number \| null; packs: { id: string; month: string; credits: number; granted_by: string; created_at: string; reason?: string \| undefined; }[]; limit: number; used: number; remaining: number; per_agent: { agent_slug: string; turns: number; }[]; daily: { day: string; turns: number; }[]; pending_request: { id: string; subject_id: string; requested_credits: number; status: "pending" \| "approved" \| "rejected"; mode: "override" \| "pack" \| null; granted_credits: number \| null; created_at: string; reason?: string \| undefined; review_note?: string \| undefined; reviewed_by?: string \| undefined; reviewed_at?: string \| undefined; } \| null; }>` |
 | `quotaRequests` | 是 | `(signal?: AbortSignal) => Promise<{ id: string; subject_id: string; requested_credits: number; status: "pending" \| "approved" \| "rejected"; mode: "override" \| "pack" \| null; granted_credits: number \| null; created_at: string; reason?: string \| undefined; review_note?: string \| undefined; reviewed_by?: string \| undefined; reviewed_at?: string \| undefined; }[]>` |
 | `createQuotaRequest` | 是 | `(body: { requestedCredits: number; reason?: string; }, signal?: AbortSignal) => Promise<{ id: string; subject_id: string; requested_credits: number; status: "pending" \| "approved" \| "rejected"; mode: "override" \| "pack" \| null; granted_credits: number \| null; created_at: string; reason?: string \| undefined; review_note?: string \| undefined; reviewed_by?: string \| undefined; reviewed_at?: string \| undefined; }>` |
-| `agent` | 是 | `(slug: string, signal?: AbortSignal) => Promise<{ slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "data" \| "general" \| "writing" \| "coding" \| "other"; featured: boolean; id: string; remote_agent_id: string; description?: string \| undefined; icon?: string \| undefined; opening_remarks?: string \| undefined; theme?: { accent?: string \| undefined; iconBackground?: string \| undefined; } \| undefined; remote_agent_version?: number \| undefined; resources?: { tools: { name: string; description?: string \| undefined; permission?: "allow" \| "ask" \| undefined; }[]; skills: { name: string; description?: string \| undefined; permission?: "allow" \| "ask" \| undefined; }[]; mcp_servers: { name: string; description?: string \| undefined; permission?: "allow" \| "ask" \| undefined; }[]; } \| undefined; memory_stores?: { name: string; description?: string \| undefined; }[] \| undefined; }>` |
 | `sessions` | 是 | `(query?: SessionListQuery, signal?: AbortSignal) => Promise<{ sessions: { session_id: string; agent_slug: string; created_at: string; title?: string \| undefined; status?: string \| undefined; last_event_at?: string \| undefined; }[]; nextPageToken: string \| null; }>` |
 | `sessionAgents` | 是 | `(signal?: AbortSignal) => Promise<string[]>` |
 | `sessionDirectory` | 是 | `(signal?: AbortSignal) => Promise<{ session_id: string; agent_slug: string; created_at: string; title?: string \| undefined; status?: string \| undefined; last_event_at?: string \| undefined; }[]>` |
@@ -1373,7 +1410,7 @@ export type KitClient = { transport: { request: <T>(path: string, init?: Request
 | `toolApprovals` | 是 | `(sessionId: string) => Promise<{ requires_action: boolean; batch_id: string \| null; pending_call_ids: string[]; requests: { batch_id: string; call_id: string; request_event_id: string \| null; name: string; arguments: unknown; tool_type: string; actionable: boolean; server_label?: string \| undefined; session_thread_id?: string \| undefined; status?: "pending" \| "submitted" \| "uncertain" \| undefined; result?: "allow" \| "deny" \| undefined; }[]; }>` |
 | `submitToolApproval` | 是 | `(sessionId: string, decision: ToolApprovalDecision) => Promise<{ session_id: string; accepted: boolean; event_ids: string[]; }>` |
 | `interrupt` | 是 | `(sessionId: string) => Promise<{ interrupted: boolean; }>` |
-| `events` | 是 | `(sessionId: string, query?: { afterId?: string; limit?: number; pageToken?: string; }) => Promise<EventsPage>` |
+| `events` | 是 | `(sessionId: string, query?: EventQueryOptions) => Promise<EventsPage>` |
 | `listThreads` | 是 | `(sessionId: string, query?: ThreadQueryOptions) => Promise<SessionThreadsResponse>` |
 | `listThreadEvents` | 是 | `(sessionId: string, threadId: string, query?: ThreadQueryOptions) => Promise<EventsPage>` |
 | `stream` | 是 | `(sessionId: string, streamOptions?: StreamSessionOptions) => Promise<void>` |
@@ -1384,6 +1421,7 @@ export type KitClient = { transport: { request: <T>(path: string, init?: Request
 | `fileDownloadUrl` | 是 | `(fileId: string) => string` |
 | `fileStatus` | 是 | `(fileId: string, signal?: AbortSignal) => Promise<{ file_id: string; status: string \| null; available: boolean; }>` |
 | `downloadFile` | 是 | `(fileId: string, input?: { sessionId?: string; signal?: AbortSignal; }) => Promise<Response>` |
+| `listEvents` | 是 | `((sessionId: string, options?: EventQueryOptions) => Promise<EventsPage>) \| undefined` |
 | `supports` | 是 | `(operation: ClientOperation) => boolean` |
 
 
