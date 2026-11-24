@@ -40,6 +40,7 @@
 - 完整 SDK 公开入口以 `packages/sdk/package.json` 为准；目录映射见目录规则。
 - 工作区只包含 `apps/*` 与 `packages/*`；目录与命令是否可用以当前清单为准，
   不按历史 ADR 的旧名称恢复已退役的包、原生壳、项目生成器或目录 Project API。
+- 配置 Kit Server 的 SQLite、MySQL 或 PostgreSQL 时，使用仓库内的 [kit-database](assets/skills/kit-database/SKILL.md)。
 
 ## 执行红线
 
@@ -60,7 +61,7 @@
 - 前端业务请求假设与 server 同源；后端地址须经运行时配置解析。
 - 尚无第二个 Provider 的真实数据面合同就为它预建行为抽象。
 - Vue 组件库 import React 版 chat-ui，或 React 组件 import chat-ui-vue；两套 UI 只共享
-  生成镜像与 `apps/web` 的产品文案（ADR-0028）。
+  生成镜像与 `apps/web` 的产品文案（ADR-0029）。
 
 ## UI 与交互
 
@@ -68,7 +69,7 @@
    Radix + Tailwind v4 + CVA 补齐，并说明既有组件为何不够；新增组件必须有真实调用方。
    Console 的管理控件优先 antd v6，按页面渐进迁移，具体边界见 ADR-0015。
    Vue 体验页复用 `@openagentpack/kit-chat-ui-vue`，组件按 L2 合同与 React 版一一对应，
-   公开注入点使用同名插槽（ADR-0028）。
+   公开注入点使用同名插槽（ADR-0029）。
 2. Chat UI 与体验页消费 `theme.css` 的冻结颜色、尺寸和动效 token，不在业务组件新增设计常量、
    内联样式表或 keyframes。Console 的 antd token、全局适配及既有 Less 样式归口见架构文档；
    文档站视觉层归 `apps/storybook/app/globals.css`。

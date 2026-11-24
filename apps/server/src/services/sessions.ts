@@ -117,10 +117,9 @@ export function createSessionService(deps: SessionServiceDeps) {
 	}
 
 	/**
-	 * running 回合即使订阅者离开也由共享泵继续跟踪到终态并回写索引；这里只对没有上游泵的
-	 * 存量 running 行按 Provider 详情兜底对账（如服务重启前的遗留值）。映射规则与事件侧
-	 * indexStatusOf 一致；详情不可查询/状态未知/超时静默保留原值，同一会话 60 秒内不重复探测，
-	 * Provider 仍为 running 时不写。
+	 * running 回合即使订阅者离开也由共享泵继续跟踪到终态并回写索引。尚无实时主状态或校验证据时，
+	 * 列表通过 Provider 详情和历史对账。详情不可查询、状态未知或超时时保留原值，
+	 * 同一会话 60 秒内不重复探测。
 	 */
 	const STALE_RUNNING_MS = 2 * 60_000;
 	const RECONCILE_RECHECK_MS = 60_000;
@@ -150,7 +149,11 @@ export function createSessionService(deps: SessionServiceDeps) {
 				if (!next || next === "running") return false;
 				const history = createEventBufferRegistry();
 				history.seed(sessionId, await readSessionHistory(gateway, sessionId));
-				if (projectSessionRuntime(history.ensure(sessionId), undefined).status === "running") return false;
+				if (
+					streams.isTracking(sessionId) ||
+					projectSessionRuntime(history.ensure(sessionId), undefined).status === "running"
+				)
+					return false;
 				return await sessionIndex.setStatusIfRunning(sessionId, next);
 			} catch {
 				return false;
@@ -384,7 +387,10 @@ export function createSessionService(deps: SessionServiceDeps) {
 			if (await reconcileStaleRunning(sessions)) return await sessionIndex.listForSubject(subjectId, options);
 			return sessions;
 		},
-		events(sessionId: string, options: { afterId?: string; pageToken?: string; limit?: number } = {}) {
+		events(
+			sessionId: string,
+			options: { afterId?: string; pageToken?: string; limit?: number; signal?: AbortSignal } = {},
+		) {
 			return gateway.listEvents(sessionId, options);
 		},
 		threads(sessionId: string, options: { pageToken?: string; limit?: number; signal?: AbortSignal } = {}) {

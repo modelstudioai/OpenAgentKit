@@ -23,7 +23,7 @@
    Provider 的转换策略不缓存跨会话状态，Chat 调用策略并拥有转换结果。
 4. 按 `event_id` upsert 累计快照，不重复 append；稳定消息/分片 ID 保持 UI 身份。
    传输 cursor 独立用于 `after`，不能与业务 ID 混用；控制帧不进入事件 ledger。
-5. reset 到 ready 原子重建 Provider 集合，乐观 overlay 独立保留；
+5. 纯实时接入先订阅再分页，由 Chat 原子重建 Provider 集合，乐观 overlay 独立保留；
    取消、切会话和新代次隔离旧回调。Turn 以主会话 Provider 状态及回显证据为准，
    单条消息完成、子线程结束、done、EOF 或 interrupt HTTP 成功都不能替代业务完成。
 6. `createSseStream` 的自然 EOF 可正常结束；持续订阅意外断流由 Provider 报告可恢复错误。

@@ -215,18 +215,18 @@ Skill 不是 workspace 包，也不参与应用运行时依赖。人工源与生
 ```
 scripts/skills/
   src/<skill-name>/
-    metadata.json   name / description / displayName / shortDescription / defaultPrompt
+    metadata.json   name / description
     skill.md        SKILL.md 正文
-    catalog.json    公开 API 到中文用途、文档与示例的映射
-    references/     中文行为说明
-    examples/       TS/TSX 示例，含中文注释和文案，参与类型检查并同步到文档站
+    catalog.json    API Skill 的公开接口索引
+    references/     按需提供中文行为说明
+    examples/       按需提供 TS/TSX 示例，参与类型检查并同步到文档站
   generate.mjs      生成、校验与 API 模型入口
   pack.mjs          确定性离线打包
   tests/            生成、链接、打包与浏览器边界测试
   tsconfig.json     示例类型检查
 
 assets/skills/
-  <skill-name>/     生成的最终 Skill：SKILL.md、agents/、references/、examples/
+  <skill-name>/     生成的最终 Skill，包含 SKILL.md 和按需生成的 references/、examples/
   dist/             离线 tgz 产物（gitignore）
 ```
 
@@ -234,6 +234,7 @@ assets/skills/
   为范围依据，不能只检查 registry 顶层项。内部实现组件不进入公开 API。
 - `use-kit-chat` 指导 Hook 与生命周期；`kit-chat-provider` 指导默认及自建百炼后端合同。
   三者共用现有公开类型，不复制协议实现、不引入第二套事件模型。
+- `kit-database` 指导 Kit Server 接入 SQLite、MySQL 和 PostgreSQL，依据服务端配置与迁移合同。
 - Skill 正文、参考、元数据、示例注释与示例界面文案使用中文；Skill ID、文件名、API
   标识符和协议值沿用公开合同。
 - `pnpm gen:skills` 从 `scripts/skills/src/` 生成 `assets/skills/`、API 参考与 MDX 示例；

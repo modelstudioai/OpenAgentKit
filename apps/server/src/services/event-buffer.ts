@@ -18,10 +18,27 @@ export interface EventBuffer {
 	latestStatus?: SessionEvent;
 }
 
-/** 最新快照索引与有界传输日志分离：相同 event_id 的新版本也有独立续传位置。 */
+/** 运行状态索引和变更证据仅供服务端业务校验。 */
 export function createEventBufferRegistry(options: { maxChanges?: number } = {}) {
 	const buffers = new Map<string, EventBuffer>();
 	const maxChanges = options.maxChanges ?? 1024;
+	function update(buffer: EventBuffer, incoming: SessionEvent): EventChange | undefined {
+		const position = incoming.event_id ? buffer.positions.get(incoming.event_id) : undefined;
+		const previous = buffer.events[position ?? -1];
+		const event = mergeEventSnapshots(previous, incoming);
+		if (previous === event) return;
+		const index = position ?? buffer.events.length;
+		buffer.events[index] = event;
+		if (event.type === "session_status" && !threadIdOf(event)) buffer.latestStatus = event;
+		if (event.event_id) buffer.positions.set(event.event_id, index);
+		const cursor = `${buffer.epoch}:${++buffer.sequence}`;
+		const change = { event, cursor };
+		buffer.latest.set(index, cursor);
+		buffer.changes.push(change);
+		if (buffer.changes.length > maxChanges) buffer.changes.shift();
+		return change;
+	}
+
 	return {
 		get: (id: string) => buffers.get(id),
 		ensure(sessionId: string): EventBuffer {
@@ -56,54 +73,17 @@ export function createEventBufferRegistry(options: { maxChanges?: number } = {})
 		},
 		append(sessionId: string, incoming: SessionEvent): EventChange | undefined {
 			const buffer = this.ensure(sessionId);
-			const position = incoming.event_id ? buffer.positions.get(incoming.event_id) : undefined;
-			const previous = buffer.events[position ?? -1];
-			const event = mergeEventSnapshots(previous, incoming);
-			if (previous === event) return;
-			const index = position ?? buffer.events.length;
-			buffer.events[index] = event;
-			if (event.type === "session_status" && !threadIdOf(event)) buffer.latestStatus = event;
-			if (event.event_id) buffer.positions.set(event.event_id, index);
-			const cursor = `${buffer.epoch}:${++buffer.sequence}`;
-			const change = { event, cursor };
-			buffer.latest.set(index, cursor);
-			buffer.changes.push(change);
-			if (buffer.changes.length > maxChanges) buffer.changes.shift();
-			for (const listener of buffer.listeners) listener(change);
+			const change = update(buffer, incoming);
+			if (change) for (const listener of buffer.listeners) listener(change);
 			return change;
 		},
 		seed(sessionId: string, events: SessionEvent[]) {
 			for (const event of events) this.append(sessionId, event);
 			return this.ensure(sessionId);
 		},
-		cursor(sessionId: string): string | null {
-			const buffer = this.ensure(sessionId);
-			return buffer.sequence ? `${buffer.epoch}:${buffer.sequence}` : null;
-		},
-		replay(sessionId: string, after?: string): { reset: boolean; changes: EventChange[] } {
-			const buffer = this.ensure(sessionId);
-			if (after) {
-				const colon = after.lastIndexOf(":");
-				const sequence = Number(after.slice(colon + 1));
-				const first = buffer.sequence - buffer.changes.length;
-				if (
-					after.slice(0, colon) === buffer.epoch &&
-					Number.isSafeInteger(sequence) &&
-					sequence >= first &&
-					sequence <= buffer.sequence
-				) {
-					return {
-						reset: false,
-						changes: buffer.changes.filter(
-							(change) => Number(change.cursor.slice(change.cursor.lastIndexOf(":") + 1)) > sequence,
-						),
-					};
-				}
-			}
-			return {
-				reset: true,
-				changes: buffer.events.map((event, index) => ({ event, cursor: buffer.latest.get(index) as string })),
-			};
+		replace(sessionId: string, events: SessionEvent[]) {
+			const buffer = this.reset(sessionId);
+			for (const event of events) update(buffer, event);
 		},
 		subscribe(sessionId: string, listener: (change?: EventChange) => void): () => void {
 			const buffer = this.ensure(sessionId);

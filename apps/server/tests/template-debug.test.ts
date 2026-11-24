@@ -18,7 +18,7 @@ afterEach(() => {
 const headers = {
 	authorization: "Bearer template-admin",
 	"content-type": "application/json",
-	"x-kit-protocol-version": "2.0.0",
+	"x-kit-protocol-version": "3.0.0",
 };
 const selected = { remote_agent_id: "agent_mock_assistant", remote_environment_id: "env_mock_analysis" };
 
@@ -187,7 +187,7 @@ describe("模版远端资源调试", () => {
 			expect(
 				(
 					await app.request(`/api/kit/sessions/${session.session_id}${suffix}`, {
-						headers: { cookie: `kit_subject=${subject}`, "x-kit-protocol-version": "2.0.0" },
+						headers: { cookie: `kit_subject=${subject}`, "x-kit-protocol-version": "3.0.0" },
 					})
 				).status,
 			).toBe(404);

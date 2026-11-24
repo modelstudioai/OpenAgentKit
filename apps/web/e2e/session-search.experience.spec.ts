@@ -1,7 +1,8 @@
+import { PROTOCOL_VERSION } from "@openagentkit/sdk/protocol";
 import { expect, test } from "./fixtures.ts";
 import { seedListedAgent } from "./helpers.ts";
 
-const json = { "content-type": "application/json", "x-kit-protocol-version": "2.0.0" };
+const json = { "content-type": "application/json", "x-kit-protocol-version": PROTOCOL_VERSION };
 
 /**
  * 会话搜索必须覆盖「还没加载进侧栏」的历史会话：目录每页只取 10 条且分组按需展开，

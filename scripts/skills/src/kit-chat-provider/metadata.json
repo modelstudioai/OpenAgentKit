@@ -1,7 +1,4 @@
 {
   "name": "kit-chat-provider",
-  "description": "通过公开的 Request 和 createSessionEventChatProvider 配置接入 Kit Server 或自建百炼后端，也可以用 createBailianChatProvider 接入百炼原始 SSE。适用于处理订阅就绪、历史回放、取消请求和工具审批。",
-  "displayName": "Kit 对话后端接入",
-  "shortDescription": "将 Kit Server 或自建百炼后端接入 Kit 对话，处理历史、订阅和审批",
-  "defaultPrompt": "用 $kit-chat-provider 将我的百炼后端及原始 SSE 订阅接入 Kit 的 useChat。"
+  "description": "通过公开的 Request 和 createSessionEventChatProvider 配置接入 Kit Server 或自建百炼后端，也可以用 createBailianChatProvider 接入百炼原始 SSE。适用于处理订阅就绪、历史回放、取消请求和工具审批。"
 }

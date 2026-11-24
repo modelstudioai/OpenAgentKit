@@ -156,6 +156,7 @@ export function createMemberAuthController(options: MemberAuthOptions) {
 		owner.chatProvider = provider
 			? {
 					transformMessage: provider.transformMessage?.bind(provider),
+					...(provider.listEvents ? { listEvents: provider.listEvents.bind(provider) } : {}),
 					...(provider.listThreads ? { listThreads: provider.listThreads.bind(provider) } : {}),
 					...(provider.listThreadEvents ? { listThreadEvents: provider.listThreadEvents.bind(provider) } : {}),
 					sendMessage: provider.sendMessage.bind(provider),

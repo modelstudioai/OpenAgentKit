@@ -464,6 +464,12 @@ test("断网一次后自动重连续传", async ({ page }) => {
 	await page.getByRole("button", { name: "发送" }).click();
 	// 第一次流被掐断后，controller 退避重连，最终仍应拿到回答
 	await expect(page.getByText(/mock gateway 的流式回答/).first()).toBeVisible({ timeout: 30_000 });
+	const history = page.waitForResponse(
+		(response) => /\/api\/kit\/sessions\/[^/]+\/events\?/.test(response.url()) && response.ok(),
+	);
+	await page.reload();
+	await history;
+	await expect(page.getByText(/mock gateway 的流式回答/).first()).toBeVisible();
 });
 
 // 长内容必须完整保留；宽表和代码只在自身横滚，不挤宽阅读列、审批或输入框。
@@ -657,7 +663,10 @@ test("会话归档与删除：两段式确认闸门 + 列表刷新", async ({ pa
 	const sidebar = page.getByRole("navigation", { name: "最近会话", exact: true });
 	// 首句标题：行展示「lifecycle case」；三个操作收敛进单一「更多操作」菜单（弹层 Portal 到 body）。
 	const title = sidebar.getByRole("button", { name: "lifecycle case", exact: true }).first();
-	const actions = sidebar.getByRole("button", { name: "更多操作", exact: true }).first();
+	// 操作按钮必须锚定在标题所在的行：库里还有其它会话时，“第一个更多操作”不属于本行，Tab 焦点断言会假失败。
+	const actions = title
+		.locator("xpath=ancestor::div[contains(@class,'group/session')]")
+		.getByRole("button", { name: "更多操作", exact: true });
 	// 显隐在操作槽上，触发按钮保持 opacity:1；断言槽位而不是按钮，避免把父级透明度误判为按钮样式。
 	const actionSlot = actions.locator("xpath=..");
 	const archiveItem = page.getByRole("menuitem", { name: "归档", exact: true });
@@ -708,7 +717,11 @@ test("会话归档与删除：两段式确认闸门 + 列表刷新", async ({ pa
 	await newSession(page);
 	await openSessionList(page);
 	await expect(sidebar.getByRole("button", { name: "lifecycle second", exact: true })).toBeVisible();
-	await sidebar.getByRole("button", { name: "更多操作", exact: true }).first().click();
+	await sidebar
+		.getByRole("button", { name: "lifecycle second", exact: true })
+		.locator("xpath=ancestor::div[contains(@class,'group/session')]")
+		.getByRole("button", { name: "更多操作", exact: true })
+		.click();
 	await page.getByRole("menuitem", { name: "删除", exact: true }).click();
 	await expect(page.getByRole("alertdialog", { name: "删除会话" })).toBeVisible();
 	await page.getByRole("alertdialog", { name: "删除会话" }).getByRole("button", { name: "确认" }).click();

@@ -7,7 +7,7 @@ import { loadConfig } from "../src/config.ts";
 import { createKitServices } from "../src/services/index.ts";
 import { openDatabase } from "../src/store/db.ts";
 
-const json = { "content-type": "application/json", "x-kit-protocol-version": "2.0.0" };
+const json = { "content-type": "application/json", "x-kit-protocol-version": "3.0.0" };
 
 function makeApp(env: Record<string, string> = {}) {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-quota-"));

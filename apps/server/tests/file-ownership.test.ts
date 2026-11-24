@@ -15,7 +15,7 @@ afterEach(() => {
 
 const owner = "anon_file_owner";
 const other = "anon_file_other";
-const json = { "content-type": "application/json", "x-kit-protocol-version": "2.0.0" };
+const json = { "content-type": "application/json", "x-kit-protocol-version": "3.0.0" };
 const headersFor = (subjectId: string) => ({ cookie: `kit_subject=${subjectId}` });
 
 async function makeApp() {

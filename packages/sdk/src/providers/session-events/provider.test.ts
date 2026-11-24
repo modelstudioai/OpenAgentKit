@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { createChatController } from "../../chat/controller.ts";
 import { encodeFrame, type SseFrame } from "../../protocol/index.ts";
 import { createRequest } from "../../request/index.ts";
 import { createSessionEventChatProvider, type SessionEventChatProviderOptions } from "./index.ts";
@@ -15,11 +16,19 @@ function fixture(frames: SseFrame[]) {
 				const bytes = new TextEncoder().encode(frames.map(encodeFrame).join(""));
 				return new Response(bytes, { headers: { "Content-Type": "text/event-stream" } });
 			}
+			if (String(url).includes("/history"))
+				return Response.json({ payload: { data: [event.data], next_page_token: "next" } });
 			return Response.json({ payload: { accepted: true, event_ids: ["user-1"] } });
 		},
 	});
 	const configuration: SessionEventChatProviderOptions = {
 		request,
+		listEvents: {
+			buildRequest: ({ sessionId, pageToken }) => ({
+				path: `/history/${encodeURIComponent(sessionId)}?cursor=${encodeURIComponent(pageToken ?? "")}`,
+			}),
+			mapResponse: async (response) => (await response.json()).payload,
+		},
 		stream: {
 			buildRequest: ({ sessionId, after }) => ({
 				path: `/conversations/${encodeURIComponent(sessionId)}/watch?cursor=${encodeURIComponent(after ?? "")}`,
@@ -55,11 +64,11 @@ function fixture(frames: SseFrame[]) {
 	return { calls, configuration, provider: createSessionEventChatProvider(configuration) };
 }
 
-const event: SseFrame = {
+const event = {
 	type: "event",
 	cursor: "change-2",
 	data: { event_id: "answer", type: "message", role: "assistant", content: [{ type: "text", text: "hello" }] },
-};
+} satisfies SseFrame;
 const ready: SseFrame = { type: "ready", data: { session_id: "s/1", after: null, replayed: 1, cursor: "change-2" } };
 
 describe("标准事件后端的公开配置接入", () => {
@@ -102,6 +111,11 @@ describe("标准事件后端的公开配置接入", () => {
 		expect(calls[2]?.init.method).toBe("PUT");
 		await provider.submitToolApproval("s/1", { batch_id: "b", call_id: "c", result: "deny" });
 		expect(calls[3]?.init.method).toBe("PATCH");
+		await expect(provider.listEvents("s/1", { pageToken: "page/+" })).resolves.toEqual({
+			data: [event.data],
+			next_page_token: "next",
+		});
+		expect(calls[4]?.url).toBe("https://business.example/prefix/history/s%2F1?cursor=page%2F%2B");
 	});
 
 	it("真实自然断流仍报告可恢复错误，不能以就绪或完成快照冒充 done", async () => {
@@ -114,6 +128,49 @@ describe("标准事件后端的公开配置接入", () => {
 		});
 		expect(onReady).toHaveBeenCalledOnce();
 		expect(onDone).not.toHaveBeenCalled();
+	});
+
+	it("Chat Controller 尊重标准事件 Provider 配置的建流超时", async () => {
+		vi.useFakeTimers();
+		const { configuration } = fixture([]);
+		const provider = createSessionEventChatProvider({
+			...configuration,
+			connectTimeoutMs: 60_000,
+			request: createRequest({
+				baseUrl: "https://business.example",
+				fetchImpl: async (url) => {
+					if (String(url).includes("/history"))
+						return Response.json({ payload: { data: [event.data], next_page_token: null } });
+					let timer: ReturnType<typeof setTimeout>;
+					return new Response(
+						new ReadableStream({
+							start(controller) {
+								timer = setTimeout(() => controller.enqueue(new TextEncoder().encode(encodeFrame(ready))), 31_000);
+							},
+							cancel() {
+								clearTimeout(timer);
+							},
+						}),
+						{ headers: { "Content-Type": "text/event-stream" } },
+					);
+				},
+			}),
+		});
+		const controller = createChatController(provider, "s/1", { backoff: { maxAttempts: 0 } });
+		try {
+			const connected = controller.connect().then(
+				() => ({ connection: controller.getSnapshot().connection }),
+				(error: unknown) => ({ error }),
+			);
+			await vi.advanceTimersByTimeAsync(31_001);
+			expect(await connected).toEqual({ connection: "connected" });
+			expect(controller.getSnapshot().messages).toMatchObject([
+				{ role: "assistant", parts: [{ type: "text", text: "hello" }] },
+			]);
+		} finally {
+			controller.dispose();
+			vi.useRealTimers();
+		}
 	});
 
 	it("取消尚未完成的请求构造后，不连接后端或交付迟到回调", async () => {

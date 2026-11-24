@@ -1,7 +1,4 @@
 {
   "name": "use-kit-chat",
-  "description": "将 React 对话页面接入 OpenAgentKit 的 useChat，串起会话目录、消息与输入框、Agent 资源和产物交互。适用于 Kit Server 或已有的自定义 ChatProvider。",
-  "displayName": "接入 Kit 对话",
-  "shortDescription": "把 React 对话页面接入 Kit，管理会话、消息、附件和工具审批",
-  "defaultPrompt": "用 $use-kit-chat 将三栏会话页接入我已有的 Provider，串起会话导航、聊天区和 Agent 资源。"
+  "description": "将 React 对话页面接入 OpenAgentKit 的 useChat，串起会话目录、消息与输入框、Agent 资源和产物交互。适用于 Kit Server 或已有的自定义 ChatProvider。"
 }

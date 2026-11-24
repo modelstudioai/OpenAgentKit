@@ -18,14 +18,22 @@ export function createExampleChatProvider(request: RequestClient) {
 	const headers = { [PROTOCOL_VERSION_HEADER]: PROTOCOL_VERSION };
 	const json = { ...headers, "Content-Type": "application/json" };
 	const sessionPath = (id: string) => `/api/kit/sessions/${encodeURIComponent(id)}`;
-	const queries = (input: { limit?: number; pageToken?: string }) => {
+	const queries = (input: { limit?: number; pageToken?: string; afterId?: string }) => {
 		const query = new URLSearchParams();
 		if (input.limit !== undefined) query.set("limit", String(input.limit));
 		if (input.pageToken) query.set("page_token", input.pageToken);
+		if (input.afterId) query.set("after_id", input.afterId);
 		return query.size ? `?${query}` : "";
 	};
 	const operations: SessionEventChatProviderOptions = {
 		request,
+		listEvents: {
+			buildRequest: ({ sessionId, ...query }) => ({
+				path: `${sessionPath(sessionId)}/events${queries(query)}`,
+				init: { headers },
+			}),
+			mapResponse: (response) => response.json() as Promise<EventsPage>,
+		},
 		stream: {
 			buildRequest({ sessionId, after }) {
 				const query = new URLSearchParams();
