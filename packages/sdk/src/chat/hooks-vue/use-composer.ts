@@ -10,9 +10,9 @@ export function useComposer(source: MaybeRefOrGetter<ComposerBinding & { client?
 	useLifecycle(controller);
 	const binding = computed(() => toValue(source));
 	watch(
-		() => [binding.value.agentSlug, binding.value.sessionId],
-		() => controller.setTarget(binding.value.agentSlug, binding.value.sessionId),
-		{ immediate: true },
+		[() => binding.value.agentSlug, () => binding.value.sessionId],
+		([slug, id]) => controller.setTarget(slug, id),
+		{ immediate: true, flush: "sync" },
 	);
 	return {
 		snapshot: useSnapshot(controller),

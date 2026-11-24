@@ -9,13 +9,17 @@ const E2E_CHANNEL = (process.env.KIT_E2E_CHANNEL || "chrome") as "chrome" | "chr
  */
 export default defineConfig({
 	testDir: "./e2e",
-	// 成员登录有独立配置；此处继续验证显式匿名演示模式。
+	// 各专项配置提供自己的登录模式与项目能力；此处验证显式匿名演示模式。
 	testIgnore: [
 		"**/vue-anchor.spec.ts",
 		"**/member-login.spec.ts",
 		"**/member-usage.spec.ts",
 		"**/member-usage-flow.spec.ts",
 		"**/usage-limits.spec.ts",
+		"**/attachment-retry.experience.spec.ts",
+		"**/desktop-host.experience.spec.ts",
+		"**/quota-banner.experience.spec.ts",
+		"**/session-search.experience.spec.ts",
 	],
 	timeout: 60_000,
 	expect: { timeout: 15_000 },

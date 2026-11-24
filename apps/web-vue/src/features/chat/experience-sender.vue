@@ -25,7 +25,7 @@ const props = defineProps<{
 	disabled: boolean;
 	processing: boolean;
 	/** 会话/新会话作用域变化时清空草稿；不重挂组件，避免打断技能选择。 */
-	resetKey?: string;
+	resetKey: number;
 	onDrop: (files: File[]) => void | Promise<void>;
 	onPickFile?: (accept?: string) => void;
 	onRemove: (fileId: string) => void;

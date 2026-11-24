@@ -1,19 +1,28 @@
 import { cpSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { parseArgs } from "node:util";
 import { componentSourceFiles, copyComponentSource, readRegistry, resolveComponentClosure } from "./copy-in.mjs";
 import { REPO_ROOT } from "./paths.mjs";
 
-const USAGE = "用法：pnpm kit:add <component> [--dir <project>]";
-const args = process.argv.slice(2);
-const dirFlag = args.indexOf("--dir");
-const projectDir = dirFlag >= 0 ? resolve(args[dirFlag + 1] ?? ".") : process.cwd();
-const name = args.find((arg, index) => !arg.startsWith("--") && (dirFlag < 0 || index !== dirFlag + 1));
+const USAGE = "用法：pnpm kit:add <component> [--framework react|vue] [--dir <project>]";
+const {
+	positionals,
+	values: { dir, framework },
+} = parseArgs({
+	options: {
+		dir: { type: "string" },
+		framework: { type: "string", default: "react" },
+	},
+	allowPositionals: true,
+});
+const [name] = positionals;
+const projectDir = resolve(dir ?? process.cwd());
 
-if (!name || (dirFlag >= 0 && !args[dirFlag + 1])) {
+if (!name || positionals.length > 1 || dir === "" || (framework !== "react" && framework !== "vue")) {
 	console.error(USAGE);
 	process.exit(1);
 }
-if (dirFlag < 0 && resolve(projectDir) === REPO_ROOT) {
+if (dir === undefined && projectDir === REPO_ROOT) {
 	console.error("请传入 --dir <project> 指定组件复制到的项目目录。");
 	process.exit(1);
 }
@@ -22,7 +31,7 @@ if (!existsSync(join(projectDir, "package.json"))) {
 	process.exit(1);
 }
 
-const chatUiRoot = join(REPO_ROOT, "packages/chat-ui");
+const chatUiRoot = join(REPO_ROOT, framework === "vue" ? "packages/chat-ui-vue" : "packages/chat-ui");
 const registry = readRegistry(chatUiRoot);
 const closure = resolveComponentClosure(registry, name);
 if (!closure) {

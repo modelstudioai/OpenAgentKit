@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { KitError } from "@openagentkit/sdk/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
@@ -167,12 +168,21 @@ describe("文件授权与成员隔离", () => {
 		expect(download).not.toHaveBeenCalled();
 	});
 
-	it("Agent 沙箱产物不进事件流：凭本人会话的 Files 清单放行，并补真实文件名与 MIME", async () => {
+	it.each([
+		{ historyState: "历史无产物", historyError: null, unprovenStatus: 404 },
+		{
+			historyState: "历史暂时不可用",
+			historyError: new KitError("provider_error", "历史暂时不可用"),
+			unprovenStatus: 502,
+		},
+	])("$historyState 时凭本人会话的 Files 清单下载产物", async ({ historyError, unprovenStatus }) => {
 		const { app, services } = await makeApp();
 		const sessionId = await sessionIdOf(await createSession(app));
 		const otherSessionId = await sessionIdOf(await createSession(app, other));
 		const artifact = { file_id: "file_agent_pdf", filename: "使用指南.pdf", content_type: "application/pdf", size: 9 };
-		vi.spyOn(services.gateway, "listEvents").mockResolvedValue({ events: [], next_page_token: null });
+		const history = vi.spyOn(services.gateway, "listEvents");
+		if (historyError) history.mockRejectedValue(historyError);
+		else history.mockResolvedValue({ events: [], next_page_token: null });
 		const listed = vi
 			.spyOn(services.gateway, "listSessionFiles")
 			.mockImplementation(async (id) => (id === sessionId ? [artifact] : []));
@@ -190,18 +200,20 @@ describe("文件授权与成员隔离", () => {
 		expect(allowed.headers.get("content-disposition")).toContain(
 			`filename*=UTF-8''${encodeURIComponent(artifact.filename)}`,
 		);
+		expect(listed).toHaveBeenCalledWith(sessionId);
 		listed.mockClear();
 		download.mockClear();
 		// 归属仍是唯一凭据：他人会话与清单外的 file_id 都不查询 Provider 文件正文。
 		expect((await app.request(`${url}?session_id=${sessionId}`, { headers: headersFor(other) })).status).toBe(404);
 		expect((await app.request(`${url}?session_id=${otherSessionId}`, { headers: headersFor(owner) })).status).toBe(404);
+		expect(listed).not.toHaveBeenCalled();
 		expect(
 			(
 				await app.request(`/api/kit/files/file_not_in_session/download?session_id=${sessionId}`, {
 					headers: headersFor(owner),
 				})
 			).status,
-		).toBe(404);
+		).toBe(unprovenStatus);
 		expect((await app.request(url, { headers: headersFor(owner) })).status).toBe(404);
 		expect(download).not.toHaveBeenCalled();
 	});

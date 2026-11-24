@@ -20,7 +20,7 @@ scripts/         仓库级脚本（start、dev、kit、skills、check-docs、che
 - `scripts/kit/` 承载组件复制与组件目录命令：`kit:add`、`catalog:list`。
   它不是 workspace 包，不发布 npm，也不提供独立 bin；外部可分发 CLI 的
   决策见 ADR-0022。在仓库根目录运行 `pnpm kit:add <component> --dir <project>`，
-  将组件源码复制到已有项目。
+  将 React 组件源码复制到已有项目。加上 `--framework vue` 可复制 Vue 组件及其依赖。
 
 ## AGENTS.md 的组织与维护
 
