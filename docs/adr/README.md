@@ -34,3 +34,5 @@
 | [0027](./0027-skills-source-and-generated-output.md) | Skill 改为源目录 + 生成物，不再作为 workspace 包；状态更新改用中文内容 |
 | [0028](./0028-split-session-history-stream.md) | 员工与调试会话独立分页历史和实时 SSE，协议 v3 |
 | [0029](./0029-dual-framework-vue-implementation.md) | Web 体验提供 Vue 3 平行实现：SDK hooks-vue、chat-ui-vue、web-vue，按 L2 等价验收 |
+| [0030](./0030-chat-ui-npm-package.md) | chat-ui 以 npm 整包发布：单包公共 npm、零 SDK runtime 依赖，copy-in 并存 |
+| [0031](./0031-one-way-capability-parity.md) | 业务侧能力单向对齐开源侧：业务侧功能集 ⊆ 开源侧功能集 |
