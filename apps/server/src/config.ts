@@ -255,8 +255,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 	const bailian = parseBailianCredentials(env);
 	const resolvedGateway = resolveGateway(mode, bailian);
 	const database = parseDatabase(env);
-	const authMode = parseAuthMode(env);
-	const oidc = parseOidc(env, authMode);
+	const keycloakEnabled = env.KIT_KEYCLOAK_ENABLED?.trim() !== "false";
+	const configuredAuthMode = parseAuthMode(env);
+	const authMode = !keycloakEnabled && configuredAuthMode === "oidc" ? "member" : configuredAuthMode;
+	const oidc = keycloakEnabled ? parseOidc(env, authMode) : undefined;
 	const dataDir = resolve(env.KIT_DATA_DIR?.trim() || ".data");
 	mkdirSync(dataDir, { recursive: true });
 

@@ -45,7 +45,7 @@ async function fixture() {
 	});
 	vi.stubGlobal("fetch", fetchJwks);
 
-	async function open(mode: "member" | "oidc", passwordLogin = false, adminUsersUrl?: string) {
+	async function open(mode: "member" | "oidc", passwordLogin = false, overrides: NodeJS.ProcessEnv = {}) {
 		await services?.close();
 		services = await openKitServices(
 			loadConfig({
@@ -59,7 +59,7 @@ async function fixture() {
 				KIT_OIDC_ISSUER: issuer,
 				KIT_OIDC_CLIENT_ID: "kit-web",
 				KIT_OIDC_AUDIENCE: "kit-api",
-				KIT_KEYCLOAK_USERS_URL: adminUsersUrl,
+				...overrides,
 			}),
 		);
 		return createApp(services);
@@ -178,10 +178,34 @@ describe("Keycloak 员工 OIDC", () => {
 		expect((await me(oidcToken)).status).toBe(401);
 	});
 
+	it("关闭 Keycloak 时使用成员登录并停用企业绑定", async () => {
+		const env = await fixture();
+		const setup = await env.open("member");
+		const memberId = await createPasswordMember(setup, "alice");
+		expect((await bind(setup, memberId, "kc-alice")).status).toBe(200);
+
+		const app = await env.open("oidc", false, { KIT_KEYCLOAK_ENABLED: "false" });
+		const config = await responseData<{ auth: unknown }>(await app.request("/api/config"));
+		expect(config.auth).toEqual({ mode: "member", passwordLogin: true });
+
+		const oidcToken = await env.accessToken("kc-alice");
+		expect((await app.request("/api/kit/auth/me", { headers: headers(oidcToken) })).status).toBe(401);
+		expect(env.fetchJwks).not.toHaveBeenCalled();
+		expect((await requestCreateMember(app, "bob", "auto", "kc-bob")).status).toBe(400);
+
+		const login = await app.request("/api/kit/auth/login", {
+			method: "POST",
+			headers: headers(),
+			body: JSON.stringify({ username: "alice", password }),
+		});
+		expect(login.status).toBe(200);
+		expect(await responseData(login)).toMatchObject({ member: { member_id: memberId } });
+	});
+
 	it("公开配置使用指定的用户管理页地址，保留独立的登录 issuer", async () => {
 		const { open } = await fixture();
 		const adminUsersUrl = "https://sso-admin.example.test/keycloak/admin/kit/console/#/kit/users";
-		const app = await open("oidc", false, adminUsersUrl);
+		const app = await open("oidc", false, { KIT_KEYCLOAK_USERS_URL: adminUsersUrl });
 		expect(await (await app.request("/api/config")).json()).toMatchObject({
 			data: { auth: { oidc: { issuer, adminUsersUrl } } },
 		});

@@ -8,6 +8,19 @@ access token，并用 `(iss, sub)` 找到对应的 `member_id`。
 复用已有 `.env`，按所选接入方式调整认证相关项。凭据通过本地配置或部署环境注入，
 示例和交付记录使用占位符。
 
+## 启用或关闭 Keycloak
+
+`KIT_KEYCLOAK_ENABLED` 默认为 `true`。需要关闭时，在仓库根目录的 `.env` 中设置
+以下值，保存后重新运行启动命令。
+
+```dotenv
+KIT_KEYCLOAK_ENABLED=false
+```
+
+关闭后，开发脚本跳过本地 Keycloak 启动，Kit 停用 OIDC 登录和企业账号绑定。
+接入已有 Keycloak 时也适用。原 `KIT_AUTH_MODE=oidc` 会按 `member` 运行，
+员工使用 Kit 账号密码登录。
+
 ## 本地联动启动
 
 macOS 或 Linux 上，安装项目依赖后在仓库根目录运行 `pnpm dev server`。

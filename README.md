@@ -261,6 +261,7 @@ macOS 或 Linux 上，干净的 checkout 安装依赖后可直接执行 `pnpm de
 | `ADMIN_TOKEN` | 是 | 管理端登录令牌 |
 | `KIT_GATEWAY` | 否 | `auto`（默认）、`mock` 或 `sdk` |
 | `KIT_AUTH_MODE` | 否 | `oidc`、`member` 或 `anonymous`。macOS / Linux 的本地开发默认使用 OIDC，独立服务默认使用 `member` |
+| `KIT_KEYCLOAK_ENABLED` | 否 | 默认 `true`。设为 `false` 可关闭 Keycloak 联动启动与 OIDC 登录 |
 | `KIT_DATA_DIR` | 否 | 本地数据目录，默认 `.data` |
 | `KIT_CORS_ORIGINS` | 否 | 允许跨域的体验页来源 |
 | `KIT_PUBLIC_BASE_URL` | 否 | 跨域部署时的公开服务地址 |

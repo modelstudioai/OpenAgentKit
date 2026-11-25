@@ -63,6 +63,8 @@
 
 - 独立服务默认 `KIT_AUTH_MODE=member`。macOS / Linux 的开发入口可自动启用本地 OIDC。
   体验页配置缺少 auth 时按必须登录处理。
+- `KIT_KEYCLOAK_ENABLED=false` 关闭 Keycloak 接入。配置为 `oidc` 的部署按 `member` 模式启动，
+  `auth.oidc` 省略，Console 停用企业绑定。
 - `auth.mode` 为 `member` 或 `anonymous` 时，`passwordLogin: true`。`oidc` 模式下，员工端使用
   `auth.oidc: { issuer, clientId }` 登录。`KIT_OIDC_PASSWORD_LOGIN=true` 时 `passwordLogin: true`，
   体验页同时提供两种登录。配置好 Keycloak 后即可在 Console 预绑定成员。

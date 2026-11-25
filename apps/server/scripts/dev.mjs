@@ -41,6 +41,7 @@ function shouldManageKeycloak(home, configuredIssuer, mode) {
 }
 
 function managedKeycloak() {
+	if (env.KIT_KEYCLOAK_ENABLED?.trim() === "false") return undefined;
 	const home = env.KIT_KEYCLOAK_HOME?.trim();
 	const configuredIssuer = env.KIT_OIDC_ISSUER?.trim();
 	const mode = env.KIT_AUTH_MODE?.trim();

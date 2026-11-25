@@ -41,6 +41,7 @@ test("首次选择 Mock 后生成管理员令牌，认证模式由开发入口�
 	const env = parseEnv(readFileSync(path, "utf8"));
 	assert.equal(env.KIT_GATEWAY, "mock");
 	assert.equal(env.KIT_AUTH_MODE, "");
+	assert.equal(env.KIT_KEYCLOAK_ENABLED, "true");
 	assert.equal(env.KIT_DATA_DIR, ".scratch/local-demo/data");
 	assert.match(env.ADMIN_TOKEN, /^[a-f0-9]{64}$/);
 	assert.equal(env.BAILIAN_API_KEY, "");

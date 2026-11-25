@@ -56,6 +56,7 @@ node apps/server/dist/bin.js
 | `BAILIAN_BASE_URL` / `BAILIAN_WORKSPACE_ID` | 空 | 二选一，用于定位 workspace |
 | `KIT_GATEWAY` | `auto` | `auto` 有凭据走 SDK、否则 mock；也可显式 `mock` / `sdk` |
 | `KIT_AUTH_MODE` | 开发入口 `oidc`，独立服务 `member` | macOS / Linux 开发时可显式选 `member` 或 `anonymous` |
+| `KIT_KEYCLOAK_ENABLED` | `true` | 设为 `false` 时关闭本地 Keycloak 联动启动与 OIDC 接入，`oidc` 回到 `member` 登录 |
 | `KIT_OIDC_PASSWORD_LOGIN` | `false` | 在 `oidc` 模式下设为 `true`，体验页同时提供 Kit 用户名密码和企业登录 |
 | `KIT_OIDC_ISSUER` | 空 | Keycloak Realm issuer，形如 `https://sso.example.com/realms/kit` |
 | `KIT_OIDC_CLIENT_ID` | 空 | Web 的公开 OIDC 客户端 ID |
@@ -129,6 +130,7 @@ Keycloak 监听 `127.0.0.1:8180`，自动创建缺失的 `kit` Realm 和 `kit-we
 React 体验页默认使用 5173，Vue 体验页使用 5175。两端均登记 localhost 与 127.0.0.1 的精确回跳地址。端口被占用时 Web 启动会报错，
 可在根 `.env` 或启动命令中指定其他端口。首次启动会登记对应地址，后续启动也会补齐已有本地客户端
 的回跳地址和 Web Origin。只配置 `KIT_AUTH_MODE=oidc` 也会采用这些默认值。
+设置 `KIT_KEYCLOAK_ENABLED=false` 后，启动器直接启动 Kit Server，`oidc` 模式使用 Kit 成员登录。
 
 首次运行用 `curl` 从 GitHub 下载固定版本的 Keycloak（约 166 MiB），通过 SHA-256 校验后用
 `tar` 解压。已有 Java 17、21 或 25 会被复用。macOS 和使用 glibc 的 Linux 在 x64 / arm64 上
