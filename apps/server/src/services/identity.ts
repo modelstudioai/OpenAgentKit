@@ -3,7 +3,7 @@ import { KitError } from "@openagentkit/sdk/protocol";
 import type { Context } from "hono";
 import type { AdminIdentity, AdminRole, AppEnv } from "../app-env.ts";
 import type { ServerConfig } from "../config.ts";
-import { ANONYMOUS_COOKIE, type Identity } from "../identity/types.ts";
+import { ANONYMOUS_COOKIE, type Identity, identityForMember } from "../identity/types.ts";
 import { MEMBER_TOKEN_PREFIX } from "./member-auth.ts";
 
 function b64url(input: Buffer | string): string {
@@ -78,16 +78,16 @@ export function signJwt(payload: Record<string, unknown>, secret: string, ttlSec
  */
 export async function resolveIdentity(c: Context<AppEnv>, config: ServerConfig): Promise<Identity> {
 	const auth = c.req.header("authorization");
+	const token = auth?.startsWith("Bearer ") ? auth.slice(7) : undefined;
+	if (config.passwordLogin && token?.startsWith(MEMBER_TOKEN_PREFIX)) {
+		const resolved = await c.get("services").memberAuth.resolve(token);
+		c.set("memberSession", resolved.session);
+		c.set("authExpiresAt", resolved.session.expires_at);
+		return resolved.view.identity;
+	}
+	if (config.authMode === "oidc") return await resolveOidcIdentity(c, token);
 	if (auth) {
-		if (!auth.startsWith("Bearer ")) throw new KitError("unauthorized", "登录状态无效或已过期，请重新登录");
-		const token = auth.slice(7);
-		if (token.startsWith(MEMBER_TOKEN_PREFIX)) {
-			const resolved = await c.get("services").memberAuth.resolve(token);
-			c.set("memberSession", resolved.session);
-			c.set("authExpiresAt", resolved.session.expires_at);
-			return resolved.view.identity;
-		}
-		const jwt = config.jwtSecret ? verifyJwtClaims(token, config.jwtSecret) : null;
+		const jwt = token && config.jwtSecret ? verifyJwtClaims(token, config.jwtSecret) : null;
 		if (jwt) {
 			c.set("authExpiresAt", jwt.expiresAt);
 			return jwt.identity;
@@ -102,6 +102,15 @@ export async function resolveIdentity(c: Context<AppEnv>, config: ServerConfig):
 		c.header("Set-Cookie", `${ANONYMOUS_COOKIE}=${subjectId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000`);
 	}
 	return { subjectId, displayName: "访客", tier: "anonymous" };
+}
+
+async function resolveOidcIdentity(c: Context<AppEnv>, token?: string): Promise<Identity> {
+	const { oidcAuth } = c.get("services");
+	if (!oidcAuth) throw new KitError("internal", "缺少 Keycloak OIDC 配置");
+	if (!token) throw new KitError("unauthorized", "请先完成企业登录");
+	const grant = await oidcAuth.resolve(token);
+	c.set("oidcMember", grant);
+	return identityForMember(grant.member);
 }
 
 function principalId(token: string, role: AdminRole): string {

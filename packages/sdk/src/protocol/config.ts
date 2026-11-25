@@ -1,12 +1,28 @@
 import { z } from "zod";
 
+const OidcClientConfigSchema = z.object({
+	issuer: z.url(),
+	clientId: z.string().min(1),
+	adminUsersUrl: z.url({ protocol: /^https?$/ }).optional(),
+});
+export type OidcClientConfig = z.infer<typeof OidcClientConfigSchema>;
+
+export const KitAuthConfigSchema = z.discriminatedUnion("mode", [
+	z.object({ mode: z.literal("oidc"), passwordLogin: z.boolean(), oidc: OidcClientConfigSchema }),
+	z.object({
+		mode: z.enum(["member", "anonymous"]),
+		passwordLogin: z.literal(true),
+		oidc: OidcClientConfigSchema.optional(),
+	}),
+]);
+
 /** `GET /api/config` 的运行时公开配置。所有端启动必读，禁止假设同源。 */
 export const KitRuntimeConfigSchema = z.object({
 	apiBaseUrl: z.string(),
 	protocolVersion: z.string(),
 	gateway: z.enum(["sdk", "mock"]),
 	/** Server 始终返回；可选仅兼容此前公开配置的静态调用方。缺省按成员登录处理。 */
-	auth: z.object({ mode: z.enum(["member", "anonymous"]), passwordLogin: z.literal(true) }).optional(),
+	auth: KitAuthConfigSchema.optional(),
 	capabilities: z.object({
 		streaming: z.boolean(),
 		fileUpload: z.boolean(),

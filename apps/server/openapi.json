@@ -88,25 +88,90 @@
                           ]
                         },
                         "auth": {
-                          "type": "object",
-                          "properties": {
-                            "mode": {
-                              "type": "string",
-                              "enum": [
-                                "member",
-                                "anonymous"
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "mode": {
+                                  "type": "string",
+                                  "enum": [
+                                    "oidc"
+                                  ]
+                                },
+                                "passwordLogin": {
+                                  "type": "boolean"
+                                },
+                                "oidc": {
+                                  "type": "object",
+                                  "properties": {
+                                    "issuer": {
+                                      "type": "string",
+                                      "format": "uri"
+                                    },
+                                    "clientId": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "adminUsersUrl": {
+                                      "type": "string",
+                                      "format": "uri"
+                                    }
+                                  },
+                                  "required": [
+                                    "issuer",
+                                    "clientId"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "mode",
+                                "passwordLogin",
+                                "oidc"
                               ]
                             },
-                            "passwordLogin": {
-                              "type": "boolean",
-                              "enum": [
-                                true
+                            {
+                              "type": "object",
+                              "properties": {
+                                "mode": {
+                                  "type": "string",
+                                  "enum": [
+                                    "member",
+                                    "anonymous"
+                                  ]
+                                },
+                                "passwordLogin": {
+                                  "type": "boolean",
+                                  "enum": [
+                                    true
+                                  ]
+                                },
+                                "oidc": {
+                                  "type": "object",
+                                  "properties": {
+                                    "issuer": {
+                                      "type": "string",
+                                      "format": "uri"
+                                    },
+                                    "clientId": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "adminUsersUrl": {
+                                      "type": "string",
+                                      "format": "uri"
+                                    }
+                                  },
+                                  "required": [
+                                    "issuer",
+                                    "clientId"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "mode",
+                                "passwordLogin"
                               ]
                             }
-                          },
-                          "required": [
-                            "mode",
-                            "passwordLogin"
                           ]
                         },
                         "capabilities": {
@@ -9430,6 +9495,9 @@
                         },
                         "retryable": {
                           "type": "boolean"
+                        },
+                        "details": {
+                          "nullable": true
                         }
                       },
                       "required": [
@@ -9464,6 +9532,46 @@
                         },
                         "retryable": {
                           "type": "boolean"
+                        },
+                        "details": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "retryable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "部署仅允许企业登录，或企业账号尚未绑定",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        },
+                        "details": {
+                          "nullable": true
                         }
                       },
                       "required": [
@@ -9498,6 +9606,46 @@
                         },
                         "retryable": {
                           "type": "boolean"
+                        },
+                        "details": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "retryable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "暂时无法验证企业登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        },
+                        "details": {
+                          "nullable": true
                         }
                       },
                       "required": [
@@ -9524,7 +9672,7 @@
         ],
         "responses": {
           "200": {
-            "description": "当前有效身份；可信 JWT 可不关联本地成员",
+            "description": "当前有效身份；成员登录与 OIDC 登录返回已关联的本地成员资料",
             "content": {
               "application/json": {
                 "schema": {
@@ -9798,6 +9946,9 @@
                         },
                         "retryable": {
                           "type": "boolean"
+                        },
+                        "details": {
+                          "nullable": true
                         }
                       },
                       "required": [
@@ -9832,6 +9983,46 @@
                         },
                         "retryable": {
                           "type": "boolean"
+                        },
+                        "details": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "retryable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "部署仅允许企业登录，或企业账号尚未绑定",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        },
+                        "details": {
+                          "nullable": true
                         }
                       },
                       "required": [
@@ -9866,6 +10057,46 @@
                         },
                         "retryable": {
                           "type": "boolean"
+                        },
+                        "details": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "retryable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "暂时无法验证企业登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        },
+                        "details": {
+                          "nullable": true
                         }
                       },
                       "required": [
@@ -9892,7 +10123,44 @@
         ],
         "responses": {
           "204": {
-            "description": "当前本地登录态已撤销；过期或已退出时仍成功"
+            "description": "当前 Kit 访问令牌已在本地撤销；过期或已退出时仍成功"
+          },
+          "502": {
+            "description": "暂时无法验证企业登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        },
+                        "details": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "retryable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -21589,6 +21857,18 @@
                           "local"
                         ]
                       },
+                      "oidc_binding": {
+                        "type": "object",
+                        "properties": {
+                          "sub": {
+                            "type": "string",
+                            "pattern": "^[!-~]{1,255}$"
+                          }
+                        },
+                        "required": [
+                          "sub"
+                        ]
+                      },
                       "password_mode": {
                         "type": "string",
                         "enum": [
@@ -21632,6 +21912,18 @@
                           "local"
                         ]
                       },
+                      "oidc_binding": {
+                        "type": "object",
+                        "properties": {
+                          "sub": {
+                            "type": "string",
+                            "pattern": "^[!-~]{1,255}$"
+                          }
+                        },
+                        "required": [
+                          "sub"
+                        ]
+                      },
                       "password_mode": {
                         "type": "string",
                         "enum": [
@@ -21661,7 +21953,7 @@
         },
         "responses": {
           "201": {
-            "description": "已创建；仅自动生成模式返回一次初始密码",
+            "description": "已创建成员并保存可选的企业绑定。启用密码登录且选择自动生成时返回一次初始密码",
             "content": {
               "application/json": {
                 "schema": {
@@ -21880,6 +22172,31 @@
                         },
                         "initial_password": {
                           "type": "string"
+                        },
+                        "oidc_binding": {
+                          "type": "object",
+                          "properties": {
+                            "sub": {
+                              "type": "string",
+                              "pattern": "^[!-~]{1,255}$"
+                            },
+                            "issuer": {
+                              "type": "string",
+                              "format": "uri"
+                            },
+                            "member_id": {
+                              "type": "string"
+                            },
+                            "bound_at": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "sub",
+                            "issuer",
+                            "member_id",
+                            "bound_at"
+                          ]
                         }
                       },
                       "required": [
@@ -21895,7 +22212,7 @@
             }
           },
           "400": {
-            "description": "成员参数或分页游标无效",
+            "description": "成员参数无效、密码登录关闭时提交了自定义密码，或未配置 Keycloak 时提交了企业绑定",
             "content": {
               "application/json": {
                 "schema": {
@@ -22031,7 +22348,7 @@
             }
           },
           "409": {
-            "description": "用户名已存在（不区分大小写）",
+            "description": "用户名已存在（不区分大小写），或 Keycloak 用户已有绑定",
             "content": {
               "application/json": {
                 "schema": {
@@ -23160,6 +23477,676 @@
           },
           "409": {
             "description": "用户名已存在（不区分大小写）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "retryable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/members/{memberId}/oidc-binding": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "memberId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "当前 Keycloak 绑定",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "sub": {
+                          "type": "string",
+                          "pattern": "^[!-~]{1,255}$"
+                        },
+                        "issuer": {
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        "member_id": {
+                          "type": "string"
+                        },
+                        "bound_at": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "sub",
+                        "issuer",
+                        "member_id",
+                        "bound_at"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "绑定参数无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "retryable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "缺少管理员身份",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "retryable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当前管理身份无权执行此操作",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "retryable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "成员不存在或部署未配置 Keycloak",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "retryable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "成员或 Keycloak 用户已存在其他绑定",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "retryable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "memberId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sub": {
+                    "type": "string",
+                    "pattern": "^[!-~]{1,255}$"
+                  }
+                },
+                "required": [
+                  "sub"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "当前 Keycloak 绑定",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "sub": {
+                          "type": "string",
+                          "pattern": "^[!-~]{1,255}$"
+                        },
+                        "issuer": {
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        "member_id": {
+                          "type": "string"
+                        },
+                        "bound_at": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "sub",
+                        "issuer",
+                        "member_id",
+                        "bound_at"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "绑定参数无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "retryable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "缺少管理员身份",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "retryable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当前管理身份无权执行此操作",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "retryable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "成员不存在或部署未配置 Keycloak",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "retryable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "成员或 Keycloak 用户已存在其他绑定",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "retryable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "memberId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "已解除当前成员的 Keycloak 绑定"
+          },
+          "400": {
+            "description": "绑定参数无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "retryable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "缺少管理员身份",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "retryable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当前管理身份无权执行此操作",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "retryable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "成员不存在或部署未配置 Keycloak",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "retryable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "成员或 Keycloak 用户已存在其他绑定",
             "content": {
               "application/json": {
                 "schema": {

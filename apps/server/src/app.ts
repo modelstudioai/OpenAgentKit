@@ -20,6 +20,7 @@ import { registerDraftResourceRoutes } from "./routes/draft-resources.ts";
 import { registerGroupRoutes } from "./routes/groups.ts";
 import { registerKitRoutes } from "./routes/kit.ts";
 import { registerMemberAuthRoutes } from "./routes/member-auth.ts";
+import { registerMemberOidcBindingRoutes } from "./routes/member-oidc-bindings.ts";
 import { registerMemberRoutes } from "./routes/members.ts";
 import { registerMetaRoutes } from "./routes/meta.ts";
 import { registerPresetPackRoutes } from "./routes/preset-packs.ts";
@@ -152,6 +153,7 @@ export function createApp(services: KitServices) {
 	registerAdminMemoryStoreRoutes(app);
 	registerAdminVaultRoutes(app);
 	registerMemberRoutes(app);
+	registerMemberOidcBindingRoutes(app);
 	registerGroupRoutes(app);
 	registerTemplateRoutes(app);
 	registerUsageLimitRoutes(app);

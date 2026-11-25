@@ -98,6 +98,7 @@ function setup() {
 	};
 	return {
 		create,
+		fetchImpl,
 		storage,
 		requests,
 		revoked,
@@ -381,5 +382,189 @@ describe("本地成员认证生命周期", () => {
 		await expect(login(controller)).rejects.toThrow("无法保存登录状态");
 		expect(controller.getSnapshot().client).toBeNull();
 		expect(fixture.revoked.size).toBe(1);
+	});
+
+	it("同时支持密码和 OIDC 时恢复各自身份，浏览器存储只保留密码登录令牌", async () => {
+		const fixture = setup();
+		const enterprise = { access_token: "oidc-employee", expires_at: new Date(Date.now() + 300_000).toISOString() };
+		const oidc = {
+			restore: vi.fn<() => Promise<StoredMemberSession | null>>().mockResolvedValue(null),
+			login: vi.fn(async () => undefined),
+			refresh: vi.fn(async () => enterprise),
+			clear: vi.fn(),
+		};
+		const create = () => {
+			const controller = createMemberAuthController({
+				baseUrl: "https://backend.example/prefix",
+				mode: "oidc",
+				oidc,
+				storage: fixture.storage,
+				fetchImpl: fixture.fetchImpl,
+			});
+			controllers.push(controller);
+			return controller;
+		};
+		const first = create();
+		await first.start();
+		await login(first);
+		const passwordSession = fixture.storage.load()!;
+		expect(passwordSession.access_token).toMatch(/^kit_member_/);
+		first.dispose();
+		const restored = create();
+		await restored.start();
+		expect(restored.getSnapshot()).toMatchObject({ status: "signed-in", member: { member_id: "member_alice" } });
+		await restored.logout();
+		expect(fixture.storage.load()).toBeNull();
+		await restored.loginWithOidc();
+		expect(oidc.login).toHaveBeenCalledOnce();
+		restored.dispose();
+
+		fixture.storage.save(passwordSession);
+		oidc.restore.mockResolvedValueOnce(enterprise);
+		fixture.setOverride((url, init) => {
+			if (url.pathname.endsWith("/me") && new Headers(init.headers).get("authorization") === "Bearer oidc-employee")
+				return Promise.resolve(
+					json({ identity: { subjectId: "member_bob" }, member: member("bob"), expires_at: enterprise.expires_at }),
+				);
+		});
+		const callback = create();
+		await callback.start();
+		expect(callback.getSnapshot()).toMatchObject({ status: "signed-in", member: { member_id: "member_bob" } });
+		expect(fixture.storage.load()).toBeNull();
+		await callback.logout();
+		expect(fixture.revoked).toEqual(new Set([`Bearer ${passwordSession.access_token}`, "Bearer oidc-employee"]));
+	});
+
+	it("OIDC 续期校验限流时保留旧请求和 SSE，校验成功后续接同一成员", async () => {
+		vi.useFakeTimers();
+		const startedAt = Date.now();
+		const first = { access_token: "oidc-first", expires_at: new Date(startedAt + 60_000).toISOString() };
+		const next = { access_token: "oidc-next", expires_at: new Date(startedAt + 90_000).toISOString() };
+		const oidc = {
+			restore: vi.fn(async () => first),
+			login: vi.fn(async () => undefined),
+			refresh: vi.fn(async () => next),
+			clear: vi.fn(),
+		};
+		const revoked: Array<string | null> = [];
+		const subscriptions: Array<{ authorization: string | null; after: string | null }> = [];
+		let rejectOld: ((response: Response) => void) | undefined;
+		let oldStreamSignal: AbortSignal | null | undefined;
+		let nextChecks = 0;
+		const meResponse = (usingFirst: boolean) => {
+			if (!usingFirst && ++nextChecks === 1)
+				return Response.json(
+					{ error: { code: "rate_limited", message: "请求过于频繁", retryable: true } },
+					{ status: 429 },
+				);
+			return json({
+				identity: { subjectId: "member_alice" },
+				member: member("alice"),
+				expires_at: usingFirst ? first.expires_at : next.expires_at,
+			});
+		};
+		const fetchImpl: typeof fetch = async (input, init) => {
+			const url = new URL(String(input));
+			const authorization = new Headers(init?.headers).get("authorization");
+			const usingFirst = authorization === "Bearer oidc-first";
+			switch (url.pathname.split("/").at(-1)) {
+				case "me":
+					return meResponse(usingFirst);
+				case "logout":
+					revoked.push(authorization);
+					return new Response(null, { status: 204 });
+				case "stream": {
+					if (usingFirst) oldStreamSignal = init?.signal;
+					subscriptions.push({ authorization, after: url.searchParams.get("after") });
+					const stream = usingFirst
+						? new ReadableStream()
+						: 'event: done\ndata: {"session_id":"session-1","status":"idle","last_event_id":"","reason":"closed"}\n\n';
+					return new Response(stream, { headers: { "content-type": "text/event-stream" } });
+				}
+				default:
+					return await new Promise((resolve) => {
+						rejectOld = resolve;
+					});
+			}
+		};
+		const controller = createMemberAuthController({
+			baseUrl: "https://backend.example",
+			mode: "oidc",
+			oidc,
+			fetchImpl,
+		});
+		controllers.push(controller);
+		await controller.start();
+		const { client, generation } = controller.getSnapshot();
+		const oldRequest = client!.agents().catch((error: unknown) => error);
+		const oldStream = client!.stream("session-1").catch((error: unknown) => error);
+		await vi.waitFor(() => {
+			expect(rejectOld).toBeTypeOf("function");
+			expect(subscriptions).toHaveLength(1);
+		});
+		await vi.advanceTimersByTimeAsync(30_000);
+		expect(nextChecks).toBe(1);
+		expect(controller.getSnapshot()).toMatchObject({ status: "signed-in", generation, client });
+		expect(oldStreamSignal?.aborted).toBe(false);
+		expect(oidc.clear).not.toHaveBeenCalled();
+		await expect(client!.auth.me()).resolves.toMatchObject({ expires_at: first.expires_at });
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(await oldStream).toMatchObject({ code: "provider_error", retryable: true });
+		expect(oidc.refresh).toHaveBeenCalledOnce();
+		expect(nextChecks).toBe(2);
+
+		rejectOld?.(unauthorized());
+		expect(await oldRequest).toMatchObject({ code: "unauthorized" });
+		expect(controller.getSnapshot()).toMatchObject({
+			status: "signed-in",
+			generation,
+			client,
+			member: { member_id: "member_alice" },
+		});
+		await client!.stream("session-1", { after: "saved-cursor" });
+		expect(subscriptions[1]).toEqual({ authorization: "Bearer oidc-next", after: "saved-cursor" });
+		await controller.logout();
+		expect(revoked).toEqual(["Bearer oidc-next", "Bearer oidc-first"]);
+		expect(oidc.clear).toHaveBeenCalledOnce();
+		expect(controller.getSnapshot().status).toBe("signed-out");
+	});
+
+	it("OIDC 重试请求挂起时仍在最后验证的令牌到期时结束登录", async () => {
+		vi.useFakeTimers();
+		const startedAt = Date.now();
+		const expiresAt = new Date(startedAt + 3_000).toISOString();
+		const oidc = {
+			restore: async () => ({ access_token: "old-token", expires_at: expiresAt }),
+			login: async () => undefined,
+			refresh: vi.fn(async () => ({
+				access_token: "new-token",
+				expires_at: new Date(startedAt + 90_000).toISOString(),
+			})),
+			clear: vi.fn(),
+		};
+		let nextChecks = 0;
+		let pendingSignal: AbortSignal | null | undefined;
+		const controller = createMemberAuthController({
+			baseUrl: "https://backend.example",
+			mode: "oidc",
+			oidc,
+			fetchImpl: async (_input, init) => {
+				if (new Headers(init?.headers).get("authorization") === "Bearer old-token")
+					return json({ identity: { subjectId: "member_alice" }, member: member("alice"), expires_at: expiresAt });
+				if (++nextChecks === 1) throw new TypeError("offline");
+				pendingSignal = init?.signal;
+				return new Promise(() => {});
+			},
+		});
+		controllers.push(controller);
+		await controller.start();
+		await vi.advanceTimersByTimeAsync(2_999);
+		expect(controller.getSnapshot().status).toBe("signed-in");
+		expect(nextChecks).toBe(2);
+		expect(oidc.refresh).toHaveBeenCalledOnce();
+		await vi.advanceTimersByTimeAsync(1);
+		expect(controller.getSnapshot()).toMatchObject({ status: "signed-out", client: null });
+		expect(pendingSignal?.aborted).toBe(true);
+		expect(oidc.clear).toHaveBeenCalledOnce();
 	});
 });

@@ -11,6 +11,7 @@ import { createFileStore } from "../store/files.ts";
 import { createGroupStore } from "../store/groups.ts";
 import { createMemberSessionStore } from "../store/member-sessions.ts";
 import { createMemberStore } from "../store/members.ts";
+import { createOidcAuthStore } from "../store/oidc-auth.ts";
 import { createOperationStore } from "../store/operations.ts";
 import { createPresetPackStore } from "../store/preset-packs.ts";
 import { createQuotaStore } from "../store/quota.ts";
@@ -30,6 +31,7 @@ import { createMemberAuthService } from "./member-auth.ts";
 import { createMemberUsageService } from "./member-usage.ts";
 import { createMemberService } from "./members.ts";
 import { createMetrics } from "./metrics.ts";
+import { createOidcAuthService } from "./oidc-auth.ts";
 import { createOperationRunner } from "./operations.ts";
 import { createPresetPackService } from "./preset-packs.ts";
 import { createQuotaService } from "./quota.ts";
@@ -60,6 +62,7 @@ export function createKitServices(
 ): KitServices & {
 	close(): Promise<void>;
 } {
+	if (config.authMode === "oidc" && !config.oidc) throw new Error("缺少 Keycloak OIDC 配置");
 	const database = prepareDatabase(connection, config.quotaDefaultMonthly);
 	const branding = createBrandingStore(database);
 	const usageSnapshots = createSessionUsageStore(database);
@@ -74,7 +77,10 @@ export function createKitServices(
 	const operations = createOperationStore(database);
 	const audit = createAuditLog(database);
 	const memberStore = createMemberStore(database);
-	const members = createMemberService({ store: memberStore, audit });
+	const oidcAuth = config.oidc
+		? createOidcAuthService({ config: config.oidc, store: createOidcAuthStore(database), members: memberStore, audit })
+		: undefined;
+	const members = createMemberService({ store: memberStore, audit, passwordLogin: config.passwordLogin, oidcAuth });
 	const memberUsage = createMemberUsageService({
 		store: usageSnapshots,
 		members: memberStore,
@@ -164,6 +170,7 @@ export function createKitServices(
 		presetPacks: createPresetPackService({ store: createPresetPackStore(database), gateway }),
 		memberUsage,
 		memberAuth,
+		oidcAuth,
 		files,
 		eval: evalService,
 		resourceDrafts,

@@ -9,6 +9,7 @@ import {
 } from "@openagentkit/sdk/protocol";
 import type { AuditLog } from "../store/audit.ts";
 import type { MemberStore } from "../store/members.ts";
+import type { OidcAuthService } from "./oidc-auth.ts";
 import { hashPassword } from "./passwords.ts";
 
 const PASSWORD_CLASSES = ["abcdefghijkmnopqrstuvwxyz", "ABCDEFGHJKLMNPQRSTUVWXYZ", "23456789", "!@#$%^&*_-+=?"];
@@ -27,7 +28,17 @@ function generatePassword(username: string): string {
 	}
 }
 
-export function createMemberService({ store, audit }: { store: MemberStore; audit: AuditLog }) {
+export function createMemberService({
+	store,
+	audit,
+	passwordLogin,
+	oidcAuth,
+}: {
+	store: MemberStore;
+	audit: AuditLog;
+	passwordLogin: boolean;
+	oidcAuth?: OidcAuthService;
+}) {
 	return {
 		async get(memberId: string) {
 			const member = await store.findById(memberId);
@@ -44,24 +55,33 @@ export function createMemberService({ store, audit }: { store: MemberStore; audi
 			const parsed = CreateMemberRequestSchema.safeParse(input);
 			if (!parsed.success) throw new KitError("invalid_request", parsed.error.issues[0]?.message ?? "成员参数无效");
 			const value = parsed.data;
+			if (!passwordLogin && value.password_mode === "custom")
+				throw new KitError("invalid_request", "企业登录模式下无需设置成员密码");
+			if (value.oidc_binding && !oidcAuth) throw new KitError("invalid_request", "当前部署未配置 Keycloak");
 			const password = value.password_mode === "auto" ? generatePassword(value.username) : value.password;
 			const passwordHash = await hashPassword(password);
 			const now = new Date().toISOString();
-			const member = await store.create(
-				{
-					member_id: `member_${randomUUID()}`,
-					username: value.username,
-					display_name: value.display_name,
-					...(value.email ? { email: value.email } : {}),
-					auth_type: "local",
-					status: "active",
-					created_at: now,
-					updated_at: now,
-				},
-				passwordHash,
-			);
-			await audit.append({ subject, action: "members.create", target: member.member_id });
-			return { member, ...(value.password_mode === "auto" ? { initial_password: password } : {}) };
+			return await store.transaction(async () => {
+				const member = await store.create(
+					{
+						member_id: `member_${randomUUID()}`,
+						username: value.username,
+						display_name: value.display_name,
+						...(value.email ? { email: value.email } : {}),
+						auth_type: "local",
+						status: "active",
+						created_at: now,
+						updated_at: now,
+					},
+					passwordHash,
+				);
+				await audit.append({ subject, action: "members.create", target: member.member_id });
+				const result: CreateMemberResponse["data"] = { member };
+				if (value.oidc_binding && oidcAuth)
+					result.oidc_binding = await oidcAuth.bind(member.member_id, value.oidc_binding.sub, subject);
+				if (passwordLogin && value.password_mode === "auto") result.initial_password = password;
+				return result;
+			});
 		},
 	};
 }

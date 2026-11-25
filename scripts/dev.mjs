@@ -9,7 +9,7 @@
  *   pnpm dev storybook              # 文档站按需单独启动
  *
  * 目标：server(:8787) web(:5173) web-vue(:5175) console(:5174)；storybook(:3000) 需显式指定
- * 根 `.env` 会被读进子进程环境（server 自身也支持 --env-file-if-exists）。
+ * 根 `.env` 会被读进子进程环境。
  */
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -83,18 +83,8 @@ const dependencies = spawnSync(
 if (dependencies.error) console.error(`[dev] 无法启动依赖构建：${dependencies.error.message}`);
 if (dependencies.status !== 0) process.exit(dependencies.status ?? 1);
 
-// POSIX 下每个目标单独成组：Ctrl-C 时 pnpm 的直接子进程 vite/tsx 留在原进程组，
-// 只杀 pnpm 会留下占端口的孤儿进程。Windows 不启用 detached，退回 child.kill。
 const detached = process.platform !== "win32";
-const stopChild = (child) => {
-	if (!child?.pid) return;
-	try {
-		if (detached) process.kill(-child.pid, "SIGTERM");
-		else child.kill("SIGTERM");
-	} catch {
-		// 进程已退出或组不存在：忽略重复清理。
-	}
-};
+let stopping = false;
 
 const children = names.map((name) => {
 	const target = ALL_TARGETS[name];
@@ -115,17 +105,43 @@ const children = names.map((name) => {
 	pipe(child.stderr);
 	child.on("exit", (code) => {
 		console.log(`${prefix} exited(${code})`);
-		for (const other of children) if (other !== child) stopChild(other);
-		process.exit(code ?? 0);
+		stop(code ?? 0);
 	});
-	return child;
+	child.on("error", (error) => {
+		console.error(`${prefix} ${error.message}`);
+		stop(1);
+	});
+	return { child, group: detached };
 });
 
 console.log(`[dev] 已启动：${names.join(" ")}`);
 
-const shutdown = () => {
-	for (const child of children) stopChild(child);
-	process.exit(0);
-};
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+function terminate({ child, group }, signal) {
+	if (!group || !child.pid) {
+		child.kill(signal);
+		return;
+	}
+	// pnpm 与 shell 位于同一专用进程组，让停止信号到达 Kit 和 JVM。
+	try {
+		process.kill(-child.pid, signal);
+	} catch (error) {
+		if (error.code === "ESRCH") return;
+		if (error.code !== "EPERM") throw error;
+		child.kill(signal);
+	}
+}
+
+function stop(code) {
+	if (stopping) return;
+	stopping = true;
+	for (const service of children) terminate(service, "SIGTERM");
+	if (!detached) process.exit(code);
+	process.exitCode = code;
+	setTimeout(() => {
+		for (const service of children) terminate(service, "SIGKILL");
+		process.exit(code);
+	}, 12_000).unref();
+}
+
+process.on("SIGINT", () => stop(0));
+process.on("SIGTERM", () => stop(0));

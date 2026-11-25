@@ -1,3 +1,4 @@
+import type { KitRuntimeConfig } from "@openagentkit/sdk/protocol";
 import { KitLocaleProvider } from "@openagentpack/kit-chat-ui";
 import { App as AntdApp, ConfigProvider } from "antd";
 import enUS from "antd/locale/en_US";
@@ -34,7 +35,7 @@ function getSimplePage(tab: ConsoleTab) {
 	return tab in PAGE_COMPONENTS ? PAGE_COMPONENTS[tab as keyof typeof PAGE_COMPONENTS] : null;
 }
 
-export function App() {
+export function App({ auth }: { auth?: KitRuntimeConfig["auth"] }) {
 	const { i18n } = useTranslation();
 	// antd / dayjs 内置文案跟随当前语言（业务自写中文的迁移在后续阶段）。
 	const antdLocale = i18n.resolvedLanguage === "en" ? enUS : zhCN;
@@ -54,7 +55,7 @@ export function App() {
 				<AntdApp>
 					<TemplateExitConfirmationProvider>
 						<ConsoleRouter>
-							<ConsoleApp />
+							<ConsoleApp auth={auth} />
 						</ConsoleRouter>
 					</TemplateExitConfirmationProvider>
 				</AntdApp>
@@ -63,7 +64,7 @@ export function App() {
 	);
 }
 
-function ConsoleApp() {
+function ConsoleApp({ auth }: { auth?: KitRuntimeConfig["auth"] }) {
 	const { t } = useTranslation("common");
 	const { route, navigate, complete, locked: navigationLocked, setLocked: setNavigationLocked } = useConsoleRoute();
 	const tab = consoleRouteTab(route);
@@ -103,7 +104,11 @@ function ConsoleApp() {
 					}}
 				/>
 			) : (
-				<MembersPage onPendingChange={setNavigationLocked} />
+				<MembersPage
+					onPendingChange={setNavigationLocked}
+					oidc={auth?.oidc}
+					passwordLogin={auth?.passwordLogin ?? true}
+				/>
 			)}
 			{tab !== "template-create" && tab !== "template-list" ? (
 				<p className={styles.pageFootnote}>{t("footnote.agentAssets")}</p>

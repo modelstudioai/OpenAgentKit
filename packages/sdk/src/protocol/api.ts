@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { SessionEvent } from "./events.ts";
+import { MemberOidcBindingInputSchema, MemberOidcBindingSchema } from "./oidc.ts";
 import { PublicationErrorDetailsSchema, PublicationReportSchema } from "./publication.ts";
 import { MemberUsageSummarySchema, SessionStatsSchema, SessionUsageSchema } from "./session-usage.ts";
 
@@ -266,6 +267,7 @@ const memberFields = {
 	display_name: z.string().trim().min(1, "请输入显示名称").max(32, "显示名称最多 32 个字符"),
 	email: z.string().trim().max(254, "邮箱最多 254 个字符").email("请输入有效的邮箱地址").optional(),
 	auth_type: z.literal("local"),
+	oidc_binding: MemberOidcBindingInputSchema.optional(),
 };
 
 export const MemberPasswordSchema = z
@@ -299,7 +301,11 @@ export const CreateMemberRequestSchema = z
 export type CreateMemberRequest = z.infer<typeof CreateMemberRequestSchema>;
 
 export const CreateMemberResponseSchema = z.object({
-	data: z.object({ member: MemberViewSchema, initial_password: z.string().optional() }),
+	data: z.object({
+		member: MemberViewSchema,
+		initial_password: z.string().optional(),
+		oidc_binding: MemberOidcBindingSchema.optional(),
+	}),
 });
 export type CreateMemberResponse = z.infer<typeof CreateMemberResponseSchema>;
 

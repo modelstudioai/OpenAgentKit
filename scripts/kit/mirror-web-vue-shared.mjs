@@ -24,6 +24,7 @@ const files = [
 	"src/lib/session-artifacts.ts",
 	"src/i18n/server-error.ts",
 	"src/features/auth/member-session-storage.ts",
+	"src/features/auth/keycloak-session.ts",
 ];
 
 const differences = [];

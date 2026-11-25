@@ -6,7 +6,7 @@
 
 ## 职责与入口
 
-- `src/lib/`、`src/i18n/server-error.ts`、`src/features/auth/member-session-storage.ts`：由
+- `src/lib/`、`src/i18n/server-error.ts`、`src/features/auth/` 下的会话存储与 Keycloak 适配器：由
   `pnpm gen:web-vue-shared` 从 `apps/web` 镜像，不手改。
 - 产品文案（`auth`、`common` 命名空间）直接复用 `apps/web/src/i18n/locales`，不复制；
   本 app 只维护自己的 `workspace` 命名空间。
@@ -19,7 +19,7 @@
 2. 后端地址仍经宿主注入、`?api=` 与 `/api/config` 解析；浏览器只访问本端口，`/api` 由 Vite 代理。
 3. 页面使用 SDK 公开数据模块与 `hooks-vue`；不另写请求、SSE 或会话状态机。
 4. React 版是事实来源：共享模块只通过生成镜像同步，不手工分叉。
-5. 开发端口固定 5175；默认 `pnpm dev` 不包含本应用，使用 `pnpm dev server web-vue` 启动。
+5. 开发端口固定 5175；默认 `pnpm dev` 包含本应用。也可用 `pnpm dev server web-vue` 只启动对应应用。
 
 ## 修改步骤
 

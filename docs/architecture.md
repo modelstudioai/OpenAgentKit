@@ -15,11 +15,15 @@
 本地 `pnpm start` 由 `scripts/start.mjs` 提供首次配置引导：根 `.env` 不存在时选择 Mock 或
 真实百炼，生成 32 字节随机管理员令牌，并从 `.env.example` 创建权限为 `0600` 的 `.env`；
 API Key 输入隐藏回显，凭据和管理员令牌不写启动日志。已有 `.env` 原样复用，不轮换令牌或补写字段；
-引导取消不创建配置，独占创建防止并发覆盖。默认使用成员登录，Mock 与真实百炼分别使用
+引导取消不创建配置，独占创建防止并发覆盖。Mock 与真实百炼分别使用
 `.scratch/local-demo/data` 与 `.data`。配置完成后接续 `scripts/dev.mjs`，默认启动 server、web、web-vue、console，
 也可传入指定目标；文档站用 `pnpm dev storybook` 单独启动。两者都在启动应用前构建其工作区依赖。
 启动器按 Node dotenv 语义解析根 `.env`，非空值覆盖 shell 同名变量。`BAILIAN_BASE_URL` 与
 `BAILIAN_WORKSPACE_ID` 中一项已配置地址时，另一项的显式空值也覆盖 shell。合并结果只传给子进程。
+
+macOS 和 Linux 的开发入口在认证模式与 issuer 未配置时启动本地 Keycloak。
+发行包按需下载和校验，Realm 和客户端就绪后再启动 Kit Server。连接参数作为环境变量传给
+开发服务，详细默认值见[服务端 README](../apps/server/README.md#开发时联动启动)。
 
 ## 分层与依赖方向
 
@@ -330,7 +334,7 @@ apps/server/src/
   gateway/          ProviderGateway 抽象 + sdk.ts（真实）+ mock.ts（演示与测试）
                     + bailian-rest.ts（建会话挂附件的窄口子，见其文件头与 docs/research/）
                     + sdk-context.ts（ProjectRuntimeContext 装配，live 脚本共用）
-  services/         identity（anonymous / jwt / admin 多令牌+角色）/ sessions / session-streams /
+  services/         identity（成员 / OIDC / anonymous / jwt / admin 多令牌+角色）/ sessions / session-streams /
                     event-buffer / tool-approvals /
                     attachments（挂载路径解析）/ confirm-gate / rate-limit / metrics /
                     catalog / templates（本地模版资源复核、保存与上架确认）/ project / operations / members（本地账号创建与密码派生）/
@@ -369,6 +373,17 @@ apps/server/src/
 Store 共用 `database.ts` 的异步读写与事务接口，事务内跨 Store 调用绑定同一连接。
 SQLite 的读写排队保护单连接事务。MySQL 和 PostgreSQL 使用连接池并沿用单实例写入顺序。
 `server-database-drivers-in-store` 将数据库驱动限制在服务端 Store 层。
+
+### 员工 OIDC 登录
+
+Web 的 Keycloak 适配器执行授权码与 PKCE 流程，提供内存令牌给 SDK 成员认证控制器。
+SDK 管理 Kit 身份、请求与 SSE 生命周期，续期后保留同一成员页面。Kit Server 按部署配置
+验证 Keycloak 的 access token，解析 `(iss, sub)` 绑定为 `subjectId = member_id`。
+会话、附件权限和用量沿用此稳定身份。Console 使用既有管理口令维护绑定。
+
+Keycloak 独立部署，SDK 的宿主接口隔离浏览器认证库。其他企业身份源可在同一 Realm 上游
+代理，关联到原 Keycloak 用户。部署步骤见[服务端 README](../apps/server/README.md)，
+信任关系见 [ADR-0032](./adr/0032-keycloak-member-oidc.md)。
 
 ### 成员累计用量与删除协调
 
@@ -554,14 +569,14 @@ Kit Server → KitClient → createKitChatProvider ─────────�
 管理端「成员管理」通过独立 `members` 路由 → service → store 创建本地账号，不经
 ProviderGateway，不改变 SDK 或 ChatProvider 合同。成员列表只读取公开资料；
 自动生成密码仅随创建响应返回一次（`Cache-Control: no-store`），不进入列表、审计或浏览器
-持久存储。自定义密码不回传。体验页默认使用本地成员登录，详见 ADR-0010 与 ADR-0011。
+持久存储。自定义密码不回传。独立服务的默认成员登录见 ADR-0010 与 ADR-0011。
 密码验证和登录令牌签发在服务端执行。Kit 数据库存令牌哈希和有效期，每次请求校验。
 独立登录之间分别撤销；退出或到期终止对应的已建立 SSE，不中断 Provider 的 Agent 执行。
 
 | 边界 | 措施 |
 | --- | --- |
 | 凭据 | 只在 Kit Server 或自建后端的 env / 密钥管理；不进库、不下发、不入日志（脱敏过滤器） |
-| 终端用户 | 默认成员登录，`IdentityProvider` → 稳定 `member_id`；会话与用量按 subjectId 过滤；匿名须显式开启 |
+| 终端用户 | 成员登录或 OIDC 使用稳定 `member_id`，会话与用量按 `subjectId` 过滤，匿名须显式开启 |
 | 管理端 | `ADMIN_TOKEN` + `KIT_ADMIN_TOKENS`（`admin` 可写 / `auditor` 只读，中间件强制）；审计主体是令牌指纹；企业 RBAC/BUC 留后续 |
 | 成员目录 | `admin` 创建、`auditor` 只读；用户名大小写不敏感唯一；密码只存加盐派生值，普通成员不会获得管理端权限 |
 | 流量与体积 | 按 subject 令牌桶限流（429 + `retry-after`）；JSON 与上传分别有请求体上限（413） |

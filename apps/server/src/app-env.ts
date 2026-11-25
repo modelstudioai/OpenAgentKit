@@ -12,6 +12,7 @@ import type { MemberAuthService } from "./services/member-auth.ts";
 import type { MemberUsageService } from "./services/member-usage.ts";
 import type { MemberService } from "./services/members.ts";
 import type { Metrics } from "./services/metrics.ts";
+import type { OidcAuthService, OidcMemberGrant } from "./services/oidc-auth.ts";
 import type { OperationRunner } from "./services/operations.ts";
 import type { PresetPackService } from "./services/preset-packs.ts";
 import type { QuotaService } from "./services/quota.ts";
@@ -45,6 +46,7 @@ export interface KitServices {
 	presetPacks: PresetPackService;
 	memberUsage: MemberUsageService;
 	memberAuth: MemberAuthService;
+	oidcAuth?: OidcAuthService;
 	files: FileService;
 	eval: EvalService;
 	resourceDrafts: ResourceDraftService;
@@ -76,6 +78,7 @@ export interface AppEnv {
 		admin: AdminIdentity;
 		/** 本地登录态的服务端记录，不包含 Bearer token 原文。 */
 		memberSession?: MemberSessionRecord;
+		oidcMember?: OidcMemberGrant;
 		/** 本地登录 / 可信 JWT 的截止时间，供流式连接主动到期。 */
 		authExpiresAt?: string;
 	};

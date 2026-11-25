@@ -2,6 +2,7 @@ export default {
 	page: {
 		title: "Members",
 		sub: "Manage local member accounts. Members sign in to the workspace with their username and password.",
+		subOidc: "Members sign in to the workspace with their linked enterprise accounts.",
 	},
 	columns: {
 		displayName: "Display name",
@@ -19,6 +20,7 @@ export default {
 		memberId: "Member ID",
 		actions: "Actions",
 		viewUsage: "View usage",
+		oidcBinding: "Link SSO",
 	},
 	list: {
 		loadFailed: "Failed to load members",
@@ -35,6 +37,20 @@ export default {
 		prev: "Previous",
 		next: "Next",
 		pageOf: "Page {{page}}",
+	},
+	binding: {
+		title: "SSO account · {{name}}",
+		close: "Close",
+		unbindTitle: "Unlink this member's SSO account?",
+		unbindDescription: "This member’s Kit sign-in and active session subscriptions will end immediately.",
+		unbind: "Unlink",
+		save: "Save link",
+		status: "Link status",
+		bound: "Linked",
+		unbound: "Unlinked",
+		pending: "Loading",
+		subjectHint: "Enter the user identifier Keycloak issues in the sub claim.",
+		updateFailed: "Failed to update the account link. Try again.",
 	},
 	identity: {
 		failed: "Identity check failed",
@@ -118,12 +134,23 @@ export default {
 		source: "Source",
 	},
 	create: {
+		boundSubject: "Linked Keycloak user ID",
+		dualLogin: "A member can sign in either way.",
+		passwordLogin: "Username and password",
+		passwordDisabled: "Password sign-in is disabled for this instance.",
+		ssoLogin: "Single sign-on",
+		oidcSubject: "Keycloak user ID",
+		optional: "(optional)",
+		oidcSubjectHint: "Copy the ID from the user details in Keycloak. Leave blank to link the account later.",
+		oidcAdminUrl: "Configuration console is at <adminLink>{{url}}</adminLink>.",
+		oidcDisabled: "Configure Keycloak to link enterprise accounts.",
 		createdTitle: "User created",
 		initialPassword: "Initial password",
 		initialPasswordNote:
 			"The initial password is shown only once; store it safely. It cannot be viewed again after you return to the list or leave this page.",
 		memberAdded:
 			"The member has joined the local directory and can sign in to the workspace with their username and password.",
+		memberAddedOidc: "Link a Keycloak account from the member list to enable single sign-on.",
 		backToList: "Back to members",
 		back: "Back",
 		title: "Create user",
@@ -134,7 +161,6 @@ export default {
 			"3–32 characters, starting with a letter or digit; letters, digits, underscores, dots, and hyphens are allowed. Saved in lowercase.",
 		displayNameHint: "Shown to identify the member; up to 32 characters.",
 		emailOptional: " (optional)",
-		passwordSection: "Password",
 		autoPassword: "Generate password automatically",
 		customPassword: "Custom password",
 		autoPasswordHint: "The system generates an initial password and shows it once after creation.",

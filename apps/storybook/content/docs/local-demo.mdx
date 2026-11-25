@@ -11,11 +11,11 @@ description: 一条命令起服务，五步走完「建模版 → 上架 → 成
 
 ```bash
 pnpm install
-pnpm start                 # 首次选择 Mock，自动生成 .env 与管理员令牌并启动
+KIT_AUTH_MODE=member pnpm start   # 首次选择 Mock，启动成员密码登录演示
 ```
 
-已有 `.env` 会原样复用。运行本教程前确认其中 `KIT_GATEWAY=mock`、`KIT_AUTH_MODE=member`，
-并使用独立的 `KIT_DATA_DIR`；首次 Mock 配置默认使用 `.scratch/local-demo/data`。
+已有 `.env` 会原样复用，非空配置优先。运行本教程前确认 `KIT_GATEWAY=mock`、
+`KIT_AUTH_MODE=member`，并使用独立的 `KIT_DATA_DIR`。首次 Mock 配置默认使用 `.scratch/local-demo/data`。
 
 | 端 | 地址 | 登录 |
 | --- | --- | --- |

@@ -138,6 +138,9 @@ importers:
       hono:
         specifier: ^4.13.13
         version: 4.13.13
+      jose:
+        specifier: 6.2.18
+        version: 6.2.18
       jszip:
         specifier: 3.10.2
         version: 3.10.2
@@ -251,6 +254,9 @@ importers:
       i18next:
         specifier: ^27.1.5
         version: 27.2.2(typescript@5.9.3)
+      keycloak-js:
+        specifier: 26.2.5
+        version: 26.2.5
       react:
         specifier: ^19.3.0
         version: 19.3.0
@@ -303,6 +309,9 @@ importers:
       reka-ui:
         specifier: ^2.11.0
         version: 2.11.0(vue@3.5.45(typescript@5.9.3))
+      keycloak-js:
+        specifier: 26.2.5
+        version: 26.2.5
       vue:
         specifier: ^3.5.0
         version: 3.5.45(typescript@5.9.3)
@@ -4116,6 +4125,9 @@ packages:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
 
+  jose@6.2.18:
+    resolution: {integrity: sha512-doV4thUwgkrycJH4yLeqwTGIIZphHl+pk7CPReuMIhYhncmgzdko85MaCG4YQFTxqMFr1/oEH32tZuKKovcDEg==}
+
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
     engines: {node: '>=10'}
@@ -4183,6 +4195,9 @@ packages:
   katex@0.16.47:
     resolution: {integrity: sha512-Eeo8Ys1doU1z+x8AZsPpQu+p/QcZBI5PeOo7QGQdy2x2m0MU/hYagBbGOmXwr5KVbEfVuWv9LpnQWeehogurjg==}
     hasBin: true
+
+  keycloak-js@26.2.5:
+    resolution: {integrity: sha512-iTR3hmYXlGZbBTskgr2PrGIfIzLrts8nwja2+D1gW6Q/S83C487rhM+WvPV9dxqXv81N0QwNG9BJAM60eDQ1Yw==}
 
   khroma@2.1.0:
     resolution: {integrity: sha512-Ls993zuzfayK269Svk9hzpeGUKob/sIgZzyHYdjQoAdQetRKpOLj+k/QQQ/6Qi0Yz65mlROrfd+Ev+1+7dz9Kw==}
@@ -9302,6 +9317,8 @@ snapshots:
 
   jiti@2.7.0: {}
 
+  jose@6.2.18: {}
+
   joycon@3.1.1: {}
 
   js-beautify@2.0.3:
@@ -9380,6 +9397,8 @@ snapshots:
   katex@0.16.47:
     dependencies:
       commander: 8.3.0
+
+  keycloak-js@26.2.5: {}
 
   khroma@2.1.0: {}
 

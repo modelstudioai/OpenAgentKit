@@ -1,3 +1,5 @@
+import type { MemberView } from "@openagentkit/sdk/protocol";
+
 /** 终端用户身份：只由 server 的 IdentityProvider 解析；浏览器不持有该内部结构。 */
 export interface Identity {
 	subjectId: string;
@@ -19,3 +21,7 @@ export interface IdentityProvider {
 }
 
 export const ANONYMOUS_COOKIE = "kit_subject";
+
+export function identityForMember(member: MemberView): Identity {
+	return { subjectId: member.member_id, displayName: member.display_name, tier: "member" };
+}

@@ -1,0 +1,4 @@
+{
+  "name": "kit-keycloak",
+  "description": "为 OpenAgentKit 员工端接入 Keycloak OIDC 登录。适用于联动启动本地 Keycloak、使用预置发行包或已有 Realm、配置成员绑定，以及验证和排查企业登录。"
+}

@@ -94,7 +94,6 @@ export async function initializeEnv(root, { createPrompt = createTerminalPrompt 
 		]);
 		const values = {
 			KIT_GATEWAY: mode,
-			KIT_AUTH_MODE: "member",
 			KIT_DATA_DIR: mode === "mock" ? ".scratch/local-demo/data" : ".data",
 			ADMIN_TOKEN: randomBytes(32).toString("hex"),
 		};
@@ -137,7 +136,7 @@ async function main() {
 	const root = dirname(dirname(fileURLToPath(import.meta.url)));
 	const created = await initializeEnv(root);
 	console.log(created ? "[start] 已生成根 .env 和随机管理员令牌。" : "[start] 复用已有根 .env，未修改配置。");
-	console.log("[start] 管理端登录请使用根 .env 中的 ADMIN_TOKEN；体验页需在管理端创建成员账号。");
+	console.log("[start] 管理端登录请使用根 .env 中的 ADMIN_TOKEN。员工 SSO 登录需要绑定 Keycloak 用户和 Kit 成员。");
 	// 同一进程接续现有依赖构建、日志与退出流程，不另起一套服务编排。
 	if (!process.argv.slice(2).length) process.argv.push("server", "web", "console");
 	await import("./dev.mjs");

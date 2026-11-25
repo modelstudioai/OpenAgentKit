@@ -37,6 +37,7 @@ export function resolveServerErrorMessage(error: unknown): string | undefined {
 	if (!(error instanceof KitError)) return undefined;
 	const language = i18n.resolvedLanguage ?? i18n.language;
 	if (language?.toLowerCase().startsWith("zh")) return undefined;
+	if (error.messageKey === "serverErrors.memberNotBound") return i18n.t("serverErrors.memberNotBound");
 	if (error.messageKey === "serverErrors.invalidCredentials") return i18n.t("serverErrors.invalidCredentials");
 	if (error.messageKey && i18n.exists(error.messageKey)) {
 		const translate = i18n.getFixedT(null, "common") as unknown as (

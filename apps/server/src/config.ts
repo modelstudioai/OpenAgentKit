@@ -23,6 +23,13 @@ export type DatabaseConfig =
 	| ({ driver: "mysql" } & DatabaseAddress)
 	| ({ driver: "postgres" } & DatabaseAddress);
 
+export interface OidcConfig {
+	issuer: string;
+	clientId: string;
+	audience: string;
+	adminUsersUrl: string;
+}
+
 export interface ServerConfig {
 	port: number;
 	dataDir: string;
@@ -30,7 +37,9 @@ export interface ServerConfig {
 	adminToken: string;
 	jwtSecret?: string;
 	/** 默认要求成员或可信 JWT 身份；匿名演示必须显式开启。 */
-	authMode: "member" | "anonymous";
+	authMode: "member" | "anonymous" | "oidc";
+	passwordLogin: boolean;
+	oidc?: OidcConfig;
 	corsOrigins: string[];
 	gatewayMode: "auto" | "mock" | "sdk";
 	/** 解析后的实际 gateway 模式（auto 时按凭据有无决定） */
@@ -99,8 +108,48 @@ function parseGatewayMode(env: NodeJS.ProcessEnv): ServerConfig["gatewayMode"] {
 
 function parseAuthMode(env: NodeJS.ProcessEnv): ServerConfig["authMode"] {
 	const mode = env.KIT_AUTH_MODE?.trim() || "member";
-	if (mode !== "member" && mode !== "anonymous") throw new Error("KIT_AUTH_MODE 只能是 member|anonymous");
+	if (mode !== "member" && mode !== "anonymous" && mode !== "oidc")
+		throw new Error("KIT_AUTH_MODE 只能是 member|anonymous|oidc");
 	return mode;
+}
+
+const KEYCLOAK_REALM_PATH = /\/realms\/([A-Za-z0-9._-]+)$/;
+
+function isKeycloakBrowserUrl(url: URL): boolean {
+	const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+	return (url.protocol === "https:" || (local && url.protocol === "http:")) && !url.username && !url.password;
+}
+
+function parseKeycloakUsersUrl(issuer: string, override?: string): string {
+	const value = override?.trim();
+	if (!value) return issuer.replace(KEYCLOAK_REALM_PATH, "/admin/master/console/#/$1/users");
+	const url = URL.parse(value);
+	if (!url || !isKeycloakBrowserUrl(url) || url.search) {
+		throw new Error("KIT_KEYCLOAK_USERS_URL 必须是无凭据和查询参数的 HTTPS URL；本地回环地址支持 HTTP");
+	}
+	return url.href;
+}
+
+function parseOidc(env: NodeJS.ProcessEnv, mode: ServerConfig["authMode"]): OidcConfig | undefined {
+	const issuer = env.KIT_OIDC_ISSUER?.trim();
+	const clientId = env.KIT_OIDC_CLIENT_ID?.trim();
+	const audience = env.KIT_OIDC_AUDIENCE?.trim();
+	if (!issuer && !clientId && !audience && mode !== "oidc") return undefined;
+	if (!issuer || !clientId || !audience)
+		throw new Error("KIT_OIDC_ISSUER、KIT_OIDC_CLIENT_ID 和 KIT_OIDC_AUDIENCE 必须一起配置");
+	const url = URL.parse(issuer);
+	if (
+		!url ||
+		!isKeycloakBrowserUrl(url) ||
+		url.search ||
+		url.hash ||
+		url.href !== issuer ||
+		!KEYCLOAK_REALM_PATH.test(url.pathname)
+	) {
+		throw new Error("KIT_OIDC_ISSUER 必须是 Keycloak Realm 的 HTTPS issuer；本地回环地址支持 HTTP");
+	}
+	if (clientId === audience) throw new Error("KIT_OIDC_AUDIENCE 必须与 KIT_OIDC_CLIENT_ID 不同");
+	return { issuer, clientId, audience, adminUsersUrl: parseKeycloakUsersUrl(issuer, env.KIT_KEYCLOAK_USERS_URL) };
 }
 
 function parseBailianCredentials(env: NodeJS.ProcessEnv): BailianCredentials | undefined {
@@ -206,6 +255,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 	const bailian = parseBailianCredentials(env);
 	const resolvedGateway = resolveGateway(mode, bailian);
 	const database = parseDatabase(env);
+	const keycloakEnabled = env.KIT_KEYCLOAK_ENABLED?.trim() !== "false";
+	const configuredAuthMode = parseAuthMode(env);
+	const authMode = !keycloakEnabled && configuredAuthMode === "oidc" ? "member" : configuredAuthMode;
+	const oidc = keycloakEnabled ? parseOidc(env, authMode) : undefined;
 	const dataDir = resolve(env.KIT_DATA_DIR?.trim() || ".data");
 	mkdirSync(dataDir, { recursive: true });
 
@@ -215,7 +268,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 		database,
 		adminToken: env.ADMIN_TOKEN?.trim() || "",
 		jwtSecret: env.KIT_JWT_SECRET?.trim() || undefined,
-		authMode: parseAuthMode(env),
+		authMode,
+		passwordLogin: authMode !== "oidc" || env.KIT_OIDC_PASSWORD_LOGIN?.trim() === "true",
+		...(oidc ? { oidc } : {}),
 		corsOrigins: parseCorsOrigins(env),
 		gatewayMode: mode,
 		resolvedGateway,

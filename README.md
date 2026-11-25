@@ -66,7 +66,7 @@
 | UI 组件 `@openagentpack/kit-chat-ui` | Chat、Message、Sender、Attachments、FileCard、ToolApprovalCard 等 | 组合对话、输入、附件、文件和审批界面；支持将组件及声明依赖复制到业务项目中修改 |
 | 会话运行时 `@openagentkit/sdk` 的功能入口 | 流解析、请求、后端适配、消息状态、重连与会话动作 | 接入既有后端，管理流式数据与会话交互；非 React 应用可直接订阅会话状态 |
 | React hooks `@openagentkit/sdk/<功能>/hooks` | `useChat`、`useSessions`、`useAgentCatalog` 等 | 将连接、消息、发送、停止与审批绑定到 React 页面 |
-| 开发 Skill | `kit-components`、`use-kit-chat`、`kit-chat-provider`、`kit-database` | 指导 coding agent 组合组件、管理会话、接入对话后端和配置服务端数据库。三个对话 Skill 的离线包支持将组件、示例和 Kit SDK 源码复制到业务项目 |
+| 开发 Skill | `kit-components`、`use-kit-chat`、`kit-chat-provider`、`kit-database`、`kit-keycloak` | 指导 coding agent 组合组件、管理会话、接入对话后端、配置数据库和企业登录。三个对话 Skill 的离线包支持将组件、示例和 Kit SDK 源码复制到业务项目 |
 
 SDK 按功能导入，例如 `@openagentkit/sdk/chat`、`@openagentkit/sdk/chat/hooks`
 与 `@openagentkit/sdk/sessions/hooks`，不提供根聚合入口。
@@ -235,7 +235,7 @@ pnpm start                 # 首次引导配置，随后启动 server :8787 + we
 没有根 `.env` 时，启动器引导选择 Mock 或真实百炼，生成随机 `ADMIN_TOKEN`，并以仅当前用户
 可读写的权限创建 `.env`。Mock 无需百炼凭据；真实百炼需输入 API Key（不回显），再选择
 Workspace ID 或 Base URL。管理员令牌只写入 `.env`，登录管理端时从本地文件读取。
-默认使用成员登录，Mock 数据位于 `.scratch/local-demo/data`，真实百炼数据位于 `.data`。
+Mock 数据位于 `.scratch/local-demo/data`，真实百炼数据位于 `.data`。
 
 已有 `.env` 时直接复用，不重新选择模式、不替换令牌或补写字段；后续仍运行 `pnpm start`。
 根 `.env` 的非空值覆盖 shell 同名变量。填入 Workspace ID 或 Base URL 后，另一地址字段的显式空值
@@ -244,6 +244,10 @@ Workspace ID 或 Base URL。管理员令牌只写入 `.env`，登录管理端时
 开发时可用 `pnpm dev` 启动 server、web、web-vue 与 console；文档站用 `pnpm dev storybook`
 单独启动。也可用 `pnpm start server web` / `pnpm dev server web` 只启动指定目标。
 `pnpm setup` 可选，仅用于启用仓库 Git hooks。
+
+macOS 或 Linux 上，干净的 checkout 安装依赖后可直接执行 `pnpm dev server`。
+开发入口会自动准备本地 Keycloak，创建 `kit` Realm 与 `kit-web` 客户端，并以 OIDC 模式启动 Server。
+首次启动需要访问 GitHub 下载发行包，重启会复用本地数据。详见[开发时联动启动](./apps/server/README.md#开发时联动启动)。
 
 ### 配置
 
@@ -256,7 +260,8 @@ Workspace ID 或 Base URL。管理员令牌只写入 `.env`，登录管理端时
 | `BAILIAN_BASE_URL` | 与 `BAILIAN_WORKSPACE_ID` 二选一 | 显式指定 Provider 地址 |
 | `ADMIN_TOKEN` | 是 | 管理端登录令牌 |
 | `KIT_GATEWAY` | 否 | `auto`（默认）、`mock` 或 `sdk` |
-| `KIT_AUTH_MODE` | 否 | `member`（默认）或 `anonymous` |
+| `KIT_AUTH_MODE` | 否 | `oidc`、`member` 或 `anonymous`。macOS / Linux 的本地开发默认使用 OIDC，独立服务默认使用 `member` |
+| `KIT_KEYCLOAK_ENABLED` | 否 | 默认 `true`。设为 `false` 可关闭 Keycloak 联动启动与 OIDC 登录 |
 | `KIT_DATA_DIR` | 否 | 本地数据目录，默认 `.data` |
 | `KIT_CORS_ORIGINS` | 否 | 允许跨域的体验页来源 |
 | `KIT_PUBLIC_BASE_URL` | 否 | 跨域部署时的公开服务地址 |
@@ -285,7 +290,8 @@ pnpm dev server web console
 2. 点击「下一步：预览调试」。若有待发布资源，先审阅本批次计划并显式确认发布；仅复用已有远端
    配置时直接进入预览。调试后点击「保存智能体」，保存为模版。
 3. 在「智能体管理」列表点击「上架」，审阅计划并确认；在「成员管理」中创建成员账号。
-   然后打开[体验页](http://localhost:5173)，使用成员账号登录，在广场选择已上架的智能体开始对话。
+   使用 OIDC 时，先在 Keycloak 创建用户并通过「企业绑定」关联成员。然后打开[体验页](http://localhost:5173)，
+   登录后在广场选择已上架的智能体开始对话。
 
 `KIT_GATEWAY=mock` 使用本地模拟数据；连接真实 Provider 时，确认发布会创建远端资源。
 测试与验收命令见 [`docs/validation.md`](./docs/validation.md)。

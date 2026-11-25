@@ -1,5 +1,5 @@
 import { type OpenAPIHono, z } from "@hono/zod-openapi";
-import { BRANDING_LOGO_PATH, PROTOCOL_VERSION } from "@openagentkit/sdk/protocol";
+import { BRANDING_LOGO_PATH, KitAuthConfigSchema, PROTOCOL_VERSION } from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 
 export function registerMetaRoutes(app: OpenAPIHono<AppEnv>) {
@@ -34,7 +34,7 @@ export function registerMetaRoutes(app: OpenAPIHono<AppEnv>) {
 									apiBaseUrl: z.string(),
 									protocolVersion: z.string(),
 									gateway: z.enum(["sdk", "mock"]),
-									auth: z.object({ mode: z.enum(["member", "anonymous"]), passwordLogin: z.literal(true) }),
+									auth: KitAuthConfigSchema,
 									capabilities: z.object({
 										streaming: z.boolean(),
 										fileUpload: z.boolean(),
@@ -57,6 +57,12 @@ export function registerMetaRoutes(app: OpenAPIHono<AppEnv>) {
 			// 空串 = 与访问者同源（反代或自定义宿主场景）；仅 KIT_PUBLIC_BASE_URL 显式覆盖
 			const services = c.get("services");
 			const origin = services.config.publicBaseUrl;
+			const { authMode, oidc, passwordLogin } = services.config;
+			const auth = KitAuthConfigSchema.parse({
+				mode: authMode,
+				passwordLogin,
+				...(oidc ? { oidc: { issuer: oidc.issuer, clientId: oidc.clientId, adminUsersUrl: oidc.adminUsersUrl } } : {}),
+			});
 			const branding = await services.branding.get();
 			const uploaded = await services.branding.getLogoMeta();
 			const logoUrl = uploaded ? `${BRANDING_LOGO_PATH}?v=${uploaded.hash}` : branding.logo_url;
@@ -66,7 +72,7 @@ export function registerMetaRoutes(app: OpenAPIHono<AppEnv>) {
 						apiBaseUrl: origin,
 						protocolVersion: PROTOCOL_VERSION,
 						gateway: services.gateway.mode,
-						auth: { mode: services.config.authMode, passwordLogin: true as const },
+						auth,
 						capabilities: { streaming: true, fileUpload: true, artifacts: true, threads: true },
 						branding: {
 							productName: branding.product_name,

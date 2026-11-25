@@ -2,6 +2,7 @@
 export default {
 	serverErrors: {
 		invalidCredentials: "Incorrect username or password",
+		memberNotBound: "Your enterprise account is not linked to a Kit member. Contact your administrator.",
 		invalid_request: "The request parameters are invalid",
 		unauthorized: "Your session has expired. Sign in again.",
 		forbidden: "This identity cannot perform this action",

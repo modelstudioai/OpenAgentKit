@@ -1,4 +1,4 @@
-import type { AdminMemberView, MemberView } from "@openagentkit/sdk/protocol";
+import type { AdminMemberView, MemberView, OidcClientConfig } from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Button, Empty, Input, Result, Spin, Table, Tag, Typography } from "antd";
 import { useMemo, useState } from "react";
@@ -8,6 +8,7 @@ import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { adminRequest } from "../../lib/kit.ts";
 import { useConsoleRoute } from "../navigation/console-router.tsx";
 import { CreateMemberPage } from "./create-member-page.tsx";
+import { MemberOidcBindingDialog } from "./member-oidc-binding-dialog.tsx";
 import { MemberUsageRoute } from "./member-usage-route.tsx";
 import styles from "./members.module.less";
 import { UsageCollectionStatus } from "./usage-collection-status.tsx";
@@ -18,11 +19,13 @@ function MembersContent({
 	members,
 	onCreate,
 	onUsage,
+	onBinding,
 	canWrite,
 }: {
 	members: ReturnType<typeof useMembers>;
 	onCreate: () => void;
 	onUsage: (member: MemberView) => void;
+	onBinding?: (member: MemberView) => void;
 	canWrite: boolean;
 }) {
 	const { t } = useTranslation("members");
@@ -97,12 +100,19 @@ function MembersContent({
 		},
 		{
 			title: t("columns.actions"),
-			width: 100,
+			width: onBinding ? 188 : 100,
 			fixed: "right",
 			render: (_, member) => (
-				<Button type="link" size="small" onClick={() => onUsage(member)}>
-					{t("columns.viewUsage")}
-				</Button>
+				<>
+					<Button type="link" size="small" onClick={() => onUsage(member)}>
+						{t("columns.viewUsage")}
+					</Button>
+					{onBinding && (
+						<Button type="link" size="small" onClick={() => onBinding(member)}>
+							{t("columns.oidcBinding")}
+						</Button>
+					)}
+				</>
 			),
 		},
 	];
@@ -152,10 +162,12 @@ function MembersContent({
 function MembersList({
 	onCreate,
 	onUsage,
+	onBinding,
 	canWrite,
 }: {
 	onCreate: () => void;
 	onUsage: (member: MemberView) => void;
+	onBinding?: (member: MemberView) => void;
 	canWrite: boolean;
 }) {
 	const { t } = useTranslation("members");
@@ -187,7 +199,13 @@ function MembersList({
 					{t("list.refresh")}
 				</Button>
 			</div>
-			<MembersContent members={members} onCreate={onCreate} onUsage={onUsage} canWrite={canWrite} />
+			<MembersContent
+				members={members}
+				onCreate={onCreate}
+				onUsage={onUsage}
+				onBinding={onBinding}
+				canWrite={canWrite}
+			/>
 			{!members.error && (members.page > 1 || members.hasNext) && (
 				<nav aria-label={t("list.pagerAria")} className={styles.pager}>
 					<Button size="small" disabled={members.loading || members.page === 1} onClick={members.previous}>
@@ -223,7 +241,17 @@ function IdentityPending({ error, role, onRetry }: { error: string | null; role?
 	);
 }
 
-export function MembersPage({ onPendingChange }: { onPendingChange: (pending: boolean) => void }) {
+export function MembersPage({
+	onPendingChange,
+	oidc,
+	passwordLogin,
+}: {
+	onPendingChange: (pending: boolean) => void;
+	oidc?: OidcClientConfig;
+	passwordLogin: boolean;
+}) {
+	const oidcIssuer = oidc?.issuer;
+	const [bindingMember, setBindingMember] = useState<MemberView | null>(null);
 	const { t } = useTranslation("members");
 	const { route, navigate } = useConsoleRoute();
 	const creating = route.page === "member-create";
@@ -233,7 +261,14 @@ export function MembersPage({ onPendingChange }: { onPendingChange: (pending: bo
 	if (route.page === "member-usage" && route.id) return <MemberUsageRoute key={route.id} id={route.id} />;
 	if (creating) {
 		if (canWrite)
-			return <CreateMemberPage onBack={() => navigate({ page: "members" })} onPendingChange={onPendingChange} />;
+			return (
+				<CreateMemberPage
+					passwordLogin={passwordLogin}
+					oidc={oidc}
+					onBack={() => navigate({ page: "members" })}
+					onPendingChange={onPendingChange}
+				/>
+			);
 		return (
 			<section className={styles.stack}>
 				<Button onClick={() => navigate({ page: "members" })}>{t("identity.backToMembers")}</Button>
@@ -248,7 +283,7 @@ export function MembersPage({ onPendingChange }: { onPendingChange: (pending: bo
 					<h2 id="members-heading" className={styles.pageTitle}>
 						{t("page.title")}
 					</h2>
-					<p className={styles.pageSub}>{t("page.sub")}</p>
+					<p className={styles.pageSub}>{t(passwordLogin ? "page.sub" : "page.subOidc")}</p>
 				</div>
 				{canWrite && (
 					<Button type="primary" onClick={() => navigate({ page: "member-create" })}>
@@ -268,8 +303,20 @@ export function MembersPage({ onPendingChange }: { onPendingChange: (pending: bo
 			<MembersList
 				onCreate={() => navigate({ page: "member-create" })}
 				onUsage={(member) => navigate({ page: "member-usage", id: member.member_id })}
+				onBinding={oidcIssuer && identity.data ? setBindingMember : undefined}
 				canWrite={canWrite}
 			/>
+			{bindingMember && oidcIssuer && (
+				<MemberOidcBindingDialog
+					key={bindingMember.member_id}
+					member={bindingMember}
+					client={client}
+					issuer={oidcIssuer}
+					canWrite={canWrite}
+					onClose={() => setBindingMember(null)}
+					onPendingChange={onPendingChange}
+				/>
+			)}
 		</section>
 	);
 }

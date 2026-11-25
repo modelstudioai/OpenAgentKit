@@ -17,10 +17,10 @@
 
 - 所有响应 `{ data }` 或 `{ error: { code, message, details? } }`；分页统一
   `{ data, next_page_token }`，cursor 是**不透明字符串**，不得转成数字页码。
-- 数据面 `/api/kit/*` 走终端用户 Identity（`subjectId`）；控制面 `/api/admin/*` 走
-  `ADMIN_TOKEN` bearer（v1）。登录入口公开，其他业务 API 默认要求成员令牌或已配置的
-  可信 JWT。只有显式 `KIT_AUTH_MODE=anonymous` 才允许无 Bearer 的匿名身份；无效 Bearer
-  一律 401，不回落匿名。`member_` 前缀仅允许本地成员会话使用，外部 JWT sub 不可使用。
+- 数据面 `/api/kit/*` 走终端用户 Identity（`subjectId`），控制面 `/api/admin/*` 走
+  管理员令牌。业务 API 按服务器认证模式校验 Bearer。只有显式 `KIT_AUTH_MODE=anonymous`
+  才允许无 Bearer 的匿名身份。无效 Bearer 返回 401。`member_` 前缀保留给 Kit 成员，
+  兼容外部 JWT 的 `sub` 禁用此前缀。
 - Session 消息发送、stream 与审批 GET/POST 要求 `x-kit-protocol-version: 3.0.0`（接受 3.x），
   缺失或混版返回 409。`after` 是 Kit 传输游标，与 Provider `event_id/after_id` 分离。
 - 时间戳一律 ISO-8601 UTC。ID 一律透传 Provider 原值，kit 不自造 ID（除 catalog /
@@ -50,25 +50,37 @@
 | op | 方法与路径 | 说明 | 状态 |
 | --- | --- | --- | --- |
 | `health` | `GET /healthz` | 存活与 gateway 模式（`sdk` / `mock`） | ✅ |
-| `config.get` | `GET /api/config` | 运行时公开配置：`apiBaseUrl`、`protocolVersion`、`auth: {mode: member\|anonymous, passwordLogin: true}`、能力开关、`branding: {productName, logoUrl?}`。品牌由管理端保存，上传 Logo 的 `logoUrl` 指向 `/api/branding/logo?v=<hash>`；员工端启动读取本接口，不依赖构建时环境变量。**所有端启动必读，禁止假设同源** | ✅ |
+| `config.get` | `GET /api/config` | 运行时公开配置 `apiBaseUrl`、`protocolVersion`、`auth`、能力开关及 `branding: {productName, logoUrl?}`。认证字段见下文。品牌由管理端保存，上传 Logo 的 `logoUrl` 指向 `/api/branding/logo?v=<hash>`。**所有端启动必读，禁止假设同源** | ✅ |
 | `branding.logo` | `GET /api/branding/logo` | 公开读取管理端上传的 Logo 二进制；响应 Content-Type 为图片类型，CSP sandbox 隔离同源权限并禁止脚本及外部资源（允许 SVG 内联样式），设置 nosniff；hash 查询参数用于缓存破坏，长缓存 immutable；不存在返回 404；不参与身份与限流 | ✅ |
-| `auth.login` | `POST /api/kit/auth/login` | `{username,password}` → `{data:{access_token,token_type: Bearer,expires_at,member}}`；统一错误凭据 401，独立登录限流 429，禁止缓存 | ✅ |
-| `auth.logout` | `POST /api/kit/auth/logout` | 撤销当前本地成员 Bearer，幂等 204；令牌失效时也可退出，不接受管理员令牌代替成员身份 | ✅ |
+| `auth.login` | `POST /api/kit/auth/login` | `{username,password}` → `{data:{access_token,token_type: Bearer,expires_at,member}}`。密码登录关闭时返回 403，错误凭据返回 401，登录限流返回 429。禁止缓存 | ✅ |
+| `auth.logout` | `POST /api/kit/auth/logout` | 撤销请求携带的令牌在 Kit 的访问权并关闭对应 SSE，幂等 204。已过期令牌也可退出。Keycloak 会话继续有效 | ✅ |
 
 ## 成员认证
 
 | op | 方法与路径 | 说明 | 状态 |
 | --- | --- | --- | --- |
-| `auth.me` | `GET /api/kit/auth/me` | 恢复当前身份：`{data:{identity,member?,expires_at?}}`；成员令牌返回公开成员资料与有效期，外部 JWT 返回 identity；无效 / 过期 / 已撤销令牌 401 | ✅ |
+| `auth.me` | `GET /api/kit/auth/me` | 恢复当前身份 `{data:{identity,member?,expires_at?}}`。密码和 OIDC 登录返回公开成员资料与有效期。兼容外部 JWT 返回 identity。无效、过期或已撤销令牌为 401，OIDC 身份未绑定为 403 | ✅ |
 
-- 默认 `KIT_AUTH_MODE=member`；体验页配置缺少 auth 时也按必须登录处理。
+- 独立服务默认 `KIT_AUTH_MODE=member`。macOS / Linux 的开发入口可自动启用本地 OIDC。
+  体验页配置缺少 auth 时按必须登录处理。
+- `KIT_KEYCLOAK_ENABLED=false` 关闭 Keycloak 接入。配置为 `oidc` 的部署按 `member` 模式启动，
+  `auth.oidc` 省略，Console 停用企业绑定。
+- `auth.mode` 为 `member` 或 `anonymous` 时，`passwordLogin: true`。`oidc` 模式下，员工端使用
+  `auth.oidc: { issuer, clientId }` 登录。`KIT_OIDC_PASSWORD_LOGIN=true` 时 `passwordLogin: true`，
+  体验页同时提供两种登录。配置好 Keycloak 后即可在 Console 预绑定成员。
+- `auth.oidc.adminUsersUrl` 是创建用户页的 Keycloak 用户管理链接。Server 默认按 issuer 生成，
+  可用 `KIT_KEYCLOAK_USERS_URL` 覆盖。兼容省略此字段的后端。
+- `oidc` 模式接受为员工端客户端和 Kit API 签发的 Keycloak access token，以及密码登录开启时
+  Kit 签发的成员令牌。企业账号未绑定返回
+  `403 forbidden`（`details.reason = member_not_bound`）。公钥暂时不可用返回可重试
+  `502 provider_error`。Kit 依据经过验证的 `iss` 和 `sub` 找到已有成员。
 - 用户名 trim 后忽略大小写；密码不 trim。登录未知账号与错误密码使用相同错误，错误消息、
   审计和日志不包含输入密码或令牌。登录独立限制全局 / 用户名尝试频率及并发密码派生数量。
-- 令牌固定 8 小时有效，无自动续期；数据库仅存 SHA-256 哈希。请求通过 Authorization
-  携带，跨域无需成员 cookie。退出撤销当前令牌并关闭其 SSE，不影响其他独立登录。
-- 默认体验页按完整 apiBaseUrl（含路径前缀）隔离 sessionStorage，只存令牌与到期时间。
-  刷新通过 me 验证后挂载页面；恢复网络失败不放行。退出、过期或 401 清理旧请求、SSE、
-  消息、草稿、附件与用量；退出撤销失败时提供重试，不切换到另一个成员继续使用。
+- 密码登录令牌固定 8 小时有效，数据库仅存 SHA-256 哈希。体验页按完整 apiBaseUrl
+  （含路径前缀）隔离 sessionStorage，保存令牌与到期时间。OIDC access token 和 refresh token
+  在 Web 内存中保管，续期及刷新页面后都通过 me 验证身份。跨域请求直接使用 Authorization。
+- 退出、认证失效或用户切换会清理旧请求、SSE、消息、草稿、附件与用量。退出撤销失败时
+  提供重试，业务页保持锁定。
 - 本地成员 `identity.subjectId = member.member_id`；已有匿名数据不会自动迁移。
   自建后端身份仍由调用方提供，本地成员接口不会改变自定义 ChatProvider 合同。
 - 升级旧数据库时，迁移 `006_legacy_file_ownership` 从已有 Session 的 `files_json` 恢复文件
@@ -398,7 +410,10 @@ Kit 不查询或复制库内 Credential，不提供创建库、生成密钥或�
 | --- | --- | --- | --- |
 | `admin.members.list` | `GET /api/admin/members` | 本地成员公开资料、`groups` 摘要与 `usage_summary`；`?search=&limit=&page_token=` 搜索并以不透明游标分页；先返回缓存，按需后台刷新当前页成员的全部会话；不返回密码或派生值 | ✅ |
 | `admin.members.get` | `GET /api/admin/members/:memberId` | 按稳定 ID 返回 `{data: MemberView}` 公开资料，供成员用量深链恢复；管理员与 auditor 可读，不存在返回 404，不返回密码或派生值 | ✅ |
-| `admin.members.create` | `POST /api/admin/members` | 创建本地账号：`username`、`display_name`、可选 `email`、`auth_type: local`、`password_mode: auto\|custom`；custom 须带 `password`。返回 `{data:{member,initial_password?}}`，只有 auto 首次创建响应含初始密码；同名 `409 conflict`，审计不记密码 | ✅ |
+| `admin.members.create` | `POST /api/admin/members` | 创建成员，字段含 `username`、`display_name`、可选 `email`、`auth_type: local`、`password_mode: auto\|custom` 和可选 `oidc_binding: {sub}`。custom 须带 `password`。密码登录关闭时传 custom、未配置 Keycloak 时传绑定，均返回 400。成功返回 `{data:{member,initial_password?,oidc_binding?}}`，初始密码仅在启用密码登录且选择 auto 时返回。重名或企业账号已有绑定返回 `409 conflict` | ✅ |
+| `admin.members.oidcBinding.get` | `GET /api/admin/members/:memberId/oidc-binding` | 查询当前配置的 Realm 绑定，返回 `{data:{issuer,sub,member_id,bound_at}}` 或 `{data:null}`；admin 和 auditor 可读 | ✅ |
+| `admin.members.oidcBinding.put` | `PUT /api/admin/members/:memberId/oidc-binding` | `{sub}` 绑定已有成员；同一绑定重复提交幂等，成员或 Keycloak 用户已有其他绑定返回 409；仅 admin 可写 | ✅ |
+| `admin.members.oidcBinding.delete` | `DELETE /api/admin/members/:memberId/oidc-binding` | 解绑当前 Realm，幂等 204；撤销该绑定的访问权并关闭对应 SSE；仅 admin 可写 | ✅ |
 | `admin.members.usage` | `GET /api/admin/members/:memberId/usage` | `{data: MemberUsageSummary}`；可选 `agent_slug` 筛选，`refresh=1` 强制调度后台刷新并立即返回当前缓存与进度；管理员与 auditor 可读 | ✅ |
 | `admin.members.sessions` | `GET /api/admin/members/:memberId/sessions` | 成员会话累计用量明细，含已删除快照；`?agent_slug=&cursor=&limit=`，limit 默认 20、最多 100；返回 `{data,next_cursor?}`；汇总不受明细分页大小限制 | ✅ |
 | `admin.usage.templates` | `GET /api/admin/usage/templates` | 以模版为主键聚合体验会话用量：只统计从该模版上架条目发起的会话（跨成员、含已删除）；模版全量返回，0 会话也出现，行含 `remote_agent_id`（模版绑定智能体，控制台用它按 agent_id 过滤模型/工具用量明细）；与成员用量的 `agent_slug` 明细同口径。读取即登记新会话并按成员后台补采，返回当前缓存；管理员与 auditor 可读 | ✅ |
@@ -414,10 +429,14 @@ Kit 不查询或复制库内 Credential，不提供创建库、生成密钥或�
   数字；唯一约束在数据库执行。显示名称去首尾空格后非空且不超过 32 字符。
 - 自定义密码为 8–32 个非空格 ASCII 字符，须同时含大写、小写、数字和特殊字符，且不能
   包含用户名（忽略大小写）。自动生成密码遵循相同规则；密码不 trim、不落明文、不进错误详情。
-- 创建响应禁止缓存；自动密码仅显示在创建成功页，离开后不可重新查询，自定义密码不回传。
-  创建后可使用账号登录体验页；暂不提供密码重置、删除、停用或 SSO 接口。
+- 创建响应禁止缓存。密码登录模式的自动密码仅在创建成功页显示一次，自定义密码不回传。
+  仅使用 OIDC 时，管理员完成 Keycloak 绑定后成员即可登录。密码重置、删除与停用待实现。
 - GET / POST 均要求管理端身份，`auditor` 可以查询但不能创建。`member_id` 是 Kit 成员 ID，
   登录后作为 `subjectId`，不自动迁移既有匿名会话或 Credits。
+- 创建时提交 `oidc_binding` 会在同一事务内创建成员并保存绑定，成功后回传绑定信息。绑定失败时整笔回滚。
+  已有成员的绑定接口要求配置 Keycloak Realm 和已有成员，否则返回 404。绑定标识是
+  Realm 内大小写敏感的 `sub`，须由管理员核实。换绑时先解绑，随后使用绑定后新签发的 access token。
+  绑定和解绑有审计记录并保留账号、会话、用量与限额。
 
 #### 用户组管理
 

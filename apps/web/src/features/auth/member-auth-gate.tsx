@@ -46,7 +46,15 @@ export function MemberAuthGate({
 		);
 	}
 	const error = auth.errorDetail ? (resolveServerErrorMessage(auth.errorDetail) ?? auth.error) : auth.error;
-	return <MemberLoginForm pending={auth.pending} error={error} onLogin={auth.login} onRetry={auth.retry} />;
+	return (
+		<MemberLoginForm
+			pending={auth.pending}
+			error={error}
+			onLogin={controller.passwordLogin ? auth.login : undefined}
+			onOidcLogin={controller.mode === "oidc" ? controller.loginWithOidc : undefined}
+			onRetry={auth.retry}
+		/>
+	);
 }
 
 /** 账号区：头像旁常驻展示用户名，hover（桌面）或点击头像（触屏/键盘）展开浮层展示用户名与退出登录。 */

@@ -13,8 +13,8 @@ import "antd/dist/antd.css";
 const root = createRoot(document.getElementById("root") as HTMLElement);
 await initI18n();
 try {
-	await bootstrapAdmin();
-	root.render(<App />);
+	const { config } = await bootstrapAdmin();
+	root.render(<App auth={config.auth} />);
 } catch (error) {
 	root.render(
 		<main className={styles.bootstrapMain}>
