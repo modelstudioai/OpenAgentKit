@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { type ReactNode, useRef } from "react";
 
 /**
@@ -34,9 +35,9 @@ export function GlowCard({
 	};
 	if (href) {
 		return (
-			<a {...props} href={href}>
+			<Link {...props} href={href}>
 				{children}
-			</a>
+			</Link>
 		);
 	}
 	return <div {...props}>{children}</div>;

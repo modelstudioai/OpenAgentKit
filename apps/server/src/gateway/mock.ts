@@ -7,7 +7,7 @@ import {
 	type SessionEvent,
 	type SessionThreadSummary,
 	threadIdOf,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type {
 	ModelUsageItem,
 	ModelUsagePage,
@@ -799,6 +799,7 @@ export function createMockGateway(
 			});
 		},
 		async listEvents(sessionId, options = {}) {
+			options.signal?.throwIfAborted();
 			const session = sessions.get(sessionId);
 			if (!session) return { events: [], next_page_token: null };
 			const snapshots = latestEvents(session.events);
@@ -838,11 +839,11 @@ export function createMockGateway(
 		async *streamEvents(sessionId, options = {}) {
 			const session = sessions.get(sessionId);
 			if (!session) return;
-			options.onReady?.();
 			let index = Math.max(
 				0,
-				options.afterId ? session.events.findIndex((e) => e.event_id === options.afterId) + 1 : 0,
+				options.afterId ? session.events.findIndex((e) => e.event_id === options.afterId) + 1 : session.events.length,
 			);
+			options.onReady?.();
 			for (;;) {
 				if (options.signal?.aborted) return;
 				index = yield* drainFrom(session, index);

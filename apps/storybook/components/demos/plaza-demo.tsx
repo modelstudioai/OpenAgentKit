@@ -1,7 +1,7 @@
 "use client";
 
+import type { PlazaEntry, PlazaView } from "@openagentkit/sdk/protocol";
 import { ActivityHeatmap, CategoryTabs, MeterBar, PlazaCard, type PlazaTabId } from "@openagentpack/kit-chat-ui";
-import type { PlazaEntry, PlazaView } from "@openagentpack/kit-sdk/protocol";
 import { useState } from "react";
 
 const exampleAgent: PlazaEntry = {
@@ -123,7 +123,7 @@ export function ActivityHeatmapDemo() {
 }
 
 export const PLAZA_CARD_CODE = `import { PlazaCard } from "@openagentpack/kit-chat-ui";
-import type { PlazaEntry } from "@openagentpack/kit-sdk/protocol";
+import type { PlazaEntry } from "@openagentkit/sdk/protocol";
 
 export function AgentCard({
   entry,
@@ -136,7 +136,7 @@ export function AgentCard({
 }`;
 
 export const CATEGORY_TABS_CODE = `import { CategoryTabs, type PlazaTabId } from "@openagentpack/kit-chat-ui";
-import type { PlazaView } from "@openagentpack/kit-sdk/protocol";
+import type { PlazaView } from "@openagentkit/sdk/protocol";
 import { useState } from "react";
 
 export function AgentCategories({ view }: { view: PlazaView }) {
@@ -175,7 +175,7 @@ export function UsageProgress({
 }`;
 
 export const ACTIVITY_HEATMAP_CODE = `import { ActivityHeatmap } from "@openagentpack/kit-chat-ui";
-import { useQuota } from "@openagentpack/kit-sdk/usage/hooks";
+import { useQuota } from "@openagentkit/sdk/usage/hooks";
 
 export function RecentActivity() {
   const { quota } = useQuota();

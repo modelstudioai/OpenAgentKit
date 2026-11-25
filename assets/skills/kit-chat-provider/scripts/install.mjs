@@ -21,7 +21,7 @@ import {
 	sdkTarget,
 } from "./copy-in.mjs";
 
-const sdkName = "@openagentpack/kit-sdk";
+const legacySdkName = "@openagentpack/kit-sdk";
 const assetRoot = fileURLToPath(new URL("../assets/kit/", import.meta.url));
 const usage = "用法：node <Skill>/scripts/install.mjs --dir <项目目录> [--example <文件> ...] [组件名 ...]";
 
@@ -56,7 +56,7 @@ function planExamples(plan, selected, project) {
 	return { components: [...components], directory };
 }
 
-function planComponents(plan, selected, project) {
+function planComponents(plan, selected, project, sdkName) {
 	if (!selected.length) return {};
 	const source = join(assetRoot, "chat-ui");
 	const registry = readRegistry(source);
@@ -81,15 +81,18 @@ function planComponents(plan, selected, project) {
 	return dependencies;
 }
 
-function mergeDependencies(manifest, dependencies) {
+function mergeDependencies(manifest, dependencies, sdkName) {
 	const groups = [
 		manifest.dependencies,
 		manifest.devDependencies,
 		manifest.optionalDependencies,
 		manifest.peerDependencies,
 	];
-	if (groups.some((group) => group && Object.hasOwn(group, sdkName))) {
-		throw new Error(`项目已声明 ${sdkName} 包依赖。切换源码接入时，请按 Skill 指引迁移导入并移除此依赖。`);
+	const existingSdk = [sdkName, legacySdkName].find((name) =>
+		groups.some((group) => group && Object.hasOwn(group, name)),
+	);
+	if (existingSdk) {
+		throw new Error(`项目已声明 ${existingSdk} 包依赖。切换源码接入时，请按 Skill 指引迁移导入并移除此依赖。`);
 	}
 	const additions = Object.fromEntries(
 		Object.entries(dependencies).filter(([name]) => !groups.some((group) => group && Object.hasOwn(group, name))),
@@ -148,16 +151,17 @@ function install(directory, components, examples) {
 	if (!lstatSync(sdkMetadata, { throwIfNoEntry: false })?.isFile()) {
 		throw new Error("缺少 Kit SDK 资产。请解压完整的 Skill 离线包并使用其中的目录。");
 	}
-	const { dependencies } = JSON.parse(readFileSync(sdkMetadata, "utf8"));
+	const { name: sdkName, dependencies } = JSON.parse(readFileSync(sdkMetadata, "utf8"));
 	const plan = new Map();
 	addTree(plan, join(sdk, "src"), join(project, sdkTarget));
 	plan.set(join(project, sdkTarget, "LICENSE"), readFileSync(join(assetRoot, "LICENSE")));
 	const examplePlan = planExamples(plan, examples, project);
 	const selected = [...components, ...examplePlan.components];
-	const nextManifest = mergeDependencies(manifest, {
-		...dependencies,
-		...planComponents(plan, selected, project),
-	});
+	const nextManifest = mergeDependencies(
+		manifest,
+		{ ...dependencies, ...planComponents(plan, selected, project, sdkName) },
+		sdkName,
+	);
 	const pending = checkDestinations(project, plan);
 	for (const [file, content] of pending) {
 		mkdirSync(dirname(file), { recursive: true });

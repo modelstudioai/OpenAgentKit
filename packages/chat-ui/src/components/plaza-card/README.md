@@ -11,7 +11,7 @@
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| `entry` | `{ slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "other" \| "data" \| "general" \| "writing" \| "coding"; featured: boolean; stats: { mine: boolean; turns_30d: number; last_used_at?: string \| undefined; }; description?: string \| undefined; icon?: string \| undefined; opening_remarks?: string \| undefined; theme?: { accent?: string \| undefined; iconBackground?: string \| undefined; } \| undefined; }` | 是 | — | 必填，来自 `@openagentpack/kit-sdk/protocol`，包括 Agent 展示信息和 stats |
+| `entry` | `{ slug: string; display_name: string; suggested_prompts: string[]; capabilities: { streaming: boolean; fileUpload: boolean; artifacts: boolean; threads: boolean; reasoning: boolean; }; category: "other" \| "data" \| "general" \| "writing" \| "coding"; featured: boolean; stats: { mine: boolean; turns_30d: number; last_used_at?: string \| undefined; }; description?: string \| undefined; icon?: string \| undefined; opening_remarks?: string \| undefined; theme?: { accent?: string \| undefined; iconBackground?: string \| undefined; } \| undefined; }` | 是 | — | 必填，来自 `@openagentkit/sdk/protocol`，包括 Agent 展示信息和 stats |
 | `onOpen` | `(slug: string) => void` | 是 | — | 必填，由调用方更新路由、选中 Agent 与会话状态 |
 
 ## 导出与使用

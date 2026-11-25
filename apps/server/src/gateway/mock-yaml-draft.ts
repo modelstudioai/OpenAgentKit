@@ -1,5 +1,5 @@
 import { basename } from "node:path";
-import type { DeclarationType } from "@openagentpack/kit-sdk/protocol";
+import type { DeclarationType } from "@openagentkit/sdk/protocol";
 import type { ProjectRuntimeContext, ResourceExecutionResult, ResourcePlanResult } from "@openagentpack/sdk";
 import { digest, sections, type YamlDraftDocument } from "./yaml-draft-document.ts";
 
@@ -90,7 +90,7 @@ export async function executeMockYamlDraft(
 		file: "file",
 		skill: "skill",
 	};
-	const { raw } = doc.snapshot();
+	const { raw } = await doc.snapshot();
 	const resources: DraftPublishedResource[] = [];
 	const rosters: Parameters<MockDraftPublisher>[1] = [];
 	for (const reference of references) {

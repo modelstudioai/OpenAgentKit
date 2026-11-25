@@ -61,7 +61,7 @@ function declaration(entry) {
 	return `\`\`\`ts\n${code}\n\`\`\`\n\n${table(entry.fields)}`;
 }
 
-function renderApi(name, entries, model, root, renderedDocs) {
+function renderApi(name, entries, model, root, renderedDocs, hasCopyIn) {
 	const descriptions = entries.map(model.describe);
 	const supportingTypesHeading = "相关类型";
 	const anchors = headingSlugs(["API 参考", "目录", ...entries.map((entry) => entry.name), supportingTypesHeading]);
@@ -71,7 +71,7 @@ function renderApi(name, entries, model, root, renderedDocs) {
 		"本页由 `pnpm gen:skills` 生成。更新公开 TypeScript 声明或中文 catalog 后重新生成。",
 		"字段类型和必填性来自公开 API，行为说明依据所列文档整理。",
 		"组件表格列出 Kit 自有属性。组件按声明继承标准的 React/DOM 属性。",
-		"参考中的包名用于仓库内导入。业务项目按[复制组件和 Kit SDK](copy-in.md)改用本地源码入口。",
+		...(hasCopyIn ? ["参考中的包名用于仓库内导入。业务项目按[复制组件和 Kit SDK](copy-in.md)改用本地源码入口。"] : []),
 		"",
 		"## 目录",
 		"",
@@ -105,9 +105,7 @@ function renderApi(name, entries, model, root, renderedDocs) {
 	return `${lines.join("\n").trim()}\n`;
 }
 
-function renderExamples(root, name) {
-	const directory = skillSourceRoot(root, name);
-	const examples = filesUnder(resolve(directory, "examples")).filter((file) => /\.tsx?$/.test(file));
+function renderExamples(directory, examples) {
 	return [
 		"# 可编译示例",
 		"",
@@ -129,16 +127,6 @@ function renderSkill(metadata, body) {
 	return `---\nname: ${metadata.name}\ndescription: ${JSON.stringify(description)}\n---\n\n${body.trim()}\n`;
 }
 
-function renderOpenAi(metadata) {
-	return [
-		"interface:",
-		`  display_name: ${JSON.stringify(metadata.displayName)}`,
-		`  short_description: ${JSON.stringify(metadata.shortDescription)}`,
-		`  default_prompt: ${JSON.stringify(metadata.defaultPrompt)}`,
-		"",
-	].join("\n");
-}
-
 const exampleMarker = /\{\/\* skill-example: ([\w./-]+) \*\/\}[\s\S]*?\{\/\* \/skill-example \*\/\}/g;
 
 export function renderDocsExamples(text, root) {
@@ -155,7 +143,7 @@ export function renderDocsExamples(text, root) {
 export function readMetadata(root, name) {
 	const path = resolve(skillSourceRoot(root, name), "metadata.json");
 	const metadata = JSON.parse(readFileSync(path, "utf8"));
-	for (const key of ["name", "description", "displayName", "shortDescription", "defaultPrompt"]) {
+	for (const key of ["name", "description"]) {
 		if (typeof metadata[key] !== "string" || !metadata[key].trim())
 			throw new Error(`Missing metadata.${key} for ${name}`);
 		if (key !== "name") validateChineseText(metadata[key], `${portablePath(relative(root, path))}#${key}`);
@@ -195,9 +183,6 @@ function buildDocsOutputs(root) {
 function buildSkillOutputs(root, name, model, renderedDocs) {
 	const source = skillSourceRoot(root, name);
 	const metadata = readMetadata(root, name);
-	const entries = readCatalog(root, name);
-	if (name === "kit-components") assertChatUiCoverage(model.chatUiCallableNames(), entries);
-	for (const entry of entries) validateEntry(root, name, entry);
 
 	const bodyPath = resolve(source, "skill.md");
 	const body = readFileSync(bodyPath, "utf8");
@@ -205,28 +190,31 @@ function buildSkillOutputs(root, name, model, renderedDocs) {
 
 	const skillFiles = new Map();
 	skillFiles.set("SKILL.md", renderSkill(metadata, body));
-	skillFiles.set("agents/openai.yaml", renderOpenAi(metadata));
-	skillFiles.set("references/api.md", renderApi(name, entries, model, root, renderedDocs));
-	skillFiles.set("references/examples.md", renderExamples(root, name));
-	for (const [file, source] of [
-		["references/copy-in.md", "./copy-in.md"],
-		["scripts/install.mjs", "../kit/skill-install.mjs"],
-		["scripts/copy-in.mjs", "../kit/copy-in.mjs"],
-	]) {
-		const text = readFileSync(new URL(source, import.meta.url), "utf8");
-		if (file.endsWith(".md")) validateChineseMarkdown(text, source);
-		skillFiles.set(file, text);
+	const references = resolve(source, "references");
+	const examples = resolve(source, "examples");
+	const exampleFiles = existsSync(examples) ? filesUnder(examples) : [];
+	const typedExamples = exampleFiles.filter((file) => /\.tsx?$/.test(file));
+	const hasCopyIn = typedExamples.length > 0;
+	if (name === "kit-components" || existsSync(resolve(source, "catalog.json"))) {
+		const entries = readCatalog(root, name);
+		if (name === "kit-components") assertChatUiCoverage(model.chatUiCallableNames(), entries);
+		for (const entry of entries) validateEntry(root, name, entry);
+		skillFiles.set("references/api.md", renderApi(name, entries, model, root, renderedDocs, hasCopyIn));
 	}
-	for (const file of filesUnder(resolve(source, "references"))) {
+	if (hasCopyIn) {
+		const copyInReference = readFileSync(new URL("./copy-in.md", import.meta.url), "utf8");
+		validateChineseMarkdown(copyInReference, "./copy-in.md");
+		skillFiles.set("references/examples.md", renderExamples(source, typedExamples));
+		skillFiles.set("references/copy-in.md", copyInReference);
+		skillFiles.set("scripts/install.mjs", readFileSync(new URL("../kit/skill-install.mjs", import.meta.url), "utf8"));
+		skillFiles.set("scripts/copy-in.mjs", readFileSync(new URL("../kit/copy-in.mjs", import.meta.url), "utf8"));
+	}
+	for (const file of existsSync(references) ? filesUnder(references) : []) {
 		const text = readFileSync(file, "utf8");
 		if (file.endsWith(".md")) validateChineseMarkdown(text, portablePath(relative(root, file)));
 		skillFiles.set(portablePath(relative(source, file)), text);
 	}
-	for (const file of filesUnder(resolve(skillSourceRoot(root, name), "examples")))
-		skillFiles.set(
-			`examples/${portablePath(relative(resolve(skillSourceRoot(root, name), "examples"), file))}`,
-			readFileSync(file, "utf8"),
-		);
+	for (const file of exampleFiles) skillFiles.set(portablePath(relative(source, file)), readFileSync(file, "utf8"));
 
 	validateSkillMap(name, skillFiles);
 	return skillFiles;

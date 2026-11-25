@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { RemoteVaultDetailSchema } from "@openagentpack/kit-sdk/protocol";
+import { RemoteVaultDetailSchema } from "@openagentkit/sdk/protocol";
 import { setDefaultFetch } from "@openagentpack/sdk";
 import { afterEach, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.ts";
@@ -158,8 +158,8 @@ it("详情只供管理员和审计员读取，不缓存；未认证拒绝、缺�
 		expect(
 			(await app.request("/api/admin/remote/vaults/missing", { headers: { authorization: "Bearer admin" } })).status,
 		).toBe(404);
-		expect(services.operations.list()).toEqual([]);
-		expect(services.audit.list()).toEqual([]);
+		expect(await services.operations.list()).toEqual([]);
+		expect(await services.audit.list()).toEqual([]);
 	} finally {
 		db.close();
 		rmSync(dataDir, { recursive: true, force: true });

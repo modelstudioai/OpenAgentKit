@@ -1,8 +1,8 @@
 "use client";
 
+import type { ChatMultiAgent } from "@openagentkit/sdk/chat";
+import type { ChatMessage } from "@openagentkit/sdk/messages";
 import { AgentHeader, Chat, FileCard, Layout, StatusIndicator, SubAgentPanel } from "@openagentpack/kit-chat-ui";
-import type { ChatMultiAgent } from "@openagentpack/kit-sdk/chat";
-import type { ChatMessage } from "@openagentpack/kit-sdk/messages";
 import { type ReactNode, useRef, useState } from "react";
 import { ArrowRight, Book, Database, Terminal } from "../icons.tsx";
 import { CONTROL_CLASS } from "./general-demo.tsx";

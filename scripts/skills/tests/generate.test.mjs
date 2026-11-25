@@ -27,6 +27,7 @@ function writeSkill(root, name, body = "# 接入示例\n\n使用公开 API。\n"
 		JSON.stringify({
 			name,
 			description: "公开 API 接入示例",
+			// 旧版客户端字段用于验证通用 Skill 的生成。
 			displayName: "接入示例",
 			shortDescription: "通过公开 API 将会话页面接入后端，并处理历史加载和工具审批",
 			defaultPrompt: `使用 $${name} 接入示例。`,
@@ -80,7 +81,7 @@ test("generated callable declarations come from the public API without inventing
 	const api = outputs.get(resolve(skillOutputRoot(repositoryRoot, "kit-chat-provider"), "references/api.md"));
 	assert.ok(api, "kit-chat-provider API reference must be generated");
 	assert.match(api, /export function createSseStream\(/);
-	assert.match(api, /import type \{ ChatProvider \} from "@openagentpack\/kit-sdk\/providers";/);
+	assert.match(api, /import type \{ ChatProvider \} from "@openagentkit\/sdk\/providers";/);
 	assert.doesNotMatch(api, /export function ChatProvider\b/);
 });
 
@@ -127,6 +128,14 @@ test("packed Skills are reproducible and preserve source modification times", ()
 		for (const name of [...names, "kit-skills"]) {
 			const archive = resolve(first, `${name}.tgz`);
 			assert.deepEqual(readFileSync(archive), readFileSync(resolve(second, `${name}.tgz`)));
+			const entries = execFileSync("tar", ["-tzf", archive], { encoding: "utf8" });
+			assert.doesNotMatch(entries, /\/agents\/openai\.ya?ml$/im);
+			if (name === "kit-database" || name === "kit-skills") {
+				assert.deepEqual(
+					entries.split("\n").filter((path) => path.startsWith("kit-database/")),
+					["kit-database/SKILL.md"],
+				);
+			}
 			const extracted = resolve(directory, name);
 			mkdirSync(extracted);
 			execFileSync("tar", ["-xzf", archive, "-C", extracted]);
@@ -233,21 +242,32 @@ test("one generation synchronizes SDK and component examples with their source f
 	}
 });
 
-test("fixture repository generates a complete final Skill directory", () => {
+test("fixture repository generates API Skills and a configuration-only Skill", () => {
 	const directory = mkdtempSync(resolve(tmpdir(), "kit-skills-minimal-"));
 	try {
-		for (const name of ["use-kit-chat", "kit-chat-provider"]) writeSkill(directory, name);
+		const apiSkills = ["use-kit-chat", "kit-chat-provider"];
+		for (const name of apiSkills) writeSkill(directory, name);
+		cpSync(skillSourceRoot(repositoryRoot, "kit-database"), skillSourceRoot(directory, "kit-database"), {
+			recursive: true,
+		});
 		mkdirSync(resolve(directory, "apps/storybook/content/docs/skill"), { recursive: true });
 		mkdirSync(resolve(directory, "apps/storybook/content/docs/sdk"), { recursive: true });
 		mkdirSync(resolve(directory, "apps/storybook/content/docs/components"), { recursive: true });
 		const outputs = buildOutputs(directory, createApiModel(repositoryRoot));
-		for (const name of skillNames(directory)) {
+		for (const name of apiSkills) {
 			const root = skillOutputRoot(directory, name);
 			assert.match(outputs.get(resolve(root, "SKILL.md")), /公开 API 接入示例/);
-			assert.match(outputs.get(resolve(root, "agents/openai.yaml")), /display_name: "接入示例"/);
+			assert.equal(outputs.has(resolve(root, "agents/openai.yaml")), false);
 			assert.match(outputs.get(resolve(root, "references/api.md")), /^# API 参考\n/);
 			assert.match(outputs.get(resolve(root, "references/examples.md")), /\[源文件\]\(\.\.\/examples\/fixture\.ts\)/);
+			assert.equal(outputs.has(resolve(root, "scripts/install.mjs")), true);
 		}
+		const database = skillOutputRoot(directory, "kit-database");
+		assert.match(outputs.get(resolve(database, "SKILL.md")), /^---\nname: kit-database\n/);
+		assert.equal(outputs.has(resolve(database, "agents/openai.yaml")), false);
+		assert.equal(outputs.has(resolve(database, "references/api.md")), false);
+		assert.equal(outputs.has(resolve(database, "references/examples.md")), false);
+		assert.equal(outputs.has(resolve(database, "scripts/install.mjs")), false);
 	} finally {
 		rmSync(directory, { recursive: true, force: true });
 	}
@@ -279,11 +299,11 @@ test("generation rejects untranslated authored prose before it can reach generat
 		assert.doesNotThrow(() => buildOutputs(directory, model));
 
 		const failures = [
-			...["description", "displayName", "shortDescription", "defaultPrompt"].map((key) => [
+			[
 				"metadata.json",
-				JSON.stringify({ ...metadata, [key]: "Integration example" }),
-				`metadata.json#${key}`,
-			]),
+				JSON.stringify({ ...metadata, description: "Integration example" }),
+				"metadata.json#description",
+			],
 			[
 				"skill.md",
 				'# Getting started\r\n\r\nUse `中文` in the request.\r\n\r\n~~~ts\r\nconst label = "中文";\r\n~~~\r\n',

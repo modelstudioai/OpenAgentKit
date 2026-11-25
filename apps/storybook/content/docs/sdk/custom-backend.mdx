@@ -36,7 +36,7 @@ ChatProvider 与 Client 均经公开 Request 调用，并共享身份与取消�
 `useChat({ sessionId, provider })`。用户自建标准事件后端使用同一工厂和组件。
 已有应用仍可保留 `createKitChatProvider(client)` 与默认 Context 方式。
 
-此模式要求后端输出 SDK 的 `SessionEvent`，并采用
+此模式要求后端提供独立的升序 `listEvents` 历史分页和实时订阅。订阅输出 SDK 的 `SessionEvent`，并采用
 [标准控制帧](/docs/sdk/stream#快照与游标) 的 `reset/ready/event/ping/done/error`。
 Kit Server 已实现这一合同；自己的后端可直接实现合同，不要求安装某个后端 SDK。
 原始 MA 增量事件请使用下方的原始流模式。
@@ -47,9 +47,9 @@ Kit Server 已实现这一合同；自己的后端可直接实现合同，不要
 {/* skill-example: kit-chat-provider/examples/normalized-provider.ts */}
 
 ```ts
-import { PROTOCOL_VERSION, PROTOCOL_VERSION_HEADER } from "@openagentpack/kit-sdk/protocol";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
-import { createSessionEventChatProvider } from "@openagentpack/kit-sdk/providers/session-events";
+import { PROTOCOL_VERSION, PROTOCOL_VERSION_HEADER } from "@openagentkit/sdk/protocol";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
+import { createSessionEventChatProvider } from "@openagentkit/sdk/providers/session-events";
 import { type BackendConfig, createBackendHttp } from "./backend-http.ts";
 
 // Web 应用复用此公开工厂，配置自己的路径和 { data } 映射。
@@ -130,8 +130,8 @@ Provider 与本页原始 Provider 都使用 `transformSessionEvent`（不依赖 
 {/* skill-example: kit-chat-provider/examples/message-transform.ts */}
 
 ```ts
-import { type MessageTransformer, transformSessionEvent } from "@openagentpack/kit-sdk/messages";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
+import { type MessageTransformer, transformSessionEvent } from "@openagentkit/sdk/messages";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
 
 // 幂等替换展示标签，后续事件重建线程时可重复调用，原始 SessionEvent 与生命周期保持原样。
 const replaceDisplayLabel: MessageTransformer = (input) => {
@@ -168,7 +168,7 @@ export function withDisplayLabel(provider: ChatProvider): ChatProvider {
 
 ### 接入合同
 
-`createBailianChatProvider` 从 `@openagentpack/kit-sdk/providers/bailian` 导入，必需一个
+`createBailianChatProvider` 从 `@openagentkit/sdk/providers/bailian` 导入，必需一个
 [RequestClient](/docs/sdk/request) 与六项操作（见 [API](#api)）：
 
 | 要求 | 合同 |
@@ -189,9 +189,14 @@ export function withDisplayLabel(provider: ChatProvider): ChatProvider {
 {/* skill-example: kit-chat-provider/examples/backend-http.ts */}
 
 ```ts
-import { KitError, SendMessageResponseSchema, ToolApprovalsResponseSchema } from "@openagentpack/kit-sdk/protocol";
-import type { SessionEventChatProviderOptions } from "@openagentpack/kit-sdk/providers/session-events";
-import { createRequest } from "@openagentpack/kit-sdk/request";
+import {
+	type EventsPage,
+	KitError,
+	SendMessageResponseSchema,
+	ToolApprovalsResponseSchema,
+} from "@openagentkit/sdk/protocol";
+import type { SessionEventChatProviderOptions } from "@openagentkit/sdk/providers/session-events";
+import { createRequest } from "@openagentkit/sdk/request";
 
 export interface BackendConfig {
 	// 显式传入运行时配置，后端可以与页面不同源。
@@ -229,8 +234,17 @@ export function createBackendHttp(config: BackendConfig) {
 	const sessionPath = (id: string) => `/sessions/${encodeURIComponent(id)}`;
 	const operations: Pick<
 		SessionEventChatProviderOptions,
-		"sendMessage" | "interrupt" | "toolApprovals" | "submitToolApproval"
+		"listEvents" | "sendMessage" | "interrupt" | "toolApprovals" | "submitToolApproval"
 	> = {
+		listEvents: {
+			buildRequest: ({ sessionId, limit, pageToken }) => {
+				const query = new URLSearchParams();
+				if (limit !== undefined) query.set("limit", String(limit));
+				if (pageToken) query.set("page_token", pageToken);
+				return { path: `${sessionPath(sessionId)}/events${query.size ? `?${query}` : ""}` };
+			},
+			mapResponse: async (response) => (await result(response)) as EventsPage,
+		},
 		sendMessage: {
 			buildRequest({ sessionId, body }) {
 				if (body.attachments?.length) throw new KitError("invalid_request", "请在创建会话时挂载已上传的文件。");
@@ -289,8 +303,8 @@ export function createBackendHttp(config: BackendConfig) {
 {/* skill-example: kit-chat-provider/examples/raw-bailian-provider.ts */}
 
 ```ts
-import { KitError } from "@openagentpack/kit-sdk/protocol";
-import { createBailianChatProvider } from "@openagentpack/kit-sdk/providers/bailian";
+import { KitError } from "@openagentkit/sdk/protocol";
+import { createBailianChatProvider } from "@openagentkit/sdk/providers/bailian";
 import { type BackendConfig, createBackendHttp, readJson, record } from "./backend-http.ts";
 
 export function createRawBailianProvider(config: BackendConfig) {

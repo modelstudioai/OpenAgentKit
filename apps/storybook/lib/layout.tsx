@@ -29,9 +29,9 @@ export const baseOptions: BaseLayoutProps = {
 						<path d="M12 11.4V21.2" />
 					</svg>
 				</span>
-				OpenAgentPack Kit
+				OpenAgentKit
 			</span>
 		),
 	},
-	githubUrl: "https://github.com/modelstudioai/OpenAgentPack-Kit",
+	githubUrl: "https://github.com/modelstudioai/OpenAgentKit",
 };

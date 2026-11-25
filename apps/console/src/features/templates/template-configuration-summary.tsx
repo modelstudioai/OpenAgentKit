@@ -1,4 +1,4 @@
-import { useIsMobile } from "@openagentpack/kit-sdk/hooks";
+import { useIsMobile } from "@openagentkit/sdk/hooks";
 import { Button, Drawer } from "antd";
 import { type ReactNode, useState } from "react";
 import type { AgentFormDetail } from "./template-agent-form-draft.ts";

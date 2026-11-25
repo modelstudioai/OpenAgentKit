@@ -1,4 +1,4 @@
-import { PLAZA_CATEGORY_LABELS, type PlazaEntry } from "@openagentpack/kit-sdk/protocol";
+import { PLAZA_CATEGORY_LABELS, type PlazaEntry } from "@openagentkit/sdk/protocol";
 import type { ReactNode } from "react";
 import { isIconImageSource } from "../agent-header/index.tsx";
 

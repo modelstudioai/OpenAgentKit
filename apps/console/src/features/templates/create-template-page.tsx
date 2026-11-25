@@ -1,4 +1,4 @@
-import type { PresetPackPreview } from "@openagentpack/kit-sdk/protocol";
+import type { PresetPackPreview } from "@openagentkit/sdk/protocol";
 import { Alert, Button, Empty, Result, Spin } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";

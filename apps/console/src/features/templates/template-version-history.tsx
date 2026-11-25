@@ -1,5 +1,5 @@
+import { PLAZA_CATEGORY_LABELS, type TemplateVersionSummary } from "@openagentkit/sdk/protocol";
 import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui";
-import { PLAZA_CATEGORY_LABELS, type TemplateVersionSummary } from "@openagentpack/kit-sdk/protocol";
 import { type ReactNode, useId, useMemo, useState } from "react";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";

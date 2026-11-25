@@ -24,12 +24,12 @@ API Key 输入隐藏回显，凭据和管理员令牌不写启动日志。已有
 
 ```text
 apps/server ──► @openagentpack/sdk（上游主入口，仅服务端 runtime import）
-     └───────► kit-sdk/protocol 与 SDK 功能数据入口
+     └───────► @openagentkit/sdk/protocol 与 SDK 功能数据入口
 apps/web / apps/console / packages/chat-ui
-     ├───────► kit-sdk/<功能>/hooks 与 kit-sdk/providers/kit/react
+     ├───────► @openagentkit/sdk/<功能>/hooks 与 @openagentkit/sdk/providers/kit/react
      │                    └──────► SDK 功能数据入口
-     ├───────► kit-sdk/hooks（屏幕判断）
-     └───────► SDK 功能数据入口与 kit-sdk/protocol
+     ├───────► @openagentkit/sdk/hooks（屏幕判断）
+     └───────► SDK 功能数据入口与 @openagentkit/sdk/protocol
 ```
 
 自定义宿主注入的能力由体验页本地适配，不经过 SDK：
@@ -47,10 +47,10 @@ apps/web / apps/console / packages/chat-ui
   `state.ts`、`protocol/` 与 `internal/`，禁止带入 KitClient、Context 或业务模块；
   `sdk-kit-react-boundary` 将 Kit React 接入的仓库内依赖限制为 Kit 自身，不得引入其他
   Provider 或功能流程。生命周期、订阅、查询与 Kit Client 解析工具保持内部使用。
-- 数据处理继续遵守 Stream → Request → Provider → Chat：`kit-sdk/stream` 负责
-  字节解码和原始 SSE 分帧；`kit-sdk/request` 负责 HTTP；Provider 定义后端接口、事件合同
+- 数据处理继续遵守 Stream → Request → Provider → Chat：`@openagentkit/sdk/stream` 负责
+  字节解码和原始 SSE 分帧；`@openagentkit/sdk/request` 负责 HTTP；Provider 定义后端接口、事件合同
   与消息转换策略；Chat 持有快照和消息，并负责连接、重连、发送、停止与审批。
-  纯消息转换独立在 `messages/`；`kit-sdk/providers/bailian` 提供原始百炼 SSE 接入，
+  纯消息转换独立在 `messages/`；`@openagentkit/sdk/providers/bailian` 提供原始百炼 SSE 接入，
   仅使用上游 SDK 的浏览器安全 `session-events` 子路径。数据入口**禁 React、禁 Node-only API**。
 - 组件调用流程按功能归入 `sessions`、`files`、`chat/composer` 与 `usage`，复用已有
   Request、Chat 和 `state.ts`，React hooks 只管理订阅与生命周期。
@@ -58,7 +58,7 @@ apps/web / apps/console / packages/chat-ui
   `supports(operation)` 用于隐藏入口。Web 仅在 `backend.ts` / `chat-backend.ts` 填写示例协议。
   ArtifactHost 是注入接口，实际开窗、文件选择、保存和 object URL 仍在 Web 本地 host。
 - Console 的 `src/lib/admin/` 管理固定控制面请求、成员用量与 Operation 观察/恢复；
-  查询与提交状态复用 `kit-sdk/state`，协议帧读取复用 `kit-sdk/providers/kit`。
+  查询与提交状态复用 `@openagentkit/sdk/state`，协议帧读取复用 `@openagentkit/sdk/providers/kit`。
   SDK 不提供 `/admin` 子入口，协议 DTO 仍在 `/protocol`，管理业务归属见 ADR-0025。
 - `chat-ui`：视觉组件，只依赖 SDK 功能 hooks、消息类型与共享协议，**禁依赖 server**。
 - 公共 `Layout` 统一桌面侧栏、移动抽屉、页头与内容区。`sidebar` 插槽接收关闭动作与
@@ -143,7 +143,7 @@ API 参考和文档站示例。这些示例只引用公开包入口，按文档�
 ### SDK 数据四层职责
 
 Stream 源码位于 `packages/sdk/src/stream/`，与 HTTP 的 `request/` 目录并列；
-分别从 `kit-sdk/stream` 与 `kit-sdk/request` 导入。Request 复用 Stream，Stream 不反向依赖
+分别从 `@openagentkit/sdk/stream` 与 `@openagentkit/sdk/request` 导入。Request 复用 Stream，Stream 不反向依赖
 Request；沿用下表中的职责与原有实现。
 
 | 层 | 输入与输出 | 边界 |
@@ -155,7 +155,7 @@ Request；沿用下表中的职责与原有实现。
 
 `createTransport` 是现有 Kit 协议传输入口，组合 Request 与 Kit 帧消费，保留协议头和
 45 秒有效帧超时。`KitClient` 是 Kit Server 的业务 API 门面，仍支持目录、会话与文件。
-`createChatController` 从 `kit-sdk/chat` 提供，`useChat` 从 `kit-sdk/chat/hooks` 提供；
+`createChatController` 从 `@openagentkit/sdk/chat` 提供，`useChat` 从 `@openagentkit/sdk/chat/hooks` 提供；
 React hooks 只管理订阅与组件生命周期。
 标准事件后端通过公开 `createSessionEventChatProvider` 配置 Request、订阅请求及四个业务操作，
 可选配置线程查询；JSON 包装和路径归调用方。它复用现有标准事件控制帧处理，不加载原始 SDK 转换器。
@@ -181,7 +181,7 @@ Web 的 `lib/chat-backend.ts` 是实际运行的示例配置，明确填写 Kit 
 `sessions/load-directory.ts` 是 Client 可复用的独立读取叶子，不能引用 Client 或会话工作流；
 Provider 不能经功能聚合入口间接载入高层流程，Chat 核心不能反向引用 Composer。
 功能入口隔离规则禁止通用功能引入原始百炼转换器；只有显式使用
-`kit-sdk/providers/bailian` 时才加载 SDK 的浏览器转换依赖。默认消息转换同样受此隔离约束。
+`@openagentkit/sdk/providers/bailian` 时才加载 SDK 的浏览器转换依赖。默认消息转换同样受此隔离约束。
 
 ## UI 主题与确认交互
 
@@ -250,7 +250,7 @@ Console 模态确认保留焦点约束、显式动作与关闭后的焦点恢复
 条目快照无法完整读取时，重新通过未归档记忆库目录核验身份，展示原库名称及条目未完整读取提示，允许确认复用引用并提供重试；
 元数据不可读或库已不可用仍禁止选择，不将读取失败伪装成空条目。
 创建页抽屉使用 `PresetPackSelection`，通过 `useRemoteAgents` 查询完整远端智能体列表，
-支持名称/ID 搜索、分页单选与资源多选，不依赖 SQLite 已保存目录。
+支持名称/ID 搜索、分页单选与资源多选，不依赖 Kit 已保存目录。
 「导入」经 `presetPacks.preview` 重新核验所选资源、固定版本与元数据，只返回白名单配置，不写预设包或模版。
 创建方式选择与表单页头的抽屉直接回填当前创建页，不提供侧栏独立页面或 Shell 跨页载荷。
 已有配置或未发布资源时先确认替换，再以独立资源草稿回填；展示名称、分类和文案在当前页面内保留。
@@ -329,7 +329,7 @@ apps/server/src/
                     attachments（挂载路径解析）/ confirm-gate / rate-limit / metrics /
                     catalog / templates（本地模版资源复核、保存与上架确认）/ project / operations / members（本地账号创建与密码派生）/
                     member-usage（累计采集）/ session-deletion + session-mutations（删除协调与写入保护）
-  store/            node:sqlite + 幂等迁移 + DAO（catalog / templates / members / sessions / quota / operations / audit /
+  store/            异步数据库接口、SQLite / MySQL / PostgreSQL 适配、共享结构与迁移生成、DAO（catalog / templates / members / sessions / quota / operations / audit /
                     session-usage 数值快照 / session-deletions 阶段）
   routes/           kit/*（数据面）admin/*（控制面）config / healthz
 ```
@@ -340,7 +340,7 @@ apps/server/src/
    路径，也让上游 API 变化只影响一个文件。SDK 的形状事实（list 返回 `{data}`、会话只认
    声明键、建会话必须带 environment、apply 需走 backend 感知的 sync 等）记录在
    `docs/research/sdk-session-runtime.md`，改 gateway 前必读。
-2. **事件不落库**。SQLite 存 catalog、已保存模版配置目录与不可变配置版本、成员目录、session 本地索引、成员累计用量数值快照、
+2. **事件不落库**。Kit 数据库存 catalog、已保存模版配置目录与不可变配置版本、成员目录、session 本地索引、成员累计用量数值快照、
    删除阶段、月度限额数值增量与请求幂等索引、兼容 Credits 账本、operation 与审计。快照只含归属与运营字段，不含事件、消息正文或
    附件字节。成员密码仅存随机盐与 scrypt 派生值，不保存明文；Provider 凭据不落库。
 3. **凭据不出服务端**：`CredentialResolver` 只在 gateway 内部使用；错误与日志脱敏。
@@ -349,9 +349,20 @@ apps/server/src/
 5. **管控面角色分离**：`auditor` 只读，写方法在中间件层统一拒绝（不逐路由加判断，避免漏）。
 6. **单实例假设（v1）**：事件缓冲、限流令牌桶、确认令牌的「已消费」集合、成员刷新队列和
    会话写入 / 删除互斥都在进程内存，
-   SQLite 是单写者文件。多副本部署需要 sticky session（同一 `subjectId`/会话固定到同一副本）
+   各存储后端均按单实例使用。多副本部署需要 sticky session（同一 `subjectId`/会话固定到同一副本）
    或把这些进程内状态换成共享实现（`EventBuffer` 已接口化，预留 Redis adapter）；在此之前不要
    水平扩容，否则重连重放与限流都会失真。
+
+### 数据库接入
+
+`loadConfig` 解析 `KIT_DB_DRIVER`，启动时经 `store/connect.ts` 打开数据库并应用对应迁移。
+新库从 `001_init` 按既有顺序回放历史，再执行生成的后续版本。三库的 SQL 从共享定义和同一
+迁移顺序生成，各库独立登记执行结果。MySQL 在迁移锁下保存步骤进度并核对 DDL 执行结果。
+连接层在交给服务装配前恢复中断操作与发布批次，并应用默认 Credits 策略。
+默认 SQLite 从 `KIT_DATA_DIR/kit.sqlite` 打开。MySQL 8.4 和 PostgreSQL 从 `KIT_DATABASE_URL` 连接已创建的数据库。
+Store 共用 `database.ts` 的异步读写与事务接口，事务内跨 Store 调用绑定同一连接。
+SQLite 的读写排队保护单连接事务。MySQL 和 PostgreSQL 使用连接池并沿用单实例写入顺序。
+`server-database-drivers-in-store` 将数据库驱动限制在服务端 Store 层。
 
 ### 成员累计用量与删除协调
 
@@ -368,7 +379,7 @@ API 无取消信号，因此不能保证超时底层 HTTP 立即结束。按游�
 
 成员会话删除经过原有 plan 与显式确认后，由 `session-mutations` 拒绝新的消息、审批等
 写入，并等待已进入的写请求结束。`session-deletion` 确认执行已结束（待审批也须中断），
-重新查询用量，事务提交快照后才向 Provider 发 DELETE。远端删除与 SQLite 不是跨系统
+重新查询用量，事务提交快照后才向 Provider 发 DELETE。远端删除与本地存储不是跨系统
 事务，因此 `session-deletions` 持久化准备、封存、删除中、结果不明与已删除阶段。
 结果不明时维持写入保护；重启后仍按阶段核实，不盲目恢复发送或自动重放删除请求。
 重试采集不能覆盖此前已发出 DELETE 的持久事实，GET 仍存在不能消除网络错误带来的
@@ -409,13 +420,13 @@ Provider 只有累计统计，状态结束与统计写入未被证明原子同�
 
 以下是默认 Kit Server 链路，既有 `useChat(sessionId)` 调用方式不变。
 
-1. 页面选择会话，controller 建立持久的 `/api/kit/sessions/:id/stream` 订阅。
-   server 为该会话共享一个上游 pump：先连接并暂存实时快照，再读完分页历史，归并后发出
-   `reset → event* → ready`。只有收到 `ready` 才允许发送消息或审批响应。
-2. 用户发送消息，SDK 保存独立的乐观消息；server 校验归属并等待 pump 就绪，然后调用
+1. 页面选择会话，Controller 建立 `/stream` 实时订阅。员工端走 `/api/kit/sessions/:id`，
+   管理员调试走 `/api/admin/debug/sessions/:id`。上游就绪后服务端发 `ready`，
+   Controller 再通过各自的 `/events` 读完历史分页，同时缓冲实时事件。合并后发布并开放发送。
+2. 用户发送消息，SDK 保存独立的乐观消息。服务端校验归属，上游就绪后按需核验运行状态，再调用
    `gateway.sendEvent()`。消息与审批 POST 都只发送一次，断流恢复不会重发业务请求。
 3. gateway 通过 SDK 的 `snapshot` 模式消费完整 `SessionEvent`。server 在内存中维护
-   最新事件索引与有界变更日志。每次有效更新分配 `epoch:sequence`，以 SSE `id` 下发；
+   业务状态索引和独立的有界实时日志。每次有效实时更新分配 `epoch:sequence`，以 SSE `id` 下发；
    `event_id` 是事件身份，不能用于充当传输游标。
 4. SDK 对同 `event_id` 做快照替换并重建投影，保持首次展示顺序与稳定分片 ID；React adapter
    订阅消息、子线程、产物、执行阶段和审批待办；chat-ui 按分片顺序渲染。
@@ -424,12 +435,12 @@ Provider 只有累计统计，状态结束与统计写入未被证明原子同�
 6. 审批待办由最新主状态的 batch/call 标识定位。审批卡展示冻结的实际工具参数，允许与拒绝
    均为一步直提、每次只处理一项；server 再读 Provider 历史校验归属、当前待办与重复响应，
    经 gateway 写入 `tool_approval_response`。未知工具协议只读展示。详见 `docs/protocol.md`。
-7. 浏览器断线只恢复 Kit 订阅；SDK 负责 Provider 连接恢复。有效 `after` 游标重放变更日志，
-   无效或过期游标触发全量 `reset`，SDK 在 `ready` 时原子替换历史并保留乐观消息。
-   最后一个订阅者离开时释放上游连接。事件始终不落库。
+7. 上游断流结束本代订阅，浏览器带 `after` 重连。有效游标重放实时变更，失效时
+   Controller 在 `reset → ready` 后通过 `/events` 重建历史并保留乐观消息。
+   最后一个订阅者离开时，仍运行的回合由服务端有界跟踪。事件正文保存在内存中。
 
 默认附件与产物下载继续由 `/api/kit/files/:fileId/download` 代理，浏览器不持有 Provider 凭据或
-预签名 URL。Kit 协议 v2 要求前后端同步升级（ADR-0006）；SDK 版本交付状态记录在验收记录中。
+预签名 URL。Kit 协议 v3 要求 Server、SDK、Web/H5 和 Console 同步升级（ADR-0028）。
 
 ## YAML 资源批次与管理员调试
 
@@ -437,7 +448,7 @@ Kit 仅提供 YAML 批次的资源创建、校验、Plan 与发布，不提供�
 路由按管理员和批次身份绑定独立的 DraftResourceService，ResourceDraftGateway 仅处理本批声明，无物理项目路径参数。
 ProviderGateway 不继承目录接口。server-no-directory-sdk 禁止 server 生产源码依赖 SDK 目录与源码版本入口。
 
-当前 YAML、Kit 修订号、SDK state 检查点和成功证明按 draft_id 保存到 SQLite；网络等待期间不持有事务。
+当前 YAML、Kit 修订号、SDK state 检查点和成功证明按 draft_id 保存到 Kit 数据库。网络等待期间不持有事务。
 SDK 管理 state 语义与资源差异；完整本批资源使用 create-only scope。File/Skill 字节使用独立受控暂存，
 MCP 候选只来自当前声明和显式填写、导入的官方配置，不扫描历史主项目。
 声明和 state 均为空时仅生成 SDK 只读空计划，不刷新远端；前端直接进入预览且保留空批次。
@@ -473,13 +484,13 @@ StateBackend 边界失败也保留已取得结果。服务与 UI 不识别 SDK �
 ```text
 Kit Server → KitClient → createKitChatProvider ──────────────────────┐
                                                                   │
-自建后端 → 原始 SSE → kit-sdk/providers/bailian → SDK session-events 转换 ─────┤
+自建后端 → 原始 SSE → @openagentkit/sdk/providers/bailian → SDK session-events 转换 ─────┤
                                                                   ↓
                             ChatProvider → Controller/Store → useChat → UI
                               转换策略        调用并持有消息     ChatMessage
 ```
 
-- `createKitChatProvider(client)` 转发既有 Client 的五项会话能力，保持请求路径、Kit 控制帧
+- `createKitChatProvider(client)` 转发 Client 的独立历史分页及五项会话能力，保持请求路径、Kit 控制帧
   与游标行为。KitClient 也结构兼容此合同，既有 Controller 调用无需迁移。
 - 两个 Provider 工厂显式使用 `transformSessionEvent` 作为 `transformMessage`。该纯转换将
   `SessionEvent` 整理成消息与 Artifact，位于 `messages/`，不调用 SDK 运行时。
@@ -496,6 +507,7 @@ Kit Server → KitClient → createKitChatProvider ─────────�
   事件、不维护跨调用缓存，保留稳定消息和分片身份，支持同 ID 替换、清空及产物撤回。
 - Controller 统一安排订阅重试，保持乐观消息、快照替换、执行状态及审批编排。适配器每次
   只处理一次连接，不另开重试循环、不重发消息和审批。
+- 标准事件 Provider 必填 `listEvents`。Controller 在实时连接就绪后读历史分页并归并缓冲事件。
 - `useChat({ sessionId, provider })` 可以脱离 `KitProvider`。显式实例优先于 Context；
   实例与会话稳定时保持连接，切换或卸载释放旧订阅并隔离迟到回调。
 - 自建后端负责会话权限、实际发送与审批校验、历史完整性及真实上游订阅就绪保证。
@@ -534,7 +546,7 @@ Kit Server → KitClient → createKitChatProvider ─────────�
 ProviderGateway，不改变 SDK 或 ChatProvider 合同。成员列表只读取公开资料；
 自动生成密码仅随创建响应返回一次（`Cache-Control: no-store`），不进入列表、审计或浏览器
 持久存储。自定义密码不回传。体验页默认使用本地成员登录，详见 ADR-0010 与 ADR-0011。
-密码验证和登录令牌签发在服务端执行；SQLite 存令牌哈希和有效期，每次请求校验。
+密码验证和登录令牌签发在服务端执行。Kit 数据库存令牌哈希和有效期，每次请求校验。
 独立登录之间分别撤销；退出或到期终止对应的已建立 SSE，不中断 Provider 的 Agent 执行。
 
 | 边界 | 措施 |
@@ -553,10 +565,8 @@ ProviderGateway，不改变 SDK 或 ChatProvider 合同。成员列表只读取�
 
 本节描述默认 Kit Server → SDK 的网络接口；自建后端原始流的恢复由上述 ChatProvider 链路负责。
 
-Kit 的 ready 闸门保证首次上游订阅和历史合并完成后再提交。当前 SDK 只有成功连接的
-`onReady`，没有公开的断链状态回调，因此 SDK 内部短暂退避期间 Kit 无法可靠阻止所有新 POST；
-恢复后由 SDK 历史补拉收敛，业务 POST 不自动重发。若需要严格禁止这段时间的提交，须先扩展
-SDK 公开连接状态，本轮不读取 internal 实现。
+Kit Gateway 将上游连接错误交给 SSE 消费方处理。浏览器恢复订阅，游标失效后用独立历史分页收敛。
+提交前由服务端等待上游就绪并校验会话运行状态。自动恢复只涉及读取和订阅。
 
 SDK 恢复时避免把无分片水位的 in_progress 历史与新 delta 直接相加；中间文本可能暂时被
 当前连接的局部快照替换，最终以 completed 全量快照收敛，不承诺断流期间逐字无损连续。

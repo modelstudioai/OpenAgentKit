@@ -5,7 +5,6 @@ import { componentDestPath, componentTarget, exampleTarget, readRegistry, sdkTar
 import { modules } from "./api-model.mjs";
 import { filesUnder, portablePath } from "./validate.mjs";
 
-const sdkName = "@openagentpack/kit-sdk";
 const uiName = modules["chat-ui"].name;
 
 function sourceFile(file, path) {
@@ -28,16 +27,17 @@ function sdkSourceAssets(root) {
 	const modulePaths = new Map(Object.values(modules).map(({ name, path }) => [name, resolve(root, path)]));
 	const publicEntries = new Map(
 		Object.keys(sdk.exports).map((key) => {
-			const specifier = `${sdkName}${key.slice(1)}`;
+			const specifier = `${sdk.name}${key.slice(1)}`;
 			const file = modulePaths.get(specifier);
 			if (!file || !paths.has(file)) throw new Error(`SDK 公开入口 ${key} 缺少可复制的源码。`);
 			return [specifier, `${sdkTarget}/${portablePath(relative(sourceDirectory, file))}`];
 		}),
 	);
 	return {
+		name: sdk.name,
 		publicEntries,
 		files: [
-			jsonFile("sdk/copy-in.json", { dependencies: sdk.dependencies }, statSync(manifestPath).mtimeMs),
+			jsonFile("sdk/copy-in.json", { name: sdk.name, dependencies: sdk.dependencies }, statSync(manifestPath).mtimeMs),
 			...source.map((file) => sourceFile(file, `sdk/src/${portablePath(relative(sourceDirectory, file))}`)),
 		],
 	};
@@ -48,10 +48,10 @@ function relativeImport(from, to) {
 	return path.startsWith("../") ? path : `./${path}`;
 }
 
-function rewriteSdkImports(content, target, publicEntries) {
+function rewriteSdkImports(content, target, { name, publicEntries }) {
 	const references = ts.preProcessFile(content, true, true).importedFiles;
 	for (const { fileName, pos, end } of references.reverse()) {
-		if (fileName !== sdkName && !fileName.startsWith(`${sdkName}/`)) continue;
+		if (fileName !== name && !fileName.startsWith(`${name}/`)) continue;
 		const entry = publicEntries.get(fileName);
 		if (!entry) throw new Error(`${target} 导入了未公开的 Kit SDK 入口 ${fileName}。`);
 		if (content.slice(pos + 1, end + 1) !== fileName) throw new Error(`无法转换 ${target} 的 SDK 导入 ${fileName}。`);
@@ -116,7 +116,7 @@ function rewriteExampleUiImports(content, target, publicUi) {
 	return { content, components: [...components] };
 }
 
-function buildExampleAssets(skill, source, sdkEntries, publicUi) {
+function buildExampleAssets(skill, source, sdk, publicUi) {
 	const sources = filesUnder(source).filter((file) => /\.tsx?$/.test(file));
 	const paths = new Set(sources);
 	const options = { module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler };
@@ -125,7 +125,7 @@ function buildExampleAssets(skill, source, sdkEntries, publicUi) {
 		const name = portablePath(relative(source, file));
 		const asset = sourceFile(file, `examples/${name}`);
 		const target = `${exampleTarget(skill)}/${name}`;
-		const withSdk = rewriteSdkImports(asset.content.toString("utf8"), target, sdkEntries);
+		const withSdk = rewriteSdkImports(asset.content.toString("utf8"), target, sdk);
 		const { content, components } = rewriteExampleUiImports(withSdk, target, publicUi);
 		const companions = new Set();
 		for (const { fileName } of ts.preProcessFile(asset.content.toString("utf8"), true, true).importedFiles) {
@@ -158,10 +158,10 @@ export function buildCopyInAssets(root) {
 			...[...components].map((path) => {
 				const asset = sourceFile(resolve(directory, path), `chat-ui/${path}`);
 				const target = `${componentTarget}/${componentDestPath(path)}`;
-				const content = rewriteSdkImports(asset.content.toString("utf8"), target, sdk.publicEntries);
+				const content = rewriteSdkImports(asset.content.toString("utf8"), target, sdk);
 				return { ...asset, content };
 			}),
 		],
-		examples: (skill, directory) => buildExampleAssets(skill, directory, sdk.publicEntries, publicUi),
+		examples: (skill, directory) => buildExampleAssets(skill, directory, sdk, publicUi),
 	};
 }

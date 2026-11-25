@@ -1,5 +1,5 @@
+import type { AgentSummary } from "@openagentkit/sdk/protocol";
 import { Layout, type LayoutAsideControls } from "@openagentpack/kit-chat-ui";
-import type { AgentSummary } from "@openagentpack/kit-sdk/protocol";
 import type { ReactNode } from "react";
 import type { Branding } from "../../lib/branding.ts";
 import type { NavigateFn, ViewId } from "../../lib/use-route.ts";

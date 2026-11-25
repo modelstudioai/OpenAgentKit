@@ -1,4 +1,4 @@
-import { createQuery } from "@openagentpack/kit-sdk/state";
+import { createQuery } from "@openagentkit/sdk/state";
 import { useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
 /** key 必须包括查询目标；load 可内联，变更不会导致持久订阅反复启动。 */

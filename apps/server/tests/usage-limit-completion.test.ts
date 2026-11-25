@@ -1,13 +1,14 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type SessionEvent, type SseFrame, sessionStatusOf } from "@openagentpack/kit-sdk/protocol";
+import { type SessionEvent, type SseFrame, sessionStatusOf } from "@openagentkit/sdk/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../src/config.ts";
 import type { GatewaySessionInfo } from "../src/gateway/types.ts";
 import { createKitServices } from "../src/services/index.ts";
 import { openDatabase } from "../src/store/db.ts";
 import { createMemberStore } from "../src/store/members.ts";
+import { createSqliteDatabase } from "../src/store/sqlite.ts";
 
 const cleanups: (() => void | Promise<void>)[] = [];
 afterEach(async () => {
@@ -43,7 +44,7 @@ async function setup(reuseAcrossTurns = false) {
 	cleanups.push(() => db.close());
 	const services = createKitServices(loadConfig({ KIT_GATEWAY: "mock", KIT_DATA_DIR: directory }), db);
 	const now = new Date().toISOString();
-	createMemberStore(db).create(
+	await createMemberStore(createSqliteDatabase(db)).create(
 		{
 			member_id: "member",
 			username: "member",
@@ -112,7 +113,7 @@ async function setup(reuseAcrossTurns = false) {
 		publish({ event_id: `message-${turn}`, type: "message", role: "user", content: [] });
 		return { event_ids: [`message-${turn}`] };
 	});
-	services.usageLimits.setPolicy(
+	await services.usageLimits.setPolicy(
 		{ monthly_tokens: 10000, monthly_active_seconds: null, daily_tokens: null, daily_active_seconds: null },
 		"admin",
 	);
@@ -199,8 +200,9 @@ describe("月度限额的主会话完成证据", () => {
 	it("重建后的游标增大不能把同身份旧 idle 当作本轮完成", async () => {
 		const f = await setup(true);
 		const close = await f.open();
-		const firstEpoch = f.services.buffers.get(f.id)?.epoch;
 		await f.run("round-1");
+		const firstEpoch = f.services.buffers.get(f.id)?.epoch;
+		expect(firstEpoch).toBeTruthy();
 		await f.waitForState("running");
 		await close();
 		f.staleIdle();
@@ -208,8 +210,10 @@ describe("月度限额的主会话完成证据", () => {
 		// 新世代的状态排列在消息后，序号也更大，但没有跨世代更新证据。
 		f.events.push(f.events.shift()!);
 		await f.open();
-		expect(f.services.buffers.get(f.id)?.epoch).not.toBe(firstEpoch);
 		await expect(f.run("round-2")).rejects.toMatchObject({ code: "conflict" });
+		const currentEpoch = f.services.buffers.get(f.id)?.epoch;
+		expect(currentEpoch).toBeTruthy();
+		expect(currentEpoch).not.toBe(firstEpoch);
 		expect(f.send).toHaveBeenCalledTimes(1);
 	});
 

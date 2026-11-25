@@ -1,3 +1,5 @@
+import { useIsMobile } from "@openagentkit/sdk/hooks";
+import { skillInputTokens } from "@openagentkit/sdk/protocol";
 import {
 	type AttachmentItem,
 	Attachments,
@@ -12,8 +14,6 @@ import {
 	SkillGlyph,
 	Suggestion,
 } from "@openagentpack/kit-chat-ui";
-import { useIsMobile } from "@openagentpack/kit-sdk/hooks";
-import { skillInputTokens } from "@openagentpack/kit-sdk/protocol";
 import { useMemo, useRef, useState } from "react";
 
 /** 附件菜单项图标：与 prefix 回形针同族（24 viewBox、1.5 描边、currentColor）。 */

@@ -1,4 +1,4 @@
-import type { ChatMultiAgent } from "@openagentpack/kit-sdk/chat";
+import type { ChatMultiAgent } from "@openagentkit/sdk/chat";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { SubAgentPanel } from "./index.tsx";

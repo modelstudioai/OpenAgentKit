@@ -1,22 +1,22 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { ToolApprovalsResponse } from "@openagentpack/kit-sdk/protocol";
+import type { ToolApprovalsResponse } from "@openagentkit/sdk/protocol";
 import { describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
 import { createKitServices } from "../src/services/index.ts";
 import { openDatabase } from "../src/store/db.ts";
 
-const headers = { "content-type": "application/json", "x-kit-protocol-version": "2.0.0", cookie: "kit_subject=owner" };
+const headers = { "content-type": "application/json", "x-kit-protocol-version": "3.0.0", cookie: "kit_subject=owner" };
 async function setup(text = "approval") {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-approval-"));
 	const services = createKitServices(
 		loadConfig({ KIT_GATEWAY: "mock", KIT_AUTH_MODE: "anonymous", KIT_DATA_DIR: dataDir, ADMIN_TOKEN: "test" }),
 		openDatabase(dataDir),
 	);
-	services.catalog.upsert({ slug: "assistant", display_name: "Assistant", remote_agent_id: "mock" });
-	services.catalog.setStatus("assistant", "listed");
+	await services.catalog.upsert({ slug: "assistant", display_name: "Assistant", remote_agent_id: "mock" });
+	await services.catalog.setStatus("assistant", "listed");
 	const app = createApp(services);
 	const created = await app.request("/api/kit/sessions", {
 		method: "POST",

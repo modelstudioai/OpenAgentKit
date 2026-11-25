@@ -1,4 +1,4 @@
-import type { ProjectSkillUploadCommit } from "@openagentpack/kit-sdk/protocol";
+import type { ProjectSkillUploadCommit } from "@openagentkit/sdk/protocol";
 import { Alert, Button, Modal } from "antd";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";

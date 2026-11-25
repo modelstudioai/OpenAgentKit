@@ -1,11 +1,11 @@
-import { CategoryTabs, EmptyState, ErrorState, PlazaCard, type PlazaTabId } from "@openagentpack/kit-chat-ui";
-import { usePlaza } from "@openagentpack/kit-sdk/agents/hooks";
+import { usePlaza } from "@openagentkit/sdk/agents/hooks";
 import {
 	PLAZA_CATEGORY_LABELS,
 	type PlazaCategory,
 	type PlazaEntry,
 	type PlazaView as PlazaSnapshot,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
+import { CategoryTabs, EmptyState, ErrorState, PlazaCard, type PlazaTabId } from "@openagentpack/kit-chat-ui";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useDebounced } from "../../lib/use-debounced.ts";
 import type { NavigateFn } from "../../lib/use-route.ts";

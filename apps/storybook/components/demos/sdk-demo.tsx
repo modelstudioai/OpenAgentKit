@@ -1,8 +1,7 @@
 "use client";
 
-import { EmptyState, MessageList, Sender, ToolApprovalCard } from "@openagentpack/kit-chat-ui";
-import { type ChatController, createChatController } from "@openagentpack/kit-sdk/chat";
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
+import { type ChatController, createChatController } from "@openagentkit/sdk/chat";
+import { useChat } from "@openagentkit/sdk/chat/hooks";
 import {
 	createSseParser,
 	decodeFrame,
@@ -10,13 +9,14 @@ import {
 	type SessionEvent,
 	type SessionSummary,
 	type SseFrame,
-} from "@openagentpack/kit-sdk/protocol";
-import type { ChatProvider, StreamSessionOptions } from "@openagentpack/kit-sdk/providers";
-import { createKitClient } from "@openagentpack/kit-sdk/providers/kit";
-import { KitProvider, useKitClient } from "@openagentpack/kit-sdk/providers/kit/react";
-import { createRequest, type RequestClient } from "@openagentpack/kit-sdk/request";
-import { useSessions } from "@openagentpack/kit-sdk/sessions/hooks";
-import { createSseStream } from "@openagentpack/kit-sdk/stream";
+} from "@openagentkit/sdk/protocol";
+import type { ChatProvider, StreamSessionOptions } from "@openagentkit/sdk/providers";
+import { createKitClient } from "@openagentkit/sdk/providers/kit";
+import { KitProvider, useKitClient } from "@openagentkit/sdk/providers/kit/react";
+import { createRequest, type RequestClient } from "@openagentkit/sdk/request";
+import { useSessions } from "@openagentkit/sdk/sessions/hooks";
+import { createSseStream } from "@openagentkit/sdk/stream";
+import { EmptyState, MessageList, Sender, ToolApprovalCard } from "@openagentpack/kit-chat-ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type LineEnding = "\n" | "\r\n";
@@ -324,7 +324,7 @@ const KIT_EVENT_ASSISTANT =
 	'{"event_id":"evt_2","type":"message","role":"assistant","content":[{"type":"text","text":"已读取周报，正在整理要点。"}]}';
 const KIT_EVENT_IDLE =
 	'{"event_id":"evt_3","type":"session_status","content":[{"type":"data","data":{"session_status":"idle"}}]}';
-const KIT_DONE = '{"session_id":"sess_demo","status":"completed","last_event_id":"1:9","reason":null}';
+const KIT_DONE = '{"session_id":"sess_demo","status":"completed","last_event_id":"evt_3","reason":null}';
 
 function kitFrame(frame: { id?: string; event: string; data: string }): string {
 	return `${frame.id ? `id: ${frame.id}\n` : ""}event: ${frame.event}\ndata: ${frame.data}\n\n`;
@@ -339,14 +339,11 @@ interface KitScenario {
 
 const KIT_SCENARIOS: KitScenario[] = [
 	{
-		label: "首订（完整重建）",
+		label: "首订并查历史",
 		frames: [
-			kitFrame({ event: "reset", data: '{"session_id":"sess_demo"}' }),
-			kitFrame({ id: "1:7", event: "event", data: KIT_EVENT_USER }),
-			kitFrame({ id: "1:8", event: "event", data: KIT_EVENT_ASSISTANT }),
-			kitFrame({ event: "ready", data: '{"session_id":"sess_demo","after":null,"replayed":2,"cursor":"1:8"}' }),
+			kitFrame({ event: "ready", data: '{"session_id":"sess_demo","after":null,"replayed":0,"cursor":"1:0"}' }),
 			kitFrame({ event: "ping", data: `{"t":${PING_T}}` }),
-			kitFrame({ id: "1:9", event: "event", data: KIT_EVENT_IDLE }),
+			kitFrame({ id: "1:1", event: "event", data: KIT_EVENT_IDLE }),
 			kitFrame({ event: "done", data: KIT_DONE }),
 		],
 	},
@@ -354,8 +351,8 @@ const KIT_SCENARIOS: KitScenario[] = [
 		label: "续传 after=1:8",
 		after: "1:8",
 		frames: [
-			kitFrame({ event: "ready", data: '{"session_id":"sess_demo","after":"1:8","replayed":0,"cursor":"1:8"}' }),
 			kitFrame({ id: "1:9", event: "event", data: KIT_EVENT_IDLE }),
+			kitFrame({ event: "ready", data: '{"session_id":"sess_demo","after":"1:8","replayed":1,"cursor":"1:9"}' }),
 			kitFrame({ event: "done", data: KIT_DONE }),
 		],
 	},
@@ -364,16 +361,14 @@ const KIT_SCENARIOS: KitScenario[] = [
 		after: "0:3",
 		frames: [
 			kitFrame({ event: "reset", data: '{"session_id":"sess_demo"}' }),
-			kitFrame({ id: "1:7", event: "event", data: KIT_EVENT_USER }),
-			kitFrame({ id: "1:8", event: "event", data: KIT_EVENT_ASSISTANT }),
-			kitFrame({ event: "ready", data: '{"session_id":"sess_demo","after":null,"replayed":2,"cursor":"1:8"}' }),
-			kitFrame({ id: "1:9", event: "event", data: KIT_EVENT_IDLE }),
+			kitFrame({ event: "ready", data: '{"session_id":"sess_demo","after":"0:3","replayed":0,"cursor":"1:0"}' }),
+			kitFrame({ id: "1:1", event: "event", data: KIT_EVENT_IDLE }),
 			kitFrame({ event: "done", data: KIT_DONE }),
 		],
 	},
 ];
 
-/** SDK 演示：mock fetchImpl 返回 Kit 协议流，观察 client.stream 的 reset → event* → ready 重建与 after 续传。 */
+/** SDK 演示观察独立历史请求、纯实时订阅与 after 续传。 */
 export function KitStreamDemo() {
 	const [rows, setRows] = useState<LogRow[]>([]);
 	const [running, setRunning] = useState(false);
@@ -386,7 +381,14 @@ export function KitStreamDemo() {
 	const consume = async (scenario: KitScenario, signal: AbortSignal) => {
 		const client = createKitClient({
 			baseUrl: "/mock-kit",
-			fetchImpl: () => {
+			fetchImpl: (input) => {
+				if (String(input).includes("/events?"))
+					return Promise.resolve(
+						Response.json({
+							data: [JSON.parse(KIT_EVENT_USER), JSON.parse(KIT_EVENT_ASSISTANT)],
+							next_page_token: null,
+						}),
+					);
 				const body = pacedStream(
 					scenario.frames.map((frame) => new TextEncoder().encode(frame)),
 					KIT_FRAME_MS,
@@ -395,21 +397,34 @@ export function KitStreamDemo() {
 			},
 		});
 		try {
+			let needsHistory = !scenario.after;
+			let history: Promise<void> | undefined;
 			await client.stream("sess_demo", {
 				after: scenario.after,
 				signal,
-				onReset: () => push({ text: "onReset() —— 游标不可续传，开始重建" }),
+				onReset: () => {
+					needsHistory = true;
+					push({ text: "onReset() —— 游标不可续传" });
+				},
 				onEvent: (event, cursor) =>
 					push({
 						text: `onEvent cursor=${cursor} event_id=${event.event_id} type=${event.type}${event.role ? ` role=${event.role}` : ""}`,
 						detail: JSON.stringify(event),
 					}),
-				onReady: ({ sessionId, replayed, cursor }) =>
-					push({ text: `onReady sessionId=${sessionId} replayed=${replayed} cursor=${cursor}` }),
+				onReady: ({ sessionId, replayed, cursor }) => {
+					push({ text: `onReady sessionId=${sessionId} replayed=${replayed} cursor=${cursor}` });
+					if (needsHistory) {
+						history = client.events(sessionId, { limit: 100, signal }).then(
+							(page) => push({ text: "GET /api/kit/sessions/sess_demo/events", detail: JSON.stringify(page) }),
+							() => undefined,
+						);
+					}
+				},
 				onPing: (t) => push({ tone: "muted", text: `onPing t=${t} —— 每 15s 保活` }),
 				onDone: ({ status, lastEventId }) =>
 					push({ tone: "muted", text: `onDone status=${status} lastEventId=${lastEventId} —— 流正常关闭` }),
 			});
+			await history;
 		} catch {
 			// 重新运行或卸载导致的取消不需要展示
 			return;

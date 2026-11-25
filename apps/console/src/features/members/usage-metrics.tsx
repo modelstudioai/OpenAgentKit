@@ -1,4 +1,4 @@
-import type { MemberSessionUsage, MemberUsageSummary } from "@openagentpack/kit-sdk/protocol";
+import type { MemberSessionUsage, MemberUsageSummary } from "@openagentkit/sdk/protocol";
 
 import styles from "./members.module.less";
 

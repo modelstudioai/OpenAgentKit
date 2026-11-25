@@ -1,5 +1,5 @@
-import { type MessageTransformer, transformSessionEvent } from "@openagentpack/kit-sdk/messages";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
+import { type MessageTransformer, transformSessionEvent } from "@openagentkit/sdk/messages";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
 
 // 幂等替换展示标签，后续事件重建线程时可重复调用，原始 SessionEvent 与生命周期保持原样。
 const replaceDisplayLabel: MessageTransformer = (input) => {

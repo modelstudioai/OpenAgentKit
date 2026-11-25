@@ -2,13 +2,15 @@ import {
 	deriveApprovalState,
 	KitError,
 	mergeEventSnapshots,
+	reconcileUnorderedSnapshot,
 	type SessionEvent,
+	sameSnapshot,
+	snapshotConflict,
 	threadIdOf,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { ProviderGateway } from "../gateway/types.ts";
 import type { EventBufferRegistry } from "./event-buffer.ts";
 import { readSessionHistory } from "./session-streams.ts";
-import { reconcileUnorderedSnapshot, sameSnapshot, snapshotConflict } from "./snapshot-reconciliation.ts";
 
 const isMainStatus = (event: SessionEvent) => event.type === "session_status" && !threadIdOf(event);
 const isApprovalEvent = (event: SessionEvent) =>

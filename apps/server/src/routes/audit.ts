@@ -1,5 +1,5 @@
 import { type OpenAPIHono, z } from "@hono/zod-openapi";
-import { AuditLogsPageSchema, AuditLogsQuerySchema } from "@openagentpack/kit-sdk/protocol";
+import { AuditLogsPageSchema, AuditLogsQuerySchema } from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 
 const errorSchema = z.object({ error: z.object({ code: z.string(), message: z.string() }) });
@@ -21,9 +21,9 @@ export function registerAuditRoutes(app: OpenAPIHono<AppEnv>) {
 				403: { description: "令牌无效", content: { "application/json": { schema: errorSchema } } },
 			},
 		},
-		(c) => {
+		async (c) => {
 			c.header("Cache-Control", "no-store");
-			return c.json(c.get("services").audit.page(c.get("admin").subject, c.req.valid("query")), 200);
+			return c.json(await c.get("services").audit.page(c.get("admin").subject, c.req.valid("query")), 200);
 		},
 	);
 }

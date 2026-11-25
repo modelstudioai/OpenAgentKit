@@ -50,6 +50,7 @@ API 参考为每个组件说明用途、导入方式、Props / Ref、最小示�
 {/* skill-example: kit-components/examples/attachment-sender.tsx */}
 
 ```tsx
+import { skillInputTokens } from "@openagentkit/sdk/protocol";
 import {
 	type AttachmentItem,
 	Attachments,
@@ -61,7 +62,6 @@ import {
 	SkillGlyph,
 	Suggestion,
 } from "@openagentpack/kit-chat-ui";
-import { skillInputTokens } from "@openagentpack/kit-sdk/protocol";
 import { useEffect, useRef, useState } from "react";
 
 interface UploadedAttachment extends AttachmentItem {

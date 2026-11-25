@@ -1,4 +1,4 @@
-import { type DeclarationType, KitError, redactMemoryConfigurationText } from "@openagentpack/kit-sdk/protocol";
+import { type DeclarationType, KitError, redactMemoryConfigurationText } from "@openagentkit/sdk/protocol";
 
 const sensitive = /(?:api[_-]?key|access[_-]?key|authorization|credential|headers?|password|secret|signature|token)/i;
 const reference = /^\$\{[A-Za-z_][A-Za-z0-9_]*\}$/;

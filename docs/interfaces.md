@@ -21,7 +21,7 @@
   `ADMIN_TOKEN` bearer（v1）。登录入口公开，其他业务 API 默认要求成员令牌或已配置的
   可信 JWT。只有显式 `KIT_AUTH_MODE=anonymous` 才允许无 Bearer 的匿名身份；无效 Bearer
   一律 401，不回落匿名。`member_` 前缀仅允许本地成员会话使用，外部 JWT sub 不可使用。
-- Session 消息发送、stream 与审批 GET/POST 要求 `x-kit-protocol-version: 2.0.0`（接受 2.x），
+- Session 消息发送、stream 与审批 GET/POST 要求 `x-kit-protocol-version: 3.0.0`（接受 3.x），
   缺失或混版返回 409。`after` 是 Kit 传输游标，与 Provider `event_id/after_id` 分离。
 - 时间戳一律 ISO-8601 UTC。ID 一律透传 Provider 原值，kit 不自造 ID（除 catalog /
   operation / plan 这类 kit 自有对象）。
@@ -94,7 +94,7 @@
 | `sessions.events.list` | `GET /api/kit/sessions/:sessionId/events` | 完整快照历史分页，`?after_id=&limit=&page_token=` | ✅ |
 | `sessions.threads.list` | `GET /api/kit/sessions/:sessionId/threads` | 子 Agent 线程摘要分页，`?limit=&page_token=`；校验本人 experience Session，SDK 查询并按绑定版本补充 Agent 名称 | ✅ |
 | `sessions.threads.events` | `GET /api/kit/sessions/:sessionId/threads/:threadId/events` | 子 Agent 完整快照事件分页，最新在前；`?limit=&page_token=`；仅接受 `sthr_*`，与 Session 一起交给 Provider 校验 | ✅ |
-| `sessions.stream` | `GET /api/kit/sessions/:sessionId/stream` | 协议 2.0 持久 SSE，`?after=` 为传输游标；帧定义见 `docs/protocol.md` | ✅ |
+| `sessions.stream` | `GET /api/kit/sessions/:sessionId/stream` | 协议 3.0 实时 SSE，`?after=` 续传实时变更，失效后通过 `sessions.events.list` 加载历史 | ✅ |
 | `sessions.tool-approvals.list` | `GET /api/kit/sessions/:sessionId/tool-approvals` | 当前 requires_action、批次、待办调用与请求详情；归属检查，历史请求不自动激活 | ✅ |
 | `sessions.tool-approvals.respond` | `POST /api/kit/sessions/:sessionId/tool-approvals` | `{ batch_id, call_id, result: allow/deny, deny_message? }`；单项决策，原因最多 200 字符；实时校验，过期/重复 409。本地成员 allow 还检查该轮开始月的限额，deny 不受额度阻止；提交成功不等于执行成功 | ✅ |
 | `files.upload` | `POST /api/kit/files` | multipart（字段名 `file`）上传附件 → `{ file_id, filename, size }`；记录当前 subjectId，只有本人可挂载；黑名单扩展名（`.mjs`，实测 provider 415 拒绝）返回 400 `invalid_request`；超过 `KIT_UPLOAD_MAX_BYTES`（默认 20 MiB）返回 413 | ✅ |
@@ -169,7 +169,7 @@ SDK/CLI 自身的目录能力不受影响；Kit 只提供下面的 YAML 批次�
 
 新批次通过 YAML gateway 调用 SDK 公开对象解析、资源 scope、Plan 与执行入口，不创建 SDK 目录项目。
 Kit 只保留当前声明，修订号不等于模版历史或 Agent 版本。SDK state 检查点、YAML 和成功证明保存在
-SQLite，SDK 管理 state 语义；独立上传暂存受路径边界、哈希和批次互斥保护。Provider 凭据显式传入，
+Kit 数据库，SDK 管理 state 语义；独立上传暂存受路径边界、哈希和批次互斥保护。Provider 凭据显式传入，
 Vault 值只留在批次内存，声明仅保存随机引用；不写全局环境变量。
 
 编辑与编辑预览在 SDK 规范化前递归检查字段和正文，敏感字段仅允许空值或环境变量引用，
@@ -202,7 +202,7 @@ Plan/确认令牌绑定批次、主体、当前修订号与声明及上传内容
 | `debug.sessions.createTemplate` | `POST /api/admin/debug/sessions` | `CreateTemplateDebugSessionRequest`：`{remote_agent_id,agent_version?,remote_environment_id?,title?,files?,memory_stores?,vault_ids?}`；`agent_version` 为显式绑定的正整数，省略使用最新版本；环境省略时使用智能体默认环境，不查询环境目录、不传 Provider 环境覆盖；服务端重新校验远端目标及显式资源元数据后按所选版本建会话，来源为 template，不需要项目声明或 Catalog；文件最多 10、记忆库最多 8、密钥库最多 10，只挂载 ID 与配置，不读取凭据 | ✅ |
 | `debug.sessions.get` | `GET /api/admin/debug/sessions/:sessionId` | 归属校验后返回详情及附件；source 区分 project/template，项目来源包含声明键及源码 revision/source_dirty，模版来源包含远端环境、记忆与密钥库挂载配置；均含远端 Agent ID | ✅ |
 | `debug.sessions.messages.send` | `POST /api/admin/debug/sessions/:sessionId/messages` | 同 SendMessageRequest；复用就绪、幂等发送及审批检查，不扣员工 Credits；中途附件 400 | ✅ |
-| `debug.sessions.stream` | `GET /api/admin/debug/sessions/:sessionId/stream` | 复用共享 SSE pump、Kit v2 reset/ready/event 与 after 续传 | ✅ |
+| `debug.sessions.stream` | `GET /api/admin/debug/sessions/:sessionId/stream` | 协议 3.0 实时 SSE，复用共享上游订阅与 after 续传，历史由 `debug.sessions.events` 分页 | ✅ |
 | `debug.sessions.events` | `GET /api/admin/debug/sessions/:sessionId/events` | Provider 历史分页，支持 after_id/page_token/limit；正文不落库 | ✅ |
 | `debug.sessions.threads` | `GET /api/admin/debug/sessions/:sessionId/threads` | 当前管理员所属调试会话的子 Agent 线程分页，支持 page_token/limit；与体验端共享 Provider 线程合同 | ✅ |
 | `debug.sessions.threadEvents` | `GET /api/admin/debug/sessions/:sessionId/threads/:threadId/events` | 当前管理员所属调试会话的子线程完整事件快照分页，最新在前；threadId 仅接受 sthr_*，不落库，客户端转为 ChatProvider 所需正序 | ✅ |
@@ -376,7 +376,7 @@ Agent 显式版本按版本读取，旧记录版本仅作只读展示，不能�
 与默认文件及成员本人附件共同组成 Provider `resources`；记忆权限不因成员请求而升级。
 记忆库内容跨会话共享，读写挂载可修改原库。空配置不追加记忆资源，不修改已有会话；
 `agents.list`、`agents.get`、`plaza.get` 仅输出公开协议字段，不暴露目录记忆配置及说明。
-Kit 只读记忆库元数据，不提供记忆内容查询、编辑或创建接口，SQLite 不保存记忆内容。
+Kit 只读记忆库元数据，不提供记忆内容查询、编辑或创建接口，Kit 数据库不保存记忆内容。
 Provider wire、权限和分页依据见 `docs/research/catalog-memory-stores.md`。
 
 目录 `vault_ids?: string[]` 最多 10 项，仅选择当前工作空间已有且未归档的密钥库。省略
@@ -570,7 +570,7 @@ Credits 政策、审批、override 或加油包操作。本地成员使用新月
 | `ProviderGateway` | `apps/server/src/gateway/types.ts` | `SdkGateway` / `MockGateway` / services |
 | `CredentialResolver` | `apps/server/src/identity/credentials.ts` | gateway 构造 |
 | `IdentityProvider` | `apps/server/src/identity/types.ts` | server 身份中间件；仅 server 使用 |
-| `CatalogStore` / `OperationStore` | `apps/server/src/store/types.ts` | `node:sqlite` 实现；预留 Postgres |
+| `StoreDatabase` | `apps/server/src/store/database.ts` | 服务端 Store 共用，SQLite、MySQL 和 PostgreSQL 适配负责连接及迁移 |
 | `EventBuffer` | `apps/server/src/services/event-buffer.ts` | 内存实现；预留 Redis adapter |
 | `KitClient` | `packages/sdk/src/providers/kit/client.ts` | SDK 各功能 `/hooks` hooks、仓库脚本、测试 |
 | `ClientOperations` | `packages/sdk/src/providers/kit/client.ts` | 显式 Client 的可选请求映射；复用 Request/BackendOperation 与现有 DTO，缺失能力不回退固定路由 |

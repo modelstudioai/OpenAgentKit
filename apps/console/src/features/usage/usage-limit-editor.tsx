@@ -1,4 +1,4 @@
-import type { UsageLimitConfig } from "@openagentpack/kit-sdk/protocol";
+import type { UsageLimitConfig } from "@openagentkit/sdk/protocol";
 import { Alert, Button, Input, Modal, Segmented } from "antd";
 import { useId, useState } from "react";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";

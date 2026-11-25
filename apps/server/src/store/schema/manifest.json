@@ -1,0 +1,151 @@
+[
+  {
+    "id": "001_init",
+    "source": "sql"
+  },
+  {
+    "id": "002_session_files",
+    "source": "sql"
+  },
+  {
+    "id": "003_quota_plaza",
+    "source": "sql"
+  },
+  {
+    "id": "004_members",
+    "source": "sql"
+  },
+  {
+    "id": "005_member_auth",
+    "source": "sql"
+  },
+  {
+    "id": "006_legacy_file_ownership",
+    "source": "sql"
+  },
+  {
+    "id": "007_admin_debug_scope",
+    "source": "sql"
+  },
+  {
+    "id": "008_member_session_usage",
+    "source": "sql"
+  },
+  {
+    "id": "009_member_usage_limits",
+    "source": "sql"
+  },
+  {
+    "id": "010_catalog_environment",
+    "source": "sql"
+  },
+  {
+    "id": "011_catalog_files",
+    "source": "sql"
+  },
+  {
+    "id": "012_catalog_memory_stores",
+    "source": "sql"
+  },
+  {
+    "id": "013_catalog_vaults",
+    "source": "sql"
+  },
+  {
+    "id": "014_member_groups",
+    "source": "sql"
+  },
+  {
+    "id": "015_template_debug_sessions",
+    "source": "sql"
+  },
+  {
+    "id": "016_saved_templates",
+    "source": "sql"
+  },
+  {
+    "id": "017_template_listings",
+    "source": "sql"
+  },
+  {
+    "id": "018_template_versions",
+    "source": "sql"
+  },
+  {
+    "id": "019_template_usage_limits",
+    "source": "sql"
+  },
+  {
+    "id": "020_usage_limit_days",
+    "source": "sql"
+  },
+  {
+    "id": "021_usage_limit_days_backfill",
+    "source": "sql"
+  },
+  {
+    "id": "022_usage_limit_days_rebuild",
+    "source": "run"
+  },
+  {
+    "id": "023_catalog_agent_version_binding",
+    "source": "run"
+  },
+  {
+    "id": "024_template_default_environment",
+    "source": "sql"
+  },
+  {
+    "id": "025_resource_draft_batches",
+    "source": "sql"
+  },
+  {
+    "id": "026_resource_draft_cleanup_ownership",
+    "source": "run"
+  },
+  {
+    "id": "027_usage_limit_daily",
+    "source": "run"
+  },
+  {
+    "id": "023_catalog_listed_at",
+    "source": "sql"
+  },
+  {
+    "id": "023_session_message_files",
+    "source": "sql"
+  },
+  {
+    "id": "028_preset_packs",
+    "source": "sql"
+  },
+  {
+    "id": "029_yaml_resource_drafts",
+    "source": "sql"
+  },
+  {
+    "id": "030_resource_draft_assets",
+    "source": "run"
+  },
+  {
+    "id": "031_retire_directory_drafts",
+    "source": "run"
+  },
+  {
+    "id": "032_publication_result_contract",
+    "source": "sql"
+  },
+  {
+    "id": "029_branding",
+    "source": "sql"
+  },
+  {
+    "id": "030_branding_logo",
+    "source": "sql"
+  },
+  {
+    "id": "033_openagentkit_default_branding",
+    "source": "version",
+    "steps": true
+  }
+]

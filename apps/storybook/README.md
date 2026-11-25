@@ -1,7 +1,9 @@
 # apps/storybook — 文档站
 
-OpenAgentPack Kit 的官方文档站与组件展示站，使用 Next.js + Fumadocs 构建为纯静态产物。
+OpenAgentKit 的官方文档站与组件展示站，使用 Next.js + Fumadocs 构建为纯静态产物。
 内容以中文为主，代码标识符和上游原文保持原语言。
+
+正式站点：<https://modelstudioai.github.io/OpenAgentKit/>
 
 本文件面向人类读者；MDX 约定、主题、预览与生成链路见 [AGENTS.md](./AGENTS.md)。
 
@@ -37,6 +39,35 @@ python3 -m http.server 3010 --bind 127.0.0.1 --directory apps/storybook/out
 `predev` 会先同步 `apps/server/openapi.json` 并打包 Skill 下载资产；`prebuild` 还会
 先构建 chat-ui 依赖，因此不要求手工按顺序执行这些步骤。
 
+## GitHub Pages 部署
+
+文档站由 [`.github/workflows/docs.yml`](../../.github/workflows/docs.yml) 自动构建并部署到
+GitHub Pages。仓库 Settings → Pages 的 Source 需选择 **GitHub Actions**。
+
+- workflow 在 push 到 `main` 或手动 `workflow_dispatch` 时运行；只有 `main` 会执行部署。
+- `actions/configure-pages` 提供页面所属的项目子路径，workflow 将其注入
+  `NEXT_PUBLIC_BASE_PATH`；Next 的 `basePath` 与站内路径 helper 据此生成
+  `/OpenAgentKit/...` 地址。
+- 构建产物 `apps/storybook/out` 由 `actions/upload-pages-artifact` 上传，再由
+  `actions/deploy-pages` 发布，不需要提交构建产物或维护 `gh-pages` 分支。
+- 使用 Actions 部署时不需要 Jekyll 处理，`_next` 等以下划线开头的目录会原样发布。
+
+本地模拟项目子路径：
+
+```bash
+NEXT_PUBLIC_BASE_PATH=/OpenAgentKit pnpm --filter storybook build
+mkdir -p .scratch/pages
+ln -sfn ../../apps/storybook/out .scratch/pages/OpenAgentKit
+python3 -m http.server 3010 --bind 127.0.0.1 --directory .scratch/pages
+```
+
+访问 `http://127.0.0.1:3010/OpenAgentKit/`。根路径构建仍可直接托管
+`apps/storybook/out`，不要与子路径模拟混淆。
+
+如后续绑定自定义域名，在仓库 **Settings → Pages → Custom domain** 中保存域名，再按域名类型配置 DNS。
+部署到域名根路径时，`configure-pages` 返回空的 `base_path`，重新运行部署即可。
+[GitHub Pages 自定义域名配置](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site)
+
 ## 修改内容
 
 - **新增文档**：在 `content/docs/` 添加 `.mdx`，再到 `content/docs/meta.json` 登记顺序。
@@ -68,6 +99,13 @@ pnpm --filter storybook build
 pnpm --filter storybook e2e   # 需先静态托管 apps/storybook/out，或设置 DOCS_PREVIEW_URL
 pnpm check:docs
 pnpm check:skills
+```
+
+GitHub Pages 子路径回归：
+
+```bash
+NEXT_PUBLIC_BASE_PATH=/OpenAgentKit pnpm --filter storybook build
+DOCS_PREVIEW_URL=http://127.0.0.1:3010/OpenAgentKit/ pnpm --filter storybook e2e
 ```
 
 ## 相关文档

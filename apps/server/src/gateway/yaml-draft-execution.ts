@@ -1,4 +1,4 @@
-import { KitError } from "@openagentpack/kit-sdk/protocol";
+import { KitError } from "@openagentkit/sdk/protocol";
 import { type ResourceExecutionResult, ResourceRuntimeError } from "@openagentpack/sdk";
 import { PublicationError } from "../publication-error.ts";
 import { publicationErrorDetails, publicationReport, sdkPublicationFailure } from "./sdk-publication.ts";
@@ -61,12 +61,12 @@ export async function withPublicationResult<T>(
 	} catch (error) {
 		const outerSaveFailed = Boolean(attempt.execution) && error !== attempt.failure;
 		if (attempt.execution)
-			feedback?.publication?.(
+			await feedback?.publication?.(
 				publicationReport(outerSaveFailed ? { ...attempt.execution, outcome: "unknown" } : attempt.execution),
 			);
 		throw normalizeFailure(attempt, error, outerSaveFailed);
 	}
-	if (attempt.execution) feedback?.publication?.(publicationReport(attempt.execution));
+	if (attempt.execution) await feedback?.publication?.(publicationReport(attempt.execution));
 	assertCompleted(attempt.execution);
 	return value;
 }

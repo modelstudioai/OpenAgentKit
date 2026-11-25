@@ -1,6 +1,6 @@
 ---
 name: use-kit-chat
-description: "将 React 对话页面接入 OpenAgentPack Kit 的 useChat，串起会话目录、消息与输入框、Agent 资源和产物交互。适用于 Kit Server 或已有的自定义 ChatProvider。"
+description: "将 React 对话页面接入 OpenAgentKit 的 useChat，串起会话目录、消息与输入框、Agent 资源和产物交互。适用于 Kit Server 或已有的自定义 ChatProvider。"
 ---
 
 # 接入 Kit 对话

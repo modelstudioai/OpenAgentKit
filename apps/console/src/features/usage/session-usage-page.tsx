@@ -1,4 +1,4 @@
-import type { MemberView, TemplateUsageRow } from "@openagentpack/kit-sdk/protocol";
+import type { MemberView, TemplateUsageRow } from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Button, Empty, Input, Result, Segmented, Spin, Table } from "antd";
 import { useMemo, useState } from "react";

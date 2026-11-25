@@ -1,8 +1,8 @@
-import { type UseChatResult, useChat } from "@openagentpack/kit-sdk/chat/hooks";
-import type { SessionEvent, ToolApprovalDecision, ToolApprovalsResponse } from "@openagentpack/kit-sdk/protocol";
-import type { ChatProvider, StreamSessionOptions } from "@openagentpack/kit-sdk/providers";
-import { createKitClient } from "@openagentpack/kit-sdk/providers/kit";
-import { KitProvider } from "@openagentpack/kit-sdk/providers/kit/react";
+import { type UseChatResult, useChat } from "@openagentkit/sdk/chat/hooks";
+import type { SessionEvent, ToolApprovalDecision, ToolApprovalsResponse } from "@openagentkit/sdk/protocol";
+import type { ChatProvider, StreamSessionOptions } from "@openagentkit/sdk/providers";
+import { createKitClient } from "@openagentkit/sdk/providers/kit";
+import { KitProvider } from "@openagentkit/sdk/providers/kit/react";
 import { StrictMode, useState, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 import "../../src/styles.css";

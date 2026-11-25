@@ -1,6 +1,6 @@
-import type { OperationView } from "@openagentpack/kit-sdk/protocol";
-import { decodeFrame } from "@openagentpack/kit-sdk/protocol";
-import { createSseStream } from "@openagentpack/kit-sdk/stream";
+import type { OperationView } from "@openagentkit/sdk/protocol";
+import { decodeFrame } from "@openagentkit/sdk/protocol";
+import { createSseStream } from "@openagentkit/sdk/stream";
 import { adminRequest } from "./kit.ts";
 
 /** Operation 进度 SSE：只交付 operation 帧，自然 EOF 正常结束，无会话空闲超时。 */

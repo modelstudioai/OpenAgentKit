@@ -1,8 +1,8 @@
 "use client";
 
+import type { ChatMessage, MessagePart } from "@openagentkit/sdk/messages";
+import { composeSkillDirective } from "@openagentkit/sdk/protocol";
 import { Chat, EmptyState, Prompts } from "@openagentpack/kit-chat-ui";
-import type { ChatMessage, MessagePart } from "@openagentpack/kit-sdk/messages";
-import { composeSkillDirective } from "@openagentpack/kit-sdk/protocol";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DEMO_SKILLS } from "./demo-skills.ts";
 

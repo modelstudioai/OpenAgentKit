@@ -1,4 +1,4 @@
-# OpenAgentPack-Kit Agent 规则
+# OpenAgentKit Agent 规则
 
 本文件适用于当前独立仓库的全部工作，供人类维护者和 coding agent 共同使用。
 产品代码、配置、测试及验收依据均留在本仓库，不依赖父目录、全局 Skill 或个人环境。
@@ -38,6 +38,7 @@
 - 完整 SDK 公开入口以 `packages/sdk/package.json` 为准；目录映射见目录规则。
 - 工作区只包含 `apps/*` 与 `packages/*`；目录与命令是否可用以当前清单为准，
   不按历史 ADR 的旧名称恢复已退役的包、原生壳、项目生成器或目录 Project API。
+- 配置 Kit Server 的 SQLite、MySQL 或 PostgreSQL 时，使用仓库内的 [kit-database](assets/skills/kit-database/SKILL.md)。
 
 ## 执行红线
 
@@ -48,7 +49,7 @@
 - 在 SDK 数据入口或 `src/protocol` 引入 React、DOM 或 Node-only API。
   React 仅允许位于六个功能模块的 `hooks/`、通用 `src/hooks/` 与
   `src/providers/kit/react/`（ADR-0026）。
-- 另造事件模型，或把 Provider 事件、消息正文写入 SQLite。共享事件使用上游 `SessionEvent`；
+- 另造事件模型，或把 Provider 事件、消息正文写入 Kit 数据库。共享事件使用上游 `SessionEvent`；
   临时 YAML、SDK state 与成功证明的存储例外见 ADR-0017/0018。
 - 将 Provider key、Vault credential 下发到浏览器，写入仓库、日志、错误或持久化声明。
   Provider 配置显式传入 SDK，运行链路不得改写进程全局环境变量。
@@ -127,7 +128,7 @@ Skill 漂移，不能代替规范语义审查。仅文档调整的验证选择�
 
 仓库 `.githooks/` 提供暂存区 lint、提交格式和推送验证；只有 `core.hooksPath` 指向它时才生效，
 不要假定个人全局 hook 已执行仓库门禁。Hook 可被 `--no-verify` 绕过，是便利而非强制。
-仓库不提供 CI 流水线配置；需要完整验收时运行 `pnpm gate`。
+文档站通过 GitHub Actions 发布到 GitHub Pages。完整验收使用 `pnpm gate`。
 
 提交信息使用简体中文 Conventional Commits：`<type>(scope): <description>`，每行不超过
 100 字符。scope 使用 `sdk`、`chat-ui`、`eval`、`server`、`web`、`console`、

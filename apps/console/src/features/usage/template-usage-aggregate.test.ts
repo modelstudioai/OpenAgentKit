@@ -1,4 +1,4 @@
-import type { TemplateUsageRow } from "@openagentpack/kit-sdk/protocol";
+import type { TemplateUsageRow } from "@openagentkit/sdk/protocol";
 import { describe, expect, it } from "vitest";
 import { aggregateTemplateRows } from "./template-usage-aggregate.ts";
 

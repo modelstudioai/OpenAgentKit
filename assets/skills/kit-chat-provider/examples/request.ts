@@ -1,5 +1,5 @@
-import { createRequest, type RequestClient } from "@openagentpack/kit-sdk/request";
-import type { RawSseMessage } from "@openagentpack/kit-sdk/stream";
+import { createRequest, type RequestClient } from "@openagentkit/sdk/request";
+import type { RawSseMessage } from "@openagentkit/sdk/stream";
 
 export function createApplicationRequest(baseUrl: string, getAppToken: () => Promise<string>): RequestClient {
 	return createRequest({

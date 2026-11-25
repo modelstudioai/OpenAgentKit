@@ -46,9 +46,9 @@
 ## 运行时边界
 
 - `kit-chat-ui` 负责渲染和本地交互。请求、上传、下载、复制与反馈持久化使用注入的 Hook 或应用回调。
-- `kit-sdk/chat/hooks` 提供会话状态。`kit-sdk/providers/kit/react` 的 `KitProvider` 提供默认 Context，
+- `@openagentkit/sdk/chat/hooks` 提供会话状态。`@openagentkit/sdk/providers/kit/react` 的 `KitProvider` 提供默认 Context，
   也可以直接传入自定义 `ChatProvider`。
-- `kit-sdk` 将 SDK 事件投影为消息、线程和审批数据，组件直接消费投影结果。
+- `@openagentkit/sdk` 将 SDK 事件投影为消息、线程和审批数据，组件直接消费投影结果。
 - 浏览器运行时仅使用 SDK 的浏览器安全入口，Provider 凭据保留在后端。
 - Kit 宿主应用从注入的运行时配置获取 `apiBaseUrl`，支持与页面不同源的后端。
 

@@ -1,4 +1,4 @@
-import { type ProjectVaultCredentialInput, ProjectVaultCredentialInputSchema } from "@openagentpack/kit-sdk/protocol";
+import { type ProjectVaultCredentialInput, ProjectVaultCredentialInputSchema } from "@openagentkit/sdk/protocol";
 import { Button, Checkbox, Input, Modal, Select } from "antd";
 import { useId, useState } from "react";
 import styles from "./template-forms.module.less";

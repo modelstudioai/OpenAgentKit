@@ -1,4 +1,4 @@
-import type { RemoteFile } from "@openagentpack/kit-sdk/protocol";
+import type { RemoteFile } from "@openagentkit/sdk/protocol";
 import { defaultMountPath, normalizedMountPath } from "../catalog/file-mounts.ts";
 import type { TemplateLocalResource } from "./template-local-resources.tsx";
 

@@ -1,15 +1,17 @@
 import {
 	isSessionRemovedStatus,
 	KitError,
+	reconcileSnapshotHistory,
 	type SessionEvent,
 	type SseFrame,
 	sessionStatusOf,
 	threadIdOf,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
+import { sessionEventError } from "../gateway/session-event-error.ts";
 import type { GatewaySessionInfo, ProviderGateway } from "../gateway/types.ts";
 import type { EventBufferRegistry, EventChange } from "./event-buffer.ts";
+import { createLiveEventJournal, type LiveEventJournal } from "./live-event-journal.ts";
 import { type AcceptedTurn, projectSessionRuntime } from "./session-runtime.ts";
-import { reconcileInitialSnapshots } from "./snapshot-reconciliation.ts";
 
 /** 历史必须完整分页；游标是 Provider 返回的不透明字符串。 */
 export async function readSessionHistory(gateway: ProviderGateway, sessionId: string, signal?: AbortSignal) {
@@ -43,14 +45,13 @@ function deferred() {
 }
 interface Pump {
 	controller: AbortController;
-	ready: ReturnType<typeof deferred>;
 	connected: ReturnType<typeof deferred>;
+	journal: LiveEventJournal;
 	references: number;
 	error?: KitError;
 	terminal: boolean;
 	hydrated: boolean;
-	pending: SessionEvent[];
-	pendingBytes: number;
+	hydration?: Promise<void>;
 	lastStatus?: string;
 	detachTimer?: ReturnType<typeof setTimeout>;
 	project?: (sessionId: string, pump: Pump, force?: boolean) => void;
@@ -59,57 +60,26 @@ interface Pump {
 	onStatus?: (sessionId: string, status: string) => void;
 }
 function streamError(error: unknown): KitError {
-	if (error instanceof KitError) return error;
-	const detail = error as {
-		retryable?: boolean;
-		statusCode?: number;
-		status?: number;
-		code?: string;
-		name?: string;
-	} | null;
-	const status = detail?.statusCode ?? detail?.status;
-	let retryable = true;
-	if (typeof detail?.retryable === "boolean") retryable = detail.retryable;
-	else if (typeof status === "number") retryable = status === 429 || status >= 500;
-	else if (
-		detail?.code === "BAILIAN_EVENT_PROTOCOL_ERROR" ||
-		detail?.code === "protocol" ||
-		detail?.name === "UserError"
-	)
-		retryable = false;
-	return new KitError("provider_error", retryable ? "上游事件连接中断，请重新连接" : "上游事件连接被拒绝或协议不兼容", {
-		retryable,
+	return sessionEventError(error, {
+		transient: "上游事件连接中断，请重新连接",
+		permanent: "上游事件连接被拒绝或协议不兼容",
 	});
 }
 const MAX_QUEUE_FRAMES = 1024;
 const MAX_QUEUE_BYTES = 8 * 1024 * 1024;
 const eventSize = (event: SessionEvent) => new TextEncoder().encode(JSON.stringify(event)).byteLength;
 
-function failPump(pump: Pump, buffers: EventBufferRegistry, sessionId: string, error: unknown) {
+function failPump(pump: Pump, error: unknown) {
 	pump.error = streamError(error);
 	pump.connected.reject(pump.error);
-	pump.ready.reject(pump.error);
-	buffers.notify(sessionId);
+	pump.journal.notify();
 }
-function acceptEvent(
-	pump: Pump,
-	buffers: EventBufferRegistry,
-	sessionId: string,
-	event: SessionEvent,
-): string | undefined {
-	if (event.type === "session_status" && !threadIdOf(event) && isSessionRemovedStatus(sessionStatusOf(event)))
-		pump.terminal = true;
-	if (pump.hydrated) {
-		buffers.append(sessionId, event);
-		const isMainStatus = event.type === "session_status" && !threadIdOf(event);
-		if (isMainStatus || pump.hasPendingTurn?.()) pump.project?.(sessionId, pump);
-		return isMainStatus ? sessionStatusOf(event) : undefined;
-	}
-	pump.pendingBytes += eventSize(event);
-	if (pump.pending.length >= MAX_QUEUE_FRAMES || pump.pendingBytes > MAX_QUEUE_BYTES)
-		throw new KitError("provider_error", "历史回放期间实时事件缓冲超过上限", { retryable: true });
-	pump.pending.push(event);
-	return undefined;
+function acceptEvent(pump: Pump, buffers: EventBufferRegistry, sessionId: string, event: SessionEvent) {
+	const isMainStatus = event.type === "session_status" && !threadIdOf(event);
+	if (isMainStatus && isSessionRemovedStatus(sessionStatusOf(event))) pump.terminal = true;
+	buffers.append(sessionId, event);
+	pump.journal.append(event);
+	if (isMainStatus || pump.hasPendingTurn?.()) pump.project?.(sessionId, pump);
 }
 
 function statusOfInfo(info: GatewaySessionInfo): string | undefined {
@@ -119,7 +89,6 @@ function statusOfInfo(info: GatewaySessionInfo): string | undefined {
 }
 
 function shouldStopAfterEvent(pump: Pump) {
-	if (!pump.hydrated) return false;
 	if (pump.terminal) return true;
 	return pump.references === 0 && pump.lastStatus !== undefined && pump.lastStatus !== "running";
 }
@@ -143,6 +112,7 @@ async function consumeSource(
 			if (pump.controller.signal.aborted) return;
 			acceptEvent(pump, buffers, sessionId, event);
 			if (shouldStopAfterEvent(pump)) {
+				pump.journal.notify();
 				pump.controller.abort();
 				runDetachedCleanup(pump, onDetachedTerminal);
 				return;
@@ -152,36 +122,25 @@ async function consumeSource(
 			throw new KitError("provider_error", "上游事件流意外结束", { retryable: true });
 	} catch (error) {
 		if (!pump.controller.signal.aborted) {
-			failPump(pump, buffers, sessionId, error);
+			failPump(pump, error);
 			pump.controller.abort();
 			runDetachedCleanup(pump, onDetachedTerminal);
 		}
 	}
 }
 
-function applyHydratedStatus(pump: Pump, buffers: EventBufferRegistry, sessionId: string) {
-	// 历史含主状态时回写一次，修复无人订阅期间滞留在 SQLite 的旧 running；无历史则不制造 idle 回调。
-	pump.project?.(sessionId, pump, buffers.get(sessionId)?.latestStatus !== undefined);
-}
-
-function failInitialization(
-	error: unknown,
-	pump: Pump,
-	buffers: EventBufferRegistry,
-	sessionId: string,
-	onDetachedTerminal: () => void,
-) {
+function failInitialization(error: unknown, pump: Pump, sessionId: string, onDetachedTerminal: () => void) {
 	// Provider 明确返回会话不存在：索引里的 running 再也等不到终态，回正为 idle 免得侧栏常驻运行标记。
 	if (error instanceof KitError && error.code === "not_found") {
 		pump.forgetTurn?.();
 		pump.onStatus?.(sessionId, "idle");
 	}
-	failPump(pump, buffers, sessionId, error);
+	failPump(pump, error);
 	pump.controller.abort();
 	runDetachedCleanup(pump, onDetachedTerminal);
 }
 
-async function initializePump(
+async function connectPump(
 	gateway: ProviderGateway,
 	buffers: EventBufferRegistry,
 	sessionId: string,
@@ -190,54 +149,68 @@ async function initializePump(
 ) {
 	try {
 		const info = await gateway.getSession(sessionId);
+		if (pump.controller.signal.aborted) return;
 		if (!info) throw new KitError("not_found", "会话不存在");
 		pump.terminal = isSessionRemovedStatus(info.status);
 		pump.lastStatus = statusOfInfo(info);
-		if (!pump.terminal) {
-			void consumeSource(gateway, buffers, sessionId, pump, onDetachedTerminal);
-			await pump.connected.promise;
-		}
-		const history = await readSessionHistory(gateway, sessionId, pump.controller.signal);
-		if (pump.controller.signal.aborted) return;
-		if (pump.error) throw pump.error;
-		const events = reconcileInitialSnapshots(history, pump.pending);
-		buffers.reset(sessionId);
-		buffers.seed(sessionId, events);
-		pump.pending = [];
-		pump.pendingBytes = 0;
-		pump.hydrated = true;
-		pump.ready.resolve();
-		// 水合以 Provider 历史为准回正索引：上一轮无人订阅时的终态（含遗留 running）在这里收敛。
-		applyHydratedStatus(pump, buffers, sessionId);
-		if (pump.terminal) {
-			pump.controller.abort();
-			runDetachedCleanup(pump, onDetachedTerminal);
-		}
+		if (pump.terminal) pump.connected.resolve();
+		else void consumeSource(gateway, buffers, sessionId, pump, onDetachedTerminal);
 	} catch (error) {
 		if (pump.controller.signal.aborted) return;
-		failInitialization(error, pump, buffers, sessionId, onDetachedTerminal);
+		failInitialization(error, pump, sessionId, onDetachedTerminal);
 	}
 }
-async function waitForReady(pump: Pump, signal?: AbortSignal) {
-	if (!signal) return pump.ready.promise;
+
+/** 写入及审批所需的运行态按需初始化，实时订阅已经独立开放。 */
+async function hydrateRuntime(gateway: ProviderGateway, buffers: EventBufferRegistry, sessionId: string, pump: Pump) {
+	const before = (buffers.get(sessionId)?.events ?? []).map((event) => ({ event }));
+	const pending: EventChange[] = [];
+	let bytes = 0;
+	let overflow = false;
+	const unsubscribe = buffers.subscribe(sessionId, (change) => {
+		if (!change || overflow) return;
+		bytes += eventSize(change.event);
+		overflow = pending.length >= MAX_QUEUE_FRAMES || bytes > MAX_QUEUE_BYTES;
+		if (!overflow) pending.push(change);
+	});
+	try {
+		const history = await readSessionHistory(gateway, sessionId, pump.controller.signal);
+		if (pump.error) throw pump.error;
+		if (pump.terminal) throw new KitError("conflict", "会话已终止");
+		pump.controller.signal.throwIfAborted();
+		if (overflow) throw new KitError("provider_error", "校验会话状态期间实时事件缓冲超限", { retryable: true });
+		const snapshots = reconcileSnapshotHistory(history, [...before, ...pending]);
+		buffers.replace(
+			sessionId,
+			snapshots.map(({ event }) => event),
+		);
+		pump.hydrated = true;
+		pump.project?.(sessionId, pump, buffers.get(sessionId)?.latestStatus !== undefined);
+	} finally {
+		unsubscribe();
+	}
+}
+
+async function waitForConnection(pump: Pump, signal?: AbortSignal) {
+	if (!signal) return pump.connected.promise;
 	let cancel!: () => void;
 	const cancelled = new Promise<void>((resolve) => {
 		cancel = resolve;
 	});
 	signal.addEventListener("abort", cancel, { once: true });
 	try {
-		if (!signal.aborted) await Promise.race([pump.ready.promise, cancelled]);
+		if (!signal.aborted) await Promise.race([pump.connected.promise, cancelled]);
 	} finally {
 		signal.removeEventListener("abort", cancel);
 	}
 }
-function createSubscription(buffers: EventBufferRegistry, sessionId: string, interval: number, signal?: AbortSignal) {
+function createSubscription(journal: LiveEventJournal, interval: number, signal?: AbortSignal) {
 	const queue: { change: EventChange; bytes: number }[] = [];
 	let totalBytes = 0;
 	let error: KitError | undefined;
 	let wake: (() => void) | undefined;
 	const poke = () => wake?.();
-	const unsubscribe = buffers.subscribe(sessionId, (change) => {
+	const unsubscribe = journal.subscribe((change) => {
 		if (!change || error) {
 			poke();
 			return;
@@ -274,21 +247,23 @@ function createSubscription(buffers: EventBufferRegistry, sessionId: string, int
 	};
 }
 
-function* replayFrames(buffers: EventBufferRegistry, sessionId: string, after?: string): Generator<SseFrame> {
-	const replay = buffers.replay(sessionId, after);
-	const cursor = buffers.cursor(sessionId);
-	if (replay.reset) yield { type: "reset", data: { session_id: sessionId } };
-	for (const change of replay.changes) yield { type: "event", data: change.event, cursor: change.cursor };
+function* replayFrames(
+	sessionId: string,
+	cursor: string,
+	replay: EventChange[] | undefined,
+	after?: string,
+): Generator<SseFrame> {
+	if (!replay) yield { type: "reset", data: { session_id: sessionId } };
+	for (const change of replay ?? []) yield { type: "event", data: change.event, cursor: change.cursor };
 	yield {
 		type: "ready",
-		data: { session_id: sessionId, after: after ?? null, replayed: replay.changes.length, cursor },
+		data: { session_id: sessionId, after: after ?? null, replayed: replay?.length ?? 0, cursor },
 	};
 }
 async function* liveFrames(
 	pump: Pump,
 	subscription: ReturnType<typeof createSubscription>,
 	sessionId: string,
-	buffers: EventBufferRegistry,
 	interval: number,
 	signal?: AbortSignal,
 ): AsyncGenerator<SseFrame> {
@@ -308,9 +283,9 @@ async function* liveFrames(
 				data: {
 					session_id: sessionId,
 					status: "terminated",
-					last_event_id: buffers.get(sessionId)?.events.at(-1)?.event_id ?? null,
+					last_event_id: pump.journal.lastEventId(),
 					reason: "session_terminal",
-					cursor: buffers.cursor(sessionId),
+					cursor: pump.journal.cursor(),
 				},
 			};
 			return;
@@ -373,13 +348,11 @@ export function createSessionStreams(
 	function start(sessionId: string): Pump {
 		const pump: Pump = {
 			controller: new AbortController(),
-			ready: deferred(),
 			connected: deferred(),
+			journal: createLiveEventJournal(),
 			references: 0,
 			terminal: false,
 			hydrated: false,
-			pending: [],
-			pendingBytes: 0,
 			project,
 			hasPendingTurn: () => turns.has(sessionId),
 			forgetTurn: () => turns.delete(sessionId),
@@ -390,12 +363,11 @@ export function createSessionStreams(
 			() => {
 				const error = new DOMException("已取消", "AbortError");
 				pump.connected.reject(error);
-				pump.ready.reject(error);
 			},
 			{ once: true },
 		);
 		pumps.set(sessionId, pump);
-		void initializePump(gateway, buffers, sessionId, pump, () => {
+		void connectPump(gateway, buffers, sessionId, pump, () => {
 			if (pump.references === 0) stop(sessionId, pump);
 		});
 		return pump;
@@ -428,16 +400,25 @@ export function createSessionStreams(
 		hasSubscribers(sessionId: string) {
 			return (pumps.get(sessionId)?.references ?? 0) > 0;
 		},
-		/** 有上游泵在跟踪（含最后订阅者离开后继续跟踪 running 回合）；此时列表不再额外探测。 */
+		/** 仅已有运行证据的订阅可代替侧栏对陈旧 running 记录的独立对账。 */
 		isTracking(sessionId: string) {
-			return pumps.has(sessionId);
+			const pump = pumps.get(sessionId);
+			return !!pump && !pump.error && (pump.hydrated || !!buffers.get(sessionId)?.latestStatus);
 		},
 		async use<T>(sessionId: string, action: () => Promise<T>): Promise<T> {
 			const lease = acquire(sessionId);
 			try {
-				await lease.pump.ready.promise;
-				if (lease.pump.error) throw lease.pump.error;
-				if (lease.pump.terminal) throw new KitError("conflict", "会话已终止");
+				const pump = lease.pump;
+				await pump.connected.promise;
+				if (pump.error) throw pump.error;
+				if (pump.terminal) throw new KitError("conflict", "会话已终止");
+				pump.hydration ??= hydrateRuntime(gateway, buffers, sessionId, pump).catch((error: unknown) => {
+					pump.hydration = undefined;
+					throw error;
+				});
+				await pump.hydration;
+				if (pump.error) throw pump.error;
+				if (pump.terminal) throw new KitError("conflict", "会话已终止");
 				return await action();
 			} finally {
 				lease.release();
@@ -447,11 +428,16 @@ export function createSessionStreams(
 			const lease = acquire(sessionId);
 			let subscription: ReturnType<typeof createSubscription> | undefined;
 			try {
-				await waitForReady(lease.pump, options.signal);
 				if (options.signal?.aborted) return;
-				subscription = createSubscription(buffers, sessionId, pingIntervalMs, options.signal);
-				yield* replayFrames(buffers, sessionId, options.after);
-				yield* liveFrames(lease.pump, subscription, sessionId, buffers, pingIntervalMs, options.signal);
+				const { journal } = lease.pump;
+				subscription = createSubscription(journal, pingIntervalMs, options.signal);
+				const cursor = journal.cursor();
+				const replay = journal.readAfter(options.after);
+				await waitForConnection(lease.pump, options.signal);
+				if (options.signal?.aborted) return;
+				if (lease.pump.error) throw lease.pump.error;
+				yield* replayFrames(sessionId, cursor, replay, options.after);
+				yield* liveFrames(lease.pump, subscription, sessionId, pingIntervalMs, options.signal);
 			} catch (error) {
 				if (!options.signal?.aborted) {
 					const failure = streamError(error);

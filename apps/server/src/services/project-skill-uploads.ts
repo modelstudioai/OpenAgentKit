@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { KitError, type ProjectSkillUpload } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type ProjectSkillUpload } from "@openagentkit/sdk/protocol";
 import { prepareProjectSkillUpload } from "../gateway/project-skill-sources.ts";
 import type { ProjectSourceSkillUpload } from "../gateway/types.ts";
 import type { ProjectUploadOwner, ProjectUploadScope } from "./project-file-uploads.ts";

@@ -1,4 +1,4 @@
-import { type OperationView, PROTOCOL_VERSION } from "@openagentpack/kit-sdk/protocol";
+import { type OperationView, PROTOCOL_VERSION } from "@openagentkit/sdk/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { bootstrapAdmin } from "./kit.ts";
 import { streamOperation } from "./sse.ts";

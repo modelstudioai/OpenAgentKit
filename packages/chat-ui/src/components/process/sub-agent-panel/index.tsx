@@ -1,4 +1,4 @@
-import type { ChatAgentThread, ChatMultiAgent } from "@openagentpack/kit-sdk/chat";
+import type { ChatAgentThread, ChatMultiAgent } from "@openagentkit/sdk/chat";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useRef, useState } from "react";
 import { ProcessSpinner } from "../step/index.tsx";

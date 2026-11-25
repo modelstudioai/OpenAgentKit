@@ -19,6 +19,9 @@ test("a standalone Skill copies local SDK entries and the selected UI closure in
 	t.after(() => rmSync(directory, { recursive: true, force: true }));
 	packSkills({ output: directory });
 	execFileSync("tar", ["-xzf", resolve(directory, "use-kit-chat.tgz"), "-C", directory]);
+	const sdkName = JSON.parse(readFileSync(resolve(repositoryRoot, "packages/sdk/package.json"), "utf8")).name;
+	const sdkMetadata = resolve(directory, "use-kit-chat/assets/kit/sdk/copy-in.json");
+	assert.equal(JSON.parse(readFileSync(sdkMetadata, "utf8")).name, sdkName);
 	const installer = resolve(directory, "use-kit-chat/scripts/install.mjs");
 	const project = resolve(directory, "external app");
 	const packagePath = resolve(project, "package.json");
@@ -38,7 +41,7 @@ test("a standalone Skill copies local SDK entries and the selected UI closure in
 	const uiPath = resolve(project, "src/components/kit");
 	const manifest = () => JSON.parse(readFileSync(packagePath, "utf8"));
 	assert.ok(!Object.hasOwn(manifest(), "imports"));
-	assert.ok(!manifest().dependencies["@openagentpack/kit-sdk"]);
+	assert.ok(!manifest().dependencies[sdkName]);
 	assert.ok(manifest().dependencies["@openagentpack/sdk"]);
 	assert.ok(manifest().dependencies.zod);
 	assert.ok(!existsSync(resolve(sdkPath, "lib")), "source copy-in must be usable without a prebuilt SDK");
@@ -77,6 +80,7 @@ test("a standalone Skill copies local SDK entries and the selected UI closure in
 	copy("--example", "experience.tsx");
 	assert.equal(manifest().dependencies.lowlight, "3.3.0", "preserve the application's existing version");
 	assert.deepEqual(manifest().imports, unrelatedImports);
+	assert.ok(!manifest().dependencies[sdkName], "the Layout copy must use the local SDK source");
 	for (const name of ["react-markdown", "mermaid", "@radix-ui/react-dialog"]) {
 		assert.ok(manifest().dependencies[name], `missing runtime dependency ${name}`);
 	}
@@ -89,6 +93,7 @@ test("a standalone Skill copies local SDK entries and the selected UI closure in
 		const code = readFileSync(resolve(examples, file), "utf8");
 		assert.match(code, /from "\.\.\/\.\.\/sdk\//);
 		assert.doesNotMatch(code, /#kit-sdk\/|@openagentpack\/kit-/);
+		assert.ok(!code.includes(`${sdkName}/`), `unrewritten Kit SDK import in ${file}`);
 	}
 	const component = readFileSync(resolve(uiPath, "chat/index.tsx"), "utf8");
 	assert.match(component, /from "\.\.\/\.\.\/\.\.\/sdk\//);

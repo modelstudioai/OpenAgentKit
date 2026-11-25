@@ -4,7 +4,7 @@ import {
 	ProjectAgentMultiagentSchema,
 	type RemoteAgentVersionDetail,
 	RemoteSkillReferenceSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import { configObject } from "./agent-version-configuration.ts";
 import type { AgentCapabilities } from "./template-agent-capability-picker.tsx";
 import {

@@ -1,4 +1,4 @@
-import type { MemoryStoreConfiguration, RemoteMemoryStore } from "@openagentpack/kit-sdk/protocol";
+import type { MemoryStoreConfiguration, RemoteMemoryStore } from "@openagentkit/sdk/protocol";
 
 export type PresetPackMemoryConfiguration =
 	| { kind: "complete"; configuration: MemoryStoreConfiguration }

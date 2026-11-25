@@ -1,4 +1,4 @@
-import type { PresetPackPreview } from "@openagentpack/kit-sdk/protocol";
+import type { PresetPackPreview } from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Button, Empty, Input, Result, Table } from "antd";
 import { useCallback, useState } from "react";

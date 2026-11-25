@@ -3,7 +3,7 @@ title: useChat 会话交互
 description: 订阅消息、发送与停止，以及连接状态和工具审批
 ---
 
-`useChat(sessionId)` 来自 `@openagentpack/kit-sdk/chat/hooks`，把 core Chat 的连接、历史回放、消息状态与
+`useChat(sessionId)` 来自 `@openagentkit/sdk/chat/hooks`，把 core Chat 的连接、历史回放、消息状态与
 请求编排绑定到 React；Provider 定义事件到消息的转换，Chat 在快照重建时调用并保存结果。默认入口在
 `<KitProvider client={client}>` 内使用，Client 初始化见 [Client 接入](/docs/sdk/client)；自建百炼
 后端改用 `useChat({ sessionId, provider })`，返回字段与操作保持一致，见
@@ -130,7 +130,7 @@ Provider 确认本轮完成后才恢复下一轮交互。
 
 ## 无 React 的 Chat Controller
 
-同一会话编排可通过 `@openagentpack/kit-sdk/chat` 的 `createChatController` 独立使用（演示见上方
+同一会话编排可通过 `@openagentkit/sdk/chat` 的 `createChatController` 独立使用（演示见上方
 [无 React：Chat Controller](#无-reactchat-controller)）。它持有状态、重连和会话动作；宿主负责订阅
 和释放，React 页面通常继续使用 `useChat`。更低层的 `createSessionStore(sessionId, options)` 接受
 `SessionStoreOptions.transformMessage`，省略时采用默认转换。独立 Store 不建立连接，调用方需要自行
@@ -145,8 +145,8 @@ import {
 	createSessionStore,
 	type SessionSnapshot,
 	type SessionStoreOptions,
-} from "@openagentpack/kit-sdk/chat";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
+} from "@openagentkit/sdk/chat";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
 
 // 控制器可独立于 React 使用，由宿主负责销毁。
 export function observeSession(

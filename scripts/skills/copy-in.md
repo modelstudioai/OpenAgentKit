@@ -71,7 +71,8 @@ import { SessionSidebar } from "./components/kit/session-sidebar/index.tsx";
 
 从旧版迁移时，先把已有的 SDK 源码和许可证合并到 `src/sdk/`。按文件所在位置，将业务代码及
 先前复制的组件和示例中的旧 SDK 导入改为指向公开源码的相对路径。核对代码已使用新路径后，
-可清理前版的 `#kit-sdk/` 映射或旧的 `@openagentpack/kit-sdk` 本地包依赖。
+可清理前版的 `#kit-sdk/` 映射，并移除项目中已声明的 `@openagentkit/sdk` 或旧版
+`@openagentpack/kit-sdk` 包依赖。
 
 接入完成后，在应用中运行类型检查和构建。需要真实对话时，另外验证应用自己的后端和网络配置。
 

@@ -1,4 +1,4 @@
-import { PROTOCOL_VERSION, type PresetPackPreview } from "@openagentpack/kit-sdk/protocol";
+import { PROTOCOL_VERSION, type PresetPackPreview } from "@openagentkit/sdk/protocol";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures.ts";
 import { ADMIN_TOKEN } from "./helpers.ts";

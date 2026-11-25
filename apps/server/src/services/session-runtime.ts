@@ -4,8 +4,8 @@ import {
 	projectPhase,
 	type TurnPhase,
 	transportPosition,
-} from "@openagentpack/kit-sdk/chat";
-import { deriveApprovalState, stableEventId } from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/chat";
+import { deriveApprovalState, stableEventId } from "@openagentkit/sdk/protocol";
 import type { EventBuffer } from "./event-buffer.ts";
 import { requestFinished } from "./usage-limit-completion.ts";
 

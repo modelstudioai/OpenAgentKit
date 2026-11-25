@@ -1,6 +1,6 @@
 ---
 name: kit-components
-description: "用 OpenAgentPack Kit 的 React 组件搭建对话界面，包括带会话导航、聊天区和 Agent 资源的完整页面。适用于组件选型、布局、消息渲染、附件输入和工具审批界面。"
+description: "用 OpenAgentKit 的 React 组件搭建对话界面，包括带会话导航、聊天区和 Agent 资源的完整页面。适用于组件选型、布局、消息渲染、附件输入和工具审批界面。"
 ---
 
 # Kit 对话组件

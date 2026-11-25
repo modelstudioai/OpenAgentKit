@@ -1,5 +1,5 @@
 import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
-import { RemoteSkillSchema, RemoteSkillsQuerySchema } from "@openagentpack/kit-sdk/protocol";
+import { RemoteSkillSchema, RemoteSkillsQuerySchema } from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 import { listRemoteSkillCandidates } from "../services/remote-skills.ts";
 

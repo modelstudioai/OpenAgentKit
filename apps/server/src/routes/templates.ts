@@ -11,7 +11,7 @@ import {
 	TemplatesQuerySchema,
 	TemplateUpdateInputSchema,
 	TemplateViewSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 import { requireAdmin } from "../services/identity.ts";
 import { registerTemplateVersionRoutes } from "./template-versions.ts";
@@ -206,7 +206,7 @@ export function registerTemplateRoutes(app: OpenAPIHono<AppEnv>) {
 				...errors,
 			},
 		}),
-		(c) => c.json(c.get("services").templates.list(c.req.valid("query")), 200),
+		async (c) => c.json(await c.get("services").templates.list(c.req.valid("query")), 200),
 		rejectInvalid,
 	);
 	app.openapi(
@@ -234,7 +234,7 @@ export function registerTemplateRoutes(app: OpenAPIHono<AppEnv>) {
 			request: { params: z.object({ templateId: z.string().min(1) }) },
 			responses: { 200: response, ...errors },
 		}),
-		(c) => c.json({ data: c.get("services").templates.get(c.req.valid("param").templateId) }, 200),
+		async (c) => c.json({ data: await c.get("services").templates.get(c.req.valid("param").templateId) }, 200),
 		rejectInvalid,
 	);
 }

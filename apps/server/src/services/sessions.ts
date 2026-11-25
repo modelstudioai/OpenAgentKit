@@ -8,7 +8,7 @@ import {
 	type SseFrame,
 	stableEventId,
 	type ToolApprovalDecision,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { GatewaySendInput, GatewaySessionInfo, ProviderGateway } from "../gateway/types.ts";
 import type { SessionDeletionStore } from "../store/session-deletions.ts";
 import type { SessionDirectoryQuery } from "../store/session-directory.ts";
@@ -74,11 +74,13 @@ export function createSessionService(deps: SessionServiceDeps) {
 		// 状态回落（含订阅水合的历史终态）只同步 status：last_event_at 是侧栏「最近」排序依据，
 		// 点开回看不得推进它；归档是显式操作，事件回放/水合也不得把已归档行改回 idle。
 		onStatus: (sessionId, status) => {
-			if (sessionIndex.get(sessionId)?.summary.status !== "archived") sessionIndex.setStatus(sessionId, status);
+			void sessionIndex.setStatusUnlessArchived(sessionId, status).catch(() => {
+				console.error("[kit-server] 同步会话索引状态失败");
+			});
 		},
 	});
 	const approvals = createToolApprovals(gateway, buffers, deps.usageLimits?.runApproval);
-	const mutations = createSessionMutations((id) => !!deps.deletionStore?.get(id));
+	const mutations = createSessionMutations(async (id) => !!(await deps.deletionStore?.get(id)));
 	const deleteSession =
 		deps.memberUsage && deps.deletionStore
 			? createSessionDeletion({
@@ -115,10 +117,9 @@ export function createSessionService(deps: SessionServiceDeps) {
 	}
 
 	/**
-	 * running 回合即使订阅者离开也由共享泵继续跟踪到终态并回写索引；这里只对没有上游泵的
-	 * 存量 running 行按 Provider 详情兜底对账（如服务重启前的遗留值）。映射规则与事件侧
-	 * indexStatusOf 一致；详情不可查询/状态未知/超时静默保留原值，同一会话 60 秒内不重复探测，
-	 * Provider 仍为 running 时不写。
+	 * running 回合即使订阅者离开也由共享泵继续跟踪到终态并回写索引。尚无实时主状态或校验证据时，
+	 * 列表通过 Provider 详情和历史对账。详情不可查询、状态未知或超时时保留原值，
+	 * 同一会话 60 秒内不重复探测。
 	 */
 	const STALE_RUNNING_MS = 2 * 60_000;
 	const RECONCILE_RECHECK_MS = 60_000;
@@ -148,8 +149,12 @@ export function createSessionService(deps: SessionServiceDeps) {
 				if (!next || next === "running") return false;
 				const history = createEventBufferRegistry();
 				history.seed(sessionId, await readSessionHistory(gateway, sessionId));
-				if (projectSessionRuntime(history.ensure(sessionId), undefined).status === "running") return false;
-				return sessionIndex.setStatusIfRunning(sessionId, next);
+				if (
+					streams.isTracking(sessionId) ||
+					projectSessionRuntime(history.ensure(sessionId), undefined).status === "running"
+				)
+					return false;
+				return await sessionIndex.setStatusIfRunning(sessionId, next);
 			} catch {
 				return false;
 			} finally {
@@ -180,7 +185,9 @@ export function createSessionService(deps: SessionServiceDeps) {
 	 * 挂载路径并入去重集合，避免同名覆盖（重名自动 `-2`）。解析后等待扫描就绪。
 	 */
 	async function prepareMounts(sessionId: string, attachments: AttachmentRef[]): Promise<AttachmentRef[]> {
-		const existing = new Set(sessionIndex.get(sessionId)?.files.flatMap((f) => (f.mount_path ? [f.mount_path] : [])));
+		const existing = new Set(
+			(await sessionIndex.get(sessionId))?.files.flatMap((f) => (f.mount_path ? [f.mount_path] : [])),
+		);
 		const mounts = resolveMounts(attachments, DEFAULT_MOUNT_PREFIX, existing);
 		if (mounts.length) await waitForFilesReady(mounts);
 		return mounts;
@@ -210,14 +217,14 @@ export function createSessionService(deps: SessionServiceDeps) {
 				mounted.push({ resourceId: result.resourceId, file: { ...file, mount_path: result.mountPath } });
 			}
 			const result = await run();
-			sessionIndex.appendFiles(
+			await sessionIndex.appendFiles(
 				sessionId,
 				mounted.map((m) => m.file),
 			);
 			// 附件↔消息按发送响应 event_ids 落关联：provider 不回显运行时挂载，刷新后
 			// 历史气泡的附件展示只能靠这条本地索引（event_ids 与乐观气泡 ack 匹配同一来源）。
 			if (result.event_ids.length)
-				sessionIndex.appendMessageFiles(sessionId, {
+				await sessionIndex.appendMessageFiles(sessionId, {
 					event_ids: result.event_ids,
 					files: [...bound, ...mounted.map((m) => m.file)],
 				});
@@ -282,7 +289,7 @@ export function createSessionService(deps: SessionServiceDeps) {
 			// 文件不进创建载荷（实测 2026-11-03：创建时 file_resource 回显成功但沙箱不物化），
 			// 改在建会话后走运行时挂载（实测可见），失败即建会话失败。
 			const files = await mountAfterCreate(info.session_id, mounts);
-			sessionIndex.create({
+			await sessionIndex.create({
 				...input,
 				sessionId: info.session_id,
 				...(files.length ? { files } : {}),
@@ -317,7 +324,7 @@ export function createSessionService(deps: SessionServiceDeps) {
 					const sendInput = skills?.length ? { ...rest, text: composeSkillDirective(rest.text, skills) } : rest;
 					// 客户端对首条消息会同时传建会话 files 与消息 attachments：已绑定的只落关联，不重复挂载。
 					const requested = attachments ?? [];
-					const stored = sessionIndex.get(sessionId)?.files ?? [];
+					const stored = (await sessionIndex.get(sessionId))?.files ?? [];
 					const bound = stored.filter((f) => requested.some((r) => r.file_id === f.file_id));
 					const boundIds = new Set(bound.map((f) => f.file_id));
 					const mounts = await prepareMounts(
@@ -344,7 +351,7 @@ export function createSessionService(deps: SessionServiceDeps) {
 						sequence,
 						...(rest.clientMessageId ? { clientMessageId: rest.clientMessageId } : {}),
 					});
-					sessionIndex.touch(sessionId);
+					await sessionIndex.touch(sessionId);
 					return result;
 				}),
 			);
@@ -357,30 +364,33 @@ export function createSessionService(deps: SessionServiceDeps) {
 				if (deleteSession) return deleteSession(sessionId, drain);
 				await drain;
 				await gateway.deleteSession(sessionId);
-				sessionIndex.remove(sessionId);
+				await sessionIndex.remove(sessionId);
 			});
 		},
 		async archive(sessionId: string) {
 			return mutations.run(sessionId, async () => {
 				await gateway.archiveSession(sessionId);
-				sessionIndex.setStatus(sessionId, "archived");
+				await sessionIndex.setStatus(sessionId, "archived");
 			});
 		},
 		/** 读取当前身份的会话索引；先对过期 running 行做 Provider 对账，保证侧栏兜底状态可信。 */
-		listAgents(subjectId: string) {
-			return sessionIndex.listAgentsForSubject(subjectId);
+		async listAgents(subjectId: string) {
+			return await sessionIndex.listAgentsForSubject(subjectId);
 		},
 		async listPage(subjectId: string, query: SessionDirectoryQuery = {}) {
-			const page = sessionIndex.pageForSubject(subjectId, query);
-			if (await reconcileStaleRunning(page.data)) return sessionIndex.pageForSubject(subjectId, query);
+			const page = await sessionIndex.pageForSubject(subjectId, query);
+			if (await reconcileStaleRunning(page.data)) return await sessionIndex.pageForSubject(subjectId, query);
 			return page;
 		},
 		async list(subjectId: string, options: { agentSlug?: string; limit?: number } = {}) {
-			const sessions = sessionIndex.listForSubject(subjectId, options);
-			if (await reconcileStaleRunning(sessions)) return sessionIndex.listForSubject(subjectId, options);
+			const sessions = await sessionIndex.listForSubject(subjectId, options);
+			if (await reconcileStaleRunning(sessions)) return await sessionIndex.listForSubject(subjectId, options);
 			return sessions;
 		},
-		events(sessionId: string, options: { afterId?: string; pageToken?: string; limit?: number } = {}) {
+		events(
+			sessionId: string,
+			options: { afterId?: string; pageToken?: string; limit?: number; signal?: AbortSignal } = {},
+		) {
 			return gateway.listEvents(sessionId, options);
 		},
 		threads(sessionId: string, options: { pageToken?: string; limit?: number; signal?: AbortSignal } = {}) {

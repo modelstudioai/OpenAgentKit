@@ -3,7 +3,7 @@ import { lstat, mkdir, mkdtemp, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { Readable } from "node:stream";
-import { KitError, type ProjectSkillUpload, type ProjectSkillUploadInput } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type ProjectSkillUpload, type ProjectSkillUploadInput } from "@openagentkit/sdk/protocol";
 import { inspectSkillSource } from "@openagentpack/sdk";
 import JSZip from "jszip";
 import { assertProjectFileName } from "./project-file-sources.ts";

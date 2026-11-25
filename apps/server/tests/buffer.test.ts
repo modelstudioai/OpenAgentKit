@@ -1,6 +1,7 @@
-import type { SessionEvent } from "@openagentpack/kit-sdk/protocol";
+import type { SessionEvent } from "@openagentkit/sdk/protocol";
 import { describe, expect, it } from "vitest";
 import { createEventBufferRegistry } from "../src/services/event-buffer.ts";
+import { createLiveEventJournal } from "../src/services/live-event-journal.ts";
 
 const ev = (id: string): SessionEvent => ({ event_id: id, type: "message", content: [{ type: "text", text: id }] });
 
@@ -27,25 +28,28 @@ describe("event buffer", () => {
 });
 
 describe("快照与传输游标", () => {
-	it("同 ID 更新原位置但生成新的传输游标，完整重复幂等", () => {
+	it("同 ID 更新原位置但记录新的变更证据，完整重复幂等", () => {
 		const registry = createEventBufferRegistry();
 		const first = registry.append("s", ev("e"))!;
 		const update = { ...ev("e"), content: [{ type: "text", text: "累计完成" }] };
 		const second = registry.append("s", update)!;
 		expect(second.cursor).not.toBe(first.cursor);
 		expect(registry.get("s")?.events).toEqual([update]);
-		expect(registry.replay("s", first.cursor)).toEqual({ reset: false, changes: [second] });
+		expect(registry.get("s")?.changes).toEqual([first, second]);
 		expect(registry.append("s", update)).toBeUndefined();
 	});
-	it("日志淘汰或 epoch 失效时重建最新集合，不能按 event_id 跳过更新", () => {
-		const registry = createEventBufferRegistry({ maxChanges: 1 });
-		const first = registry.append("s", ev("a"))!;
-		registry.append("s", ev("b"));
-		registry.append("s", ev("c"));
-		expect(registry.replay("s", first.cursor).reset).toBe(true);
-		expect(registry.replay("s", "a").reset).toBe(true);
-		registry.reset("s");
-		expect(registry.replay("s", first.cursor)).toEqual({ reset: true, changes: [] });
+	it("实时日志从有效游标续传，淘汰或换世代后要求独立读取历史", () => {
+		const journal = createLiveEventJournal();
+		const start = journal.cursor();
+		for (let i = 0; i < 1024; i++) journal.append(ev(`e${i}`));
+		expect(journal.readAfter(start)).toHaveLength(1024);
+		const before = journal.cursor();
+		journal.append(ev("latest"));
+		expect(journal.readAfter(before)).toEqual([{ event: ev("latest"), cursor: journal.cursor() }]);
+		expect(journal.readAfter()).toEqual([]);
+		expect(journal.readAfter(start)).toBeUndefined();
+		expect(journal.readAfter("latest")).toBeUndefined();
+		expect(createLiveEventJournal().readAfter(before)).toBeUndefined();
 	});
 });
 

@@ -1,4 +1,4 @@
-import type { PublicationErrorDetails, PublicationReport } from "@openagentpack/kit-sdk/protocol";
+import type { PublicationErrorDetails, PublicationReport } from "@openagentkit/sdk/protocol";
 import {
 	type ResourceActionResult,
 	type ResourceErrorInfo,

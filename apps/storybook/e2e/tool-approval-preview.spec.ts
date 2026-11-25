@@ -1,9 +1,10 @@
 import { expect, test } from "./fixtures.ts";
+import { previewFrame, sitePath } from "./paths.ts";
 
 test("最佳实践的工具审批演示：查看完整参数并分别提交允许和拒绝", async ({ page }) => {
-	await page.goto("/docs/components/chrome/");
+	await page.goto(sitePath("/docs/components/chrome/"));
 	await expect(page.getByRole("heading", { name: /^工具审批/, level: 3 })).toBeVisible();
-	const iframe = page.locator('iframe[src="/previews/tool-approval/"]');
+	const iframe = page.locator(previewFrame("tool-approval"));
 	await page.locator(".kit-preview", { has: iframe }).getByRole("button", { name: "手机", exact: true }).click();
 	const preview = iframe.contentFrame();
 	const approval = preview.getByRole("region", { name: "工具审批 write_file", exact: true });

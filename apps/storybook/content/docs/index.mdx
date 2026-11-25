@@ -1,11 +1,11 @@
 ---
 title: 介绍
-description: OpenAgentPack Kit 是什么、解决什么问题、由哪些部分组成
+description: OpenAgentKit 是什么、解决什么问题、由哪些部分组成
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 
-OpenAgentPack Kit 是一套搭建 **百炼 Managed Agent 体验页与管理端** 的全栈套件。
+OpenAgentKit 是一套搭建 **百炼 Managed Agent 体验页与管理端** 的全栈套件。
 管理员在管理端配置智能体模版、准备运行资源、预览调试并上架；成员登录体验页后，
 从广场选择已上架的智能体进行对话、处理工具审批、查看文件产物与个人用量。
 
@@ -46,8 +46,8 @@ Kit 包含可自托管的 Node server、可独立接入的会话运行时与 Rea
 
 | 层 | 包 | 职责 |
 | --- | --- | --- |
-| 契约 | `@openagentpack/kit-sdk/protocol` | SDK 子入口：事件契约、SSE 帧、错误模型与共享 API schema |
-| SDK | `@openagentpack/kit-sdk` | 数据处理：Stream / Request / Provider / Chat、Controller、消息快照与线程/产物归并、KitClient；React hooks 位于 `/chat/hooks`、`/sessions/hooks` 等功能子入口 |
+| 契约 | `@openagentkit/sdk/protocol` | SDK 子入口：事件契约、SSE 帧、错误模型与共享 API schema |
+| SDK | `@openagentkit/sdk` | 数据处理：Stream / Request / Provider / Chat、Controller、消息快照与线程/产物归并、KitClient；React hooks 位于 `/chat/hooks`、`/sessions/hooks` 等功能子入口 |
 | UI 组件 | `@openagentpack/kit-chat-ui` | copy-in 布局、消息、输入、附件、文件卡、审批与辅助组件；共享 Tailwind v4 与主题 token |
 | 服务端 | `@openagentpack/kit-server` | Hono 应用工厂，提供数据面 `/api/kit/*`、控制面 `/api/admin/*` 及成员登录服务 |
 | 仓库脚本 | 根 `scripts/kit/` | `pnpm kit:add`、`pnpm catalog:list` |

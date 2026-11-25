@@ -1,4 +1,4 @@
-import type { PublicationReport } from "@openagentpack/kit-sdk/protocol";
+import type { PublicationReport } from "@openagentkit/sdk/protocol";
 import { Table } from "antd";
 
 const statuses = { succeeded: "已成功", failed: "未执行成功", skipped: "已跳过", unknown: "结果待核对" };

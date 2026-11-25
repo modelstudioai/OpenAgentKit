@@ -1,15 +1,15 @@
 "use client";
 
-import { type ChatMessage, type MessageTransformer, transformSessionEvent } from "@openagentpack/kit-sdk/messages";
+import { type ChatMessage, type MessageTransformer, transformSessionEvent } from "@openagentkit/sdk/messages";
 import {
 	KitError,
 	type SendMessageResponse,
 	type SessionEvent,
 	type ToolApprovalsResponse,
-} from "@openagentpack/kit-sdk/protocol";
-import type { ChatProvider, StreamSessionOptions } from "@openagentpack/kit-sdk/providers";
-import { type BailianChatProviderOptions, createBailianChatProvider } from "@openagentpack/kit-sdk/providers/bailian";
-import { createRequest } from "@openagentpack/kit-sdk/request";
+} from "@openagentkit/sdk/protocol";
+import type { ChatProvider, StreamSessionOptions } from "@openagentkit/sdk/providers";
+import { type BailianChatProviderOptions, createBailianChatProvider } from "@openagentkit/sdk/providers/bailian";
+import { createRequest } from "@openagentkit/sdk/request";
 import { useEffect, useRef, useState } from "react";
 import { LogList, type LogRow, PRIMARY_BTN, type PushLog, SECONDARY_BTN } from "./sdk-demo.tsx";
 

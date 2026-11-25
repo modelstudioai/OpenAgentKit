@@ -1,7 +1,7 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { CatalogAgentView, PlanResponse } from "@openagentpack/kit-sdk/protocol";
+import type { CatalogAgentView, PlanResponse } from "@openagentkit/sdk/protocol";
 import { describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
@@ -21,7 +21,7 @@ function makeApp() {
 	return { app: createApp(services), services };
 }
 
-const json = { "content-type": "application/json", "x-kit-protocol-version": "2.0.0" };
+const json = { "content-type": "application/json", "x-kit-protocol-version": "3.0.0" };
 
 it("智能体版本注册到控制面：已存在历史版本可读，未认证或非法 ID 被拒", async () => {
 	const { app, services } = makeApp();
@@ -175,7 +175,7 @@ it("模版上架路由要求显式确认，管理员确认后可上架且 audito
 	const post = (path: string, input: unknown, auth = headers) =>
 		app.request(path, { method: "POST", headers: auth, body: JSON.stringify(input) });
 	services.config.adminPrincipals.push({ token: "route-auditor", role: "auditor" });
-	expect(services.templates.get(template.template_id).template_id).toBe(template.template_id);
+	expect((await services.templates.get(template.template_id)).template_id).toBe(template.template_id);
 	expect((await post(`${base}/plan`, body, { ...json, authorization: "Bearer route-auditor" })).status).toBe(403);
 	expect((await post(base, body)).status).toBe(428);
 	expect((await post(`${base}/plan`, { display_name: " " })).status).toBe(400);
@@ -289,18 +289,22 @@ describe("数据面路由", () => {
 
 	it("未上架 agent 不出现在数据面列表", async () => {
 		const { app, services } = makeApp();
-		services.catalog.upsert({ slug: "hidden", display_name: "Hidden", remote_agent_id: "agent_1" });
+		await services.catalog.upsert({ slug: "hidden", display_name: "Hidden", remote_agent_id: "agent_1" });
 		const before = (await (await app.request("/api/kit/agents")).json()) as { data: { slug: string }[] };
 		expect(before.data).toHaveLength(0);
-		services.catalog.setStatus("hidden", "listed");
+		await services.catalog.setStatus("hidden", "listed");
 		const after = (await (await app.request("/api/kit/agents")).json()) as { data: { slug: string }[] };
 		expect(after.data.map((a) => a.slug)).toEqual(["hidden"]);
 	});
 
 	it("agents.get 附带远端资源投影：绑定的 mock agent 返回 tools/skills/mcp_servers", async () => {
 		const { app, services } = makeApp();
-		services.catalog.upsert({ slug: "assistant", display_name: "Assistant", remote_agent_id: "agent_mock_assistant" });
-		services.catalog.setStatus("assistant", "listed");
+		await services.catalog.upsert({
+			slug: "assistant",
+			display_name: "Assistant",
+			remote_agent_id: "agent_mock_assistant",
+		});
+		await services.catalog.setStatus("assistant", "listed");
 		const res = await app.request("/api/kit/agents/assistant");
 		expect(res.status).toBe(200);
 		const { data } = (await res.json()) as {
@@ -312,8 +316,8 @@ describe("数据面路由", () => {
 
 	it("agents.get 资源降级：未绑定远端或 Provider 失败时省略 resources，不影响详情", async () => {
 		const { app, services } = makeApp();
-		services.catalog.upsert({ slug: "ghost", display_name: "Ghost", remote_agent_id: "agent_unknown" });
-		services.catalog.setStatus("ghost", "listed");
+		await services.catalog.upsert({ slug: "ghost", display_name: "Ghost", remote_agent_id: "agent_unknown" });
+		await services.catalog.setStatus("ghost", "listed");
 		const unbound = (await (await app.request("/api/kit/agents/ghost")).json()) as {
 			data: Record<string, unknown>;
 		};
@@ -322,8 +326,12 @@ describe("数据面路由", () => {
 		services.gateway.getRemoteAgentResources = async () => {
 			throw new Error("模拟 provider 故障");
 		};
-		services.catalog.upsert({ slug: "assistant", display_name: "Assistant", remote_agent_id: "agent_mock_assistant" });
-		services.catalog.setStatus("assistant", "listed");
+		await services.catalog.upsert({
+			slug: "assistant",
+			display_name: "Assistant",
+			remote_agent_id: "agent_mock_assistant",
+		});
+		await services.catalog.setStatus("assistant", "listed");
 		const failed = (await (await app.request("/api/kit/agents/assistant")).json()) as {
 			data: Record<string, unknown>;
 		};
@@ -331,10 +339,14 @@ describe("数据面路由", () => {
 		expect(failed.data.slug).toBe("assistant");
 	});
 
-	it("建会话 → 发消息 → SSE 持续到客户端断开且含用户回显", async () => {
+	it("员工历史独立分页，SSE 先就绪再传用户回显和实时回复", async () => {
 		const { app, services } = makeApp();
-		services.catalog.upsert({ slug: "assistant", display_name: "Assistant", remote_agent_id: "agent_mock_assistant" });
-		services.catalog.setStatus("assistant", "listed");
+		await services.catalog.upsert({
+			slug: "assistant",
+			display_name: "Assistant",
+			remote_agent_id: "agent_mock_assistant",
+		});
+		await services.catalog.setStatus("assistant", "listed");
 		const cookie = "kit_subject=tester1";
 		const created = await app.request("/api/kit/sessions", {
 			method: "POST",
@@ -343,29 +355,45 @@ describe("数据面路由", () => {
 		});
 		expect(created.status).toBe(201);
 		const { data: session } = (await created.json()) as { data: { session_id: string } };
+		const path = `/api/kit/sessions/${session.session_id}`;
+		await services.gateway.sendMessage(session.session_id, { text: "历史消息" });
+		await vi.waitFor(async () => expect((await services.gateway.getSession(session.session_id))?.status).toBe("idle"));
+		const listEvents = vi.spyOn(services.gateway, "listEvents");
+		expect(
+			(
+				await app.request(`${path}/stream`, {
+					headers: { ...json, cookie, "x-kit-protocol-version": "2.0.0" },
+				})
+			).status,
+		).toBe(409);
+		const stream = await app.request(`${path}/stream`, { headers: { ...json, cookie } });
+		expect(stream.status).toBe(200);
+		const reader = stream.body!.getReader();
+		const decoder = new TextDecoder();
+		const first = decoder.decode((await reader.read()).value);
+		expect(first).toContain("event: ready");
+		expect(first).not.toContain("event: event");
+		expect(listEvents).not.toHaveBeenCalled();
+		const history = await app.request(`${path}/events`, { headers: { ...json, cookie } });
+		expect(history.status).toBe(200);
+		expect(await history.text()).toContain("历史消息");
 
-		const sent = await app.request(`/api/kit/sessions/${session.session_id}/messages`, {
+		const sent = await app.request(`${path}/messages`, {
 			method: "POST",
 			headers: { ...json, cookie },
 			body: JSON.stringify({ text: "hello", client_message_id: "cm1" }),
 		});
 		expect(sent.status).toBe(202);
 
-		const stream = await app.request(`/api/kit/sessions/${session.session_id}/stream`, {
-			headers: { ...json, cookie },
-		});
-		expect(stream.status).toBe(200);
-		const reader = stream.body!.getReader();
 		let text = "";
 		while (!text.includes('"status":"idle"')) {
 			const chunk = await reader.read();
 			if (chunk.done) break;
-			text += new TextDecoder().decode(chunk.value);
+			text += decoder.decode(chunk.value, { stream: true });
 		}
 		await reader.cancel();
-		expect(text).toContain("event: reset");
-		expect(text).toContain("event: ready");
 		expect(text).toContain("event: event");
+		expect(text).not.toContain("历史消息");
 		expect(text).not.toContain("event: done");
 		expect(text).toContain('"role":"user"');
 		expect(text).toContain("session_status");
@@ -373,8 +401,12 @@ describe("数据面路由", () => {
 
 	it("他人会话返回 404（不泄露存在性）", async () => {
 		const { app, services } = makeApp();
-		services.catalog.upsert({ slug: "assistant", display_name: "Assistant", remote_agent_id: "agent_mock_assistant" });
-		services.catalog.setStatus("assistant", "listed");
+		await services.catalog.upsert({
+			slug: "assistant",
+			display_name: "Assistant",
+			remote_agent_id: "agent_mock_assistant",
+		});
+		await services.catalog.setStatus("assistant", "listed");
 		const created = await app.request("/api/kit/sessions", {
 			method: "POST",
 			headers: { ...json, cookie: "kit_subject=owner" },
@@ -499,7 +531,7 @@ describe("控制面", () => {
 		const original = { slug: "existing-agent", display_name: "原有助手", remote_agent_id: "agent_original" };
 		const created = await app.request(path, { method: "POST", headers, body: JSON.stringify(original) });
 		expect(created.status).toBe(201);
-		if (status === "listed") services.catalog.setStatus(original.slug, status);
+		if (status === "listed") await services.catalog.setStatus(original.slug, status);
 		const before = (await (await app.request(path, { headers })).json()) as { data: CatalogAgentView[] };
 		expect(before.data).toHaveLength(1);
 		expect(before.data[0]).toMatchObject({ ...original, status });
@@ -534,7 +566,7 @@ describe("控制面", () => {
 			});
 			expect(created.status).toBe(201);
 		}
-		services.catalog.setStatus("first-agent", "listed");
+		await services.catalog.setStatus("first-agent", "listed");
 		const before = (await (await app.request(path, { headers })).json()) as { data: CatalogAgentView[] };
 		expect(before.data).toHaveLength(2);
 		expect(before.data).toEqual(
@@ -575,7 +607,7 @@ describe("控制面", () => {
 		const path = "/api/admin/agents";
 		const headers = { ...json, authorization: "Bearer admin-token" };
 		for (const label of ["first", "second"]) {
-			services.catalog.create({ slug: `${label}-agent`, display_name: label, remote_agent_id: `agent_${label}` });
+			await services.catalog.create({ slug: `${label}-agent`, display_name: label, remote_agent_id: `agent_${label}` });
 		}
 		const legacyDb = openDatabase(services.config.dataDir);
 		// 模拟旧版本已经保存的重复名，跳过新建合同，不要求迁移改写已有数据。
@@ -637,8 +669,8 @@ describe("控制面", () => {
 describe("会话生命周期与文件（B1/B2）", () => {
 	it("archive 闸门：空令牌 400 / 伪造令牌 428 / 有效令牌 200 且状态归档", async () => {
 		const { app, services } = makeApp();
-		services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
-		services.catalog.setStatus("assistant", "listed");
+		await services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
+		await services.catalog.setStatus("assistant", "listed");
 		const { cookie, sessionId } = await seedAndCreate(app);
 
 		const noToken = await app.request(`/api/kit/sessions/${sessionId}/archive`, {
@@ -685,8 +717,8 @@ describe("会话生命周期与文件（B1/B2）", () => {
 
 	it("delete 带令牌后索引移除（再读 404）", async () => {
 		const { app, services } = makeApp();
-		services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
-		services.catalog.setStatus("assistant", "listed");
+		await services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
+		await services.catalog.setStatus("assistant", "listed");
 		const { cookie, sessionId } = await seedAndCreate(app);
 		const plan = (await (
 			await app.request(`/api/kit/sessions/${sessionId}/plan`, {
@@ -763,8 +795,8 @@ describe("会话生命周期与文件（B1/B2）", () => {
 
 	it("会话运营接口已移除，体验页仍可读取自己的会话和事件", async () => {
 		const { app, services } = makeApp();
-		services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
-		services.catalog.setStatus("assistant", "listed");
+		await services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
+		await services.catalog.setStatus("assistant", "listed");
 		const cookie = "kit_subject=timeline";
 		const created = await app.request("/api/kit/sessions", {
 			method: "POST",
@@ -793,8 +825,8 @@ describe("会话生命周期与文件（B1/B2）", () => {
 
 describe("附件挂载语义（B1）", () => {
 	async function listAgent(app: ReturnType<typeof makeApp>["app"], services: ReturnType<typeof makeApp>["services"]) {
-		services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
-		services.catalog.setStatus("assistant", "listed");
+		await services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
+		await services.catalog.setStatus("assistant", "listed");
 		return app;
 	}
 

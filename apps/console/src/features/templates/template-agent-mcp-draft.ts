@@ -1,4 +1,4 @@
-import { type ProjectAgentCreateInput, ProjectAgentMcpNameSchema } from "@openagentpack/kit-sdk/protocol";
+import { type ProjectAgentCreateInput, ProjectAgentMcpNameSchema } from "@openagentkit/sdk/protocol";
 
 type McpToolkit = NonNullable<NonNullable<ProjectAgentCreateInput["tools"]>["mcp"]>[number];
 export type AgentMcpDraft = {

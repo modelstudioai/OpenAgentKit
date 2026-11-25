@@ -1,5 +1,5 @@
+import type { TemplateVersionView } from "@openagentkit/sdk/protocol";
 import { EmptyState } from "@openagentpack/kit-chat-ui";
-import type { TemplateVersionView } from "@openagentpack/kit-sdk/protocol";
 import { TemplateDebugPreview } from "./template-debug-preview.tsx";
 
 /** 按详情所选版本挂载；离开调试 Tab 或切换版本时释放自建会话。 */

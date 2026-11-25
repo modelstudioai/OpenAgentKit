@@ -1,6 +1,11 @@
-import { KitError, SendMessageResponseSchema, ToolApprovalsResponseSchema } from "@openagentpack/kit-sdk/protocol";
-import type { SessionEventChatProviderOptions } from "@openagentpack/kit-sdk/providers/session-events";
-import { createRequest } from "@openagentpack/kit-sdk/request";
+import {
+	type EventsPage,
+	KitError,
+	SendMessageResponseSchema,
+	ToolApprovalsResponseSchema,
+} from "@openagentkit/sdk/protocol";
+import type { SessionEventChatProviderOptions } from "@openagentkit/sdk/providers/session-events";
+import { createRequest } from "@openagentkit/sdk/request";
 
 export interface BackendConfig {
 	// 显式传入运行时配置，后端可以与页面不同源。
@@ -38,8 +43,17 @@ export function createBackendHttp(config: BackendConfig) {
 	const sessionPath = (id: string) => `/sessions/${encodeURIComponent(id)}`;
 	const operations: Pick<
 		SessionEventChatProviderOptions,
-		"sendMessage" | "interrupt" | "toolApprovals" | "submitToolApproval"
+		"listEvents" | "sendMessage" | "interrupt" | "toolApprovals" | "submitToolApproval"
 	> = {
+		listEvents: {
+			buildRequest: ({ sessionId, limit, pageToken }) => {
+				const query = new URLSearchParams();
+				if (limit !== undefined) query.set("limit", String(limit));
+				if (pageToken) query.set("page_token", pageToken);
+				return { path: `${sessionPath(sessionId)}/events${query.size ? `?${query}` : ""}` };
+			},
+			mapResponse: async (response) => (await result(response)) as EventsPage,
+		},
 		sendMessage: {
 			buildRequest({ sessionId, body }) {
 				if (body.attachments?.length) throw new KitError("invalid_request", "请在创建会话时挂载已上传的文件。");

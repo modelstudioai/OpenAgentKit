@@ -1,3 +1,10 @@
+import { useChat } from "@openagentkit/sdk/chat/hooks";
+import {
+	AgentSummarySchema,
+	type CreateTemplateDebugSessionRequest,
+	type ToolApprovalDecision,
+} from "@openagentkit/sdk/protocol";
+import { createKitChatProvider } from "@openagentkit/sdk/providers/kit";
 import {
 	AgentHeader,
 	Chat,
@@ -9,13 +16,6 @@ import {
 	Suggestion,
 	ToolApprovalCard,
 } from "@openagentpack/kit-chat-ui";
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
-import {
-	AgentSummarySchema,
-	type CreateTemplateDebugSessionRequest,
-	type ToolApprovalDecision,
-} from "@openagentpack/kit-sdk/protocol";
-import { createKitChatProvider } from "@openagentpack/kit-sdk/providers/kit";
 import { Button } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";

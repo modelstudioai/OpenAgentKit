@@ -70,8 +70,8 @@ it("确认闸门拒绝未审阅令牌，清理失败保留成功回执，修复�
 	await writeFile(join(outside, "keep.txt"), "keep");
 	const assets = join(t.root, "resource-draft-uploads", draft.draft_id);
 	const receipt = t.store.receipt.bind(t.store);
-	vi.spyOn(t.store, "receipt").mockImplementation((...args) => {
-		receipt(...args);
+	vi.spyOn(t.store, "receipt").mockImplementation(async (...args) => {
+		await receipt(...args);
 		mkdirSync(join(t.root, "resource-draft-uploads"), { recursive: true });
 		symlinkSync(outside, assets, "dir");
 	});
@@ -81,12 +81,12 @@ it("确认闸门拒绝未审阅令牌，清理失败保留成功回执，修复�
 		publication: { outcome: "succeeded" },
 		error_details: { phase: "cleanup", mutation_started: true },
 	});
-	expect(t.store.get(draft.draft_id)).toMatchObject({ status: "published", cleanup_pending: 1 });
+	expect(await t.store.get(draft.draft_id)).toMatchObject({ status: "published", cleanup_pending: 1 });
 	expect(await readFile(join(outside, "keep.txt"), "utf8")).toBe("keep");
 	await unlink(assets);
 	await t.value(`/api/admin/resource-drafts/${draft.draft_id}/finalize`, "POST");
-	expect(t.store.get(draft.draft_id)).toMatchObject({ status: "published", cleanup_pending: 0 });
-	expect(t.store.document(draft.draft_id)).toBeUndefined();
+	expect(await t.store.get(draft.draft_id)).toMatchObject({ status: "published", cleanup_pending: 0 });
+	expect(await t.store.document(draft.draft_id)).toBeUndefined();
 	expect(executions).toBe(1);
 	expect(await readFile(join(outside, "keep.txt"), "utf8")).toBe("keep");
 });

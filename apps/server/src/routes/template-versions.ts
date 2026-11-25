@@ -4,7 +4,7 @@ import {
 	TemplateVersionsPageSchema,
 	TemplateVersionsQuerySchema,
 	TemplateVersionViewSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 
 const errorBody = z.object({ error: z.object({ code: z.string(), message: z.string(), retryable: z.boolean() }) });
@@ -39,7 +39,7 @@ export function registerTemplateVersionRoutes(app: OpenAPIHono<AppEnv>) {
 			},
 		}),
 		async (c) =>
-			c.json(c.get("services").templates.versions(c.req.valid("param").templateId, c.req.valid("query")), 200),
+			c.json(await c.get("services").templates.versions(c.req.valid("param").templateId, c.req.valid("query")), 200),
 		rejectInvalid,
 	);
 	app.openapi(
@@ -60,7 +60,7 @@ export function registerTemplateVersionRoutes(app: OpenAPIHono<AppEnv>) {
 		}),
 		async (c) => {
 			const { templateId, version } = c.req.valid("param");
-			return c.json({ data: c.get("services").templates.version(templateId, version) }, 200);
+			return c.json({ data: await c.get("services").templates.version(templateId, version) }, 200);
 		},
 		rejectInvalid,
 	);

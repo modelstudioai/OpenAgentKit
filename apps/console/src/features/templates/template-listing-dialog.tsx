@@ -1,4 +1,4 @@
-import type { ApplyRequest, CatalogAgentView, TemplateView } from "@openagentpack/kit-sdk/protocol";
+import type { ApplyRequest, CatalogAgentView, TemplateView } from "@openagentkit/sdk/protocol";
 import { Modal } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";

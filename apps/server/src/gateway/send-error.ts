@@ -1,4 +1,4 @@
-import { KitError } from "@openagentpack/kit-sdk/protocol";
+import { KitError } from "@openagentkit/sdk/protocol";
 import { ApiError } from "@openagentpack/sdk";
 
 // 只认可明确拒绝请求的状态；408、未知状态及 5xx 仍可能已经产生执行，不能解除幂等保护。

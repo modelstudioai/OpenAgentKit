@@ -1,4 +1,4 @@
-import type { ProjectPlan, ResourceDraftDeclaration } from "@openagentpack/kit-sdk/protocol";
+import type { ProjectPlan, ResourceDraftDeclaration } from "@openagentkit/sdk/protocol";
 
 const RESOURCE_LABELS: Record<string, string> = {
 	agent: "智能体",

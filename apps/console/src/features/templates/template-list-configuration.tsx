@@ -1,4 +1,4 @@
-import type { RemoteMemoryStore, RemoteVault, TemplateView } from "@openagentpack/kit-sdk/protocol";
+import type { RemoteMemoryStore, RemoteVault, TemplateView } from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Button } from "antd";
 import { useMemo } from "react";

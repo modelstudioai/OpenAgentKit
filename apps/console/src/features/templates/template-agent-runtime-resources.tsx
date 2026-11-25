@@ -1,4 +1,4 @@
-import type { PresetPackAgentResources, PresetPackPreview } from "@openagentpack/kit-sdk/protocol";
+import type { PresetPackAgentResources, PresetPackPreview } from "@openagentkit/sdk/protocol";
 import { Alert, Button, Drawer, Modal, Spin } from "antd";
 import { useEffect, useState } from "react";
 import { PresetPackResourceSelection, usePresetPackResources } from "../preset-packs/preset-pack-session-resources.tsx";

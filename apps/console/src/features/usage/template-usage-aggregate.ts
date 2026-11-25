@@ -1,4 +1,4 @@
-import type { TemplateUsageRow } from "@openagentpack/kit-sdk/protocol";
+import type { TemplateUsageRow } from "@openagentkit/sdk/protocol";
 
 /** 聚合单个指标：value 只汇总非缺失值（全部缺失才为 null，不按 0 计算），覆盖会话数直接求和。 */
 function aggregateMetric(

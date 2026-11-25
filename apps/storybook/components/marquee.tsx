@@ -1,10 +1,10 @@
 import { ArrowRight } from "./icons.tsx";
 
 const ITEMS = [
-	"kit-sdk/protocol",
+	"@openagentkit/sdk/protocol",
 	"SSE 帧 + after 游标",
 	"event_id 去重",
-	"kit-sdk",
+	"@openagentkit/sdk",
 	"turn / thread / artifact 归并",
 	"React adapter",
 	"useChat / useSessions",

@@ -15,8 +15,8 @@
 
 ## 不变量
 
-1. 命令、包名、导入入口与页面说明必须对应当前实现。页数、依赖版本和 CI 拓扑
-   不作为冻结规范；仓库当前不提供 CI 配置。
+1. 命令、包名、导入入口与页面说明必须对应当前实现。页数、依赖版本和发布拓扑
+   以实际配置为准。
 2. 站内说明、Skill 正文、API 参考及嵌入示例文案使用中文，遵循 ADR-0027 的状态更新。
    用户文档不得把私有 workspace 包描述为已经发布到 npm。
 3. 使用本地资源，不引外部字体/CDN、内网包或内网地址，静态下载保持离线可用。
@@ -36,6 +36,8 @@
    构建先检查漂移，不在构建时修补被跟踪的源文件。
 10. `skill-example` 标记区与中文参考从 Skill 唯一源生成。示例只使用公开 API，
     不复制协议映射、会话状态机或私有生命周期实现。
+11. GitHub Pages 发布注入 `NEXT_PUBLIC_BASE_PATH` 作为 Next 的 `basePath`。站内导航使用 `next/link`。
+    iframe、原生静态文件链接和 MDX 图片使用 `withBasePath()`。路由判断使用 `stripBasePath()`。
 
 ## 修改步骤
 
@@ -58,6 +60,7 @@ pnpm --filter storybook build
 内容/交互变更构建后静态托管 `out/` 并运行相关 `pnpm --filter storybook e2e` 用例；
 `DOCS_PREVIEW_URL` 可指定静态站点。只改 AGENTS.md 的文字按根规则验证，
 无需重跑所有页面的视觉验收。
+新增站内根路径 URL 时按 [文档站部署说明](./README.md#github-pages-部署) 验证子路径构建与对应的端到端用例。
 
 <!-- BEGIN:nextjs-agent-rules -->
 

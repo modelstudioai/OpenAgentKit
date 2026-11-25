@@ -1,5 +1,5 @@
 import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
-import { eventsPageSchema, KitError, SessionThreadsResponseSchema } from "@openagentpack/kit-sdk/protocol";
+import { eventsPageSchema, KitError, SessionThreadsResponseSchema } from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 
 const query = z.object({
@@ -35,8 +35,8 @@ export function registerSessionThreadRoutes(app: OpenAPIHono<AppEnv>) {
 				const { sessionIndex, sessions } = c.get("services");
 				const row =
 					scope === "kit"
-						? sessionIndex.getForSubject(c.req.param("sessionId"), c.get("identity").subjectId)
-						: c.get("services").debug.requireSession(c.get("admin").subject, c.req.param("sessionId"));
+						? await sessionIndex.getForSubject(c.req.param("sessionId"), c.get("identity").subjectId)
+						: await c.get("services").debug.requireSession(c.get("admin").subject, c.req.param("sessionId"));
 				if (!row) throw new KitError("not_found", "会话不存在");
 				const params = c.req.valid("query");
 				return c.json(
@@ -71,8 +71,8 @@ export function registerSessionThreadRoutes(app: OpenAPIHono<AppEnv>) {
 				const params = c.req.valid("param");
 				const row =
 					scope === "kit"
-						? sessionIndex.getForSubject(params.sessionId, c.get("identity").subjectId)
-						: c.get("services").debug.requireSession(c.get("admin").subject, params.sessionId);
+						? await sessionIndex.getForSubject(params.sessionId, c.get("identity").subjectId)
+						: await c.get("services").debug.requireSession(c.get("admin").subject, params.sessionId);
 				if (!row) throw new KitError("not_found", "会话不存在");
 				const page = c.req.valid("query");
 				const result = await sessions.threadEvents(row.session_id, params.threadId, {

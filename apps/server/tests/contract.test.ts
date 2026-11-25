@@ -6,8 +6,8 @@
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { createSessionStore } from "@openagentpack/kit-sdk/chat";
-import { artifactOf, bucketOf, isTurnEndEvent, type SessionEvent, threadIdOf } from "@openagentpack/kit-sdk/protocol";
+import { createSessionStore } from "@openagentkit/sdk/chat";
+import { artifactOf, bucketOf, isTurnEndEvent, type SessionEvent, threadIdOf } from "@openagentkit/sdk/protocol";
 import { toBailianSessionEvent } from "@openagentpack/sdk/session-events";
 import { describe, expect, it } from "vitest";
 import { createMockGateway } from "../src/gateway/mock.ts";
@@ -269,10 +269,14 @@ describe("MockGateway 与契约同轨", () => {
 	it("mock 产出的事件同样满足契约并可被 store 归并", async () => {
 		const gateway = createMockGateway();
 		const session = await gateway.createSession({ agentId: "agent_mock" });
-		await gateway.sendMessage(session.session_id, { text: "契约", clientMessageId: "c1" });
 		const store = createSessionStore(session.session_id);
 		const abort = new AbortController();
-		for await (const event of gateway.streamEvents(session.session_id, { signal: abort.signal })) {
+		for await (const event of gateway.streamEvents(session.session_id, {
+			signal: abort.signal,
+			onReady: () => {
+				void gateway.sendMessage(session.session_id, { text: "契约", clientMessageId: "c1" });
+			},
+		})) {
 			assertContract(event);
 
 			store.applyEvent(event);

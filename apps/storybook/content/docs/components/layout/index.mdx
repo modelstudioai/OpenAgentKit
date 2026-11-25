@@ -17,7 +17,7 @@ pnpm kit:add layout
 pnpm add @radix-ui/react-dialog
 ```
 
-`Layout` 通过 `@openagentpack/kit-sdk/hooks` 判断移动端断点。交给 coding agent 接入时使用
+`Layout` 通过 `@openagentkit/sdk/hooks` 判断移动端断点。交给 coding agent 接入时使用
 [kit-components Skill](/docs/skill/kit-components)。主题与渲染依赖见 [组件总览](/docs/components#主题)。
 
 ## 何时使用
@@ -47,8 +47,8 @@ pnpm add @radix-ui/react-dialog
 {/* skill-example: kit-components/examples/layout.tsx */}
 
 ```tsx
+import type { AgentSummary, SessionSummary } from "@openagentkit/sdk/protocol";
 import { AgentHeader, Chat, Layout, SessionSidebar } from "@openagentpack/kit-chat-ui";
-import type { AgentSummary, SessionSummary } from "@openagentpack/kit-sdk/protocol";
 import { type ComponentProps, type ReactNode, useState } from "react";
 
 export interface WorkspaceLayoutProps {

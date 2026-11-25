@@ -1,5 +1,5 @@
 import { DeleteOutlined } from "@ant-design/icons";
-import { type AgentSummary, CatalogAgentInputSchema } from "@openagentpack/kit-sdk/protocol";
+import { type AgentSummary, CatalogAgentInputSchema } from "@openagentkit/sdk/protocol";
 import { Button, Form, Input, Modal, Tooltip } from "antd";
 import { useState } from "react";
 import styles from "./catalog.module.less";

@@ -65,13 +65,13 @@ packages/<name>/
 - 需要真实凭据的脚本放 `apps/server/tests/live/`（`smoke` / `record` / `cleanup`）：
   默认跳过，`KIT_LIVE=1` 才跑；`record.ts` 只读，不创建/修改/删除远端资源。
 - `src/internal/` 表示包内私有实现，不得从 barrel 导出；跨包只能走声明的公开功能入口。
-  `@openagentpack/kit-sdk/providers/bailian` 是原始百炼后端接入入口，其他功能入口不导入
+  `@openagentkit/sdk/providers/bailian` 是原始百炼后端接入入口，其他功能入口不导入
   其上游 SDK 运行时转换依赖。SDK 不保留根入口、`/adapters/react`、`/react`、`/request/stream` 或 `/bailian`。
 - SDK 按下表归属功能，源码与导入入口一致（ADR-0026）。功能 hooks 位于该模块的 `hooks/`，
   通用订阅、生命周期、查询工具与屏幕判断放 `src/hooks/`；Kit Context 与 Client 解析放
   `src/providers/kit/react/`。不保留顶层 `src/react/`，不集中导出功能 hooks。
 
-| SDK 源码目录 | 责任 | 公开入口（省略 `@openagentpack/kit-sdk`） |
+| SDK 源码目录 | 责任 | 公开入口（省略 `@openagentkit/sdk`） |
 | --- | --- | --- |
 | `chat/` | Controller、Store、重连、子线程、首次发送 Composer | `/chat`、`/chat/hooks` |
 | `sessions/` | 会话目录、分页、搜索、详情、操作与独立目录读取 | `/sessions`、`/sessions/hooks` |
@@ -209,24 +209,25 @@ packages/<name>/
 
 ## Skill 源与生成物
 
-Skill 不是 workspace 包，也不参与应用运行时依赖。人工源与生成器在 `scripts/skills/`，
-最终目录在 `assets/skills/`；只有 `scripts/skills/src/` 允许人工编辑：
+Skill 不是 workspace 包，也不参与应用运行时依赖。人工源位于 `scripts/skills/src/`。
+共用复制说明和安装脚本分别位于 `scripts/skills/copy-in.md` 与 `scripts/kit/skill-install.mjs`。
+最终目录由生成器写入 `assets/skills/`：
 
 ```
 scripts/skills/
   src/<skill-name>/
-    metadata.json   name / description / displayName / shortDescription / defaultPrompt
+    metadata.json   name / description
     skill.md        SKILL.md 正文
-    catalog.json    公开 API 到中文用途、文档与示例的映射
-    references/     中文行为说明
-    examples/       TS/TSX 示例，含中文注释和文案，参与类型检查并同步到文档站
+    catalog.json    API Skill 的公开接口索引
+    references/     按需提供中文行为说明
+    examples/       按需提供 TS/TSX 示例，参与类型检查并同步到文档站
   generate.mjs      生成、校验与 API 模型入口
   pack.mjs          确定性离线打包
   tests/            生成、链接、打包与浏览器边界测试
   tsconfig.json     示例类型检查
 
 assets/skills/
-  <skill-name>/     生成的最终 Skill：SKILL.md、agents/、references/、examples/
+  <skill-name>/     生成的最终 Skill，包含 SKILL.md 和按需生成的 references/、examples/、scripts/
   dist/             离线 tgz 产物（gitignore）
 ```
 
@@ -234,11 +235,13 @@ assets/skills/
   为范围依据，不能只检查 registry 顶层项。内部实现组件不进入公开 API。
 - `use-kit-chat` 指导 Hook 与生命周期；`kit-chat-provider` 指导默认及自建百炼后端合同。
   三者共用现有公开类型，不复制协议实现、不引入第二套事件模型。
+- `kit-database` 指导 Kit Server 接入 SQLite、MySQL 和 PostgreSQL，依据服务端配置与迁移合同。
 - Skill 正文、参考、元数据、示例注释与示例界面文案使用中文；Skill ID、文件名、API
   标识符和协议值沿用公开合同。
 - `pnpm gen:skills` 从 `scripts/skills/src/` 及共享 copy-in 脚本和说明生成 `assets/skills/`、
   API 参考与 MDX 示例；`pnpm check:skills` 只检查。生成区不手改。
-- `pnpm pack:skills` 给每个离线包附上 UI registry、组件源码、主题、SDK 源码和可复制的示例。
+- `pnpm pack:skills` 为含 TypeScript 示例的开发 Skill 附上 UI registry、组件源码、主题、SDK 源码和可复制的示例。
+  配置类 Skill 随单独的离线包、合并包和文档站下载目录分发。
   脚本按需复制组件及示例，生成指向 `src/sdk/` 公开入口的相对路径，交给目标应用构建。
   源码资产只进入离线包和文档站下载目录，在各自的包内维护。
 - `pnpm typecheck:skills` 编译示例，`pnpm test:skills` 检查生成漂移、链接、
@@ -252,6 +255,8 @@ assets/skills/
 
 ## app 内
 
+- JDK 11 与 Node SDK 的跨进程验收 PoC 位于 [apps/server/tests/java-sdk-poc/](../apps/server/tests/java-sdk-poc/README.md)，
+  通过独立 Maven 工程和验收脚本显式运行。工具链、构建产物与实测证据放在 `.scratch/java-sdk-poc/`。
 - 体验页品牌由 console 的 `features/branding/` 经管理端品牌接口维护；server 的
   `store/branding.ts` 保存名称、Logo 配置与上传文件，`routes/branding.ts` 负责权限及公开图片响应隔离。
   Web 的 `lib/branding.ts` 按运行时 API base 拼接上传地址并保留路径前缀。
@@ -271,7 +276,7 @@ apps/web|console/
 
 本地成员管理在 `apps/console/src/features/members/`；对应 server 的 `routes/members.ts`、
 `services/members.ts` 与 `store/members.ts`。密码派生只在服务端实现，API DTO 在
-`@openagentpack/kit-sdk/protocol`，不引入 UI 组件库依赖。
+`@openagentkit/sdk/protocol`，不引入 UI 组件库依赖。
 
 成员用量 DTO 在 `packages/sdk/src/protocol/session-usage.ts`；Gateway 的 `session-usage.ts`
 只做 Provider 详情白名单映射。server 的 `services/member-usage.ts` 调度全量分批采集，

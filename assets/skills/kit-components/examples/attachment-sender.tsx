@@ -1,3 +1,4 @@
+import { skillInputTokens } from "@openagentkit/sdk/protocol";
 import {
 	type AttachmentItem,
 	Attachments,
@@ -9,7 +10,6 @@ import {
 	SkillGlyph,
 	Suggestion,
 } from "@openagentpack/kit-chat-ui";
-import { skillInputTokens } from "@openagentpack/kit-sdk/protocol";
 import { useEffect, useRef, useState } from "react";
 
 interface UploadedAttachment extends AttachmentItem {

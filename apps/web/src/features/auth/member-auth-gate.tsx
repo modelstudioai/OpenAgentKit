@@ -1,9 +1,9 @@
+import type { MemberAuthController } from "@openagentkit/sdk/auth";
+import { useMemberAuth } from "@openagentkit/sdk/auth/hooks";
+import type { MemberView } from "@openagentkit/sdk/protocol";
+import type { ChatProvider } from "@openagentkit/sdk/providers";
+import { KitProvider } from "@openagentkit/sdk/providers/kit/react";
 import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui";
-import type { MemberAuthController } from "@openagentpack/kit-sdk/auth";
-import { useMemberAuth } from "@openagentpack/kit-sdk/auth/hooks";
-import type { MemberView } from "@openagentpack/kit-sdk/protocol";
-import type { ChatProvider } from "@openagentpack/kit-sdk/providers";
-import { KitProvider } from "@openagentpack/kit-sdk/providers/kit/react";
 import { type ReactNode, useState } from "react";
 import { MemberLoginForm } from "./member-login-form.tsx";
 

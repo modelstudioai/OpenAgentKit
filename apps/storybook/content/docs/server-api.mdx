@@ -76,8 +76,8 @@ HTTP、上传、下载和 SSE 统一携带 `Authorization: Bearer <access_token>
 
 | 名称 | 来源与用途 |
 | --- | --- |
-| config | SQLite 中的 YAML 文本，描述当前批次的资源配置 |
-| state | SQLite 中的 SDK state，记录声明资源对应的远端 ID、版本与内容哈希 |
+| config | 服务端数据库中的 YAML 文本，描述当前批次的资源配置 |
+| state | 服务端数据库中的 SDK state，记录声明资源对应的远端 ID、版本与内容哈希 |
 | remote | Provider 上实际存在的资源 |
 
 `plan` 返回 SDK 差异；Kit 展示计划并取得用户显式确认后，使用 `plan_id` 和一次性
@@ -137,12 +137,13 @@ Operation 是长耗时控制面动作的异步任务记录，包含 `operation_i
 
 ## SSE 帧
 
-协议 2.x：`event: reset | ready | event | done | error | ping | operation`。SSE 标准 `id` 是
-Kit 的不透明传输游标，重连用 `?after=<cursor>`；业务 `event_id` 表示快照身份，同 ID
-新快照更新原消息。游标失效时 `reset → event* → ready` 原子重建，idle 后订阅继续保持。
+协议 3.x 支持 `reset`、`ready`、`event`、`done`、`error`、`ping` 和 `operation`。
+员工与管理员调试的 `/stream` 均订阅实时更新，`/events` 分页读取历史。SSE `id` 是续传游标，
+业务 `event_id` 标识快照。游标失效时收到 `reset → ready`，客户端再分页重建历史。
+普通回合结束后订阅继续保持。
 
 启动读取 `/api/config` 检查主版本，消息发送、Session stream 与审批 GET/POST 必须携带
-`x-kit-protocol-version: 2.0.0`，缺失或不兼容返回 409。控制面 Operation 流仍以 done 结束，
+`x-kit-protocol-version: 3.0.0`，缺失或不兼容返回 409。控制面 Operation 流仍以 done 结束，
 不使用 Session 的 reset 语义。详见仓库 `docs/protocol.md`。
 
 ## 工具审批

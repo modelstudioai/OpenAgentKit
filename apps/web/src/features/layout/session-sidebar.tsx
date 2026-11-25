@@ -1,3 +1,5 @@
+import type { AgentSummary, SessionSummary } from "@openagentkit/sdk/protocol";
+import { useSessionSearch } from "@openagentkit/sdk/sessions/hooks";
 import {
 	Menu,
 	MenuContent,
@@ -7,10 +9,8 @@ import {
 	type SessionSidebarGroup,
 	type SessionSidebarPage,
 } from "@openagentpack/kit-chat-ui";
-import type { AgentSummary, SessionSummary } from "@openagentpack/kit-sdk/protocol";
-import { useSessionSearch } from "@openagentpack/kit-sdk/sessions/hooks";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
-import type { Branding } from "../../lib/branding.ts";
+import { type Branding, DEFAULT_BRAND_PRODUCT_NAME } from "../../lib/branding.ts";
 import type { NavigateFn, ViewId } from "../../lib/use-route.ts";
 import type {
 	SessionDirectory as SessionDirectoryData,
@@ -284,7 +284,7 @@ export function SessionSidebar({
 	member,
 	onLogout,
 }: SessionSidebarProps) {
-	const productName = branding.productName.trim() || "OpenAgentPack Kit";
+	const productName = branding.productName.trim() || DEFAULT_BRAND_PRODUCT_NAME;
 	const plazaActive = view === "plaza" || view === "new";
 	const go = useCallback(
 		(target: Parameters<NavigateFn>[0]) => {

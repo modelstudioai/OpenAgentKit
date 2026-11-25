@@ -2,6 +2,7 @@
 
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useRef } from "react";
+import { withBasePath } from "../lib/base-path.ts";
 import type { ShowcaseName } from "../lib/showcase-names.ts";
 
 /** 桌面使用固定逻辑宽度并缩放展示；手机使用容器的真实视口，切换时不重建文档。 */
@@ -42,7 +43,7 @@ export function PreviewViewport({
 			<iframe
 				ref={frame}
 				className="kit-preview-viewport"
-				src={`/previews/${name}/`}
+				src={withBasePath(`/previews/${name}/`)}
 				title={title}
 				onLoad={syncTheme}
 			/>

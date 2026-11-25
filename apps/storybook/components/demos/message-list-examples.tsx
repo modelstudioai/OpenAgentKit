@@ -1,8 +1,8 @@
 "use client";
 
+import type { ChatToolApproval } from "@openagentkit/sdk/chat";
+import type { ChatMessage } from "@openagentkit/sdk/messages";
 import { EmptyState, MessageList, MessageListSkeleton, ToolApprovalCard } from "@openagentpack/kit-chat-ui";
-import type { ChatToolApproval } from "@openagentpack/kit-sdk/chat";
-import type { ChatMessage } from "@openagentpack/kit-sdk/messages";
 import { useMemo, useState } from "react";
 import { CONTROL_CLASS, TOOLBAR_CLASS } from "./general-demo.tsx";
 import { MESSAGES } from "./message-demo.tsx";

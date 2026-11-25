@@ -4,7 +4,7 @@ import type {
 	MemberView,
 	ModelUsagePage,
 	ToolUsagePage,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Button, Empty, Result, Select, Spin, Table } from "antd";
 import { useEffect, useMemo, useState } from "react";

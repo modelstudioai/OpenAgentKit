@@ -8,7 +8,7 @@
 | 层 | 命令 | 覆盖 |
 | --- | --- | --- |
 | 仓库脚本 | `pnpm test:scripts` | 首次配置、既有 `.env` 不变、取消 / 并发保护、依赖构建与服务启动顺序、组件复制 |
-| SDK 数据层 | `pnpm --filter @openagentpack/kit-sdk test` | SSE 帧编解码、快照归并、`event_id` 去重、重连与 `after` 续传、工具审批、确认令牌 |
+| SDK 数据层 | `pnpm --filter @openagentkit/sdk test` | SSE 帧编解码、快照归并、`event_id` 去重、重连与 `after` 续传、工具审批、确认令牌 |
 | chat-ui | `pnpm --filter @openagentpack/kit-chat-ui test` | 消息渲染、执行过程、附件与快捷指令、审批交互、空态与禁用态 |
 | server | `pnpm --filter @openagentpack/kit-server test` | 路由与权限、身份归属、确认闸门、事件不落库、OpenAPI 一致性 |
 | gateway 合同 | 同上（`tests/fixtures/`） | Provider HTTP/SSE 映射；Mock 与 SdkGateway 跑同一套契约 |
@@ -35,8 +35,9 @@ pnpm gate          # 以上全部
 pnpm verify:push   # pre-push hook 子集
 ```
 
-当前仓库不提供 CI 流水线配置；验收在本地执行 `pnpm gate` 与 `pnpm e2e`，结果记录在 PR 描述中。
-本地 hook 可被 `--no-verify` 绕过；后续接入 CI 时需单独配置并核实实际运行结果。
+文档站由 GitHub Actions 检查、构建并发布到 GitHub Pages，配置见[文档站部署说明](../apps/storybook/README.md#github-pages-部署)。
+完整验收在本地执行 `pnpm gate` 与 `pnpm e2e`，结果记录在 PR 描述中。
+本地 hook 可被 `--no-verify` 绕过。
 
 ### 环境与文档站准备
 
@@ -73,7 +74,7 @@ pnpm e2e
 - 通过公开接口或可观察结果验证；删除依赖实现步骤、与其他层重复的测试。
 - 负向断言先证明目标路径可达：权限测试显示资源确实存在；异步 UI 测试等待初始化与事件处理完成。
 - 闸门测试必须覆盖「无 confirmation token 被拒」与「有 token 通过」两条路径。
-- 去重与重连覆盖「历史回放 + 实时流」交叉到达（`event_id` 重复）与 `after` 游标续传。
+- 去重与重连覆盖历史分页和实时流交叉到达（`event_id` 重复），以及有效 `after` 续传和失效后重读历史。
 - 静默断流与显式 `done` 是不同场景，不能用发送 `done` 的 mock 证明自然断流。
 
 ## 真实 Cloud（live）
@@ -108,6 +109,21 @@ KIT_LIVE=1 pnpm --filter @openagentpack/kit-server exec tsx tests/live/smoke.ts
 | 接口 / Schema / Provider 合同 | 生成 OpenAPI 与 SDK 类型，校验接口表；在拥有映射的层覆盖代表性成功、拒绝及恢复场景 |
 | Skill 源 / 生成器 / 公开示例 | 检查或重新生成产物，编译示例，选择生成、链接、打包或浏览器边界回归 |
 | 架构、依赖配置或交付链路 | 检查依赖方向、工作区与任务图，按影响运行完整门禁或相应构建 |
+
+表结构改动运行 `db:check`，核对共享定义、迁移清单和逐条保存的历史，并验证三库产物可生成。
+直接运行下面的 Vitest 用例前，用 `db:render` 准备本地生成文件。服务端的 `test` 入口包含这一步。
+迁移用例 `apps/server/tests/database-migrations.test.ts` 覆盖空库回放、带数据的历史升级、旧外部库
+接续和 DDL 中途恢复。外部库用例用测试账号创建和清理独立的临时数据库。
+存储改动使用 `apps/server/tests/database-backends.test.ts` 验证登录、模版事务、会话索引、
+重复扣减、Logo 和资源发布。默认运行 SQLite。将 `KIT_TEST_MYSQL_URL` 和 `KIT_TEST_POSTGRES_URL`
+分别指向专用 MySQL 8.4 和 PostgreSQL 测试库，可对同一流程运行三种后端。测试使用 Mock Provider，
+会在指定数据库写入和保留测试记录。
+
+```bash
+pnpm --filter @openagentpack/kit-server db:check
+pnpm --filter @openagentpack/kit-server db:render
+pnpm --filter @openagentpack/kit-server exec vitest run tests/database-backends.test.ts tests/database-migrations.test.ts
+```
 
 生成物、lockfile 与构建缓存不计入手写文件规模；生产源码超过 800 行、测试或脚本超过 1000 行时，
 按变化原因评估职责拆分，不机械切文件。规范维护不能通过删去有效合同来缩短入口文件。

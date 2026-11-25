@@ -1,5 +1,5 @@
 import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
-import { ProjectResourceBindingInputSchema, ProjectResourceBindingsSchema } from "@openagentpack/kit-sdk/protocol";
+import { ProjectResourceBindingInputSchema, ProjectResourceBindingsSchema } from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 
 const errorBody = z.object({ error: z.object({ code: z.string(), message: z.string() }) });

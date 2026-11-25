@@ -1,5 +1,5 @@
+import type { TemplateUsageRow, TemplateVersionView, TemplateView } from "@openagentkit/sdk/protocol";
 import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui";
-import type { TemplateUsageRow, TemplateVersionView, TemplateView } from "@openagentpack/kit-sdk/protocol";
 import * as Tabs from "@radix-ui/react-tabs";
 import { useEffect, useMemo, useState } from "react";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";

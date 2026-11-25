@@ -1,7 +1,7 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { KitError } from "@openagentpack/kit-sdk/protocol";
+import { KitError } from "@openagentkit/sdk/protocol";
 import { describe, expect, it } from "vitest";
 import { loadConfig } from "../src/config.ts";
 import { createConfirmGate } from "../src/services/confirm-gate.ts";

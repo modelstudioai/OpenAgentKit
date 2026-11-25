@@ -1,14 +1,14 @@
-import { Chat } from "@openagentpack/kit-chat-ui";
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
+import { useChat } from "@openagentkit/sdk/chat/hooks";
 import type {
 	SendMessageResponse,
 	SessionEvent,
 	SessionThreadSummary,
 	ToolApprovalsResponse,
-} from "@openagentpack/kit-sdk/protocol";
-import type { ChatProvider, StreamSessionOptions } from "@openagentpack/kit-sdk/providers";
-import { createBailianChatProvider, createBailianThreadOperations } from "@openagentpack/kit-sdk/providers/bailian";
-import { createRequest } from "@openagentpack/kit-sdk/request";
+} from "@openagentkit/sdk/protocol";
+import type { ChatProvider, StreamSessionOptions } from "@openagentkit/sdk/providers";
+import { createBailianChatProvider, createBailianThreadOperations } from "@openagentkit/sdk/providers/bailian";
+import { createRequest } from "@openagentkit/sdk/request";
+import { Chat } from "@openagentpack/kit-chat-ui";
 import { useState, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 import "../../src/styles.css";

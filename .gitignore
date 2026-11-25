@@ -7,6 +7,7 @@ out/
 .next/
 .source/
 apps/storybook/public/skills/
+/apps/server/src/store/schema/generated/
 # Skill 最终目录提交；离线 tgz 产物不入库
 assets/skills/dist/
 coverage/

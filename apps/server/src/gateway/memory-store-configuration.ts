@@ -4,7 +4,7 @@ import {
 	type MemoryStoreConfiguration,
 	MemoryStoreConfigurationSchema,
 	redactMemoryConfigurationText,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 
 /** 正文只用于管理员显式导入；敏感投影明确标记不可复制，不落库或写日志。 */
 export function memoryStoreConfiguration(

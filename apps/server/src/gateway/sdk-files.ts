@@ -1,4 +1,4 @@
-import type { RemoteFile } from "@openagentpack/kit-sdk/protocol";
+import type { RemoteFile } from "@openagentkit/sdk/protocol";
 import type { ProviderFileInfo } from "@openagentpack/sdk";
 import { enrichFileMetadata } from "@openagentpack/sdk/file-lifecycle";
 

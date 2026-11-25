@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1056" role="img" aria-labelledby="title subtitle">
+  <title id="title">OpenAgentKit 核心功能架构</title>
+  <desc id="subtitle">围绕 Agent 配置、发布与使用建立核心主链路，按需扩展运营与质量能力</desc>
+  <style>
+    text {
+      font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+      fill: #17314a;
+      font-size: 16px;
+    }
+    .title { font-size: 30px; font-weight: 700; }
+    .section { font-size: 23px; font-weight: 700; }
+    .subsection, .label { font-size: 18px; font-weight: 700; }
+    .detail { font-size: 12.5px; }
+    .muted { fill: #546579; }
+    .center { text-anchor: middle; }
+    .panel { fill: #fff; stroke: #61738b; stroke-width: 1.4; }
+    .header { fill: #f5f7f9; stroke: #61738b; stroke-width: 1.4; }
+    .ready rect { fill: #e6f4ec; stroke: #24804b; }
+    .ready text { fill: #175537; }
+    .planned rect { fill: #e9f0fc; stroke: #3776cb; }
+    .planned text { fill: #224f85; }
+    .excluded rect { fill: #fbeaeb; stroke: #b9383d; }
+    .excluded text { fill: #852529; }
+  </style>
+
+  <rect width="1600" height="1056" fill="#fff" />
+  <rect class="panel" x="12" y="12" width="1576" height="1032" />
+  <rect class="header" x="12" y="12" width="1576" height="72" />
+  <text class="title" x="30" y="46">OpenAgentKit 核心功能架构</text>
+  <text class="muted" x="30" y="69">围绕 Agent 配置、发布与使用建立核心主链路，按需扩展运营与质量能力</text>
+  <g class="ready center">
+    <rect x="1100" y="25" width="145" height="39" />
+    <text class="label" x="1172.5" y="51">已实现</text>
+  </g>
+  <g class="planned center">
+    <rect x="1258" y="25" width="145" height="39" />
+    <text class="label" x="1330.5" y="51">未来规划</text>
+  </g>
+  <g class="excluded center">
+    <rect x="1416" y="25" width="155" height="39" />
+    <text class="label" x="1493.5" y="51">当前不实现</text>
+  </g>
+
+  <rect class="panel" x="24" y="96" width="1552" height="93" />
+  <rect class="header" x="24" y="96" width="1552" height="29" />
+  <text class="subsection" x="34" y="117">终端接入模块（共用入口）</text>
+  <g class="ready center">
+    <rect x="35" y="133" width="759" height="46" />
+    <text class="label" x="414.5" y="153">Web / H5</text>
+    <text x="414.5" y="171">体验端 · 管理端</text>
+  </g>
+  <g class="planned center">
+    <rect x="806" y="133" width="759" height="46" />
+    <text class="label" x="1185.5" y="153">桌面端</text>
+    <text x="1185.5" y="171">Electron 模板 · 启动链路与冒烟</text>
+  </g>
+
+  <rect class="panel" x="24" y="205" width="758" height="730" />
+  <rect class="header" x="24" y="205" width="758" height="51" />
+  <text class="section" x="37" y="231">Core 模块</text>
+  <text class="muted" x="37" y="248">核心功能链路 + 原子能力与公共支撑</text>
+  <rect class="panel" x="35" y="267" width="362" height="422" />
+  <rect class="header" x="35" y="267" width="362" height="33" />
+  <text class="subsection" x="45" y="289">智能体管理模块</text>
+  <g class="ready center">
+    <rect x="45" y="309" width="342" height="68" />
+    <text class="label" x="216" y="336">基础配置</text>
+    <text x="216" y="359">模型 · 描述 · 提示词 · 工具权限</text>
+    <rect x="45" y="385" width="342" height="68" />
+    <text class="label" x="216" y="408">能力与资源配置</text>
+    <text x="216" y="427">Skill · MCP · Multi-Agent</text>
+    <text x="216" y="444">环境 · 文件 · 记忆库 · 密钥库</text>
+    <rect x="45" y="461" width="342" height="68" />
+    <text class="label" x="216" y="484">模版生命周期</text>
+    <text x="216" y="503">新建 / 导入 · 编辑 · 版本历史</text>
+    <text x="216" y="520">预览调试</text>
+    <rect x="45" y="537" width="342" height="68" />
+    <text class="label" x="216" y="565">发布与上下架</text>
+    <text x="216" y="587">Build · Plan · 显式确认</text>
+  </g>
+  <g class="planned center">
+    <rect x="45" y="613" width="342" height="66" />
+    <text class="label" x="216" y="640">员工提供 Agent 资源</text>
+    <text x="216" y="662">申请 · 审批 · 上架</text>
+  </g>
+
+  <rect class="panel" x="409" y="267" width="362" height="422" />
+  <rect class="header" x="409" y="267" width="362" height="33" />
+  <text class="subsection" x="419" y="289">员工体验模块</text>
+  <g class="ready center">
+    <rect x="419" y="309" width="342" height="86" />
+    <text class="label" x="590" y="345">智能体发现</text>
+    <text x="590" y="368">广场 · 分类 · 搜索</text>
+    <rect x="419" y="404" width="342" height="86" />
+    <text class="label" x="590" y="440">会话管理</text>
+    <text x="590" y="463">创建 · 历史 · 归档 · 删除</text>
+    <rect x="419" y="499" width="342" height="86" />
+    <text class="label" x="590" y="527">对话与协作</text>
+    <text x="590" y="550">流式输出 · 停止 · 断线重连</text>
+    <text x="590" y="570">Multi-Agent 子线程</text>
+    <rect x="419" y="594" width="342" height="85" />
+    <text class="label" x="590" y="629">交互与文件</text>
+    <text x="590" y="652">工具审批 · 附件上传 · 文件交付</text>
+  </g>
+
+  <rect class="panel" x="35" y="701" width="736" height="151" />
+  <rect class="header" x="35" y="701" width="736" height="33" />
+  <text class="subsection" x="45" y="723">原子能力提供模块</text>
+  <g class="ready center">
+    <rect x="45" y="744" width="232" height="98" />
+    <text class="label" x="161" y="767">UI 组件</text>
+    <text class="detail" x="161" y="789">对话与输入 · 富内容与执行过程</text>
+    <text class="detail" x="161" y="808">附件与文件 · 工具审批 · 会话导航</text>
+    <text class="detail" x="161" y="827">广场组件 · 通用交互</text>
+    <rect x="287" y="744" width="232" height="98" />
+    <text class="label" x="403" y="767">SDK 与开发接口</text>
+    <text class="detail" x="403" y="783">Stream → Request → Provider → Chat</text>
+    <text class="detail" x="403" y="798">KitClient · ChatController</text>
+    <text class="detail" x="403" y="813">React Hooks · SessionEvent</text>
+    <text class="detail" x="403" y="828">HostBridge</text>
+    <rect x="529" y="744" width="232" height="98" />
+    <text class="label" x="645" y="767">Coding Agent Skills</text>
+    <text class="detail" x="645" y="789">kit-components</text>
+    <text class="detail" x="645" y="808">use-kit-chat · kit-chat-provider</text>
+    <text class="detail" x="645" y="827">组件选型 · 会话接入 · 后端适配</text>
+    <rect x="35" y="864" width="736" height="60" />
+    <text class="label" x="403" y="889">公共支撑与开发交付</text>
+    <text x="403" y="911">CLI · 文档站 · 示例项目 · Mock · Docker 配置</text>
+  </g>
+
+  <rect class="panel" x="818" y="205" width="758" height="730" />
+  <rect class="header" x="818" y="205" width="758" height="51" />
+  <text class="section" x="831" y="231">可拓展模块</text>
+  <text class="muted" x="831" y="248">组织运营（含用量）· 会话治理（含评测）</text>
+  <text class="muted center" x="800" y="571">复用</text>
+  <path d="M818 586h-34l8-4m-8 4 8 4" fill="none" stroke="#61738b" stroke-width="1.4" />
+  <rect class="panel" x="829" y="267" width="362" height="657" />
+  <rect class="header" x="829" y="267" width="362" height="33" />
+  <text class="subsection" x="839" y="289">组织运营模块</text>
+  <g class="ready center">
+    <rect x="839" y="309" width="342" height="142" />
+    <text class="label" x="1010" y="375">用户组管理</text>
+    <text x="1010" y="400">分组配置 · 成员关系</text>
+    <rect x="839" y="460" width="342" height="142" />
+    <text class="label" x="1010" y="514">用量管控</text>
+    <text x="1010" y="539">成员与模版用量</text>
+    <text x="1010" y="559">月度 Token / 执行时长限额</text>
+    <rect x="839" y="611" width="342" height="142" />
+    <text class="label" x="1010" y="677">运行观测</text>
+    <text x="1010" y="702">操作日志 · 操作留痕 · 指标</text>
+  </g>
+  <g class="excluded center">
+    <rect x="839" y="762" width="342" height="152" />
+    <text class="label" x="1010" y="833">成员身份</text>
+    <text x="1010" y="858">本地账号 · 登录 · 退出</text>
+  </g>
+
+  <rect class="panel" x="1203" y="267" width="362" height="657" />
+  <rect class="header" x="1203" y="267" width="362" height="33" />
+  <text class="subsection" x="1213" y="289">会话治理模块</text>
+  <g class="planned center">
+    <rect x="1213" y="309" width="342" height="93" />
+    <text class="label" x="1384" y="349">Skill 评测执行</text>
+    <text x="1384" y="373">用例管理 · 脚本与模型评分</text>
+    <rect x="1213" y="411" width="342" height="93" />
+    <text class="label" x="1384" y="451">评测结果与迭代</text>
+    <text x="1384" y="475">报告对比 · 修改建议 · CI 门禁</text>
+    <rect x="1213" y="513" width="342" height="93" />
+    <text class="label" x="1384" y="553">会话审计</text>
+    <text x="1384" y="577">告知 · 脱敏 · 搜索 · 时间线</text>
+    <rect x="1213" y="615" width="342" height="93" />
+    <text class="label" x="1384" y="655">审计权限与追溯</text>
+    <text x="1384" y="679">审批导出 · 自审计 · 保留策略</text>
+    <rect x="1213" y="717" width="342" height="93" />
+    <text class="label" x="1384" y="751">会话蒸馏</text>
+    <text x="1384" y="775">周期分析 · 洞察报告</text>
+    <text x="1384" y="795">优化建议 · 人工采纳</text>
+  </g>
+  <g class="excluded center">
+    <rect x="1213" y="819" width="342" height="95" />
+    <text class="label" x="1384" y="855">会话训练利用</text>
+    <text x="1384" y="879">转写入模 · 训练数据集导出</text>
+  </g>
+
+  <rect class="panel" x="24" y="949" width="1552" height="82" />
+  <rect class="header" x="24" y="949" width="1552" height="31" />
+  <text class="subsection" x="36" y="971">百炼 Managed Agent 能力支撑</text>
+  <text class="center" x="800" y="1001">Agent · Session · Event · Skill · File · Environment · Memory Store · Vault</text>
+  <text class="muted center" x="800" y="1022">配置与资源 API · 会话执行 · 事件流 · 文件服务</text>
+</svg>

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
-import { createSessionStore } from "@openagentpack/kit-sdk/chat";
-import type { SessionEvent } from "@openagentpack/kit-sdk/protocol";
+import { createSessionStore } from "@openagentkit/sdk/chat";
+import type { SessionEvent } from "@openagentkit/sdk/protocol";
 import { setDefaultFetch } from "@openagentpack/sdk";
 import { afterEach, describe, expect, it } from "vitest";
 import { createSdkGateway } from "../src/gateway/sdk.ts";
@@ -108,6 +108,20 @@ describe("真实 SDK 的 HTTP/SSE 契约", () => {
 		]);
 		expect(result.events[0]?.metadata?.event_status).toBe("completed");
 		expect(result.events[0]?.metadata?.raw).toBeUndefined();
+	});
+
+	it.each([
+		{ status: 429, retryable: true },
+		{ status: 503, retryable: true },
+		{ status: 403, retryable: false },
+	])("历史查询保留上游 $status 的重试语义并隐藏原始错误", async ({ status, retryable }) => {
+		setDefaultFetch(async () => Response.json({ message: `upstream ${secret}` }, { status }));
+		await expect(gateway().listEvents("session")).rejects.toMatchObject({
+			code: "provider_error",
+			status: 502,
+			retryable,
+			message: expect.not.stringContaining(secret),
+		});
 	});
 
 	it("累计增量进入 SDK accumulator，onReady 在首帧前触发且取消读取", async () => {

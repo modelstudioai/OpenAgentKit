@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { lstat, mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { KitError, type ProjectFileUpload, type ProjectFileUploadInput } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type ProjectFileUpload, type ProjectFileUploadInput } from "@openagentkit/sdk/protocol";
 import type { ProjectSourceFileUpload } from "./types.ts";
 
 /** 只接受服务端暂存的全新共享 File，独立保存，不修改任何 Agent。 */

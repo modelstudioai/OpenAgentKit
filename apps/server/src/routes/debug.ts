@@ -10,7 +10,7 @@ import {
 	SendMessageResponseSchema,
 	ToolApprovalDecisionSchema,
 	ToolApprovalsResponseSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
 import { ProtocolVersionHeadersSchema } from "./protocol-header.ts";
 import { streamSession } from "./session-stream.ts";
@@ -128,19 +128,19 @@ export function registerDebugRoutes(app: OpenAPIHono<AppEnv>) {
 			request: { headers: ProtocolVersionHeadersSchema, params, query: z.object({ after: z.string().optional() }) },
 			responses: {
 				200: {
-					description: "复用 Kit Session SSE 协议与 after 游标",
+					description: "实时 SSE。after 续传实时变更，reset 后通过调试事件分页恢复历史",
 					content: { "text/event-stream": { schema: z.string() } },
 				},
 				...errors,
 			},
 		}),
-		(c) => {
+		async (c) => {
 			const { sessionId } = c.req.valid("param");
 			const { debug, audit } = c.get("services");
 			const subject = c.get("admin").subject;
-			debug.requireSession(subject, sessionId);
-			audit.append({ subject, action: "debug.session.stream", target: sessionId });
-			return streamSession(c, sessionId, c.req.valid("query").after);
+			await debug.requireSession(subject, sessionId);
+			await audit.append({ subject, action: "debug.session.stream", target: sessionId });
+			return await streamSession(c, sessionId, c.req.valid("query").after);
 		},
 	);
 
@@ -173,14 +173,15 @@ export function registerDebugRoutes(app: OpenAPIHono<AppEnv>) {
 			const { debug, sessions, audit } = c.get("services");
 			const { sessionId } = c.req.valid("param");
 			const subject = c.get("admin").subject;
-			debug.requireSession(subject, sessionId);
+			await debug.requireSession(subject, sessionId);
 			const query = c.req.valid("query");
 			const page = await sessions.events(sessionId, {
+				signal: c.req.raw.signal,
 				afterId: query.after_id,
 				pageToken: query.page_token,
 				limit: query.limit,
 			});
-			audit.append({ subject, action: "debug.session.events", target: sessionId });
+			await audit.append({ subject, action: "debug.session.events", target: sessionId });
 			return c.json({ data: page.events, next_page_token: page.next_page_token }, 200);
 		},
 	);
@@ -344,7 +345,7 @@ export function registerDebugRoutes(app: OpenAPIHono<AppEnv>) {
 				{ filename: file.name, bytes: new Uint8Array(await file.arrayBuffer()), mimeType: file.type || undefined },
 				"admin_debug",
 			);
-			audit.append({
+			await audit.append({
 				subject,
 				action: "debug.file.upload",
 				target: info.file_id,

@@ -1,4 +1,4 @@
-import type { SessionSummary } from "@openagentpack/kit-sdk/protocol";
+import type { SessionSummary } from "@openagentkit/sdk/protocol";
 import { type ReactNode, useEffect, useRef } from "react";
 import { ProcessSpinner } from "../process/step/index.tsx";
 import { Tooltip } from "../tooltip/index.tsx";

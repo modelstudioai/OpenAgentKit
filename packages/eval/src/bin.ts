@@ -12,7 +12,7 @@ import { credentialsFromEnv, runEval } from "./run.ts";
 import { type Suggestion, suggestFixes } from "./suggest.ts";
 import { readConfig, workspaceDirFor, workspacePaths } from "./workspace.ts";
 
-const HELP = `OpenAgentPack Kit — Skill 效果评测（本地 workspace，社区 evals/ 兼容）
+const HELP = `OpenAgentKit — Skill 效果评测（本地 workspace，社区 evals/ 兼容）
 
 用法：
   pnpm eval init <skill-dir> [--force]      铺 <skill-dir>-workspace/ 骨架并起草 case（draft）

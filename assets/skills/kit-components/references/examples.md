@@ -20,9 +20,9 @@ export function AgentIcon({ icon }: { icon?: string }) {
 [源文件](../examples/approval-card.tsx)
 
 ```tsx
+import type { ChatToolApproval } from "@openagentkit/sdk/chat";
+import type { ToolApprovalDecision } from "@openagentkit/sdk/protocol";
 import { ToolApprovalCard } from "@openagentpack/kit-chat-ui";
-import type { ChatToolApproval } from "@openagentpack/kit-sdk/chat";
-import type { ToolApprovalDecision } from "@openagentpack/kit-sdk/protocol";
 
 export interface ApprovalCardProps {
 	approval: ChatToolApproval;
@@ -45,9 +45,9 @@ export function ApprovalCard({ approval, submitApproval, refreshApprovals, stop 
 [源文件](../examples/approvals.tsx)
 
 ```tsx
+import type { ChatToolApproval } from "@openagentkit/sdk/chat";
+import type { ToolApprovalDecision } from "@openagentkit/sdk/protocol";
 import { ToolApprovalGroup } from "@openagentpack/kit-chat-ui";
-import type { ChatToolApproval } from "@openagentpack/kit-sdk/chat";
-import type { ToolApprovalDecision } from "@openagentpack/kit-sdk/protocol";
 
 export interface ApprovalListProps {
 	approvals: ChatToolApproval[];
@@ -72,6 +72,7 @@ export function ApprovalList({ approvals, submitApproval, refreshApprovals, stop
 [源文件](../examples/attachment-sender.tsx)
 
 ```tsx
+import { skillInputTokens } from "@openagentkit/sdk/protocol";
 import {
 	type AttachmentItem,
 	Attachments,
@@ -83,7 +84,6 @@ import {
 	SkillGlyph,
 	Suggestion,
 } from "@openagentpack/kit-chat-ui";
-import { skillInputTokens } from "@openagentpack/kit-sdk/protocol";
 import { useEffect, useRef, useState } from "react";
 
 interface UploadedAttachment extends AttachmentItem {
@@ -300,8 +300,8 @@ export function AttachmentSender({
 [源文件](../examples/chat-runtime.tsx)
 
 ```tsx
+import { useChat } from "@openagentkit/sdk/chat/hooks";
 import { Chat, type SenderSkill, ToolApprovalCard } from "@openagentpack/kit-chat-ui";
-import { useChat } from "@openagentpack/kit-sdk/chat/hooks";
 import { useState } from "react";
 
 // 在已配置的 KitProvider 内渲染，并为 Layout 内容区设置有界高度。
@@ -356,6 +356,7 @@ export function SessionChat({ sessionId, skills }: { sessionId: string | null; s
 [源文件](../examples/content.tsx)
 
 ```tsx
+import type { ChatMessage, MessagePart } from "@openagentkit/sdk/messages";
 import {
 	Actions,
 	ActionsCopy,
@@ -375,7 +376,6 @@ import {
 	SenderHeader,
 	ToolCallCard,
 } from "@openagentpack/kit-chat-ui";
-import type { ChatMessage, MessagePart } from "@openagentpack/kit-sdk/messages";
 import { useState } from "react";
 
 export interface ContentExamplesProps {
@@ -447,8 +447,8 @@ export function ContentExamples({ messages, tool, attachment, onDownload, onCopy
 [源文件](../examples/discovery-usage.tsx)
 
 ```tsx
+import type { PlazaCategory, PlazaEntry } from "@openagentkit/sdk/protocol";
 import { ActivityHeatmap, CategoryTabs, MeterBar, PlazaCard, type PlazaTabId } from "@openagentpack/kit-chat-ui";
-import type { PlazaCategory, PlazaEntry } from "@openagentpack/kit-sdk/protocol";
 
 export interface DiscoveryUsageProps {
 	entries: PlazaEntry[];
@@ -485,6 +485,9 @@ export function DiscoveryUsage(props: DiscoveryUsageProps) {
 [源文件](../examples/general.tsx)
 
 ```tsx
+import type { ChatMultiAgent } from "@openagentkit/sdk/chat";
+import type { ChatMessage } from "@openagentkit/sdk/messages";
+import type { AgentSummary, SessionSummary } from "@openagentkit/sdk/protocol";
 import {
 	AgentHeader,
 	Chat,
@@ -505,9 +508,6 @@ import {
 	ThreadPanel,
 	Tooltip,
 } from "@openagentpack/kit-chat-ui";
-import type { ChatMultiAgent } from "@openagentpack/kit-sdk/chat";
-import type { ChatMessage } from "@openagentpack/kit-sdk/messages";
-import type { AgentSummary, SessionSummary } from "@openagentpack/kit-sdk/protocol";
 import { useState } from "react";
 
 export interface GeneralComponentsProps {
@@ -769,8 +769,8 @@ export function SubAgentPanelPreview() {
 [源文件](../examples/layout.tsx)
 
 ```tsx
+import type { AgentSummary, SessionSummary } from "@openagentkit/sdk/protocol";
 import { AgentHeader, Chat, Layout, SessionSidebar } from "@openagentpack/kit-chat-ui";
-import type { AgentSummary, SessionSummary } from "@openagentpack/kit-sdk/protocol";
 import { type ComponentProps, type ReactNode, useState } from "react";
 
 export interface WorkspaceLayoutProps {

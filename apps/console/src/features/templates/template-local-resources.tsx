@@ -10,7 +10,7 @@ import type {
 	ResourceDraftEnvironmentCreateResult,
 	ResourceDraftMemoryStoreCreateResult,
 	ResourceDraftVaultCreateResult,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import { Alert, Button } from "antd";
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from "react";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";

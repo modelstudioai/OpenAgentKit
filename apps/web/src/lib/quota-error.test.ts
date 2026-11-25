@@ -1,4 +1,4 @@
-import { KitError, type MemberUsageLimitView } from "@openagentpack/kit-sdk/protocol";
+import { KitError, type MemberUsageLimitView } from "@openagentkit/sdk/protocol";
 import { describe, expect, it } from "vitest";
 import { readQuotaExceeded, usageLimitsAllowSending } from "./quota-error.ts";
 

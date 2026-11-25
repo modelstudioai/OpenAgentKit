@@ -1,7 +1,7 @@
 # apps/server — Kit Server
 
-OpenAgentPack Kit 的服务端：用 Hono 包装百炼 Managed Agent，向体验页提供数据面 API，
-向管理端提供控制面 API。运行时依赖 Node.js 24 与内置 `node:sqlite`。
+OpenAgentKit 的服务端：用 Hono 包装百炼 Managed Agent，向体验页提供数据面 API，
+向管理端提供控制面 API。运行时使用 Node.js 24 或更新版本，支持内置 SQLite、外部 MySQL 和 PostgreSQL。
 
 本文件面向人类读者；修改代码前请先读 [AGENTS.md](./AGENTS.md) 中的不变量和闸门。
 
@@ -15,7 +15,7 @@ OpenAgentPack Kit 的服务端：用 Hono 包装百炼 Managed Agent，向体验
 
 几个关键设计：
 
-- **事件不落库**：Provider 是 Session、Event 与消息正文的唯一权威；SQLite 只保存目录、
+- **事件不落库**：Provider 是 Session、Event 与消息正文的唯一权威。Kit 数据库保存目录、
   身份、索引和运营数据。
 - **Provider 走 Gateway**：路由不直接调用上游 SDK，`SdkGateway` 与 `MockGateway` 隔离
   Provider 变化，没有凭据时可用 mock 跑完整链路。
@@ -57,11 +57,66 @@ node apps/server/dist/bin.js
 | `BAILIAN_BASE_URL` / `BAILIAN_WORKSPACE_ID` | 空 | 二选一，用于定位 workspace |
 | `KIT_GATEWAY` | `auto` | `auto` 有凭据走 SDK、否则 mock；也可显式 `mock` / `sdk` |
 | `KIT_AUTH_MODE` | `member` | 默认成员登录；`anonymous` 仅用于显式演示 |
-| `KIT_DATA_DIR` | `.data` | SQLite 与本地数据目录 |
+| `KIT_DATA_DIR` | `.data` | 本地数据目录，默认 SQLite 文件位于此处 |
+| `KIT_DB_DRIVER` | `sqlite` | 可选 `sqlite`、`mysql` 或 `postgres`（别名 `pg`） |
+| `KIT_DATABASE_URL` | 空 | 使用 MySQL 或 PostgreSQL 时填写所选数据库的连接地址 |
 | `KIT_CORS_ORIGINS` | 本地开发来源 | 跨域白名单，支持 `http://127.0.0.1:*` loopback 通配 |
 | `KIT_EVAL_WORKSPACES` | 空 | 管理端评测浏览的 workspace 根目录，逗号分隔 |
 
 完整配置与限制参数见 `src/config.ts` 与根 `.env.example`。凭据不会下发浏览器，也不会写进日志。
+
+### 选择数据库
+
+也可以用 `$kit-database` 让 coding agent 按项目配置接入数据库并核对启动结果。[数据库接入 Skill](../../assets/skills/kit-database/SKILL.md)
+
+默认启动使用 `KIT_DATA_DIR/kit.sqlite`。如需外部数据库，先创建 Kit 专用库，并授予连接账户
+在该库中建表和读写的权限。在根 `.env` 或服务端进程环境中设置以下一组变量，重启后会在所选库中初始化表结构。
+
+MySQL 8.4 使用 InnoDB。
+
+```dotenv
+KIT_DB_DRIVER=mysql
+KIT_DATABASE_URL=mysql://kit_user:password@127.0.0.1:3306/kit
+```
+
+PostgreSQL 默认连接 5432 端口。
+
+```dotenv
+KIT_DB_DRIVER=postgres
+KIT_DATABASE_URL=postgresql://kit_user:password@127.0.0.1:5432/kit
+```
+
+用户名和密码含 URL 保留字符时需要百分号编码。两种外部连接均可追加 `?ssl=true` 开启 TLS 并校验服务端证书。
+每个服务实例使用所选库中自己的数据。
+
+### 维护表结构
+
+修改 [共享表结构](src/store/schema/definition.sql)。例如给 `kit_members` 加一个可空的 `remark TEXT`，
+在该表的声明里加上这一列，并从仓库根目录运行：
+
+```bash
+pnpm --filter @openagentpack/kit-server db:generate --name add_member_remark
+pnpm --filter @openagentpack/kit-server db:check
+```
+
+开发时主动运行 `db:generate` 登记版本并查看三库 SQL。提交共享定义、更新后的迁移清单、
+版本快照和显式步骤。`db:check` 校验这些来源及其可生成的迁移。
+
+`schema/generated/` 是本地生成目录。构建、开发启动、类型检查、测试和 OpenAPI 生成都会先按已登记的
+版本渲染产物。也可以单独运行 `pnpm --filter @openagentpack/kit-server db:render` 查看 SQL。
+构建后的 `dist/schema/` 提供三库迁移 SQL 和结构快照。部署启动时，服务自动执行所选库待处理的
+迁移，并登记结果。
+
+新增表、可空列、带常量默认值的非空列和普通索引可由工具生成。
+改名、改类型、删除或回填旧数据时，给生成命令追加 `--steps <JSON 路径>`。JSON 的 `steps` 按顺序列出步骤。
+每步填写 `kind`（`ddl` 或 `data`）及 `sqlite`、`mysql`、`postgres` 三个 SQL 字段。
+MySQL 的每个 DDL 步骤只写一条原子语句。SQLite 需要重建被外键引用的表时，在 JSON 顶层设置
+`sqliteRebuild: true`，迁移将在提交前检查外键。
+
+三库按 [迁移清单](src/store/schema/manifest.json) 的条目顺序执行。原有 36 条在
+[history/](src/store/schema/history) 中逐条保存。生成命令会将新版本追加到同一份清单，并在
+[versions/](src/store/schema/versions) 保存版本快照和显式步骤。新库从 `001_init` 回放历史，
+已有库从各自的迁移记录接续。
 
 ## 代码结构
 
@@ -72,7 +127,7 @@ src/config.ts       环境变量解析与校验
 src/routes/         数据面与控制面 HTTP 路由
 src/services/       业务编排、plan/确认、审计、采集与删除
 src/gateway/        Provider 适配与脱敏投影
-src/store/          SQLite 持久化
+src/store/          共享 Store 与 SQLite / MySQL / PostgreSQL 适配
 src/identity/       成员与管理员身份
 tests/              路由、Gateway 合同、服务与恢复场景
 openapi.json        由路由声明生成，供文档站同步

@@ -1,4 +1,4 @@
-import type { ConnectionState } from "@openagentpack/kit-sdk/chat";
+import type { ConnectionState } from "@openagentkit/sdk/chat";
 
 type StatusKey =
 	| "idle"

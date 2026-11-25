@@ -1,0 +1,10 @@
+{
+  "steps": [
+    {
+      "kind": "data",
+      "sqlite": "UPDATE kit_branding SET product_name = 'OpenAgentKit'\nWHERE id = 1 AND product_name = 'OpenAgentPack Kit' AND updated_by IS NULL;",
+      "mysql": "UPDATE kit_branding SET product_name = 'OpenAgentKit'\nWHERE id = 1 AND product_name = 'OpenAgentPack Kit' AND updated_by IS NULL;",
+      "postgres": "UPDATE kit_branding SET product_name = 'OpenAgentKit'\nWHERE id = 1 AND product_name = 'OpenAgentPack Kit' AND updated_by IS NULL;"
+    }
+  ]
+}

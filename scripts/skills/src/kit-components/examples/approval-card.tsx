@@ -1,6 +1,6 @@
+import type { ChatToolApproval } from "@openagentkit/sdk/chat";
+import type { ToolApprovalDecision } from "@openagentkit/sdk/protocol";
 import { ToolApprovalCard } from "@openagentpack/kit-chat-ui";
-import type { ChatToolApproval } from "@openagentpack/kit-sdk/chat";
-import type { ToolApprovalDecision } from "@openagentpack/kit-sdk/protocol";
 
 export interface ApprovalCardProps {
 	approval: ChatToolApproval;

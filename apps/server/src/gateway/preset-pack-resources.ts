@@ -1,4 +1,4 @@
-import type { PresetPackResource } from "@openagentpack/kit-sdk/protocol";
+import type { PresetPackResource } from "@openagentkit/sdk/protocol";
 import { redactRemoteDetailText } from "./remote-detail-redaction.ts";
 
 const REFERENCE_FIELDS = [

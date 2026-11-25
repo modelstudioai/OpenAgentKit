@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { StoreDatabase } from "./database.ts";
 
 export interface MemberSessionRecord {
 	token_hash: string;
@@ -8,23 +8,27 @@ export interface MemberSessionRecord {
 }
 
 /** 只存登录凭据的 SHA-256 摘要；随机 token 原文只返回给登录者。 */
-export function createMemberSessionStore(db: DatabaseSync) {
+export function createMemberSessionStore(db: StoreDatabase) {
 	return {
-		create(session: MemberSessionRecord) {
-			db.prepare("DELETE FROM kit_member_sessions WHERE expires_at <= ?").run(session.created_at);
-			db.prepare(
+		async create(session: MemberSessionRecord) {
+			await db.run("DELETE FROM kit_member_sessions WHERE expires_at <= ?", session.created_at);
+			await db.run(
 				"INSERT INTO kit_member_sessions (token_hash, member_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
-			).run(session.token_hash, session.member_id, session.created_at, session.expires_at);
+				session.token_hash,
+				session.member_id,
+				session.created_at,
+				session.expires_at,
+			);
 		},
-		find(tokenHash: string): MemberSessionRecord | null {
+		async find(tokenHash: string): Promise<MemberSessionRecord | null> {
 			return (
-				(db.prepare("SELECT * FROM kit_member_sessions WHERE token_hash = ?").get(tokenHash) as unknown as
+				((await db.get("SELECT * FROM kit_member_sessions WHERE token_hash = ?", tokenHash)) as unknown as
 					| MemberSessionRecord
 					| undefined) ?? null
 			);
 		},
-		revoke(tokenHash: string): void {
-			db.prepare("DELETE FROM kit_member_sessions WHERE token_hash = ?").run(tokenHash);
+		async revoke(tokenHash: string): Promise<void> {
+			await db.run("DELETE FROM kit_member_sessions WHERE token_hash = ?", tokenHash);
 		},
 	};
 }

@@ -3,7 +3,7 @@ title: useSessions 会话列表
 description: 查询会话、选择当前会话，以及通过 Client 创建和管理会话
 ---
 
-`useSessions(options?)` 来自 `@openagentpack/kit-sdk/sessions/hooks`，可显式传入 `{ client }`，或在兼容 `KitProvider` 内查询会话列表。
+`useSessions(options?)` 来自 `@openagentkit/sdk/sessions/hooks`，可显式传入 `{ client }`，或在兼容 `KitProvider` 内查询会话列表。
 传入 `{ agentSlug }` 时只查询该上架条目的会话；省略时查询当前身份可见的会话。
 `{ limit }` 只控制单页数量（上限 200），不代表完整目录。
 这个 Hook 使用数据 Client；自建后端通过 `createKitClient({ request, operations })` 配置列表等接口，
@@ -28,8 +28,8 @@ hook 提供列表，创建操作通过 `useKitClient()` 完成。当前选中的
 创建成功后调用 `reload()` 刷新列表。
 
 ```tsx
-import { useKitClient } from "@openagentpack/kit-sdk/providers/kit/react";
-import { useSessions } from "@openagentpack/kit-sdk/sessions/hooks";
+import { useKitClient } from "@openagentkit/sdk/providers/kit/react";
+import { useSessions } from "@openagentkit/sdk/sessions/hooks";
 import { useState } from "react";
 
 export function SessionPicker({

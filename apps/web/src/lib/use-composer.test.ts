@@ -1,4 +1,4 @@
-import { deriveTitle } from "@openagentpack/kit-sdk/chat";
+import { deriveTitle } from "@openagentkit/sdk/chat";
 import { describe, expect, it } from "vitest";
 
 describe("首句标题推导", () => {

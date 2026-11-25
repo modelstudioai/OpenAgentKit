@@ -7,10 +7,10 @@
 | --- | --- |
 | [0001](./0001-self-designed-protocol.md) | 自研协议与 hooks，事件契约复用 SDK `SessionEvent` |
 | [0002](./0002-internal-first-zero-inner-deps.md) | 零内网依赖、开源前不发布 npm 包 |
-| [0003](./0003-node-sqlite-catalog-store.md) | catalog 用 SQLite（`node:sqlite`）+ store 接口抽象 |
+| [0003](./0003-node-sqlite-catalog-store.md) | 默认 SQLite，可配置 MySQL 或 PostgreSQL，共用表结构及迁移历史（见状态更新） |
 | [0004](./0004-webview-shell-strategy.md) | 桌面与移动壳复用 Web 产物（历史；原生壳已退役） |
 | [0005](./0005-copy-in-elements-registry.md) | elements 采用 copy-in registry 形态 |
-| [0006](./0006-session-snapshot-stream.md) | 会话快照流、独立变更游标与工具审批使用协议 v2 |
+| [0006](./0006-session-snapshot-stream.md) | 会话快照、独立变更游标与工具审批，历史交付由 ADR-0028 更新 |
 | [0007](./0007-custom-bailian-chat-provider.md) | ChatProvider 接入自建百炼后端，原始 SSE 转换复用 SDK |
 | [0008](./0008-stream-request-provider-chat.md) | Stream、Request、Provider、Chat 四层运行时与原始后端操作配置 |
 | [0009](./0009-provider-message-transform.md) | Provider 定义消息转换策略，Chat 持有事件快照和会话状态 |
@@ -32,3 +32,4 @@
 | [0025](./0025-console-owns-admin-client.md) | 管理端持有控制面客户端，SDK 仅公开通用调用状态 |
 | [0026](./0026-sdk-feature-modules.md) | SDK 按功能划分公开入口与 hooks |
 | [0027](./0027-skills-source-and-generated-output.md) | Skill 改为源目录 + 生成物，不再作为 workspace 包；状态更新改用中文内容 |
+| [0028](./0028-split-session-history-stream.md) | 员工与调试会话独立分页历史和实时 SSE，协议 v3 |

@@ -1,5 +1,5 @@
+import type { RemoteVaultDetail, ResourceDraftDeclaration } from "@openagentkit/sdk/protocol";
 import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui";
-import type { RemoteVaultDetail, ResourceDraftDeclaration } from "@openagentpack/kit-sdk/protocol";
 import { Drawer } from "antd";
 import { useMemo } from "react";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";

@@ -4,7 +4,7 @@
   "version": 1,
   "usage": "pnpm kit:add <component> 会把组件源码复制进你的项目（copy-in），可自由修改；升级时按 docs 的 diff 指引合并。",
   "components": {
-    "layout": { "file": "src/components/layout/index.tsx", "deps": [], "npmDependencies": ["@radix-ui/react-dialog", "@openagentpack/kit-sdk"] },
+    "layout": { "file": "src/components/layout/index.tsx", "deps": [], "npmDependencies": ["@radix-ui/react-dialog", "@openagentkit/sdk"] },
     "chat": { "file": "src/components/chat/index.tsx", "deps": ["sender", "suggestion", "message", "process-step"] },
     "sender": { "file": "src/components/sender/index.tsx", "deps": [] },
     "attachments": { "file": "src/components/attachments/index.tsx", "deps": ["file-card"] },

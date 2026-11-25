@@ -2,7 +2,7 @@ import {
 	type MemoryEntry,
 	type MemoryStoreConfiguration,
 	ProjectMemoryStoreCreateInputSchema,
-} from "@openagentpack/kit-sdk/protocol";
+} from "@openagentkit/sdk/protocol";
 import { type CatalogMemoryDraft, validateCatalogMemories } from "../catalog/catalog-memory-fields.tsx";
 import type { TemplateLocalResource } from "./template-local-resources.tsx";
 

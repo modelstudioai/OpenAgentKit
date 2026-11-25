@@ -28,7 +28,7 @@ export function SiteHeader() {
 					<span className="kit-brand-mark">
 						<LogoMark />
 					</span>
-					<span className="kit-brand-name">OpenAgentPack Kit</span>
+					<span className="kit-brand-name">OpenAgentKit</span>
 					<span className="kit-brand-pill">v1.0.0</span>
 				</Link>
 				<nav className="kit-site-nav" aria-label="站点导航">
@@ -42,7 +42,7 @@ export function SiteHeader() {
 					<a
 						className="kit-btn"
 						data-icon="true"
-						href="https://github.com/modelstudioai/OpenAgentPack-Kit"
+						href="https://github.com/modelstudioai/OpenAgentKit"
 						aria-label="仓库"
 						title="仓库"
 					>

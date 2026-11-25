@@ -1,4 +1,4 @@
-import { PROTOCOL_VERSION } from "@openagentpack/kit-sdk/protocol";
+import { PROTOCOL_VERSION } from "@openagentkit/sdk/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { bootstrapClient } from "./kit.ts";
 

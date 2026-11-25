@@ -15,7 +15,7 @@ afterEach(() => {
 	for (const close of cleanup.splice(0).reverse()) close();
 });
 
-const json = { "content-type": "application/json", "x-kit-protocol-version": "2.0.0" };
+const json = { "content-type": "application/json", "x-kit-protocol-version": "3.0.0" };
 const headersFor = (subjectId: string) => ({ cookie: `kit_subject=${subjectId}` });
 
 async function makeServices() {
@@ -34,7 +34,7 @@ async function makeServices() {
 	return { services, sessions };
 }
 
-function makeApp() {
+async function makeApp() {
 	const directory = mkdtempSync(join(tmpdir(), "kit-skill-route-"));
 	cleanup.push(() => rmSync(directory, { recursive: true, force: true }));
 	const config = loadConfig({
@@ -46,8 +46,12 @@ function makeApp() {
 	const db = openDatabase(directory);
 	cleanup.push(() => db.close());
 	const services = createKitServices(config, db);
-	services.catalog.upsert({ slug: "assistant", display_name: "Assistant", remote_agent_id: "agent_mock_assistant" });
-	services.catalog.setStatus("assistant", "listed");
+	await services.catalog.upsert({
+		slug: "assistant",
+		display_name: "Assistant",
+		remote_agent_id: "agent_mock_assistant",
+	});
+	await services.catalog.setStatus("assistant", "listed");
 	return { app: createApp(services), services };
 }
 
@@ -84,7 +88,7 @@ describe("发送服务层技能 token 合成（ADR-0016）", () => {
 	});
 
 	it("路由层接收 skills 并按授权名单合成（zod 不剥字段）", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		const create = await app.request("/api/kit/sessions", {
 			method: "POST",
 			headers: { ...json, ...headersFor("anon_user") },
