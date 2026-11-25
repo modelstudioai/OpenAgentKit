@@ -236,6 +236,7 @@ assets/skills/
 - `use-kit-chat` 指导 Hook 与生命周期；`kit-chat-provider` 指导默认及自建百炼后端合同。
   三者共用现有公开类型，不复制协议实现、不引入第二套事件模型。
 - `kit-database` 指导 Kit Server 接入 SQLite、MySQL 和 PostgreSQL，依据服务端配置与迁移合同。
+- `kit-keycloak` 指导 Kit Server 接入 Keycloak 员工 OIDC，依据服务端配置与成员绑定合同。
 - Skill 正文、参考、元数据、示例注释与示例界面文案使用中文；Skill ID、文件名、API
   标识符和协议值沿用公开合同。
 - `pnpm gen:skills` 从 `scripts/skills/src/` 及共享 copy-in 脚本和说明生成 `assets/skills/`、

@@ -41,6 +41,7 @@
 - 工作区只包含 `apps/*` 与 `packages/*`；目录与命令是否可用以当前清单为准，
   不按历史 ADR 的旧名称恢复已退役的包、原生壳、项目生成器或目录 Project API。
 - 配置 Kit Server 的 SQLite、MySQL 或 PostgreSQL 时，使用仓库内的 [kit-database](assets/skills/kit-database/SKILL.md)。
+- 接入 Keycloak 员工登录时，参照仓库内的 [kit-keycloak](assets/skills/kit-keycloak/SKILL.md)。
 
 ## 执行红线
 

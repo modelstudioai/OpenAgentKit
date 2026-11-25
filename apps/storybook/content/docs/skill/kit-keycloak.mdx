@@ -1,0 +1,16 @@
+---
+title: kit-keycloak
+description: 为 Kit 接入 Keycloak 员工登录，配置 OIDC 并绑定 Kit 成员
+---
+
+`kit-keycloak` 指导 coding agent 联动启动本地 Keycloak、使用预置发行包，或接入已有
+Keycloak Realm。Skill 覆盖环境变量、客户端配置、成员绑定和登录验证。
+
+[下载 Skill](/skills/kit-keycloak.tgz) · [阅读 SKILL.md](/skills/kit-keycloak/SKILL.md)
+
+按[安装与更新](/docs/skill/install)复制完整目录，使用时告诉 coding agent 采用哪种接入方式。
+已有 Realm 时提供 issuer 和客户端信息，管理员凭据通过本地配置或部署环境提供。
+
+```text
+用 $kit-keycloak 将 Kit 接入我已有的 Keycloak Realm，配置客户端并验证已绑定成员的企业登录。
+```

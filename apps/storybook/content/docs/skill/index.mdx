@@ -1,11 +1,11 @@
 ---
 title: Skill
-description: 用中文 Skill 组合 Kit 组件、管理会话、接入对话后端和配置服务端数据库
+description: 用中文 Skill 组合 Kit 组件、管理会话、接入对话后端、配置数据库和企业登录
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 
-Kit 的中文 Skill 指导 coding agent 选择组件、管理聊天状态、接入对话后端和配置服务端数据库。
+Kit 的中文 Skill 指导 coding agent 选择组件、管理聊天状态、接入对话后端、配置数据库和企业登录。
 每个 Skill 都可以独立复制使用，涉及公开 API 的 Skill 附有接口参考和可编译示例。
 三个对话 Skill 的完整离线包还包含将组件、示例和 Kit SDK 源码复制到业务项目的脚本与资产。
 
@@ -21,6 +21,7 @@ React 页面使用 `kit-chat-ui` 和 SDK 的 `/hooks`，Vue 3 页面使用 `kit-
   <Card title="use-kit-chat" description="接入 useChat，处理连接、发送、停止、会话切换以及工具批准与拒绝。" href="/docs/skill/use-kit-chat" />
   <Card title="kit-chat-provider" description="使用默认 Kit Server，或把自建百炼后端的已转换事件、原始 SSE 接入 Provider。" href="/docs/skill/kit-chat-provider" />
   <Card title="kit-database" description="配置 Kit Server 的 SQLite、MySQL 或 PostgreSQL，检查连接和启动迁移。" href="/docs/skill/kit-database" />
+  <Card title="kit-keycloak" description="接入 Keycloak 员工登录，配置 OIDC 客户端并绑定 Kit 成员。" href="/docs/skill/kit-keycloak" />
 </Cards>
 
 | 想完成的工作 | 从哪个 Skill 开始 |
@@ -29,6 +30,7 @@ React 页面使用 `kit-chat-ui` 和 SDK 的 `/hooks`，Vue 3 页面使用 `kit-
 | 把已有后端连接到页面，管理发送与会话状态 | `use-kit-chat` |
 | 自己有百炼后端，需要适配请求和流数据合同 | `kit-chat-provider` |
 | 为 Kit Server 选择数据库并验证启动 | `kit-database` |
+| 接入 Keycloak 员工登录并验证成员绑定 | `kit-keycloak` |
 
 完整对话页面通常会同时使用对话相关的三个 Skill。只有 UI 组合需求时，可以单独使用
 `kit-components`；已有稳定 Provider 时，不需要重复实现后端适配。

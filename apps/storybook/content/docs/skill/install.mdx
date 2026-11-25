@@ -16,6 +16,7 @@ API 和行为说明，以及 `examples/` 中的 TypeScript 示例。
 | 会话状态与交互 | [use-kit-chat.tgz](/skills/use-kit-chat.tgz) |
 | 默认与自建后端接入 | [kit-chat-provider.tgz](/skills/kit-chat-provider.tgz) |
 | SQLite、MySQL 和 PostgreSQL 接入 | [kit-database.tgz](/skills/kit-database.tgz) |
+| Keycloak 员工登录 | [kit-keycloak.tgz](/skills/kit-keycloak.tgz) |
 
 将压缩包解压到临时目录，确认顶层 Skill 目录及其内容，再复制到当前 coding agent 支持的
 Skill 目录。单个压缩包的顶层目录就是 Skill 名称；合并包包含所有 Skill 的同级目录。
@@ -44,6 +45,8 @@ Skill 目录。单个压缩包的顶层目录就是 Skill 名称；合并包包�
     scripts/
     assets/
   kit-database/
+    SKILL.md
+  kit-keycloak/
     SKILL.md
 ```
 
@@ -114,6 +117,10 @@ Skill 随当前仓库 API 更新。旧版本 Kit 或已修改的 copy-in 组件�
 
 ```text
 用 $kit-database 把这个项目接到我已有的 PostgreSQL，验证启动和迁移记录。
+```
+
+```text
+用 $kit-keycloak 在本地联动启动 Keycloak，验证 OIDC 配置和 Kit 成员绑定。
 ```
 
 浏览器中的应用登录令牌与百炼 Provider 凭据不同。自建后端接入始终把百炼 API Key 留在

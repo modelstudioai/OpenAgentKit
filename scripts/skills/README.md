@@ -1,7 +1,8 @@
 # scripts/skills — Coding Agent Skill 源与生成器
 
 这里维护面向 coding agent 的中文 Skill。`kit-components`、`use-kit-chat` 和
-`kit-chat-provider` 指导对话集成，`kit-database` 指导 Kit Server 数据库接入。
+`kit-chat-provider` 指导对话集成，`kit-database` 指导 Kit Server 数据库接入，
+`kit-keycloak` 指导 Keycloak 员工登录与成员绑定。
 Skill 不参与应用运行时，也不是 npm 包。
 
 本文件面向人类读者；维护不变量见 [AGENTS.md](./AGENTS.md)。
