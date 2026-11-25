@@ -1,24 +1,28 @@
 import type { PresetPackPreview } from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Button, Empty, Input, Result, Table } from "antd";
+import type { TFunction } from "i18next";
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { type RemoteAgent, useRemoteAgents } from "../catalog/use-remote-agents.ts";
 import { PresetPackSessionResources } from "./preset-pack-session-resources.tsx";
 
-const columns: TableColumnsType<RemoteAgent> = [
-	{
-		title: "名称",
-		dataIndex: "name",
-		ellipsis: true,
-		render: (name: string, agent) => name || agent.agent_id,
-	},
-	{ title: "ID", dataIndex: "agent_id", ellipsis: true },
-	{
-		title: "版本",
-		dataIndex: "version",
-		render: (version: number | undefined) => (version === undefined ? "—" : `v${version}`),
-	},
-];
+function columns(t: TFunction<"presetPacks">): TableColumnsType<RemoteAgent> {
+	return [
+		{
+			title: t("cols.name"),
+			dataIndex: "name",
+			ellipsis: true,
+			render: (name: string, agent) => name || agent.agent_id,
+		},
+		{ title: t("cols.id"), dataIndex: "agent_id", ellipsis: true },
+		{
+			title: t("cols.version"),
+			dataIndex: "version",
+			render: (version: number | undefined) => (version === undefined ? "—" : `v${version}`),
+		},
+	];
+}
 
 /** 使用完整远端列表分页展示，不混入本地模版或未发布草稿。 */
 export function PresetPackSelection({
@@ -28,6 +32,7 @@ export function PresetPackSelection({
 	onImport: (preset: PresetPackPreview) => void;
 	onPendingChange: (pending: boolean) => void;
 }) {
+	const { t } = useTranslation("presetPacks");
 	const agents = useRemoteAgents();
 	const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
 	const [importing, setImporting] = useState(false);
@@ -45,13 +50,13 @@ export function PresetPackSelection({
 		`${agent.name}\n${agent.agent_id}`.toLowerCase().includes(search.toLowerCase()),
 	);
 	return (
-		<section aria-label="预设包选择" className="space-y-4">
-			<section aria-label="智能体" className="space-y-4">
-				<h2 className="text-base font-medium">智能体</h2>
+		<section aria-label={t("selectionAria")} className="space-y-4">
+			<section aria-label={t("agentsAria")} className="space-y-4">
+				<h2 className="text-base font-medium">{t("agentsTitle")}</h2>
 				<Input.Search
 					allowClear
-					aria-label="搜索智能体"
-					placeholder="搜索智能体名称或 ID"
+					aria-label={t("searchAria")}
+					placeholder={t("searchPlaceholder")}
 					disabled={importing}
 					onSearch={(value) => {
 						setSearch(value.trim());
@@ -61,9 +66,9 @@ export function PresetPackSelection({
 				{agents.error ? (
 					<Result
 						status="error"
-						title="智能体列表加载失败"
+						title={t("loadFailed")}
 						subTitle={agents.error}
-						extra={<Button onClick={() => void agents.refresh()}>重试</Button>}
+						extra={<Button onClick={() => void agents.refresh()}>{t("retry")}</Button>}
 					/>
 				) : (
 					<Table<RemoteAgent>
@@ -73,21 +78,21 @@ export function PresetPackSelection({
 							selectedRowKeys: selectedAgentId ? [selectedAgentId] : [],
 							onChange: (keys) => setSelectedAgentId(keys[0] === undefined ? null : String(keys[0])),
 							getCheckboxProps: (agent) => ({
-								"aria-label": `选择智能体 ${agent.name || agent.agent_id}（${agent.agent_id}）`,
+								"aria-label": t("selectAria", { name: agent.name || agent.agent_id, id: agent.agent_id }),
 								disabled: importing,
 							}),
 						}}
-						columns={columns}
+						columns={columns(t)}
 						dataSource={rows}
 						loading={agents.loading || !agents.data}
 						scroll={{ x: "max-content" }}
-						locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无智能体" /> }}
+						locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("emptyAgents")} /> }}
 						pagination={{
 							current: page,
 							onChange: setPage,
 							pageSize: 10,
 							showSizeChanger: false,
-							showTotal: (total) => `共 ${total} 个智能体`,
+							showTotal: (total) => t("totalAgents", { total }),
 						}}
 					/>
 				)}

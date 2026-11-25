@@ -1,4 +1,5 @@
 import type { TemplateUsageRow } from "@openagentkit/sdk/protocol";
+import i18n from "i18next";
 
 /** 聚合单个指标：value 只汇总非缺失值（全部缺失才为 null，不按 0 计算），覆盖会话数直接求和。 */
 function aggregateMetric(
@@ -14,7 +15,7 @@ function aggregateMetric(
 }
 
 /** 「全部」视角的聚合行：数值列跨模版求和，采集时间取最近一次；身份字段仅占位，由聚合卡片单独渲染。 */
-export function aggregateTemplateRows(rows: TemplateUsageRow[]): TemplateUsageRow {
+export function aggregateTemplateRows(rows: TemplateUsageRow[], aggregateName?: string): TemplateUsageRow {
 	const refreshed = rows
 		.map((row) => row.refreshed_at)
 		.filter((value): value is string => Boolean(value))
@@ -22,7 +23,7 @@ export function aggregateTemplateRows(rows: TemplateUsageRow[]): TemplateUsageRo
 		.at(-1);
 	return {
 		template_id: "",
-		name: "全部模版",
+		name: aggregateName ?? i18n.t("templatePanel.allTemplates", { ns: "usage" }),
 		remote_agent_name: "",
 		remote_agent_id: "",
 		listing_status: "unlisted",

@@ -1,4 +1,5 @@
 import { KitError } from "@openagentkit/sdk/protocol";
+import i18n from "i18next";
 import { type Ref, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { flushSync } from "react-dom";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";
@@ -40,15 +41,16 @@ export function useTemplateMemoryForm(
 	}, []);
 	const dirty = hasPendingMemories(value);
 	const save = useAdminMutation(() => {
+		const t = i18n.getFixedT(null, "templates");
 		if (!dirty) return Promise.resolve(value);
-		if (uncertain.current) throw new Error("记忆库保存结果尚未确认，请退出当前页面后重新操作。");
-		if (identity.data?.role !== "admin") throw new Error("当前身份不可新建记忆库");
+		if (uncertain.current) throw new Error(t("memory.errors.uncertain"));
+		if (identity.data?.role !== "admin") throw new Error(t("memory.errors.notAdmin"));
 		return prepareTemplateMemories(
 			value,
 			async (row) => {
 				const current = await project.prepare();
-				if (!active.current) throw new Error("记忆库保存已取消");
-				if (current.overview.active_mutation) throw new Error("项目正在修改，请稍后重试。");
+				if (!active.current) throw new Error(t("memory.errors.cancelled"));
+				if (current.overview.active_mutation) throw new Error(t("memory.errors.projectBusy"));
 				const result = await client.draftResources
 					.createMemoryStore(current.draft_id, memoryCreateInput(row, current.overview.project_revision))
 					.catch((error: unknown) => {
@@ -58,9 +60,9 @@ export function useTemplateMemoryForm(
 						)
 							throw error;
 						uncertain.current = true;
-						throw new Error("记忆库保存结果尚未确认，请退出当前页面后重新操作，避免重复创建。");
+						throw new Error(t("memory.errors.uncertain"));
 					});
-				if (!active.current) throw new Error("记忆库保存已取消");
+				if (!active.current) throw new Error(t("memory.errors.cancelled"));
 				return local.addMemory(result, current.draft_id);
 			},
 			(prepared) => flushSync(() => onChange(prepared)),

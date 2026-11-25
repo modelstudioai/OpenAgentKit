@@ -1,6 +1,6 @@
 import { cpSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { copyComponentSource, readRegistry, resolveComponentClosure } from "./copy-in.mjs";
+import { componentSourceFiles, copyComponentSource, readRegistry, resolveComponentClosure } from "./copy-in.mjs";
 import { REPO_ROOT } from "./paths.mjs";
 
 const USAGE = "用法：pnpm kit:add <component> [--dir <project>]";
@@ -33,8 +33,10 @@ if (!closure) {
 const targetDir = resolve(projectDir, "src/components/kit");
 for (const component of closure) {
 	const entry = registry.components[component];
-	const to = copyComponentSource(chatUiRoot, entry.file, targetDir);
-	console.log(`+ ${to}`);
+	for (const file of componentSourceFiles(entry)) {
+		const to = copyComponentSource(chatUiRoot, file, targetDir);
+		console.log(`+ ${to}`);
+	}
 }
 const themeTo = resolve(projectDir, "src/components/kit/theme.css");
 if (!existsSync(themeTo)) {

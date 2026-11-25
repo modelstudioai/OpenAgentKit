@@ -275,7 +275,9 @@ CR/LF/CRLF、多行 `data`、注释心跳与业务 JSON 分别处理，业务对
 
 ## 错误模型
 
-统一 `KitError`：`{ code, message, details?, retryable }`，HTTP 与流内共用一套 code。
+统一 `KitError`：`{ code, message, message_key?, message_params?, details?, retryable }`，
+HTTP 与流内共用一套 code。`message` 保留给日志和旧客户端兜底；新客户端优先按稳定的
+`message_key` + `message_params` 查词表，服务端不读取 `Accept-Language`。
 
 | code | HTTP | 含义 |
 | --- | --- | --- |
@@ -317,6 +319,8 @@ DELETE /api/kit/sessions/:sessionId        body { plan_id, confirm_token }
 - 消费即失效（重放 428）；空/畸形令牌先被 schema 拦下（400 invalid_request）；
   有实际资源变更的发布即使 `destructive=false`，也必须展示 diff 并由用户显式确认；
   声明与 state 都为空的只读空计划不触发发布或远端写入。
+- Plan diff 条目可带 `summary_key` + `summary_params`；客户端按自身命名空间渲染。
+  旧 `summary` 是服务端/SDK 自由文本，只作技术详情或旧客户端兜底，不作为本地化主文案。
 - **服务端与脚本不得代替用户作出确认**，不存在 `--yes` 或固定确认标记的旁路。
   已授权拥有的临时调试 Session 可按页面生命周期准备删除计划并携带有效令牌清理，
   不授权自动删除成员会话、他人资源或结果未知的批次。

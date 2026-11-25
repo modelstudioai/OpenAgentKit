@@ -1,11 +1,8 @@
 import type { ProjectFileUpload, ProjectSkillUpload } from "@openagentkit/sdk/protocol";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { AdminClient } from "../../lib/admin/index.ts";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";
-
-function uploadFailure(file: File, error: unknown): string {
-	return `${file.name}：${error instanceof Error ? error.message : "上传失败，请重试"}`;
-}
 
 export type ProjectUploadKind = "file" | "skill";
 type ProjectUpload = ProjectFileUpload | ProjectSkillUpload;
@@ -22,6 +19,7 @@ export function useProjectUploads({
 	baseRevision: string;
 	enabled: boolean;
 }) {
+	const { t } = useTranslation("templates");
 	const client = workbench.client.draftResources;
 	const api =
 		kind === "file"
@@ -37,7 +35,7 @@ export function useProjectUploads({
 					preview: client.previewSkillUploads,
 					commit: client.commitSkillUploads,
 				};
-	const label = kind === "file" ? "文件" : "Skill";
+	const label = kind === "file" ? t("uploads.file") : t("uploads.skill");
 	const [uploads, setUploads] = useState<ProjectUpload[]>([]);
 	const owned = useRef(new Map<string, ProjectUpload>());
 	const active = useRef(true);
@@ -85,10 +83,7 @@ export function useProjectUploads({
 		setUploads((current) => [...current, result]);
 		return result;
 	}
-	const upload = useAdminMutation(async (selection: File[]) => {
-		if (!canUpload()) throw new Error(`当前项目不能上传${label}。`);
-		if (uploads.length + selection.length > 20)
-			throw new Error(`每次保存最多新增 20 个${label}，当前已有 ${uploads.length} 个，请减少本次选择的文件。`);
+	async function uploadSelection(selection: File[]) {
 		const failures: string[] = [];
 		const completed: (ProjectUpload | undefined)[] = [];
 		for (const file of selection) {
@@ -96,11 +91,21 @@ export function useProjectUploads({
 			try {
 				completed.push(await uploadOne(file));
 			} catch (error) {
-				failures.push(uploadFailure(file, error));
+				failures.push(
+					t("uploads.failure", {
+						file: file.name,
+						error: error instanceof Error ? error.message : t("uploads.fallback"),
+					}),
+				);
 			}
 		}
-		if (failures.length) throw new Error(failures.join("；"));
+		if (failures.length) throw new Error(failures.join(t("uploads.separator")));
 		return completed.filter((result) => result !== undefined);
+	}
+	const upload = useAdminMutation(async (selection: File[]) => {
+		if (!canUpload()) throw new Error(t("uploads.cannotUpload", { label }));
+		if (uploads.length + selection.length > 20) throw new Error(t("uploads.max", { label, count: uploads.length }));
+		return uploadSelection(selection);
 	});
 	return {
 		uploads,

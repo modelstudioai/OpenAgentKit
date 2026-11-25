@@ -1,23 +1,8 @@
 import { Input, Select } from "antd";
 import { useId } from "react";
+import { useTranslation } from "react-i18next";
 import type { EnvironmentCreateDraft } from "./template-environment-form-draft.ts";
 import styles from "./template-resources.module.less";
-
-const accessFields = [
-	{ key: "allow_mcp_servers", label: "MCP 服务访问" },
-	{ key: "allow_package_managers", label: "包管理器访问" },
-] as const;
-
-const modeOptions = [
-	{ value: "", label: "使用默认策略" },
-	{ value: "unrestricted", label: "不限制访问" },
-	{ value: "limited", label: "限制访问" },
-];
-const accessOptions = [
-	{ value: "", label: "使用默认设置" },
-	{ value: "true", label: "允许" },
-	{ value: "false", label: "不允许" },
-];
 
 export function EnvironmentNetworkingFields({
 	value,
@@ -26,16 +11,31 @@ export function EnvironmentNetworkingFields({
 	value: EnvironmentCreateDraft;
 	onChange: (next: EnvironmentCreateDraft) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const id = useId();
 	const networking = value.networking;
+	const accessFields = [
+		{ key: "allow_mcp_servers", label: t("agent.environment.networking.mcpAccess") },
+		{ key: "allow_package_managers", label: t("agent.environment.networking.packageAccess") },
+	] as const;
+	const modeOptions = [
+		{ value: "", label: t("agent.environment.networking.modeDefault") },
+		{ value: "unrestricted", label: t("agent.environment.networking.modeUnrestricted") },
+		{ value: "limited", label: t("agent.environment.networking.modeLimited") },
+	];
+	const accessOptions = [
+		{ value: "", label: t("agent.environment.networking.accessDefault") },
+		{ value: "true", label: t("agent.environment.networking.allow") },
+		{ value: "false", label: t("agent.environment.networking.deny") },
+	];
 	return (
-		<section aria-label="网络策略" className={styles.netRoot}>
-			<h3 className={styles.netHeading}>网络策略</h3>
+		<section aria-label={t("agent.environment.networking.title")} className={styles.netRoot}>
+			<h3 className={styles.netHeading}>{t("agent.environment.networking.title")}</h3>
 			<div className={styles.fieldStack}>
-				<label htmlFor={`${id}-mode`}>访问模式</label>
+				<label htmlFor={`${id}-mode`}>{t("agent.environment.networking.accessMode")}</label>
 				<Select
 					id={`${id}-mode`}
-					aria-label="网络访问模式"
+					aria-label={t("agent.environment.networking.accessModeAria")}
 					className={styles.fullControl}
 					value={networking?.type ?? ""}
 					onChange={(type) => {
@@ -69,17 +69,17 @@ export function EnvironmentNetworkingFields({
 						))}
 					</div>
 					<div className={styles.fieldStack}>
-						<label htmlFor={`${id}-hosts`}>允许访问的主机</label>
+						<label htmlFor={`${id}-hosts`}>{t("agent.environment.networking.hosts")}</label>
 						<Input.TextArea
 							id={`${id}-hosts`}
-							aria-label="允许访问的主机"
+							aria-label={t("agent.environment.networking.hosts")}
 							aria-describedby={`${id}-hosts-hint`}
 							rows={4}
 							value={value.networkingHosts ?? networking.allowed_hosts?.join("\n") ?? ""}
 							onChange={(event) => onChange({ ...value, networkingHosts: event.target.value })}
 						/>
 						<p id={`${id}-hosts-hint`} className={styles.hostsHint}>
-							每行一个，或用逗号分隔。
+							{t("agent.environment.networking.hostsHint")}
 						</p>
 					</div>
 				</div>

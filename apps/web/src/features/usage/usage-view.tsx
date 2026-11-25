@@ -3,6 +3,7 @@ import type { AgentSummary, QuotaRequestView, QuotaView } from "@openagentkit/sd
 import { useCreateQuotaRequest, useQuota, useQuotaRequests, useUsageLimits } from "@openagentkit/sdk/usage/hooks";
 import { ActivityHeatmap, EmptyState, ErrorState, isIconImageSource, MeterBar } from "@openagentpack/kit-chat-ui";
 import { type ReactNode, useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { formatBeijingTime } from "../../lib/beijing-time.ts";
 import type { NavigateFn } from "../../lib/use-route.ts";
 import { ApplyCreditsDialog, type ApplyCreditsValues } from "./apply-credits-dialog.tsx";
@@ -49,26 +50,27 @@ function Panel({ title, hint, children }: { title: string; hint?: string; childr
 
 /** 左栏主卡：月度额度 + 加油包 + 申请入口。 */
 function CreditsCard({ quota, onApply }: { quota: QuotaView; onApply: () => void }) {
+	const { t } = useTranslation("usage");
 	const unlimited = quota.unlimited || quota.limit < 0;
 	const pct = unlimited || quota.limit <= 0 ? 0 : Math.min(100, Math.round((quota.used / quota.limit) * 100));
-	const remaining = unlimited || quota.remaining < 0 ? "不限量" : String(quota.remaining);
+	const remaining = unlimited || quota.remaining < 0 ? t("unlimited") : String(quota.remaining);
 	const pending = quota.pending_request !== null;
 	return (
 		<section
 			data-testid="usage-meter"
 			tabIndex={-1}
-			aria-label="每月 Credits 用量"
+			aria-label={t("credits.ariaMeter")}
 			className="min-w-0 rounded-[var(--kit-radius)] border border-[var(--kit-border)] bg-[var(--kit-surface)] p-5 [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] md:p-6"
 		>
 			<div className="flex flex-wrap items-baseline justify-between gap-2">
-				<h2 className="text-[length:var(--kit-text-base)] font-semibold">每月用量（Credits/月）</h2>
+				<h2 className="text-[length:var(--kit-text-base)] font-semibold">{t("credits.title")}</h2>
 				<span className="text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)]">
-					{quota.month} · {formatBeijingTime(quota.reset_at)} 重置
+					{t("resetLine", { month: quota.month, time: formatBeijingTime(quota.reset_at) })}
 				</span>
 			</div>
 			<div className="mt-5 text-[length:var(--kit-text-display)] font-semibold leading-snug tabular-nums">
 				{unlimited ? (
-					"不限量"
+					t("unlimited")
 				) : (
 					<>
 						{quota.used}
@@ -82,7 +84,7 @@ function CreditsCard({ quota, onApply }: { quota: QuotaView; onApply: () => void
 				className="mt-2 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]"
 				data-testid="usage-meter-summary"
 			>
-				已使用 {unlimited ? quota.used : `${pct}%`} | 剩余 {remaining}
+				{t("credits.usedSummary", { used: unlimited ? quota.used : `${pct}%`, remaining })}
 			</div>
 			<MeterBar value={quota.used} max={quota.limit} unlimited={unlimited} className="mt-3" />
 			{quota.packs.length > 0 ? (
@@ -93,11 +95,11 @@ function CreditsCard({ quota, onApply }: { quota: QuotaView; onApply: () => void
 							className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--kit-radius-sm)] bg-[var(--kit-bg-subtle)] px-3 py-2 text-[length:var(--kit-text-caption)]"
 						>
 							<span className="min-w-0 flex-1 truncate" title={pack.reason ?? undefined}>
-								{pack.reason ?? "加油包"}
+								{pack.reason ?? t("credits.packDefaultReason")}
 							</span>
 							<span className="font-semibold text-[var(--kit-success)]">+{pack.credits}</span>
 							<span className="text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)]">
-								当期重置时失效（{pack.month}）
+								{t("credits.packExpires", { month: pack.month })}
 							</span>
 						</li>
 					))}
@@ -111,9 +113,9 @@ function CreditsCard({ quota, onApply }: { quota: QuotaView; onApply: () => void
 					onClick={onApply}
 					className="min-h-10 flex-1 rounded-[var(--kit-radius-sm)] bg-[var(--kit-accent)] px-4 py-2 text-[length:var(--kit-text-label)] font-medium text-[var(--kit-accent-fg)] transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
 				>
-					申请 Credits
+					{t("credits.apply")}
 				</button>
-				{pending ? <Chip tone="warn">审批中</Chip> : null}
+				{pending ? <Chip tone="warn">{t("credits.approving")}</Chip> : null}
 			</div>
 		</section>
 	);
@@ -129,9 +131,10 @@ function MyAgents({
 	agents: AgentSummary[];
 	onOpen: (slug: string) => void;
 }) {
+	const { t } = useTranslation("usage");
 	if (perAgent.length === 0) return null;
 	return (
-		<Panel title="我的应用" hint="点图标继续对话">
+		<Panel title={t("apps.title")} hint={t("apps.hint")}>
 			<div className="flex flex-wrap gap-2">
 				{perAgent.map((row) => {
 					const agent = agents.find((a) => a.slug === row.agent_slug);
@@ -159,23 +162,20 @@ function MyAgents({
 
 /** 右栏「用量查询」：按 agent 的 turn 分解（1 Turn = 1 Credit）。 */
 function UsageTable({ perAgent, agents }: { perAgent: QuotaView["per_agent"]; agents: AgentSummary[] }) {
+	const { t } = useTranslation("usage");
 	if (perAgent.length === 0)
-		return (
-			<p className="text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
-				本月还没有使用记录，去广场挑一个 Agent 试试。
-			</p>
-		);
+		return <p className="text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">{t("table.empty")}</p>;
 	const max = perAgent.reduce((m, row) => Math.max(m, row.turns), 0);
 	return (
 		<table className="w-full table-fixed border-collapse text-[length:var(--kit-text-caption)]">
-			<caption className="sr-only">各应用本月使用次数及占比</caption>
+			<caption className="sr-only">{t("table.caption")}</caption>
 			<thead>
 				<tr className="text-left text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)]">
 					<th scope="col" className="w-8 pb-2 font-medium">
 						#
 					</th>
 					<th scope="col" className="pb-2 font-medium">
-						应用
+						{t("table.colApp")}
 					</th>
 					<th scope="col" className="w-16 pb-2 text-right font-medium">
 						Turns
@@ -214,6 +214,7 @@ function UsageTable({ perAgent, agents }: { perAgent: QuotaView["per_agent"]; ag
 
 /** 单条申请：状态 chip + 生效方式 + 理由/驳回说明/审批时间。 */
 function RequestItem({ item }: { item: QuotaRequestView }) {
+	const { t } = useTranslation("usage");
 	const approved = item.status === "approved";
 	return (
 		<li
@@ -221,12 +222,12 @@ function RequestItem({ item }: { item: QuotaRequestView }) {
 			className="min-w-0 rounded-[var(--kit-radius)] border border-[var(--kit-border)] bg-[var(--kit-surface)] p-4 text-[length:var(--kit-text-caption)] leading-relaxed [overflow-wrap:anywhere] md:p-5"
 		>
 			<div className="flex flex-wrap items-center gap-2">
-				{item.status === "pending" ? <Chip tone="warn">审批中</Chip> : null}
-				{approved ? <Chip tone="ok">已通过</Chip> : null}
-				{item.status === "rejected" ? <Chip tone="bad">已驳回</Chip> : null}
-				<span className="font-semibold">申请 {item.requested_credits} Credits</span>
+				{item.status === "pending" ? <Chip tone="warn">{t("credits.approving")}</Chip> : null}
+				{approved ? <Chip tone="ok">{t("requests.approved")}</Chip> : null}
+				{item.status === "rejected" ? <Chip tone="bad">{t("requests.rejected")}</Chip> : null}
+				<span className="font-semibold">{t("requests.summary", { credits: item.requested_credits })}</span>
 				{approved && item.mode ? (
-					<Chip tone="muted">{item.mode === "override" ? "长期上限" : "当月加油包"}</Chip>
+					<Chip tone="muted">{item.mode === "override" ? t("requests.modeOverride") : t("requests.modePack")}</Chip>
 				) : null}
 				{approved && item.granted_credits !== null ? (
 					<span className="font-semibold text-[var(--kit-success)]">+{item.granted_credits}</span>
@@ -235,13 +236,15 @@ function RequestItem({ item }: { item: QuotaRequestView }) {
 					{formatBeijingTime(item.created_at)}
 				</span>
 			</div>
-			{item.reason ? <p className="mt-1.5 text-[var(--kit-fg-muted)]">理由：{item.reason}</p> : null}
+			{item.reason ? (
+				<p className="mt-1.5 text-[var(--kit-fg-muted)]">{t("requests.reason", { reason: item.reason })}</p>
+			) : null}
 			{item.status === "rejected" && item.review_note ? (
-				<p className="mt-1.5 text-[var(--kit-danger)]">驳回说明：{item.review_note}</p>
+				<p className="mt-1.5 text-[var(--kit-danger)]">{t("requests.reviewNote", { note: item.review_note })}</p>
 			) : null}
 			{item.reviewed_at ? (
 				<p className="mt-1.5 text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)]">
-					审批于 {formatBeijingTime(item.reviewed_at)}
+					{t("requests.reviewedAt", { time: formatBeijingTime(item.reviewed_at) })}
 				</p>
 			) : null}
 		</li>
@@ -250,10 +253,11 @@ function RequestItem({ item }: { item: QuotaRequestView }) {
 
 /** 底部「我的申请」列表。 */
 function RequestList({ requests }: { requests: QuotaRequestView[] }) {
+	const { t } = useTranslation("usage");
 	if (requests.length === 0) return null;
 	return (
 		<section className="mt-8 min-w-0">
-			<h2 className="mb-4 text-[length:var(--kit-text-heading)] font-semibold">我的申请</h2>
+			<h2 className="mb-4 text-[length:var(--kit-text-heading)] font-semibold">{t("requests.title")}</h2>
 			<ul className="flex flex-col gap-3">
 				{requests.map((item) => (
 					<RequestItem key={item.id} item={item} />
@@ -281,6 +285,7 @@ function UsageBody({
 	onApply: () => void;
 	onOpenAgent: (slug: string) => void;
 }) {
+	const { t } = useTranslation(["usage", "common"]);
 	if (error)
 		return (
 			<div className="mt-6 min-w-0 [overflow-wrap:anywhere]">
@@ -291,7 +296,7 @@ function UsageBody({
 	if (!quota)
 		return (
 			<div className="mt-6 rounded-[var(--kit-radius)] border border-[var(--kit-border-subtle)] bg-[var(--kit-surface)] py-6">
-				<EmptyState title="加载中…" loading />
+				<EmptyState title={t("common:loading")} loading />
 			</div>
 		);
 	return (
@@ -302,10 +307,10 @@ function UsageBody({
 					<MyAgents perAgent={quota.per_agent} agents={agents} onOpen={onOpenAgent} />
 				</div>
 				<div className="flex min-w-0 flex-col gap-4">
-					<Panel title="每日活跃情况（近 30 天）">
+					<Panel title={t("activity30")}>
 						<ActivityHeatmap days={quota.daily} />
 					</Panel>
-					<Panel title="用量查询" hint="1 Turn = 1 Credit">
+					<Panel title={t("usagePanel.title")} hint={t("usagePanel.hint")}>
 						<UsageTable perAgent={quota.per_agent} agents={agents} />
 					</Panel>
 				</div>
@@ -317,6 +322,7 @@ function UsageBody({
 
 /** 我的用量（?view=usage）：额度卡 + 加油包 + 申请弹窗 + 活跃热力图 + 按应用分解 + 申请历史。 */
 function CreditsUsageView({ navigate }: { navigate: NavigateFn }) {
+	const { t } = useTranslation("usage");
 	const { submit: createQuotaRequest } = useCreateQuotaRequest();
 	const { quota, error, reload } = useQuota();
 	const { requests, reload: reloadRequests } = useQuotaRequests();
@@ -344,9 +350,9 @@ function CreditsUsageView({ navigate }: { navigate: NavigateFn }) {
 	return (
 		<div className="h-full min-w-0 overflow-y-auto">
 			<div className="mx-auto w-full min-w-0 max-w-6xl px-4 py-6 md:px-8 md:py-8">
-				<h1 className="text-[length:var(--kit-text-display)] font-semibold leading-snug">我的用量</h1>
+				<h1 className="text-[length:var(--kit-text-display)] font-semibold leading-snug">{t("creditsPage.title")}</h1>
 				<p className="mt-2 text-[length:var(--kit-text-label)] leading-relaxed text-[var(--kit-fg-muted)]">
-					Credits 按月发放，1 Turn = 1 Credit；不够用可以在这里申请提额。
+					{t("creditsPage.sub")}
 				</p>
 				<UsageBody
 					quota={quota}
@@ -365,6 +371,7 @@ function CreditsUsageView({ navigate }: { navigate: NavigateFn }) {
 
 /** 本地成员使用 Token/执行时长限额；仅服务端明确返回 null 时显示兼容 Credits 页面。 */
 export function UsageView({ navigate }: { navigate: NavigateFn }) {
+	const { t } = useTranslation("usage");
 	const limits = useUsageLimits();
 	if (limits.data) {
 		return (
@@ -384,7 +391,7 @@ export function UsageView({ navigate }: { navigate: NavigateFn }) {
 						<ErrorState message={limits.error} onRetry={() => void limits.reload()} />
 					) : (
 						<div className="rounded-[var(--kit-radius)] border border-[var(--kit-border-subtle)] bg-[var(--kit-surface)] py-6">
-							<EmptyState title="正在加载用量…" loading />
+							<EmptyState title={t("loadingUsage")} loading />
 						</div>
 					)}
 				</div>

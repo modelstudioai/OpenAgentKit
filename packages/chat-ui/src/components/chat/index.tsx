@@ -2,9 +2,11 @@ import type { ChatMultiAgent } from "@openagentkit/sdk/chat";
 import type { ChatMessage } from "@openagentkit/sdk/messages";
 import { skillInputTokens } from "@openagentkit/sdk/protocol";
 import { type ReactNode, useMemo, useRef, useState } from "react";
+import { resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
 import { MessageList } from "../message-list/index.tsx";
 import { Sender, type SenderRef, type SenderSelection, type SenderSkill, SkillGlyph } from "../sender/index.tsx";
 import { Suggestion } from "../suggestion/index.tsx";
+import chatStrings, { type ChatStrings } from "./strings.ts";
 
 /** workspace 变体的水平内缩；开锚点栏时右侧与消息区同留 md:pr-12 刻度位，让审批提示、
  * 输入区与消息列共用同一居中基准（否则 48rem 列中心差 12px，输入框和消息不对齐）。 */
@@ -33,6 +35,7 @@ export function Chat({
 	anchorRail = false,
 	virtualize = true,
 	skills,
+	strings: stringsOverride,
 }: {
 	messages: ChatMessage[];
 	/** workspace 将消息、输入与审批对齐到居中阅读列；默认保留原有布局。 */
@@ -62,11 +65,14 @@ export function Chat({
 	sender?: ReactNode;
 	/** 当前 Agent 已绑定技能；透传 Sender（"/" 弹层与标记 pill）与 MessageList（气泡 chip 还原）。 */
 	skills?: SenderSkill[];
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<ChatStrings>;
 	/** 在主会话消息区右缘显示回合锚点栏（Qoder 形态）。 */
 	anchorRail?: boolean;
 	/** 长列表分窗渲染开关，透传 MessageList；false 时长会话也整体渲染。 */
 	virtualize?: boolean;
 }) {
+	const strings = resolveStrings(chatStrings, useKitLocale(), stringsOverride);
 	const [draft, setDraft] = useState("");
 	const [selection, setSelection] = useState<SenderSelection>({ start: 0, end: 0 });
 	const senderRef = useRef<SenderRef>(null);
@@ -98,7 +104,7 @@ export function Chat({
 					empty={empty}
 					scrollKey={scrollKey}
 					pending={(awaitingFirstFrame || sending) && !approvals}
-					pendingLabel={sending && !turnRunning ? "发送中…" : undefined}
+					pendingLabel={sending && !turnRunning ? strings.sending : undefined}
 					approvals={approvals}
 					anchorRail={anchorRail}
 					virtualize={virtualize}
@@ -114,7 +120,7 @@ export function Chat({
 									aria-hidden="true"
 									className="h-1.5 w-1.5 shrink-0 rounded-full bg-current motion-safe:animate-pulse"
 								/>
-								等待审批
+								{strings.awaitingApproval}
 							</p>
 						</div>
 					</div>

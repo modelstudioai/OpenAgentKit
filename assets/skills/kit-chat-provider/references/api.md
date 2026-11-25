@@ -831,7 +831,7 @@ export type SendMessageRequest = { text: string; skills?: string[] | undefined; 
 | `attachments` | 否 | `{ file_id: string; filename?: string \| undefined; mount_path?: string \| undefined; size?: number \| undefined; }[] \| undefined` |
 | `client_message_id` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 8f77736d668c3eae6fd1440bbefa95a3b741e20c4888a5f8176e8531a8792b89; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
+<!-- source-sha256: 519c5bfcaf6f6f86cc989a707112c4f7e49c8111d2ee5d82121077953d244f03; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## SendMessageResponse
 
@@ -853,7 +853,7 @@ export type SendMessageResponse = { session_id: string; accepted: boolean; event
 | `accepted` | 是 | `boolean` |
 | `event_ids` | 是 | `string[]` |
 
-<!-- source-sha256: 8f77736d668c3eae6fd1440bbefa95a3b741e20c4888a5f8176e8531a8792b89; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
+<!-- source-sha256: 519c5bfcaf6f6f86cc989a707112c4f7e49c8111d2ee5d82121077953d244f03; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## ToolApprovalsResponse
 
@@ -915,7 +915,7 @@ export type ToolApprovalDecision = { batch_id: string; call_id: string; result: 
 
 ```ts
 declare class KitError {
-  constructor(code: ErrorCode, message: string, options?: { details?: unknown; retryable?: boolean; status?: number; });
+  constructor(code: ErrorCode, message: string, options?: { details?: unknown; messageKey?: string; messageParams?: KitErrorMessageParams; retryable?: boolean; status?: number; });
 }
 ```
 
@@ -923,6 +923,8 @@ declare class KitError {
 | --- | --- | --- |
 | `code` | 是 | `"invalid_request" \| "unauthorized" \| "forbidden" \| "not_found" \| "conflict" \| "confirmation_required" \| "rate_limited" \| "quota_exceeded" \| "request_pending" \| "provider_error" \| "not_implemented" \| "internal"` |
 | `details` | 否 | `unknown` |
+| `messageKey` | 否 | `string \| undefined` |
+| `messageParams` | 否 | `KitErrorMessageParams \| undefined` |
 | `retryable` | 是 | `boolean` |
 | `status` | 是 | `number` |
 | `toBody` | 是 | `() => KitErrorBody` |
@@ -931,7 +933,7 @@ declare class KitError {
 | `stack` | 否 | `string \| undefined` |
 | `cause` | 否 | `unknown` |
 
-<!-- source-sha256: 0d3c4159a0cc3cc2979689d0c75227001ef7dd285083b525e549913cd52140f3; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
+<!-- source-sha256: 97c46811e0d3727b5648a249d5566c657ba7392501d96f017e545a7e18403bc1; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## BailianOperation
 
@@ -1436,7 +1438,7 @@ import type { KitErrorBody } from "@openagentkit/sdk/protocol";
 
 | 字段 | 必填 | 类型 |
 | --- | --- | --- |
-| `error` | 是 | `{ code: ErrorCode; message: string; details?: unknown; retryable?: boolean; }` |
+| `error` | 是 | `{ code: ErrorCode; message: string; message_key?: string; message_params?: KitErrorMessageParams; details?: unknown; retryable?: boolean; }` |
 
 
 ### MemberLoginRequest

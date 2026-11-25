@@ -1,0 +1,25 @@
+/** eval 命名空间：只读评测浏览页（workspace / run 列表 / 报告）。 */
+export default {
+	workspace: "评测 workspace",
+	workspaceAria: "评测 workspace",
+	workspaceUnconfigured: "（服务端未配置 KIT_EVAL_WORKSPACES）",
+	workspacePlaceholder: "请选择 workspace",
+	readonlyPrefix: "只读浏览；跑评测用 ",
+	readonlySuffix: "（仓库脚本/CI）",
+	runsTitle: "Runs（complete，新→旧）",
+	emptyRuns: "暂无 complete run",
+	reportTitle: "报告 {{id}}",
+	reportFrameTitle: "评测报告",
+	baseline: "（基线 {{baseline}}，Δ {{delta}}）",
+	viewReport: "查看报告",
+	columns: {
+		run: "run",
+		skill: "skill",
+		passRate: "pass_rate",
+		baselineDelta: "baseline Δ",
+		infraExcluded: "infra 排除",
+		cases: "cases",
+		createdAt: "创建时间",
+		actions: "操作",
+	},
+};

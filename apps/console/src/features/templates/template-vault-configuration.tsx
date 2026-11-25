@@ -1,6 +1,7 @@
 import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui";
 import { Button, Input } from "antd";
 import { type Ref, useId, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { formRowClass, formRowLabelClass } from "../../lib/form-row.ts";
 import styles from "./template-forms.module.less";
 import { TemplateVaultCredentials } from "./template-vault-credentials.tsx";
@@ -45,14 +46,15 @@ function VaultFields({
 	onRemove: () => void;
 	onEditingChange: (editing: boolean) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const { detail, current, editable, credentials, modified } = useVaultFieldsModel(row);
 	const id = useId();
 	return (
 		<fieldset disabled={disabled} className={styles.resourceCard}>
-			<legend className={styles.legendNote}>密钥库 {index + 1}</legend>
+			<legend className={styles.legendNote}>{t("vault.fields.index", { index: index + 1 })}</legend>
 			<div className={formRowClass}>
 				<label htmlFor={`${id}-name`} className={formRowLabelClass}>
-					名称{" "}
+					{t("vault.fields.name")}{" "}
 					{editable ? (
 						<span aria-hidden="true" className={styles.errorColor}>
 							*
@@ -62,12 +64,12 @@ function VaultFields({
 				<div className={styles.shrinkRoot}>
 					<Input
 						id={`${id}-name`}
-						aria-label="密钥库名称"
+						aria-label={t("vault.fields.nameAria")}
 						value={current.name || (editable ? "" : name || row.vault_id)}
 						readOnly={!editable}
 						required={editable}
 						maxLength={50}
-						placeholder="例如：My Vault"
+						placeholder={t("vault.fields.namePlaceholder")}
 						onChange={(event) => onChange({ ...current, name: event.target.value })}
 					/>
 				</div>
@@ -87,19 +89,15 @@ function VaultFields({
 						onEditingChange={onEditingChange}
 						requireValues={modified}
 					/>
-					{modified ? (
-						<p className={styles.metaText}>
-							修改后将创建新密钥库，原密钥库不变。原密钥值无法读取，请为保留的密钥重新填写变量值。
-						</p>
-					) : null}
+					{modified ? <p className={styles.metaText}>{t("vault.fields.modified")}</p> : null}
 					{credentials.some((item) => item.input.secret_value) ? (
-						<p className={styles.metaText}>未发布密钥仅临时保留，退出页面会清空；服务重启后需重新添加。</p>
+						<p className={styles.metaText}>{t("vault.fields.tempSecret")}</p>
 					) : null}
 				</>
 			) : detail.error ? (
 				<ErrorState message={detail.error} onRetry={() => void detail.refresh()} />
 			) : (
-				<EmptyState loading title="正在加载密钥库配置…" />
+				<EmptyState loading title={t("vault.fields.loading")} />
 			)}
 			<div className={styles.drawerFooter}>
 				{modified && current.configuration ? (
@@ -108,11 +106,11 @@ function VaultFields({
 							onChange({ vault_id: row.vault_id, name: current.configuration!.originalName, local: row.local })
 						}
 					>
-						恢复原配置
+						{t("vault.fields.restore")}
 					</Button>
 				) : null}
-				<Button aria-label={`移除密钥库 ${index + 1}`} onClick={onRemove}>
-					移除
+				<Button aria-label={t("vault.fields.removeAria", { index: index + 1 })} onClick={onRemove}>
+					{t("vault.fields.remove")}
 				</Button>
 			</div>
 		</fieldset>
@@ -130,25 +128,26 @@ export function TemplateVaultConfiguration({
 	formRef: Ref<VaultFormHandle>;
 	onPendingChange?: (pending: boolean) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const [initialRow] = useState(emptyTemplateVault);
 	const [editing, setEditing] = useState(false);
 	const model = useTemplateVaultForm(value, onChange, formRef, editing, onPendingChange);
 	const rows = value.length ? value : [initialRow];
 	const disabled = model.busy || model.identity.data?.role !== "admin";
 	const error = [validateTemplateVaults(value), model.error].find(
-		(message) => message && message !== "请输入密钥库名称",
+		(message) => message && message !== t("vault.errors.nameRequired"),
 	);
 	return (
-		<section aria-label="密钥库" className={styles.configRoot}>
+		<section aria-label={t("vault.config.title")} className={styles.configRoot}>
 			<header className={styles.configHeader}>
-				<h3 className={styles.sectionTitle}>密钥库</h3>
-				<p className={styles.mutedOnly}>可选，最多配置 {MAX_TEMPLATE_VAULTS} 个密钥库。</p>
+				<h3 className={styles.sectionTitle}>{t("vault.config.title")}</h3>
+				<p className={styles.mutedOnly}>{t("vault.config.hint", { max: MAX_TEMPLATE_VAULTS })}</p>
 			</header>
 			<div className={styles.configBody}>
 				<div className={styles.rowStart}>
 					<TemplateVaultPicker value={value} onChange={onChange} />
 					<Button disabled={model.busy || !value.length} onClick={() => onChange([])}>
-						清空
+						{t("vault.config.clear")}
 					</Button>
 				</div>
 				{model.identity.error ? (
@@ -173,7 +172,7 @@ export function TemplateVaultConfiguration({
 					disabled={disabled || rows.length >= MAX_TEMPLATE_VAULTS}
 					onClick={() => onChange(value.length ? [...value, emptyTemplateVault()] : [initialRow])}
 				>
-					添加密钥库
+					{t("vault.config.add")}
 				</Button>
 				{error ? <ErrorState message={error} /> : null}
 			</div>

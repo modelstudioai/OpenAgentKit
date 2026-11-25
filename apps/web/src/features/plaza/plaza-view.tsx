@@ -1,12 +1,9 @@
 import { usePlaza } from "@openagentkit/sdk/agents/hooks";
-import {
-	PLAZA_CATEGORY_LABELS,
-	type PlazaCategory,
-	type PlazaEntry,
-	type PlazaView as PlazaSnapshot,
-} from "@openagentkit/sdk/protocol";
+import type { PlazaCategory, PlazaEntry, PlazaView as PlazaSnapshot } from "@openagentkit/sdk/protocol";
 import { CategoryTabs, EmptyState, ErrorState, PlazaCard, type PlazaTabId } from "@openagentpack/kit-chat-ui";
+import type { TFunction } from "i18next";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useDebounced } from "../../lib/use-debounced.ts";
 import type { NavigateFn } from "../../lib/use-route.ts";
 
@@ -58,13 +55,28 @@ interface PlazaSections {
 	mainHint?: string;
 }
 
+function plazaCategoryName(t: TFunction<"plaza">, id: PlazaCategory): string {
+	switch (id) {
+		case "general":
+			return t("categories.general");
+		case "writing":
+			return t("categories.writing");
+		case "coding":
+			return t("categories.coding");
+		case "data":
+			return t("categories.data");
+		case "other":
+			return t("categories.other");
+	}
+}
+
 /**
  * 分区与主网格的派生规则（纯函数，方便推理）：
  * - 只有「精选 tab + 无关键词」才出「同学们都在用 / 我的 Agent」两个分区；
  * - 精选 tab 的主网格 = featured 条目，featured 为空时回落全部已上架（标题跟着变）；
  * - 分类 tab / 搜索时主网格 = 服务端已过滤的 agents。
  */
-function sectionsOf(view: PlazaSnapshot, tab: PlazaTabId, searching: boolean): PlazaSections {
+function sectionsOf(view: PlazaSnapshot, tab: PlazaTabId, searching: boolean, t: TFunction<"plaza">): PlazaSections {
 	const agents = view.agents;
 	const onFeatured = tab === "featured";
 	const featured = pick(agents, view.featured);
@@ -86,17 +98,16 @@ function sectionsOf(view: PlazaSnapshot, tab: PlazaTabId, searching: boolean): P
 		}
 		return unique;
 	};
-	const category = view.categories.find((c) => c.id === tab);
-	let mainTitle = "全部 Agent";
-	if (searching) mainTitle = "搜索结果";
-	else if (onFeatured) mainTitle = useFeatured ? "精选" : "全部 Agent";
-	else mainTitle = category?.name ?? PLAZA_CATEGORY_LABELS[tab as PlazaCategory];
+	let mainTitle = t("allAgents");
+	if (searching) mainTitle = t("searchResults");
+	else if (onFeatured) mainTitle = useFeatured ? t("featured") : t("allAgents");
+	else mainTitle = plazaCategoryName(t, tab as PlazaCategory);
 	return {
 		popular: showSections ? takeUnique(pick(agents, view.popular)) : [],
 		mine: showSections ? takeUnique(agents.filter((entry) => entry.stats.mine)) : [],
 		main,
 		mainTitle,
-		...(showSections && !useFeatured ? { mainHint: "还没有精选条目，先看看全部已上架的 Agent" } : {}),
+		...(showSections && !useFeatured ? { mainHint: t("featuredHint") } : {}),
 	};
 }
 
@@ -118,6 +129,7 @@ function PlazaResults({
 	searching: boolean;
 	onOpen: (slug: string) => void;
 }) {
+	const { t } = useTranslation(["plaza", "common"]);
 	if (error)
 		return (
 			<div className="mt-8 min-w-0 [overflow-wrap:anywhere]">
@@ -127,19 +139,19 @@ function PlazaResults({
 	if (loading || !view)
 		return (
 			<div className="mt-8 rounded-[var(--kit-radius)] border border-[var(--kit-border-subtle)] bg-[var(--kit-surface)] py-6">
-				<EmptyState title="加载中…" loading />
+				<EmptyState title={t("common:loading")} loading />
 			</div>
 		);
-	const sections = sectionsOf(view, tab, searching);
+	const sections = sectionsOf(view, tab, searching, t);
 	return (
 		<>
 			{sections.popular.length > 0 ? (
-				<Section title="同学们都在用" hint="近 30 天使用最多">
+				<Section title={t("popularTitle")} hint={t("popularHint")}>
 					<CardGrid entries={sections.popular} onOpen={onOpen} />
 				</Section>
 			) : null}
 			{sections.mine.length > 0 ? (
-				<Section title="我的 Agent" hint="你用过的">
+				<Section title={t("mineTitle")} hint={t("mineHint")}>
 					<CardGrid entries={sections.mine} onOpen={onOpen} />
 				</Section>
 			) : null}
@@ -148,10 +160,7 @@ function PlazaResults({
 					<CardGrid entries={sections.main} onOpen={onOpen} />
 				) : (
 					<div className="rounded-[var(--kit-radius)] border border-[var(--kit-border-subtle)] bg-[var(--kit-surface)] py-6">
-						<EmptyState
-							title={searching ? "没有匹配的 Agent" : "这里还没有 Agent"}
-							hint="换个关键词，或到管理端上架一个。"
-						/>
+						<EmptyState title={searching ? t("emptySearch") : t("emptyPlaza")} hint={t("emptyHint")} />
 					</div>
 				)}
 			</Section>
@@ -172,6 +181,7 @@ export function PlazaView({
 	leading?: ReactNode;
 }) {
 	const [tab, setTab] = useState<PlazaTabId>("featured");
+	const { t } = useTranslation("plaza");
 	const [keyword, setKeyword] = useState("");
 	const q = useDebounced(keyword.trim(), 250);
 	const category: PlazaCategory | undefined = tab === "featured" ? undefined : tab;
@@ -179,6 +189,10 @@ export function PlazaView({
 		...(category ? { category } : {}),
 		...(q ? { q } : {}),
 	});
+	const localizedCategories = (view?.categories ?? []).map((item) => ({
+		...item,
+		name: plazaCategoryName(t, item.id),
+	}));
 
 	/*
 	 * CategoryTabs 也是冻结公开面、不接受 data-testid；这里按它的渲染顺序（「精选」+ categories）
@@ -200,10 +214,10 @@ export function PlazaView({
 				<div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
 					<div className="min-w-0">
 						{heading ? (
-							<h1 className="text-[length:var(--kit-text-display)] font-semibold leading-snug">Agent 广场</h1>
+							<h1 className="text-[length:var(--kit-text-display)] font-semibold leading-snug">{t("heading")}</h1>
 						) : null}
 						<p className="mt-2 text-[length:var(--kit-text-label)] leading-relaxed text-[var(--kit-fg-muted)]">
-							挑一个同事上架的 Agent，点「开始体验」直接开聊
+							{t("sub")}
 						</p>
 					</div>
 					<div className="relative w-full lg:w-72 lg:shrink-0">
@@ -222,8 +236,8 @@ export function PlazaView({
 							type="search"
 							value={keyword}
 							onChange={(e) => setKeyword(e.target.value)}
-							placeholder="搜索名称、描述或 slug"
-							aria-label="搜索 Agent"
+							placeholder={t("searchPlaceholder")}
+							aria-label={t("searchAria")}
 							data-testid="plaza-search"
 							className="min-h-11 w-full min-w-0 rounded-[var(--kit-radius-sm)] border border-[var(--kit-border)] bg-[var(--kit-surface)] py-2 pl-10 pr-3 text-[length:var(--kit-text-heading)] placeholder:text-[var(--kit-fg-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] md:text-[length:var(--kit-text-label)]"
 						/>
@@ -231,7 +245,7 @@ export function PlazaView({
 				</div>
 				{leading}
 				<div ref={tabsRef} data-testid="plaza-tabs" className="mt-6 min-w-0">
-					<CategoryTabs categories={view?.categories ?? []} active={tab} onChange={setTab} />
+					<CategoryTabs categories={localizedCategories} active={tab} onChange={setTab} />
 				</div>
 				<PlazaResults
 					view={view}

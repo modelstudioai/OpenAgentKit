@@ -9,6 +9,11 @@ export function readRegistry(elementsRoot) {
 	return JSON.parse(readFileSync(join(elementsRoot, "registry.json"), "utf8"));
 }
 
+/** 组件在源仓库内的全部文件：入口 + 词典（strings.ts）等附属文件。 */
+export function componentSourceFiles(entry) {
+	return [entry.file, ...(entry.extraFiles ?? [])];
+}
+
 /** 解析组件及其传递依赖的闭包；未知组件返回 null。 */
 export function resolveComponentClosure(registry, name) {
 	const wanted = [name];

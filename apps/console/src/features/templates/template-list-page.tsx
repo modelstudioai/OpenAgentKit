@@ -1,15 +1,12 @@
 import { useIsMobile } from "@openagentkit/sdk/hooks";
-import {
-	PLAZA_CATEGORY_LABELS,
-	type PlazaCategory,
-	type TemplatesQuery,
-	type TemplateView,
-} from "@openagentkit/sdk/protocol";
+import type { PlazaCategory, TemplatesQuery, TemplateView } from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Button, Empty, Input, Result, Select, Table } from "antd";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
+import { PLAZA_CATEGORIES, plazaCategoryLabel } from "../catalog/plaza-categories.ts";
 import { useConsoleRoute } from "../navigation/console-router.tsx";
 import { EditTemplatePage } from "./edit-template-page.tsx";
 import { TemplateDeleteDialog } from "./template-delete-dialog.tsx";
@@ -23,7 +20,6 @@ const SEARCH_DELAY_MS = 300;
 type TemplateAction = { kind: "listing" | "delete"; template: TemplateView };
 type TemplateStatusFilter = "" | NonNullable<TemplatesQuery["status"]>;
 type TemplateCategoryFilter = "" | PlazaCategory;
-const CATEGORIES = Object.keys(PLAZA_CATEGORY_LABELS) as PlazaCategory[];
 
 function useTemplateList(client: ReturnType<typeof getAdminClient>, paused: boolean) {
 	const [search, setSearch] = useState("");
@@ -113,12 +109,14 @@ function TemplateListFilters({
 	changeCategory: (value: TemplateCategoryFilter) => void;
 	busy: boolean;
 }) {
+	const { t } = useTranslation("templates");
+	const { t: tc } = useTranslation("catalog");
 	return (
 		<div className={styles.filterRow}>
 			<Input
 				type="search"
-				aria-label="搜索模版"
-				placeholder="搜索智能体名称或智能体 ID"
+				aria-label={t("list.searchAria")}
+				placeholder={t("list.searchPlaceholder")}
 				maxLength={254}
 				disabled={busy}
 				value={search}
@@ -131,30 +129,30 @@ function TemplateListFilters({
 				className={styles.searchWide}
 			/>
 			<div className={styles.filterGroup}>
-				<span>上架状态</span>
+				<span>{t("list.statusFilter")}</span>
 				<Select
-					aria-label="上架状态"
+					aria-label={t("list.statusFilter")}
 					className={styles.selectStatus}
 					value={status}
 					disabled={busy}
 					options={[
-						{ value: "", label: "全部" },
-						{ value: "listed", label: "已上架" },
-						{ value: "unlisted", label: "未上架" },
+						{ value: "", label: t("status.all") },
+						{ value: "listed", label: t("status.listed") },
+						{ value: "unlisted", label: t("status.unlisted") },
 					]}
 					onChange={(value) => changeStatus(value as TemplateStatusFilter)}
 				/>
 			</div>
 			<div className={styles.filterGroup}>
-				<span>分类</span>
+				<span>{t("category")}</span>
 				<Select
-					aria-label="分类"
+					aria-label={t("category")}
 					className={styles.selectCategory}
 					value={category}
 					disabled={busy}
 					options={[
-						{ value: "", label: "全部" },
-						...CATEGORIES.map((value) => ({ value, label: PLAZA_CATEGORY_LABELS[value] })),
+						{ value: "", label: t("status.all") },
+						...PLAZA_CATEGORIES.map((value) => ({ value, label: plazaCategoryLabel(value, tc) })),
 					]}
 					onChange={(value) => changeCategory(value as TemplateCategoryFilter)}
 				/>
@@ -172,6 +170,7 @@ export function TemplateListPage({
 	savedName?: string;
 	onPendingChange?: (pending: boolean) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const client = useMemo(getAdminClient, []);
 	const identity = useAdminQuery("templates:list:identity", (signal) => client.identity(signal));
 	const { route, navigate, complete } = useConsoleRoute();
@@ -212,7 +211,7 @@ export function TemplateListPage({
 				onBack={() => setEditingId(null)}
 				onPendingChange={onPendingChange}
 				onSaved={(template) => {
-					setNotice(`模版「${template.name}」已更新`);
+					setNotice(t("list.updated", { name: template.name }));
 					complete({ page: "template-list" });
 					refreshAfterUpdate(template);
 				}}
@@ -227,18 +226,18 @@ export function TemplateListPage({
 				onEdit={() => setEditingId(selected)}
 				onPendingChange={setActionBusy}
 				onApplied={(template) => {
-					setNotice(`模版「${template.name}」已更新`);
+					setNotice(t("list.updated", { name: template.name }));
 					refreshAfterUpdate(template);
 				}}
 			/>
 		);
 	return (
-		<section aria-label="模版列表" className={styles.pageStack}>
+		<section aria-label={t("list.aria")} className={styles.pageStack}>
 			<header className={styles.rowBetween}>
-				<h2 className={styles.pageTitle}>智能体管理</h2>
+				<h2 className={styles.pageTitle}>{t("list.title")}</h2>
 				{identity.data?.role === "admin" ? (
 					<Button type="primary" disabled={actionBusy} onClick={onCreate}>
-						创建智能体
+						{t("list.create")}
 					</Button>
 				) : null}
 			</header>
@@ -257,11 +256,15 @@ export function TemplateListPage({
 				<Result
 					status="error"
 					title={identity.error}
-					extra={<Button onClick={() => void identity.refresh()}>重试</Button>}
+					extra={<Button onClick={() => void identity.refresh()}>{t("retry")}</Button>}
 				/>
 			) : null}
 			{list.error ? (
-				<Result status="error" title={list.error} extra={<Button onClick={() => void list.refresh()}>重试</Button>} />
+				<Result
+					status="error"
+					title={list.error}
+					extra={<Button onClick={() => void list.refresh()}>{t("retry")}</Button>}
+				/>
 			) : null}
 			{!list.error ? (
 				<TemplateTable
@@ -300,15 +303,14 @@ export function TemplateListPage({
 }
 
 function TemplateEmptyState({ filtered }: { filtered: boolean }) {
+	const { t } = useTranslation("templates");
 	return (
 		<Empty
 			description={
 				<span className={styles.mutedOnly}>
-					{filtered ? "未找到匹配的模版" : "暂无模版"}
+					{filtered ? t("list.emptyFilteredTitle") : t("list.emptyTitle")}
 					<br />
-					<span className={styles.textXs}>
-						{filtered ? "请调整搜索内容、上架状态或分类。" : "完成智能体配置后，点击保存智能体。"}
-					</span>
+					<span className={styles.textXs}>{filtered ? t("list.emptyFilteredHint") : t("list.emptyHint")}</span>
 				</span>
 			}
 		/>
@@ -316,7 +318,8 @@ function TemplateEmptyState({ filtered }: { filtered: boolean }) {
 }
 
 function TemplateListNotice({ savedName, notice }: { savedName?: string; notice?: string }) {
-	const message = notice ?? (savedName ? `模版「${savedName}」已保存` : undefined);
+	const { t } = useTranslation("templates");
+	const message = notice ?? (savedName ? t("list.saved", { name: savedName }) : undefined);
 	if (!message) return null;
 	return (
 		<p role="status" className={styles.successAny}>
@@ -348,13 +351,14 @@ function TemplateTable({
 	onAction: (action: TemplateAction) => void;
 	onEdit: (id: string) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const { columns: configurationColumns, loading: configurationLoading } = useTemplateConfigurationColumns(rows);
 	const narrow = useIsMobile();
 	const tableLoading = loading || configurationLoading;
 	const columns = [
 		{
 			key: "name",
-			title: "智能体名称",
+			title: t("fields.name"),
 			width: 200,
 			fixed: narrow ? undefined : "left",
 			render: (_, template: TemplateView) => (
@@ -365,7 +369,7 @@ function TemplateTable({
 		},
 		...configurationColumns,
 		{
-			title: "保存时间",
+			title: t("fields.savedAt"),
 			render: (_, template: TemplateView) => (
 				<span className={styles.nowrapMuted}>
 					<TemplateTime value={template.created_at} />
@@ -373,15 +377,15 @@ function TemplateTable({
 			),
 		},
 		{
-			title: "状态",
+			title: t("fields.status"),
 			render: (_, template: TemplateView) => (
 				<span className={template.listing?.status === "listed" ? styles.nowrapSuccess : styles.nowrapMuted}>
-					{template.listing?.status === "listed" ? "已上架" : "未上架"}
+					{template.listing?.status === "listed" ? t("status.listed") : t("status.unlisted")}
 				</span>
 			),
 		},
 		{
-			title: "上架时间",
+			title: t("fields.listedAt"),
 			render: (_, template: TemplateView) => (
 				<span className={styles.nowrapMuted}>
 					<TemplateTime value={template.listing?.listed_at} />
@@ -389,7 +393,7 @@ function TemplateTable({
 			),
 		},
 		{
-			title: "操作",
+			title: t("fields.actions"),
 			fixed: narrow ? undefined : "right",
 			width: 300,
 			render: (_, template: TemplateView) => (
@@ -434,48 +438,52 @@ function TemplateActions({
 	onAction: (action: TemplateAction) => void;
 	onEdit: (id: string) => void;
 }) {
+	const { t } = useTranslation("templates");
 	return (
 		<div className={styles.actionsRow}>
 			<Button
 				type="link"
 				size="small"
-				aria-label={`查看模版 ${template.name}`}
+				aria-label={t("actions.viewAria", { name: template.name })}
 				disabled={busy}
 				onClick={() => onSelect(template.template_id)}
 			>
-				查看详情
+				{t("actions.view")}
 			</Button>
 			{canManage ? (
 				<Button
 					type="link"
 					size="small"
-					aria-label={`编辑模版 ${template.name}`}
+					aria-label={t("actions.editAria", { name: template.name })}
 					disabled={busy}
 					onClick={() => onEdit(template.template_id)}
 				>
-					编辑
+					{t("actions.edit")}
 				</Button>
 			) : null}
 			{canManage ? (
 				<Button
 					type="link"
 					size="small"
-					aria-label={`调试模版 ${template.name}`}
+					aria-label={t("actions.debugAria", { name: template.name })}
 					disabled={busy}
 					onClick={() => onSelect(template.template_id, "debug")}
 				>
-					调试
+					{t("actions.debug")}
 				</Button>
 			) : null}
 			{canManage ? (
 				<Button
 					type="link"
 					size="small"
-					aria-label={`${template.listing?.status === "listed" ? "下架" : "上架"}模版 ${template.name}`}
+					aria-label={t("actions.listingAria", {
+						action: template.listing?.status === "listed" ? t("actions.unlist") : t("actions.list"),
+						name: template.name,
+					})}
 					disabled={busy}
 					onClick={() => onAction({ kind: "listing", template })}
 				>
-					{template.listing?.status === "listed" ? "下架" : "上架"}
+					{template.listing?.status === "listed" ? t("actions.unlist") : t("actions.list")}
 				</Button>
 			) : null}
 			{canManage ? (
@@ -483,11 +491,11 @@ function TemplateActions({
 					type="link"
 					size="small"
 					danger
-					aria-label={`删除模版 ${template.name}`}
+					aria-label={t("actions.deleteAria", { name: template.name })}
 					disabled={busy}
 					onClick={() => onAction({ kind: "delete", template })}
 				>
-					删除
+					{t("actions.delete")}
 				</Button>
 			) : null}
 		</div>
@@ -505,6 +513,7 @@ function TemplateActionDialog({
 	onComplete: (message: string, deleted?: boolean) => void;
 	onPendingChange: (pending: boolean) => void;
 }) {
+	const { t } = useTranslation("templates");
 	if (!action) return null;
 	const template = action.template;
 	if (action.kind === "delete")
@@ -514,7 +523,7 @@ function TemplateActionDialog({
 				template={template}
 				onClose={onClose}
 				onPendingChange={onPendingChange}
-				onDeleted={() => onComplete(`模版「${template.name}」已删除`, true)}
+				onDeleted={() => onComplete(t("list.deleted", { name: template.name }), true)}
 			/>
 		);
 	return (
@@ -524,7 +533,12 @@ function TemplateActionDialog({
 			onClose={onClose}
 			onPendingChange={onPendingChange}
 			onUpdated={(catalog) =>
-				onComplete(`模版「${template.name}」${catalog.status === "listed" ? "已上架" : "已下架"}`)
+				onComplete(
+					t("list.listingUpdated", {
+						name: template.name,
+						action: catalog.status === "listed" ? t("status.listed") : t("status.unlisted"),
+					}),
+				)
 			}
 		/>
 	);
@@ -543,15 +557,16 @@ function TemplatePagination({
 	onPrevious: () => void;
 	onNext: () => void;
 }) {
+	const { t } = useTranslation("templates");
 	if (page === 1 && !hasNext) return null;
 	return (
-		<nav aria-label="模版列表分页" className={styles.rowEnd13}>
+		<nav aria-label={t("pagination.aria")} className={styles.rowEnd13}>
 			<Button size="small" disabled={loading || page === 1} onClick={onPrevious}>
-				上一页
+				{t("pagination.previous")}
 			</Button>
-			<span>第 {page} 页</span>
+			<span>{t("pagination.page", { page })}</span>
 			<Button size="small" disabled={loading || !hasNext} onClick={onNext}>
-				下一页
+				{t("pagination.next")}
 			</Button>
 		</nav>
 	);

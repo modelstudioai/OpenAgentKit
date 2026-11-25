@@ -1,12 +1,14 @@
+import i18n from "i18next";
+
 /**
  * 2026-11-01 固定 Managed Agent 的智能模式与模型目录实际返回的选项。
  * 智能模式在前，普通模型保留接口顺序；来源见 docs/research/2026-11-01-managed-agent-models.md。
  */
 export const MANAGED_AGENT_MODELS: readonly { id: string; name: string }[] = [
 	{ id: "auto", name: "AUTO" },
-	{ id: "balanced", name: "均衡" },
-	{ id: "economy", name: "经济" },
-	{ id: "performance", name: "性能" },
+	{ id: "balanced", name: "Balanced" },
+	{ id: "economy", name: "Economy" },
+	{ id: "performance", name: "Performance" },
 	{ id: "qwen3.8-max", name: "Qwen3.8-Max" },
 	{ id: "qwen3.8-flash", name: "Qwen3.8-Flash" },
 	{ id: "qwen3.7-plus", name: "Qwen3.7-Plus" },
@@ -22,3 +24,15 @@ export const MANAGED_AGENT_MODELS: readonly { id: string; name: string }[] = [
 	{ id: "glm-5.2", name: "GLM-5.2" },
 	{ id: "glm-5.1", name: "GLM-5.1" },
 ];
+
+const MODEL_LABEL_KEYS = {
+	balanced: "agent.models.balanced",
+	economy: "agent.models.economy",
+	performance: "agent.models.performance",
+} as const;
+
+/** 智能模式名称随界面语言展示；具体模型 ID 保持 Provider 原样。 */
+export function managedAgentModelLabel(model: { id: string; name: string }): string {
+	const key = MODEL_LABEL_KEYS[model.id as keyof typeof MODEL_LABEL_KEYS];
+	return key ? i18n.getFixedT(null, "templates")(key) : model.name;
+}

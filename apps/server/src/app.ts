@@ -178,6 +178,8 @@ export function createApp(services: KitServices) {
 					error: {
 						code: error.code,
 						message: redactSecrets(error.message),
+						...(error.messageKey !== undefined ? { message_key: error.messageKey } : {}),
+						...(error.messageParams !== undefined ? { message_params: error.messageParams } : {}),
 						// details 是结构化业务上下文（如 quota_exceeded 的余额），不含凭据与事件正文
 						...(error.details !== undefined ? { details: error.details } : {}),
 						retryable: error.retryable,

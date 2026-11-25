@@ -1,11 +1,15 @@
 import { Alert, Button, Drawer } from "antd";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import { TemplateAgentVersionHistory } from "./template-agent-version-history.tsx";
 import styles from "./template-forms.module.less";
 
-const triggerLabels = { inline: "切换", button: "切换版本" } as const;
+const TRIGGER_KEYS = {
+	inline: "agent.versionPicker.triggerInline",
+	button: "agent.versionPicker.triggerButton",
+} as const;
 
 /** 列表行内入口或详情按钮展开版本选择；查看候选不改变 Agent 或已有运行绑定。 */
 export function TemplateAgentVersionPicker({
@@ -23,6 +27,7 @@ export function TemplateAgentVersionPicker({
 	onDefaultVersion: (version: number) => void;
 	onChange: (version: number) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const client = useMemo(getAdminClient, []);
 	const [requested, setRequested] = useState(false);
 	const [open, setOpen] = useState(false);
@@ -44,12 +49,12 @@ export function TemplateAgentVersionPicker({
 		<>
 			{value === undefined && versions.data?.length === 0 ? (
 				<p role="status" className={styles.statusText}>
-					暂无可选版本
+					{t("agent.versionPicker.none")}
 				</p>
 			) : null}
 			{versions.loading ? (
 				<p role="status" className={styles.statusText}>
-					正在加载版本…
+					{t("agent.versionPicker.loading")}
 				</p>
 			) : null}
 			{versions.error ? (
@@ -59,7 +64,7 @@ export function TemplateAgentVersionPicker({
 					message={versions.error}
 					action={
 						<Button size="small" onClick={() => void versions.refresh()}>
-							重试
+							{t("retry")}
 						</Button>
 					}
 				/>
@@ -70,19 +75,21 @@ export function TemplateAgentVersionPicker({
 		<div className={styles.pickerRoot}>
 			<div className={styles.pickerRow}>
 				{variant === "inline" ? (
-					<span className={styles.versionChip}>{value === undefined ? "未选择" : `v${value}`}</span>
+					<span className={styles.versionChip}>
+						{value === undefined ? t("agent.versionPicker.notSelected") : `v${value}`}
+					</span>
 				) : null}
 				<Button
 					type={variant === "inline" ? "link" : "default"}
 					size="small"
 					className={styles.triggerButton}
-					aria-label={`切换版本 ${agentName}（${agentId}）`}
+					aria-label={t("agent.versionPicker.triggerAria", { name: agentName, id: agentId })}
 					onClick={() => {
 						setOpen(true);
 						setRequested(true);
 					}}
 				>
-					{triggerLabels[variant]}
+					{t(TRIGGER_KEYS[variant])}
 				</Button>
 				<Drawer
 					open={open}
@@ -90,9 +97,9 @@ export function TemplateAgentVersionPicker({
 					width={672}
 					title={
 						<div className={styles.drawerHead}>
-							<div className={styles.drawerTitle}>选择版本</div>
+							<div className={styles.drawerTitle}>{t("agent.versionPicker.drawerTitle")}</div>
 							<p className={styles.drawerAgent}>
-								{agentName}（{agentId}）
+								{t("agent.versionPicker.drawerSubtitle", { name: agentName, id: agentId })}
 							</p>
 						</div>
 					}

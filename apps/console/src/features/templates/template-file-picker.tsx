@@ -1,5 +1,6 @@
 import { Button, Drawer } from "antd";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { MAX_TEMPLATE_FILES, mergeImportedFiles, type TemplateFileDraft } from "./template-file-draft.ts";
 import { TemplateFileSelection } from "./template-file-selection.tsx";
 import styles from "./template-forms.module.less";
@@ -11,6 +12,7 @@ export function TemplateFilePicker({
 	value: TemplateFileDraft[];
 	onChange: (files: TemplateFileDraft[]) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
 	const [selection, setSelection] = useState<TemplateFileDraft[]>([]);
@@ -23,17 +25,17 @@ export function TemplateFilePicker({
 					setOpen(true);
 				}}
 			>
-				导入现有配置
+				{t("file.config.importExisting")}
 			</Button>
 			<Drawer
 				open={open}
 				onClose={() => setOpen(false)}
 				destroyOnHidden
 				width={768}
-				title={<div className={styles.drawerTitle}>选择配置</div>}
+				title={<div className={styles.drawerTitle}>{t("file.config.choose")}</div>}
 				footer={
 					<div className={styles.drawerFooter}>
-						<Button onClick={() => setOpen(false)}>取消</Button>
+						<Button onClick={() => setOpen(false)}>{t("cancel")}</Button>
 						<Button
 							type="primary"
 							disabled={selection.length + newCount > MAX_TEMPLATE_FILES}
@@ -42,7 +44,7 @@ export function TemplateFilePicker({
 								setOpen(false);
 							}}
 						>
-							确认选择
+							{t("file.config.confirm")}
 						</Button>
 					</div>
 				}

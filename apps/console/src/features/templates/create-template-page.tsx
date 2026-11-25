@@ -1,6 +1,7 @@
 import type { PresetPackPreview } from "@openagentkit/sdk/protocol";
 import { Alert, Button, Empty, Result, Spin } from "antd";
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { adminApi } from "../../lib/api.ts";
 import { useConsoleRoute } from "../navigation/console-router.tsx";
@@ -12,6 +13,7 @@ import { TemplatePresetPicker } from "./template-preset-picker.tsx";
 type Props = Pick<TemplateEditorProps, "onSaved" | "onCancel" | "onPendingChange">;
 
 export function CreateTemplatePage(props: Props) {
+	const { t } = useTranslation("templates");
 	const { route, navigate, complete } = useConsoleRoute();
 	const [started, setStarted] = useState(false);
 	const [importing, setImporting] = useState(false);
@@ -42,11 +44,11 @@ export function CreateTemplatePage(props: Props) {
 		return (
 			<Result
 				status="error"
-				title="预设包加载失败"
+				title={t("create.presetLoadFailed")}
 				subTitle={query.error}
 				extra={[
 					<Button key="retry" onClick={() => void query.refresh()}>
-						重试
+						{t("retry")}
 					</Button>,
 					<Button
 						key="blank"
@@ -55,29 +57,35 @@ export function CreateTemplatePage(props: Props) {
 							navigate({ page: "template-create" });
 						}}
 					>
-						创建空白智能体
+						{t("create.createBlank")}
 					</Button>,
 				]}
 			/>
 		);
-	if (route.preset && !selected && (!query.data || query.loading)) return <Spin aria-label="正在加载预设包" />;
+	if (route.preset && !selected && (!query.data || query.loading))
+		return <Spin aria-label={t("create.loadingPreset")} />;
 	const preset = selected?.preset ?? (route.preset ? query.data : undefined);
 	if (!started && !preset)
 		return (
 			<section aria-labelledby="create-template-title" className="space-y-6 animate-(--kit-animate-in)">
-				<InnerLayout titleId="create-template-title" title="创建智能体" onBack={props.onCancel} />
+				<InnerLayout
+					titleId="create-template-title"
+					title={t("create.title")}
+					backLabel={t("back")}
+					onBack={props.onCancel}
+				/>
 				<div className="flex min-h-80 items-center justify-center py-12">
-					<Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="选择一种方式，开始创建智能体">
+					<Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("create.chooseMethod")}>
 						<div className="flex flex-wrap justify-center gap-3">
 							<TemplatePresetPicker
-								buttonLabel="导入现有配置"
+								buttonLabel={t("create.importExisting")}
 								disabled={importing}
 								hasConfiguration={false}
 								onPendingChange={reportImportPending}
 								onImport={importPreset}
 							/>
 							<Button type="primary" disabled={importing} onClick={() => setStarted(true)}>
-								从零开始创建
+								{t("create.startBlank")}
 							</Button>
 						</div>
 					</Empty>
@@ -86,7 +94,9 @@ export function CreateTemplatePage(props: Props) {
 		);
 	return (
 		<div className="space-y-4 animate-(--kit-animate-in)">
-			{preset ? <Alert type="success" showIcon title={`已导入预设包：${preset.remote_agent_name}`} /> : null}
+			{preset ? (
+				<Alert type="success" showIcon title={t("create.presetImported", { name: preset.remote_agent_name })} />
+			) : null}
 			<TemplateEditorPage
 				{...props}
 				key={`${route.preset ?? "blank"}:${selected?.revision ?? 0}`}

@@ -20,7 +20,9 @@ import {
 	ToolApprovalGroup,
 	Tooltip,
 } from "@openagentpack/kit-chat-ui";
+import type { TFunction } from "i18next";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { MemberAuthGate, type MemberExperienceProps } from "./features/auth/member-auth-gate.tsx";
 import { AsidePanelSections } from "./features/chat/aside-panel.tsx";
 import { ExperienceSender } from "./features/chat/experience-sender.tsx";
@@ -30,6 +32,7 @@ import { PlazaView } from "./features/plaza/plaza-view.tsx";
 import { QuotaBanner } from "./features/usage/quota-banner.tsx";
 import { UsageView } from "./features/usage/usage-view.tsx";
 import { type Branding, DEFAULT_BRAND_PRODUCT_NAME } from "./lib/branding.ts";
+import { requestCompletionNotificationPermission, showCompletionNotification } from "./lib/browser-notifications.ts";
 import { createArtifactHost, resolveHostCapabilities } from "./lib/host.ts";
 import { type NavigateFn, useRoute } from "./lib/use-route.ts";
 import { type SessionDirectory, useSessionDirectory } from "./lib/use-session-directory.ts";
@@ -48,24 +51,29 @@ function SessionActionDialog({
 	onCancel: () => void;
 	onConfirm: () => void;
 }) {
+	const { t } = useTranslation("chat");
 	if (!pending) return null;
 	const archive = pending.action === "archive";
 	return (
 		<ConfirmDialog
-			title={archive ? "归档会话" : "删除会话"}
+			title={archive ? t("sessionDialog.archiveTitle") : t("sessionDialog.deleteTitle")}
 			busy={busy}
-			confirmLabel={busy ? "处理中…" : pending.plan ? "确认" : "重新获取计划"}
+			confirmLabel={
+				busy
+					? t("sessionDialog.processing")
+					: pending.plan
+						? t("sessionDialog.confirm")
+						: t("sessionDialog.refetchPlan")
+			}
 			body={
 				pending.error ??
 				(pending.plan
 					? [
-							archive
-								? "归档后会话不再接受新消息，历史仍可在 Provider 侧查询。"
-								: "将先停止正在运行的执行，并保存成员会话的最新用量快照。成功后才删除会话，消息不可恢复；用量统计保留。停止或保存失败时会话保留，可重试。",
+							archive ? t("sessionDialog.archiveEffect") : t("sessionDialog.deleteEffect"),
 							...pending.plan.diff.map((item) => `${item.resource} → ${item.action}`),
-							...(busy ? ["正在处理，请稍候…"] : []),
+							...(busy ? [t("sessionDialog.busyNote")] : []),
 						].join("\n\n")
-					: "正在获取操作计划…")
+					: t("sessionDialog.planning"))
 			}
 			onCancel={onCancel}
 			onConfirm={onConfirm}
@@ -112,14 +120,18 @@ function chatHeaderTitle({
 	sessionDetail,
 	sessionId,
 	agent,
+	t,
 }: {
 	activeSession: SessionSummary | null;
 	sessionDetail: SessionDetail | null;
 	sessionId: string | null;
 	agent: AgentSummary | null;
+	t: TFunction<"chat">;
 }): string {
 	const opened = activeSession ?? (sessionDetail?.session_id === sessionId ? sessionDetail : null);
-	return sessionId ? opened?.title || opened?.agent_slug || "未命名会话" : (agent?.display_name ?? "新会话");
+	return sessionId
+		? opened?.title || opened?.agent_slug || t("untitledSession")
+		: (agent?.display_name ?? t("newSession"));
 }
 
 /** 输入框附件行投影：暂存（含扫描态）/失败/上传中三类来源统一成 AttachmentItem。 */
@@ -127,14 +139,17 @@ function stagedAttachmentItems({
 	files,
 	failures,
 	pending,
-}: Pick<ReturnType<typeof useAttachments>, "files" | "failures" | "pending">): AttachmentItem[] {
+	t,
+}: Pick<ReturnType<typeof useAttachments>, "files" | "failures" | "pending"> & {
+	t: TFunction<"chat">;
+}): AttachmentItem[] {
 	return [
 		...files.map((file) => ({
 			uid: file.file_id,
 			name: file.filename,
 			size: file.size,
 			status: file.timedOut ? ("error" as const) : ("done" as const),
-			description: file.available ? undefined : file.timedOut ? "扫描超时，请移除后重试" : "安全扫描中…",
+			description: file.available ? undefined : file.timedOut ? t("attachment.scanTimeout") : t("attachment.scanning"),
 		})),
 		...failures.map((file) => ({
 			uid: file.uid,
@@ -176,6 +191,7 @@ function ChatView({
 	branding: Branding;
 } & MemberExperienceProps) {
 	const client = useKitClient();
+	const { t } = useTranslation(["chat", "common"]);
 	const host = useMemo(resolveHostCapabilities, []);
 	const { sessions, reload: reloadSessions } = directory;
 	const [draftScope, setDraftScope] = useState(0);
@@ -187,6 +203,7 @@ function ChatView({
 	const isMobile = useIsMobile();
 	const [asideOpen, setAsideOpen] = useState(!isMobile);
 	const chat = useChat({ sessionId, provider: chatProvider });
+	const agent = useMemo(() => agents.find((a) => a.slug === agentSlug) ?? agents[0] ?? null, [agents, agentSlug]);
 	// 切换会话的历史回放与断线重连期间（未 connected 且暂无消息）内容区显示加载态，而不是误显示新会话欢迎页。
 	// 重连中保留的旧错误不算硬错误（isSessionUnavailable），否则会退化成欢迎页。
 	const sessionLoading =
@@ -214,9 +231,17 @@ function ChatView({
 			return;
 		}
 		if (chat.phase === "running") setCompletedSessionId(null);
-		else if (chat.phase === "idle" && (prev.phase === "running" || prev.phase === "requires_action"))
+		else if (chat.phase === "idle" && (prev.phase === "running" || prev.phase === "requires_action")) {
 			setCompletedSessionId(sessionId);
-	}, [sessionId, chat.phase]);
+			// 与侧栏「已完成」共用同一相位收敛判定：HTTP 成功/断流、用户停止和失败都不算完成。
+			showCompletionNotification({
+				title: t("notification.completedTitle", { name: agent?.display_name ?? branding.productName }),
+				body: t("notification.completedBody"),
+				tag: sessionId ?? "kit-chat",
+				...(branding.logoUrl ? { icon: branding.logoUrl } : {}),
+			});
+		}
+	}, [sessionId, chat.phase, t, agent, branding]);
 	// 会话切换或回到新会话态时重置输入框草稿；首次建会话（null→id）不清，发送失败后草稿仍可重试。
 	const lastSessionRef = useRef<string | null>(null);
 	useEffect(() => {
@@ -240,7 +265,6 @@ function ChatView({
 		[host, upload],
 	);
 
-	const agent = useMemo(() => agents.find((a) => a.slug === agentSlug) ?? agents[0] ?? null, [agents, agentSlug]);
 	// Agent 资源一次拉取两处用：输入框技能选择（面板关闭时也要可用）与资源面板分区。
 	const resources = useAgentResources(agent?.slug ?? null);
 	const memories = resources?.memory_stores ?? null;
@@ -260,18 +284,21 @@ function ChatView({
 			null,
 		[sessions, sessionId, directory.recent.sessions],
 	);
-	const headerTitle = chatHeaderTitle({ activeSession, sessionDetail, sessionId, agent });
+	const headerTitle = chatHeaderTitle({ activeSession, sessionDetail, sessionId, agent, t });
 
 	/** 发送失败分流：配额耗尽 → 横幅 + 禁用输入；其余 → 原有 sendError 文案。 */
-	const handleComposerError = useCallback((error: unknown) => {
-		const exceeded = readQuotaExceeded(error);
-		if (exceeded) {
-			setQuotaError(exceeded);
-			setSendError(null);
-			return;
-		}
-		setSendError(`消息发送失败：${error instanceof Error ? error.message : String(error)}`);
-	}, []);
+	const handleComposerError = useCallback(
+		(error: unknown) => {
+			const exceeded = readQuotaExceeded(error);
+			if (exceeded) {
+				setQuotaError(exceeded);
+				setSendError(null);
+				return;
+			}
+			setSendError(t("errors.sendFailed", { message: error instanceof Error ? error.message : String(error) }));
+		},
+		[t],
+	);
 
 	const composer = useComposer({
 		client,
@@ -290,6 +317,8 @@ function ChatView({
 	const delivering = composer.pending;
 	const sendViaComposer = useCallback(
 		async (text: string, skills?: string[]) => {
+			// 在发送这一用户手势内申请权限；浏览器不支持或已拒绝时静默跳过。
+			void requestCompletionNotificationPermission();
 			try {
 				await composer.send(text, skills);
 				directory.refreshStatuses();
@@ -312,15 +341,15 @@ function ChatView({
 		(id: string, contentType?: string) =>
 			artifactActions
 				.open(id, contentType)
-				.catch((error: unknown) => setSendError(error instanceof Error ? error.message : "文件预览失败")),
-		[artifactActions.open],
+				.catch((error: unknown) => setSendError(error instanceof Error ? error.message : t("errors.previewFailed"))),
+		[artifactActions.open, t],
 	);
 	const downloadArtifact = useCallback(
 		(id: string) =>
 			artifactActions
 				.download(id)
-				.catch((error: unknown) => setSendError(error instanceof Error ? error.message : "文件下载失败")),
-		[artifactActions.download],
+				.catch((error: unknown) => setSendError(error instanceof Error ? error.message : t("errors.downloadFailed"))),
+		[artifactActions.download, t],
 	);
 
 	/** 资源面板：桌面为页头之下的停靠右列（Layout 注入微表面），直接以 Agent 信息开始；
@@ -331,7 +360,9 @@ function ChatView({
 		<div className="flex min-h-0 flex-1 flex-col">
 			{closeButton ? (
 				<div className="flex min-h-14 shrink-0 items-center gap-2 border-b border-[var(--kit-border-subtle)] px-4">
-					<span className="min-w-0 flex-1 truncate text-[length:var(--kit-text-label)] font-medium">资源</span>
+					<span className="min-w-0 flex-1 truncate text-[length:var(--kit-text-label)] font-medium">
+						{t("header.asideTrigger")}
+					</span>
 					{closeButton}
 				</div>
 			) : null}
@@ -365,7 +396,7 @@ function ChatView({
 	if (agentsLoading)
 		return (
 			<ExperienceLayout {...shellProps}>
-				<EmptyState title="加载中…" loading />
+				<EmptyState title={t("common:loading")} loading />
 			</ExperienceLayout>
 		);
 	if (agentsError)
@@ -379,11 +410,16 @@ function ChatView({
 	if (!agent)
 		return (
 			<ExperienceLayout {...shellProps}>
-				<EmptyState title="还没有上架的 Agent" hint="到管理端完成 publish 与上架后，这里就会出现可对话的角色。" />
+				<EmptyState title={t("noAgents.title")} hint={t("noAgents.hint")} />
 			</ExperienceLayout>
 		);
 
-	const attachmentItems = stagedAttachmentItems({ files: stagedFiles, failures: failedFiles, pending: pendingFiles });
+	const attachmentItems = stagedAttachmentItems({
+		files: stagedFiles,
+		failures: failedFiles,
+		pending: pendingFiles,
+		t,
+	});
 
 	const { activeStatus, staleStatusId } = sidebarStatus(chat, sessionId, completedSessionId);
 
@@ -394,7 +430,7 @@ function ChatView({
 			staleStatusId={staleStatusId}
 			aside={renderAsidePanel}
 			asideOpen={asideOpen}
-			asideLabel="资源面板"
+			asideLabel={t("header.asideLabel")}
 			onAsideOpenChange={setAsideOpen}
 			header={(menuToggle) => (
 				// 通栏低页头：无边框，高度压到 44px；状态用纯文本，不用徽章按钮形态。
@@ -403,8 +439,8 @@ function ChatView({
 					<button
 						type="button"
 						data-testid="nav-plaza"
-						aria-label="返回广场"
-						title="返回广场"
+						aria-label={t("header.backToPlaza")}
+						title={t("header.backToPlaza")}
 						onClick={() => navigate({ view: "plaza" })}
 						className="grid size-9 shrink-0 place-items-center rounded-[var(--kit-radius-sm)] text-[var(--kit-fg-muted)] transition-colors hover:bg-[var(--kit-bg-subtle)] hover:text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
 					>
@@ -443,8 +479,8 @@ function ChatView({
 					<button
 						type="button"
 						aria-pressed={asideOpen}
-						aria-label={asideOpen ? "收起资源面板" : "展开资源面板"}
-						title={asideOpen ? "收起资源面板" : "展开资源面板"}
+						aria-label={asideOpen ? t("header.asideCollapse") : t("header.asideExpand")}
+						title={asideOpen ? t("header.asideCollapse") : t("header.asideExpand")}
 						onClick={() => setAsideOpen((value) => !value)}
 						className={`grid size-9 shrink-0 place-items-center rounded-[var(--kit-radius-sm)] transition-colors hover:bg-[var(--kit-bg-subtle)] hover:text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] ${
 							asideOpen ? "bg-[var(--kit-bg-subtle)] text-[var(--kit-fg)]" : "text-[var(--kit-fg-muted)]"
@@ -494,7 +530,7 @@ function ChatView({
 					<p className="min-w-0 flex-1 text-[var(--kit-danger)]">{sendError}</p>
 					<button
 						type="button"
-						aria-label="关闭错误提示"
+						aria-label={t("header.closeError")}
 						onClick={() => setSendError(null)}
 						className="grid size-6 shrink-0 place-items-center rounded-[var(--kit-radius-xs)] text-[var(--kit-fg-muted)] transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none hover:bg-[var(--kit-nav-active)] hover:text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
 					>
@@ -535,7 +571,7 @@ function ChatView({
 				onArtifactOpen={(fileId, contentType) => void openArtifact(fileId, contentType)}
 				onArtifactDownload={(id) => void downloadArtifact(id)}
 				onCopy={async (text) => {
-					if (!(await host.copyText?.(text))) throw new Error("复制失败");
+					if (!(await host.copyText?.(text))) throw new Error(t("errors.copyFailed"));
 				}}
 				sender={
 					<ExperienceSender
@@ -562,8 +598,8 @@ function ChatView({
 						<div className="flex min-w-0 flex-1 items-center justify-center py-6">
 							<div className="w-full min-w-0">
 								<EmptyState
-									title={agent.opening_remarks ?? `和 ${agent.display_name} 聊聊`}
-									hint="选择下面任一示例，或直接输入你的问题"
+									title={agent.opening_remarks ?? t("emptyChat.chatWith", { name: agent.display_name })}
+									hint={t("emptyChat.hint")}
 								/>
 								<Prompts
 									className="w-full"

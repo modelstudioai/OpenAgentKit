@@ -2,6 +2,8 @@ import { ArrowLeftOutlined } from "@ant-design/icons";
 import { CreateMemberRequestSchema, type CreateMemberResponse } from "@openagentkit/sdk/protocol";
 import { Alert, Button, Input, Radio, Typography } from "antd";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { localizedValidationMessage } from "../../lib/validation-message.ts";
 import styles from "./members.module.less";
 import { useCreateMember } from "./use-members.ts";
 
@@ -22,25 +24,26 @@ const EMPTY_DRAFT: MemberDraft = {
 };
 
 function CreatedMember({ result, onBack }: { result: CreateMemberResponse["data"]; onBack: () => void }) {
+	const { t } = useTranslation("members");
 	return (
 		<section aria-labelledby="member-created-heading" className={styles.stack}>
 			<h2 id="member-created-heading" className={styles.pageTitle}>
-				用户创建成功
+				{t("create.createdTitle")}
 			</h2>
 			<dl className={styles.createdGrid}>
 				<div>
-					<dt className={styles.mutedText}>用户名</dt>
+					<dt className={styles.mutedText}>{t("columns.username")}</dt>
 					<dd className={styles.monoValue}>{result.member.username}</dd>
 				</div>
 				<div>
-					<dt className={styles.mutedText}>显示名</dt>
+					<dt className={styles.mutedText}>{t("columns.displayName")}</dt>
 					<dd className={styles.termValue}>{result.member.display_name}</dd>
 				</div>
 			</dl>
 			{result.initial_password && (
 				<div className={styles.passwordPanel}>
-					<h3 className={styles.panelTitle}>初始密码</h3>
-					<p className={styles.mutedText}>初始密码仅显示这一次，请妥善保存。返回列表或离开此页后无法再次查看。</p>
+					<h3 className={styles.panelTitle}>{t("create.initialPassword")}</h3>
+					<p className={styles.mutedText}>{t("create.initialPasswordNote")}</p>
 					<Typography.Text
 						copyable={{ text: result.initial_password }}
 						data-testid="initial-password"
@@ -50,9 +53,9 @@ function CreatedMember({ result, onBack }: { result: CreateMemberResponse["data"
 					</Typography.Text>
 				</div>
 			)}
-			<p className={styles.mutedText}>成员已加入本地目录，可使用用户名和密码登录体验页。</p>
+			<p className={styles.mutedText}>{t("create.memberAdded")}</p>
 			<Button type="primary" onClick={onBack}>
-				返回成员列表
+				{t("create.backToList")}
 			</Button>
 		</section>
 	);
@@ -73,6 +76,7 @@ export function CreateMemberPage({
 	onBack: () => void;
 	onPendingChange: (pending: boolean) => void;
 }) {
+	const { t } = useTranslation("members");
 	const [draft, setDraft] = useState<MemberDraft>(EMPTY_DRAFT);
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const creation = useCreateMember(onPendingChange);
@@ -93,7 +97,7 @@ export function CreateMemberPage({
 			const next: Record<string, string> = {};
 			for (const issue of parsed.error.issues) {
 				const field = String(issue.path[0]);
-				next[field] ??= issue.message;
+				next[field] ??= localizedValidationMessage(issue);
 			}
 			setErrors(next);
 			return;
@@ -115,25 +119,25 @@ export function CreateMemberPage({
 		>
 			<header className={styles.pageHeaderCenter}>
 				<div className={styles.headerLeft}>
-					<Button aria-label="返回成员列表" disabled={creation.pending} onClick={onBack}>
+					<Button aria-label={t("create.backToList")} disabled={creation.pending} onClick={onBack}>
 						<ArrowLeftOutlined />
-						返回
+						{t("create.back")}
 					</Button>
 					<h2 id="create-member-heading" className={styles.pageTitle}>
-						创建用户
+						{t("create.title")}
 					</h2>
 				</div>
 				<Button type="primary" htmlType="submit" loading={creation.pending}>
-					立即创建
+					{t("create.createNow")}
 				</Button>
 			</header>
 			{creation.error && <Alert type="error" showIcon closable message={creation.error} />}
 			<fieldset disabled={creation.pending} className={styles.formSections}>
-				<legend className={styles.srOnly}>用户信息</legend>
+				<legend className={styles.srOnly}>{t("create.formLegend")}</legend>
 				<div className={styles.fieldGrid}>
 					<div className={styles.fieldRow}>
 						<label htmlFor="member-username">
-							用户名{" "}
+							{t("columns.username")}{" "}
 							<span aria-hidden="true" className={styles.requiredMark}>
 								*
 							</span>
@@ -149,13 +153,13 @@ export function CreateMemberPage({
 							aria-describedby="member-username-hint member-username-error"
 						/>
 						<p id="member-username-hint" className={styles.fieldHint}>
-							3–32 个字符，以字母或数字开头，支持字母、数字、下划线、点和连字符；统一保存为小写。
+							{t("create.usernameHint")}
 						</p>
 						<FieldError field="username" errors={errors} />
 					</div>
 					<div className={styles.fieldRow}>
 						<label htmlFor="member-display_name">
-							显示名{" "}
+							{t("columns.displayName")}{" "}
 							<span aria-hidden="true" className={styles.requiredMark}>
 								*
 							</span>
@@ -171,14 +175,14 @@ export function CreateMemberPage({
 							aria-describedby="member-display_name-hint member-display_name-error"
 						/>
 						<p id="member-display_name-hint" className={styles.fieldHint}>
-							用于展示成员身份，最多 32 个字符。
+							{t("create.displayNameHint")}
 						</p>
 						<FieldError field="display_name" errors={errors} />
 					</div>
 				</div>
 				<div className={styles.fieldRow}>
 					<label htmlFor="member-email">
-						邮箱 <span className={styles.mutedText}>（可选）</span>
+						{t("columns.email")} <span className={styles.mutedText}>{t("create.emailOptional")}</span>
 					</label>
 					<Input
 						id="member-email"
@@ -193,11 +197,11 @@ export function CreateMemberPage({
 					<FieldError field="email" errors={errors} />
 				</div>
 				<div>
-					<p className={styles.sectionLabel}>认证方式</p>
-					<p className={styles.staticField}>本地账号</p>
+					<p className={styles.sectionLabel}>{t("columns.authMethod")}</p>
+					<p className={styles.staticField}>{t("columns.authLocal")}</p>
 				</div>
 				<fieldset className={styles.passwordSection}>
-					<legend className={styles.legendTitle}>密码设置</legend>
+					<legend className={styles.legendTitle}>{t("create.passwordSection")}</legend>
 					<Radio.Group
 						disabled={creation.pending}
 						value={draft.password_mode}
@@ -210,15 +214,15 @@ export function CreateMemberPage({
 							update("password_mode", "custom");
 						}}
 					>
-						<Radio value="auto">自动生成密码</Radio>
-						<Radio value="custom">自定义密码</Radio>
+						<Radio value="auto">{t("create.autoPassword")}</Radio>
+						<Radio value="custom">{t("create.customPassword")}</Radio>
 					</Radio.Group>
 					{draft.password_mode === "auto" ? (
-						<p className={styles.autoPasswordHint}>系统将生成初始密码，并在创建成功后显示一次。</p>
+						<p className={styles.autoPasswordHint}>{t("create.autoPasswordHint")}</p>
 					) : (
 						<div className={styles.fieldRow}>
 							<label htmlFor="member-password">
-								初始密码{" "}
+								{t("create.initialPassword")}{" "}
 								<span aria-hidden="true" className={styles.requiredMark}>
 									*
 								</span>
@@ -235,7 +239,7 @@ export function CreateMemberPage({
 								aria-describedby="member-password-hint member-password-error"
 							/>
 							<p id="member-password-hint" className={styles.fieldHint}>
-								8–32 个非空格 ASCII 字符，须同时包含大写字母、小写字母、数字和特殊字符，不能包含用户名（不区分大小写）。
+								{t("create.passwordHint")}
 							</p>
 							<FieldError field="password" errors={errors} />
 						</div>

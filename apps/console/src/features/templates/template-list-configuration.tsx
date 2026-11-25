@@ -1,7 +1,9 @@
 import type { RemoteMemoryStore, RemoteVault, TemplateView } from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Button } from "antd";
+import i18n from "i18next";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { adminApi, getAdminClient } from "../../lib/api.ts";
 import { AGENT_CONFIGURATION_FIELDS, agentConfigurationText } from "./template-configuration-fields.ts";
@@ -16,7 +18,9 @@ async function readResult<T>(read: () => Promise<T>, signal: AbortSignal): Promi
 		return { data: await read() };
 	} catch (error) {
 		if (signal.aborted) throw error;
-		return { error: error instanceof Error ? error.message : "配置加载失败" };
+		return {
+			error: error instanceof Error ? error.message : i18n.getFixedT(null, "templates")("listConfig.loadFailed"),
+		};
 	}
 }
 
@@ -83,18 +87,19 @@ function ConfigurationCell({
 	if (error)
 		return (
 			<Button type="link" size="small" title={error} onClick={onRetry}>
-				加载失败，重试
+				{i18n.getFixedT(null, "templates")("listConfig.retry")}
 			</Button>
 		);
 	return <span title={value}>{value}</span>;
 }
 
 function resourceName(name: string | undefined, id: string) {
-	return name && name !== id ? `${name}（${id}）` : id;
+	return name && name !== id ? i18n.getFixedT(null, "templates")("listConfig.resourceName", { name, id }) : id;
 }
 
 /** 仅补齐当前页的展示配置；不读取记忆正文、密钥详情或改变保存的版本绑定。 */
 export function useTemplateConfigurationColumns(rows: TemplateView[]) {
+	const { t } = useTranslation("templates");
 	const query = useListConfiguration(rows);
 	const memoryNames = new Map(query.data?.memories.data?.map((row) => [row.memory_store_id, row.name]));
 	const vaultNames = new Map(query.data?.vaults.data?.map((row) => [row.vault_id, row.name]));
@@ -103,7 +108,7 @@ export function useTemplateConfigurationColumns(rows: TemplateView[]) {
 	const columns: TableColumnsType<TemplateView> = [
 		...AGENT_CONFIGURATION_FIELDS.map(({ key, label }) => ({
 			key,
-			title: label,
+			title: t(label),
 			width: key === "instructions" ? 320 : key === "description" ? 240 : 180,
 			ellipsis: true,
 			render: (_: unknown, row: TemplateView) => {
@@ -120,7 +125,7 @@ export function useTemplateConfigurationColumns(rows: TemplateView[]) {
 		})),
 		{
 			key: "environment",
-			title: "环境",
+			title: t("fields.environment"),
 			width: 220,
 			ellipsis: true,
 			render: (_, row) => (
@@ -128,7 +133,7 @@ export function useTemplateConfigurationColumns(rows: TemplateView[]) {
 					value={
 						row.remote_environment_id
 							? resourceName(row.remote_environment_name, row.remote_environment_id)
-							: "使用智能体默认环境"
+							: t("listConfig.defaultEnvironment")
 					}
 					onRetry={retry}
 				/>
@@ -136,15 +141,18 @@ export function useTemplateConfigurationColumns(rows: TemplateView[]) {
 		},
 		{
 			key: "files",
-			title: "文件",
+			title: t("fields.files"),
 			width: 260,
 			ellipsis: true,
 			render: (_, row) => (
 				<ConfigurationCell
 					value={
 						row.files
-							.map((file) => `${resourceName(file.filename, file.file_id)}\n挂载路径：${file.mount_path || "—"}`)
-							.join("\n") || "未选择"
+							.map(
+								(file) =>
+									`${resourceName(file.filename, file.file_id)}\n${t("listConfig.mountPath", { path: file.mount_path || "—" })}`,
+							)
+							.join("\n") || t("common.notSelected")
 					}
 					onRetry={retry}
 				/>
@@ -152,7 +160,7 @@ export function useTemplateConfigurationColumns(rows: TemplateView[]) {
 		},
 		{
 			key: "memories",
-			title: "记忆库",
+			title: t("fields.memories"),
 			width: 260,
 			ellipsis: true,
 			render: (_, row) => (
@@ -161,9 +169,9 @@ export function useTemplateConfigurationColumns(rows: TemplateView[]) {
 						row.memory_stores
 							.map(
 								(memory) =>
-									`${resourceName(memoryNames.get(memory.memory_store_id), memory.memory_store_id)}\n权限：${memory.access === "read_only" ? "只读" : "读写"}\n说明：${memory.instructions?.trim() || "—"}`,
+									`${resourceName(memoryNames.get(memory.memory_store_id), memory.memory_store_id)}\n${t("listConfig.access", { access: memory.access === "read_only" ? t("listConfig.readOnly") : t("listConfig.readWrite") })}\n${t("listConfig.instructions", { text: memory.instructions?.trim() || "—" })}`,
 							)
-							.join("\n") || "未选择"
+							.join("\n") || t("common.notSelected")
 					}
 					loading={row.memory_stores.length > 0 && loading}
 					error={row.memory_stores.length ? query.error || query.data?.memories.error : undefined}
@@ -173,12 +181,12 @@ export function useTemplateConfigurationColumns(rows: TemplateView[]) {
 		},
 		{
 			key: "vaults",
-			title: "密钥库",
+			title: t("fields.vaults"),
 			width: 220,
 			ellipsis: true,
 			render: (_, row) => (
 				<ConfigurationCell
-					value={row.vault_ids.map((id) => resourceName(vaultNames.get(id), id)).join("\n") || "未选择"}
+					value={row.vault_ids.map((id) => resourceName(vaultNames.get(id), id)).join("\n") || t("common.notSelected")}
 					loading={row.vault_ids.length > 0 && loading}
 					error={row.vault_ids.length ? query.error || query.data?.vaults.error : undefined}
 					onRetry={retry}

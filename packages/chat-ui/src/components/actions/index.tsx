@@ -1,4 +1,6 @@
 import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
+import actionsStrings, { type ActionsStrings } from "./strings.ts";
 
 export type ActionsVariant = "borderless" | "outlined" | "filled";
 
@@ -25,6 +27,8 @@ export interface ActionsProps {
 	variant?: ActionsVariant;
 	className?: string;
 	"aria-label"?: string;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<ActionsStrings>;
 }
 
 function cx(...values: Array<string | false | undefined>): string {
@@ -129,11 +133,13 @@ function ActionsBase({
 	children,
 	variant = "borderless",
 	className,
-	"aria-label": ariaLabel = "操作列表",
+	"aria-label": ariaLabel,
+	strings: stringsOverride,
 }: ActionsProps) {
+	const strings = resolveStrings(actionsStrings, useKitLocale(), stringsOverride);
 	return (
 		<fieldset
-			aria-label={ariaLabel}
+			aria-label={ariaLabel ?? strings.listAriaLabel}
 			className={cx("m-0 flex min-w-0 flex-wrap items-center gap-1 border-0 p-0", className)}
 		>
 			<ActionItems items={items} onClick={onClick} variant={variant} />
@@ -152,12 +158,19 @@ export interface ActionsCopyProps {
 	iconOnly?: boolean;
 	variant?: ActionsVariant;
 	className?: string;
+	/** 覆盖内置文案；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<ActionsStrings>;
 }
 
-function copyButtonLabel(state: "pending" | "success" | "error" | null, iconOnly: boolean, label: string) {
-	if (state === "pending") return "复制中…";
-	if (state === "success") return "已复制";
-	if (state === "error") return "复制失败";
+function copyButtonLabel(
+	state: "pending" | "success" | "error" | null,
+	iconOnly: boolean,
+	label: string,
+	strings: ActionsStrings,
+) {
+	if (state === "pending") return strings.copying;
+	if (state === "success") return strings.copied;
+	if (state === "error") return strings.copyFailed;
 	return iconOnly ? null : label;
 }
 
@@ -166,11 +179,13 @@ export function ActionsCopy({
 	text,
 	onCopy,
 	disabled = false,
-	label = "复制",
+	label,
 	iconOnly = false,
 	variant = "borderless",
 	className,
+	strings: stringsOverride,
 }: ActionsCopyProps) {
+	const strings = resolveStrings(actionsStrings, useKitLocale(), stringsOverride);
 	const [result, setResult] = useState<{ text: string; state: "pending" | "success" | "error" } | null>(null);
 	const pending = useRef(false);
 	const currentText = useRef(text);
@@ -190,12 +205,13 @@ export function ActionsCopy({
 			pending.current = false;
 		}
 	};
-	const status = state === "success" ? "已复制" : state === "error" ? "复制失败，请重试" : "";
+	const copyLabel = label ?? strings.copy;
+	const status = state === "success" ? strings.copied : state === "error" ? strings.copyFailedRetry : "";
 	return (
 		<span className="inline-flex items-center">
 			<button
 				type="button"
-				aria-label={label}
+				aria-label={copyLabel}
 				aria-busy={state === "pending" || undefined}
 				disabled={disabled || !text || state === "pending"}
 				onClick={() => void copy()}
@@ -206,7 +222,7 @@ export function ActionsCopy({
 				)}
 			>
 				<span aria-hidden>⧉</span>
-				{copyButtonLabel(state, iconOnly, label)}
+				{copyButtonLabel(state, iconOnly, copyLabel, strings)}
 			</button>
 			<span role="status" className="sr-only">
 				{status}
@@ -223,6 +239,8 @@ export interface ActionsFeedbackProps {
 	disabled?: boolean;
 	variant?: ActionsVariant;
 	className?: string;
+	/** 覆盖内置文案；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<ActionsStrings>;
 }
 
 /** 受控反馈：重复点击取消，赞与踩互斥；保存反馈由调用方负责。 */
@@ -232,17 +250,19 @@ export function ActionsFeedback({
 	disabled = false,
 	variant = "borderless",
 	className,
+	strings: stringsOverride,
 }: ActionsFeedbackProps) {
+	const strings = resolveStrings(actionsStrings, useKitLocale(), stringsOverride);
 	return (
 		<fieldset
-			aria-label="回答反馈"
+			aria-label={strings.feedbackAriaLabel}
 			className={cx("m-0 inline-flex min-w-0 items-center gap-1 border-0 p-0", className)}
 		>
 			{(["like", "dislike"] as const).map((kind) => (
 				<button
 					key={kind}
 					type="button"
-					aria-label={kind === "like" ? "点赞" : "点踩"}
+					aria-label={kind === "like" ? strings.like : strings.dislike}
 					aria-pressed={value === kind}
 					disabled={disabled}
 					onClick={() => onChange(value === kind ? "default" : kind)}

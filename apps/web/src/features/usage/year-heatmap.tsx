@@ -1,16 +1,18 @@
 import { ErrorState } from "@openagentpack/kit-chat-ui";
+import type { TFunction } from "i18next";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { formatUsageDayStart } from "../../lib/beijing-time.ts";
 import { formatExactTokenCount, formatTokenCount } from "../../lib/format-token-count.ts";
 
 const numberText = (value: number) => value.toLocaleString("zh-CN", { maximumFractionDigits: 2 });
 
 /** 日键标注聚合区间的北京时间分界；不将日聚合数据重新分桶。 */
-export function activityRange(days: { day: string }[]): string {
+export function activityRange(days: { day: string }[], t: TFunction<"usage">): string {
 	const first = days.at(0);
 	const last = days.at(-1);
 	if (!first || !last) return "";
-	return `统计 ${first.day} ~ ${last.day}（每日 08:00 起）`;
+	return t("heatmap.range", { from: first.day, to: last.day });
 }
 
 /** 卡片外壳与用量页其他卡同一套 token；标题行右侧放月份/统计范围等次要信息。 */
@@ -75,6 +77,7 @@ export function YearHeatmap({
 	days: { day: string; amount: number; unit: string }[];
 	testId?: string;
 }) {
+	const { t } = useTranslation("usage");
 	const max = days.reduce((m, d) => Math.max(m, d.amount), 0);
 	const levelOf = (amount: number) => (amount <= 0 ? 0 : amount <= max / 3 ? 1 : amount <= (max * 2) / 3 ? 2 : 3);
 	// 首格对齐周一行：前置空占位数 = 序列首日的 UTC 周几（周一 = 0）。
@@ -92,13 +95,14 @@ export function YearHeatmap({
 			.at(-1)
 			?.cells.find((cell) => cell !== null)
 			?.day.slice(5, 7);
-		const label = month !== null && Number(previousMonth ?? month) !== month ? `${month}月` : null;
+		const label =
+			month !== null && Number(previousMonth ?? month) !== month ? `${month}${t("heatmap.monthSuffix")}` : null;
 		columns.push({ label, cells });
 	}
 	return (
 		<div
 			role="img"
-			aria-label={`近 12 个月每日用量热力图（${days[0]?.day ?? ""} ~ ${days.at(-1)?.day ?? ""}，每日 08:00 起）`}
+			aria-label={t("heatmap.aria", { from: days[0]?.day ?? "", to: days.at(-1)?.day ?? "" })}
 			data-testid={testId}
 			className="mt-5 min-w-0"
 		>
@@ -133,8 +137,11 @@ export function YearHeatmap({
 											role="tooltip"
 											className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 hidden -translate-x-1/2 rounded-[var(--kit-radius-sm)] bg-[var(--kit-fg)] px-2 py-1 text-[length:var(--kit-text-meta)] whitespace-nowrap text-[var(--kit-bg)] shadow-[var(--kit-shadow)] group-hover:block"
 										>
-											{formatUsageDayStart(cell.day)} 起 ·{" "}
-											{cell.unit === "Token" ? formatTokenCount(cell.amount) : numberText(cell.amount)} {cell.unit}
+											{t("heatmap.tooltip", {
+												since: formatUsageDayStart(cell.day),
+												amount: cell.unit === "Token" ? formatTokenCount(cell.amount) : numberText(cell.amount),
+												unit: cell.unit,
+											})}
 										</div>
 									</div>
 								) : (
@@ -151,13 +158,14 @@ export function YearHeatmap({
 
 /** 不活跃/活跃图例，置于卡片头部右侧。 */
 export function HeatLegend() {
+	const { t } = useTranslation("usage");
 	return (
 		<span className="flex items-center gap-1 text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)]">
-			不活跃
+			{t("heatmap.less")}
 			{HEAT_LEVELS.map((cls) => (
 				<span key={cls} aria-hidden="true" className={`h-3 w-3 rounded-[var(--kit-radius-xs)] ${cls}`} />
 			))}
-			活跃
+			{t("heatmap.more")}
 		</span>
 	);
 }

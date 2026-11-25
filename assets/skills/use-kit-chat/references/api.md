@@ -551,7 +551,7 @@ export function createMemberAuthController(options: MemberAuthOptions): { getSna
 ```
 
 
-<!-- source-sha256: 446fb0e23f0bdbdf47097060208f5b865d61bd22ab15fbc0e5161da5df4f58d0; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
+<!-- source-sha256: 279d84f9b175811c59e9cdc373f28686a29621828134c57edce934e036f59c88; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## MemberAuthController
 
@@ -577,7 +577,7 @@ export type MemberAuthController = { getSnapshot: () => MemberAuthSnapshot; subs
 | `retry` | 是 | `() => Promise<void>` |
 | `dispose` | 是 | `() => void` |
 
-<!-- source-sha256: 446fb0e23f0bdbdf47097060208f5b865d61bd22ab15fbc0e5161da5df4f58d0; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
+<!-- source-sha256: 279d84f9b175811c59e9cdc373f28686a29621828134c57edce934e036f59c88; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## MemberAuthOptions
 
@@ -602,7 +602,7 @@ import type { MemberAuthOptions } from "@openagentkit/sdk/auth";
 | `createChatProvider` | 否 | `((request: RequestClient) => ChatProvider) \| undefined` |
 | `createClient` | 否 | `((request: RequestClient) => KitClient) \| undefined` |
 
-<!-- source-sha256: 446fb0e23f0bdbdf47097060208f5b865d61bd22ab15fbc0e5161da5df4f58d0; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
+<!-- source-sha256: 279d84f9b175811c59e9cdc373f28686a29621828134c57edce934e036f59c88; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## MemberAuthSnapshot
 
@@ -626,9 +626,10 @@ import type { MemberAuthSnapshot } from "@openagentkit/sdk/auth";
 | `chatProvider` | 是 | `ChatProvider \| null` |
 | `generation` | 是 | `number` |
 | `error` | 是 | `string \| null` |
+| `errorDetail` | 是 | `KitError \| null` |
 | `pending` | 是 | `boolean` |
 
-<!-- source-sha256: 446fb0e23f0bdbdf47097060208f5b865d61bd22ab15fbc0e5161da5df4f58d0; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
+<!-- source-sha256: 279d84f9b175811c59e9cdc373f28686a29621828134c57edce934e036f59c88; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## MemberSessionStorage
 
@@ -649,7 +650,7 @@ import type { MemberSessionStorage } from "@openagentkit/sdk/auth";
 | `load` | 是 | `() => StoredMemberSession \| null` |
 | `save` | 是 | `(session: StoredMemberSession \| null) => void` |
 
-<!-- source-sha256: 446fb0e23f0bdbdf47097060208f5b865d61bd22ab15fbc0e5161da5df4f58d0; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
+<!-- source-sha256: 279d84f9b175811c59e9cdc373f28686a29621828134c57edce934e036f59c88; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## StoredMemberSession
 
@@ -670,7 +671,7 @@ import type { StoredMemberSession } from "@openagentkit/sdk/auth";
 | `access_token` | 是 | `string` |
 | `expires_at` | 是 | `string` |
 
-<!-- source-sha256: 446fb0e23f0bdbdf47097060208f5b865d61bd22ab15fbc0e5161da5df4f58d0; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
+<!-- source-sha256: 279d84f9b175811c59e9cdc373f28686a29621828134c57edce934e036f59c88; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## useMemberAuth
 
@@ -683,7 +684,7 @@ import type { StoredMemberSession } from "@openagentkit/sdk/auth";
 
 
 ```ts
-export function useMemberAuth(controller: MemberAuthController): { login: (input: MemberLoginRequest) => Promise<void>; logout: () => Promise<void>; retry: () => Promise<void>; status: "checking" | "signed-out" | "signed-in" | "anonymous" | "error"; member: MemberView | null; client: KitClient | null; chatProvider: ChatProvider | null; generation: number; error: string | null; pending: boolean; };
+export function useMemberAuth(controller: MemberAuthController): { login: (input: MemberLoginRequest) => Promise<void>; logout: () => Promise<void>; retry: () => Promise<void>; status: "checking" | "signed-out" | "signed-in" | "anonymous" | "error"; member: MemberView | null; client: KitClient | null; chatProvider: ChatProvider | null; generation: number; error: string | null; errorDetail: KitError | null; pending: boolean; };
 ```
 
 
@@ -1153,7 +1154,7 @@ export function createQuery<T>(load: (signal: AbortSignal) => Promise<T>): { get
 ```
 
 
-<!-- source-sha256: c445d8ea8478f1309244374e43573505a7c439a7cbd5d5788d92836a517824aa; doc-sha256: f1595b220fd495b40c4fa0cfd42359cbad9036d7c3d935138f81e637eb9e48f9 -->
+<!-- source-sha256: 2b1b37d8d409b0dd748a8e63895fffeadbc85cb63b4e585ada2415be97e73820; doc-sha256: f1595b220fd495b40c4fa0cfd42359cbad9036d7c3d935138f81e637eb9e48f9 -->
 
 ## createMutation
 
@@ -1172,7 +1173,7 @@ export function createMutation<Args extends unknown[], Result>(action: (...args:
 ```
 
 
-<!-- source-sha256: c445d8ea8478f1309244374e43573505a7c439a7cbd5d5788d92836a517824aa; doc-sha256: f1595b220fd495b40c4fa0cfd42359cbad9036d7c3d935138f81e637eb9e48f9 -->
+<!-- source-sha256: 2b1b37d8d409b0dd748a8e63895fffeadbc85cb63b4e585ada2415be97e73820; doc-sha256: f1595b220fd495b40c4fa0cfd42359cbad9036d7c3d935138f81e637eb9e48f9 -->
 
 ## createObservable
 
@@ -1190,7 +1191,7 @@ export function createObservable<T>(initial: T): { getSnapshot: () => T; subscri
 ```
 
 
-<!-- source-sha256: c445d8ea8478f1309244374e43573505a7c439a7cbd5d5788d92836a517824aa; doc-sha256: f1595b220fd495b40c4fa0cfd42359cbad9036d7c3d935138f81e637eb9e48f9 -->
+<!-- source-sha256: 2b1b37d8d409b0dd748a8e63895fffeadbc85cb63b4e585ada2415be97e73820; doc-sha256: f1595b220fd495b40c4fa0cfd42359cbad9036d7c3d935138f81e637eb9e48f9 -->
 
 ## QuerySnapshot
 
@@ -1212,7 +1213,7 @@ import type { QuerySnapshot } from "@openagentkit/sdk/state";
 | `loading` | 是 | `boolean` |
 | `error` | 是 | `string \| null` |
 
-<!-- source-sha256: c445d8ea8478f1309244374e43573505a7c439a7cbd5d5788d92836a517824aa; doc-sha256: f1595b220fd495b40c4fa0cfd42359cbad9036d7c3d935138f81e637eb9e48f9 -->
+<!-- source-sha256: 2b1b37d8d409b0dd748a8e63895fffeadbc85cb63b4e585ada2415be97e73820; doc-sha256: f1595b220fd495b40c4fa0cfd42359cbad9036d7c3d935138f81e637eb9e48f9 -->
 
 ## 相关类型
 

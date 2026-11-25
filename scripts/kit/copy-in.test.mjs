@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join, normalize } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { componentDestPath, readRegistry, resolveComponentClosure } from "./copy-in.mjs";
+import { componentDestPath, componentSourceFiles, readRegistry, resolveComponentClosure } from "./copy-in.mjs";
 
 const chatUiRoot = join(dirname(fileURLToPath(import.meta.url)), "../..", "packages", "chat-ui");
 
@@ -17,7 +17,7 @@ test("copy-in 闭包中的每个组件都能独立复制并解析相对导入", 
 	for (const name of Object.keys(registry.components)) {
 		const closure = resolveComponentClosure(registry, name);
 		assert.ok(closure, `${name} 的 registry 闭包不存在`);
-		const files = [...closure].map((component) => registry.components[component].file);
+		const files = [...closure].flatMap((component) => componentSourceFiles(registry.components[component]));
 		const copied = new Set(files.map(componentDestPath));
 		for (const file of files) {
 			const source = readFileSync(join(chatUiRoot, file), "utf8");

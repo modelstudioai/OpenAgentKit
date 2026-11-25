@@ -1,9 +1,12 @@
 import { type ProjectAgentCreateInput, ProjectAgentCreateInputSchema } from "@openagentkit/sdk/protocol";
 import { Alert, Button, Form, Input } from "antd";
+import i18n from "i18next";
 import { type ReactNode, type Ref, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
+import { localizedValidationMessage } from "../../lib/validation-message.ts";
 import { AgentVersionConfigurationView } from "./agent-version-configuration-view.tsx";
 import { MANAGED_AGENT_MODELS } from "./managed-agent-models.ts";
 import { TemplateAgentCapabilities } from "./template-agent-capability-picker.tsx";
@@ -30,9 +33,21 @@ import { useTemplateDraftProject } from "./use-template-draft-project.ts";
 export type AgentFormState = { dirty: boolean; valid: boolean; preview?: AgentFormDetail };
 export type AgentFormHandle = { save: () => Promise<TemplateAgentSelection | null> };
 const fields = [
-	{ key: "name", label: "名称", accessibleName: "智能体名称", maxLength: 255, rows: 0 },
-	{ key: "description", label: "描述", accessibleName: "智能体描述", maxLength: 1024, rows: 3 },
-	{ key: "instructions", label: "系统提示词", accessibleName: "系统提示词", maxLength: 65536, rows: 8 },
+	{ key: "name", label: "agent.form.name", accessibleName: "agent.form.nameAccessible", maxLength: 255, rows: 0 },
+	{
+		key: "description",
+		label: "agent.form.description",
+		accessibleName: "agent.form.descriptionAccessible",
+		maxLength: 1024,
+		rows: 3,
+	},
+	{
+		key: "instructions",
+		label: "agent.form.instructions",
+		accessibleName: "agent.form.instructionsAccessible",
+		maxLength: 65536,
+		rows: 8,
+	},
 ] as const;
 type FieldName = (typeof fields)[number]["key"] | "model";
 
@@ -64,15 +79,17 @@ async function saveAgentSource(
 	};
 }
 function validationErrors(issues: { path: PropertyKey[]; message: string }[]) {
+	const t = i18n.getFixedT(null, "templates");
 	const next: Partial<Record<FieldName, string>> = {};
 	for (const issue of issues) {
 		const key = issue.path[0] as FieldName;
 		if (["name", "model", "description", "instructions"].includes(key))
-			next[key] = key === "model" ? "请选择模型" : issue.message;
+			next[key] = key === "model" ? t("agent.form.modelRequired") : localizedValidationMessage(issue);
 	}
 	return next;
 }
 function useAgentForm({ selected, detail, ref, onPendingChange, onStateChange }: Props) {
+	const { t } = useTranslation("templates");
 	const client = useMemo(getAdminClient, []);
 	const identity = useAdminQuery("templates:agent-create:identity", (signal) => client.identity(signal));
 	const [initial] = useState(() => createAgentFormDraft(detail, selected?.skill_names));
@@ -92,20 +109,20 @@ function useAgentForm({ selected, detail, ref, onPendingChange, onStateChange }:
 	const editable = identity.data?.role === "admin" && !initial.error;
 	const prepareProject = async () => {
 		const current = await project.prepare();
-		if (current.overview.active_mutation) throw new Error("项目正在修改，请稍后重试。");
+		if (current.overview.active_mutation) throw new Error(t("agent.form.projectBusy"));
 		setProjectRevision(current.overview.project_revision);
 		return current;
 	};
 	const validate = () => {
 		if (selected && !dirty) return;
-		if (!editable) throw new Error(initial.error ?? "当前身份不可编辑基础配置");
-		if (mcpDraftErrors(draft.mcpServers).size) throw new Error("请检查 MCP 服务标识和工具配置");
+		if (!editable) throw new Error(initial.error ?? t("agent.form.notEditable"));
+		if (mcpDraftErrors(draft.mcpServers).size) throw new Error(t("agent.form.mcpInvalid"));
 		const parsed = ProjectAgentCreateInputSchema.safeParse(agentFormInput(draft, "draft"));
 		if (!parsed.success) {
 			const next = validationErrors(parsed.error.issues);
 			setErrors(next);
 			inputs.current[Object.keys(next)[0] as FieldName]?.focus();
-			throw new Error("请检查基础配置");
+			throw new Error(t("agent.form.baseInvalid"));
 		}
 	};
 	const save = useAdminMutation(async () => {
@@ -163,6 +180,7 @@ function useAgentForm({ selected, detail, ref, onPendingChange, onStateChange }:
 	};
 }
 export function TemplateAgentForm(props: Props) {
+	const { t } = useTranslation("templates");
 	const { selected, version } = props;
 	const model = useAgentForm(props);
 	const { identity, initial, save, project, prepareProject, dirty } = model;
@@ -175,13 +193,17 @@ export function TemplateAgentForm(props: Props) {
 						{initial.issues.map((issue) => (
 							<li key={`${issue.field}:${issue.reason}`} className={styles.wrapAnywhere}>
 								<span>
-									{copyFieldLabel(issue.field)}（<code>{issue.field}</code>）
+									{copyFieldLabel(issue.field)}
+									{t("agent.form.parenOpen")}
+									<code>{issue.field}</code>
+									{t("agent.form.parenClose")}
 								</span>
-								：{issue.reason}
+								{t("agent.form.reasonSeparator")}
+								{issue.reason}
 							</li>
 						))}
 					</ul>
-					<p className={styles.mutedOnly}>可直接使用原版本，或清空基础配置后重新填写。</p>
+					<p className={styles.mutedOnly}>{t("agent.form.copyIssuesHint")}</p>
 				</div>
 				<AgentVersionConfigurationView detail={props.detail} versionContent={version} />
 			</div>
@@ -198,7 +220,7 @@ export function TemplateAgentForm(props: Props) {
 						message={identity.error}
 						action={
 							<Button size="small" onClick={() => void identity.refresh()}>
-								重试
+								{t("retry")}
 							</Button>
 						}
 					/>
@@ -223,6 +245,7 @@ function AgentFormFields({
 	selected: TemplateAgentSelection | null;
 	version: ReactNode;
 }) {
+	const { t } = useTranslation("templates");
 	const {
 		draft,
 		errors,
@@ -240,7 +263,7 @@ function AgentFormFields({
 		const error = errors[field.key];
 		const shared = {
 			status: (error ? "error" : undefined) as "error" | undefined,
-			"aria-label": field.accessibleName,
+			"aria-label": t(field.accessibleName),
 			"aria-invalid": Boolean(error),
 			maxLength: field.maxLength,
 			value: draft[field.key],
@@ -250,7 +273,7 @@ function AgentFormFields({
 				key={field.key}
 				label={
 					<>
-						{field.label}
+						{t(field.label)}
 						{field.key === "name" ? (
 							<span aria-hidden="true" className={styles.requiredStar}>
 								*
@@ -273,7 +296,7 @@ function AgentFormFields({
 				) : (
 					<Input
 						{...shared}
-						placeholder="输入智能体名称"
+						placeholder={t("agent.form.namePlaceholder")}
 						ref={(el) => {
 							inputs.current[field.key] = el;
 						}}
@@ -288,9 +311,11 @@ function AgentFormFields({
 			<fieldset disabled={busy || !editable} className={styles.shrinkRoot}>
 				{textField(fields[0])}
 			</fieldset>
-			<Form.Item label="版本">{dirty || !selected ? <p className={styles.mutedOnly}>--</p> : version}</Form.Item>
+			<Form.Item label={t("agent.form.version")}>
+				{dirty || !selected ? <p className={styles.mutedOnly}>--</p> : version}
+			</Form.Item>
 			<fieldset disabled={busy || !editable} className={styles.configFields}>
-				<section aria-label="模型">
+				<section aria-label={t("agent.form.model")}>
 					<TemplateAgentModelPicker
 						value={draft.model}
 						onChange={(value) => change("model", value)}
@@ -317,8 +342,8 @@ function AgentFormFields({
 				{textField(fields[2])}
 				<TemplateAgentToolsFields value={draft.tools} onChange={(value) => change("tools", value)} />
 			</fieldset>
-			<section aria-label="MCP 服务器">
-				<Form.Item label="MCP 服务器">
+			<section aria-label={t("agent.form.mcp")}>
+				<Form.Item label={t("agent.form.mcp")}>
 					<TemplateAgentMcpFields
 						value={draft.mcpServers}
 						disabled={busy || !editable}
@@ -326,8 +351,8 @@ function AgentFormFields({
 					/>
 				</Form.Item>
 			</section>
-			<section aria-label="技能">
-				<Form.Item label="技能">
+			<section aria-label={t("agent.form.skills")}>
+				<Form.Item label={t("agent.form.skills")}>
 					<TemplateAgentCapabilities
 						projectName={project.projectName}
 						revision={projectRevision ?? project.project.data?.project_revision}
@@ -356,6 +381,7 @@ function AgentFormFeedback({
 	copying: boolean;
 	onRetry: () => void;
 }) {
+	const { t } = useTranslation("templates");
 	return (
 		<>
 			{error ? (
@@ -365,12 +391,12 @@ function AgentFormFeedback({
 					message={error}
 					action={
 						<Button size="small" onClick={onRetry}>
-							重试
+							{t("retry")}
 						</Button>
 					}
 				/>
 			) : null}
-			{copying ? <p className="text-neutral-500">修改后保存为新智能体，原智能体保持不变。</p> : null}
+			{copying ? <p className="text-neutral-500">{t("agent.form.saveAsNewHint")}</p> : null}
 		</>
 	);
 }

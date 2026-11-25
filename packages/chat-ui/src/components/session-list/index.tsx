@@ -1,22 +1,23 @@
 import type { SessionSummary } from "@openagentkit/sdk/protocol";
 import { type ReactNode, useEffect, useRef } from "react";
+import { resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
 import { ProcessSpinner } from "../process/step/index.tsx";
 import { Tooltip } from "../tooltip/index.tsx";
+import sessionListStrings, { type SessionListStrings } from "./strings.ts";
 
 /** 行内状态标记取值是中性展示词，图例沿用既有语义：运行中是执行过程同款旋转指示环，需要注意是
  * 审批卡同款警示三角，失败是 StepMarker 同款叉，已完成是对勾。着色用 `--kit-warning`/`--kit-danger`
  * 本体色——`-fg` 变体是给深色底上文字的对比色，形状标记读不出「黄」。 */
 type StatusMark = "running" | "attention" | "failed" | "completed";
 
-const STATUS_MARKS: Record<StatusMark, { label: string; className?: string; spinner?: boolean; path?: string }> = {
-	running: { label: "生成中", spinner: true },
+const STATUS_MARKS: Record<StatusMark, { className?: string; spinner?: boolean; path?: string }> = {
+	running: { spinner: true },
 	attention: {
-		label: "等待审批",
 		className: "text-[var(--kit-warning)]",
 		path: "m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z M12 9v4 M12 17h.01",
 	},
-	failed: { label: "执行失败", className: "text-[var(--kit-danger)]", path: "M6 6l12 12M18 6 6 18" },
-	completed: { label: "已完成", path: "M20 6 9 17l-5-5" },
+	failed: { className: "text-[var(--kit-danger)]", path: "M6 6l12 12M18 6 6 18" },
+	completed: { path: "M20 6 9 17l-5-5" },
 };
 
 /** 服务端索引状态（协议词汇）→ 展示标记的映射：协议词汇收敛在此一处，prop 与标记只认中性词。 */
@@ -27,12 +28,14 @@ const SESSION_STATUS_MARKS: Record<string, StatusMark> = {
 };
 
 /** 行内标记取值次序：打开行实时态 > 该行索引状态（列表重取前的滞留值最弱）。 */
-function rowMark(active: boolean, activeStatus: StatusMark | undefined, status: string | undefined) {
+function rowMark(
+	active: boolean,
+	activeStatus: StatusMark | undefined,
+	status: string | undefined,
+): StatusMark | undefined {
 	const indexMark = status ? SESSION_STATUS_MARKS[status] : undefined;
-	return (
-		(active && activeStatus ? STATUS_MARKS[activeStatus] : undefined) ??
-		(indexMark ? STATUS_MARKS[indexMark] : undefined)
-	);
+	if (active && activeStatus) return activeStatus;
+	return indexMark;
 }
 
 /** 侧栏搜索：按展示标题（title 回退 agent_slug）不区分大小写匹配。 */
@@ -66,6 +69,8 @@ export interface SessionListProps {
 	variant?: "default" | "workspace";
 	/** 无障碍名称：同一页面会有多个会话列表（侧栏分组/最近），用不同标签区分导航语义。 */
 	ariaLabel?: string;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<SessionListStrings>;
 	className?: string;
 }
 
@@ -108,10 +113,12 @@ function RenameInput({
 	title,
 	className,
 	onFinish,
+	renameAria,
 }: {
 	title: string;
 	className: string;
 	onFinish: (next: string | null) => void;
+	renameAria: string;
 }) {
 	const inputRef = useRef<HTMLInputElement>(null);
 	const finishedRef = useRef(false);
@@ -138,7 +145,7 @@ function RenameInput({
 					finish(null);
 				}
 			}}
-			aria-label="重命名会话"
+			aria-label={renameAria}
 			className={className}
 		/>
 	);
@@ -154,15 +161,19 @@ function SessionItem({
 	onEdited,
 	onEditEnd,
 	variant,
+	strings,
 }: Pick<SessionListProps, "onSelect" | "menu" | "onEdited" | "onEditEnd" | "variant" | "activeStatus"> & {
 	session: SessionSummary;
 	active: boolean;
 	editing: boolean;
+	strings: SessionListStrings;
 }) {
 	const workspace = variant === "workspace";
 	const title = session.title || session.agent_slug;
 	const classes = sessionItemClasses(workspace, active);
-	const mark = rowMark(active, activeStatus, session.status);
+	const markKey = rowMark(active, activeStatus, session.status);
+	const mark = markKey ? STATUS_MARKS[markKey] : undefined;
+	const markLabel = markKey ? strings.status[markKey] : undefined;
 	/** 提交与 Escape 都算退出；next 为 null 表示取消。 */
 	const finishEditing = (next: string | null) => {
 		if (next !== null) {
@@ -175,7 +186,7 @@ function SessionItem({
 		<div className={classes.row}>
 			{/* 行容器与操作按钮并列，避免嵌套 button 导致真实点击时操作不可达。 */}
 			{editing ? (
-				<RenameInput title={title} className={classes.edit} onFinish={finishEditing} />
+				<RenameInput title={title} className={classes.edit} onFinish={finishEditing} renameAria={strings.renameAria} />
 			) : (
 				<button
 					type="button"
@@ -190,7 +201,7 @@ function SessionItem({
 				</button>
 			)}
 			{mark ? (
-				<span role="img" aria-label={mark.label} title={mark.label} className="mr-1.5 flex shrink-0 self-center">
+				<span role="img" aria-label={markLabel} title={markLabel} className="mr-1.5 flex shrink-0 self-center">
 					{mark.spinner ? (
 						<ProcessSpinner className="size-3.5 text-[var(--kit-accent)]" />
 					) : (
@@ -207,7 +218,7 @@ function SessionItem({
 				</span>
 			) : session.status === "archived" ? (
 				<span className="shrink-0 self-center pr-1 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
-					已归档
+					{strings.archived}
 				</span>
 			) : null}
 			{/* 菜单元素由业务经 menu(session) 构造；编辑态整组卸载，避免与行内输入争夺注意力。 */}
@@ -229,11 +240,16 @@ export function SessionList({
 	variant = "default",
 	ariaLabel,
 	className,
+	strings: stringsOverride,
 }: SessionListProps) {
+	const strings = resolveStrings(sessionListStrings, useKitLocale(), stringsOverride);
 	return (
-		<nav className={`min-h-0 flex-1 overflow-y-auto px-2 pb-3 ${className ?? ""}`} aria-label={ariaLabel ?? "会话列表"}>
+		<nav
+			className={`min-h-0 flex-1 overflow-y-auto px-2 pb-3 ${className ?? ""}`}
+			aria-label={ariaLabel ?? strings.aria}
+		>
 			{sessions.length === 0 ? (
-				<p className="p-2 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">暂无会话</p>
+				<p className="p-2 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">{strings.empty}</p>
 			) : null}
 			{sessions.map((session) => (
 				<SessionItem
@@ -247,6 +263,7 @@ export function SessionList({
 					onEdited={onEdited}
 					onEditEnd={onEditEnd}
 					variant={variant}
+					strings={strings}
 				/>
 			))}
 		</nav>

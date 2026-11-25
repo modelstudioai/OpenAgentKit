@@ -1,6 +1,7 @@
 import type { MemberUsageLimitView, UsageLimitMetricState } from "@openagentkit/sdk/protocol";
 import { useQuota, useUsageLimits } from "@openagentkit/sdk/usage/hooks";
 import { ErrorState, MeterBar } from "@openagentpack/kit-chat-ui";
+import { useTranslation } from "react-i18next";
 import { formatBeijingTime, formatUsageDayStart } from "../../lib/beijing-time.ts";
 import { formatExactTokenCount, formatTokenCount } from "../../lib/format-token-count.ts";
 import { activityRange, CardShell, HeatLegend, HeatmapError, LoadingBody, YearHeatmap } from "./year-heatmap.tsx";
@@ -24,8 +25,13 @@ function LimitMetric({
 	period: "day" | "month";
 	hint?: string;
 }) {
+	const { t } = useTranslation("usage");
 	const remaining = metric.remaining === null ? null : Math.max(0, metric.remaining);
-	const status = { ok: "可继续使用", exceeded: "已达限额", unavailable: "用量待确认" }[metric.status];
+	const status = {
+		ok: t("member.statusOk"),
+		exceeded: t("member.statusExceeded"),
+		unavailable: t("member.statusUnavailable"),
+	}[metric.status];
 	const statusClass = {
 		ok: "bg-[var(--kit-bg-subtle)] text-[var(--kit-fg-muted)]",
 		exceeded: "bg-[var(--kit-danger)]/10 text-[var(--kit-danger)]",
@@ -41,27 +47,31 @@ function LimitMetric({
 			</div>
 			<dl className="space-y-3 text-[length:var(--kit-text-label)]">
 				<div className="mb-5 flex flex-col gap-2">
-					<dt className="text-[var(--kit-fg-muted)]">{period === "day" ? "今日已用" : "本月已用"}</dt>
+					<dt className="text-[var(--kit-fg-muted)]">
+						{period === "day" ? t("member.usedToday") : t("member.usedMonth")}
+					</dt>
 					<dd
 						title={tokenTitle(metric.used, unit)}
 						className="text-[length:var(--kit-text-display)] font-semibold leading-snug tabular-nums"
 					>
-						{metric.used === null ? "待获取" : `${numberText(metric.used, unit)} ${unit}`}
+						{metric.used === null ? t("member.pendingFetch") : `${numberText(metric.used, unit)} ${unit}`}
 					</dd>
 				</div>
 				<div className="flex flex-wrap justify-between gap-2">
-					<dt className="text-[var(--kit-fg-muted)]">{period === "day" ? "每日上限" : "月度上限"}</dt>
+					<dt className="text-[var(--kit-fg-muted)]">
+						{period === "day" ? t("member.limitDay") : t("member.limitMonth")}
+					</dt>
 					<dd title={tokenTitle(metric.limit, unit)} className="font-medium tabular-nums">
-						{metric.limit === null ? "不限量" : `${numberText(metric.limit, unit)} ${unit}`}
+						{metric.limit === null ? t("unlimited") : `${numberText(metric.limit, unit)} ${unit}`}
 					</dd>
 				</div>
 				<div className="flex flex-wrap justify-between gap-2">
-					<dt className="text-[var(--kit-fg-muted)]">剩余额度</dt>
+					<dt className="text-[var(--kit-fg-muted)]">{t("member.remaining")}</dt>
 					<dd title={tokenTitle(remaining, unit)} className="font-medium tabular-nums">
 						{metric.limit === null
-							? "不限量"
+							? t("unlimited")
 							: remaining === null
-								? "待确认"
+								? t("member.remainingPending")
 								: `${numberText(remaining, unit)} ${unit}`}
 					</dd>
 				</div>
@@ -104,6 +114,7 @@ const HEATMAP_DAYS = 371;
 
 /** 每日用量卡：成员身份看逐日 Token 增量；年维度热力一次性全量展示。 */
 function ActivityCard() {
+	const { t } = useTranslation("usage");
 	const limits = useUsageLimits({ days: HEATMAP_DAYS });
 	const { quota, error: quotaError, reload: onReloadQuota } = useQuota({ days: HEATMAP_DAYS });
 	const rows = limits.data
@@ -113,14 +124,14 @@ function ActivityCard() {
 			: null;
 	if (limits.error && limits.data === undefined)
 		return (
-			<CardShell title="每日用量情况">
+			<CardShell title={t("member.activityTitle")}>
 				<HeatmapError message={limits.error} onRetry={() => void limits.reload()} />
 			</CardShell>
 		);
 	return (
 		<CardShell
-			title="每日用量情况"
-			hint={rows ? activityRange(rows) : undefined}
+			title={t("member.activityTitle")}
+			hint={rows ? activityRange(rows, t) : undefined}
 			aside={rows ? <HeatLegend /> : undefined}
 		>
 			{rows ? (
@@ -128,7 +139,7 @@ function ActivityCard() {
 			) : limits.data === null && quotaError ? (
 				<HeatmapError message={quotaError} onRetry={() => void onReloadQuota()} />
 			) : (
-				<LoadingBody label="正在加载每日用量…" />
+				<LoadingBody label={t("member.activityLoading")} />
 			)}
 		</CardShell>
 	);
@@ -146,14 +157,17 @@ export function MemberUsageView({
 	error: string | null;
 	onReload: () => void;
 }) {
+	const { t } = useTranslation("usage");
 	return (
 		<div className="h-full min-w-0 overflow-y-auto" data-testid="member-usage-limits">
 			<div className="mx-auto w-full min-w-0 max-w-6xl space-y-6 px-4 py-6 md:px-8 md:py-8">
 				<header className="flex flex-wrap items-start justify-between gap-4">
 					<div className="min-w-0">
-						<h1 className="text-[length:var(--kit-text-display)] font-semibold leading-snug">我的用量</h1>
+						<h1 className="text-[length:var(--kit-text-display)] font-semibold leading-snug">
+							{t("creditsPage.title")}
+						</h1>
 						<p className="mt-2 text-[length:var(--kit-text-label)] leading-relaxed text-[var(--kit-fg-muted)] [overflow-wrap:anywhere]">
-							{view.month} · {formatBeijingTime(view.reset_at)} 重置
+							{t("resetLine", { month: view.month, time: formatBeijingTime(view.reset_at) })}
 						</p>
 					</div>
 					<button
@@ -162,34 +176,37 @@ export function MemberUsageView({
 						onClick={onReload}
 						className="min-h-10 shrink-0 rounded-[var(--kit-radius-sm)] border border-[var(--kit-border)] bg-[var(--kit-surface)] px-4 py-2 text-[length:var(--kit-text-label)] font-medium transition-colors hover:bg-[var(--kit-bg-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] disabled:cursor-not-allowed disabled:opacity-50"
 					>
-						{loading ? "刷新中…" : "刷新用量"}
+						{loading ? t("member.refreshing") : t("member.refresh")}
 					</button>
 				</header>
 				{error && <ErrorState message={error} onRetry={onReload} />}
 				<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
 					<LimitCard
 						metric={view.day_state.tokens}
-						title="每日 Token 用量"
+						title={t("member.dayTitle")}
 						unit="Token"
 						testId="limit-daily-tokens"
 						period="day"
-						hint={`${formatUsageDayStart(view.day_state.day)} 起 · ${formatBeijingTime(view.day_state.reset_at)} 重置`}
+						hint={t("member.dayHint", {
+							start: formatUsageDayStart(view.day_state.day),
+							reset: formatBeijingTime(view.day_state.reset_at),
+						})}
 					/>
-					<LimitCard metric={view.tokens} title="每月 Token 用量" unit="Token" testId="limit-tokens" />
-					<LimitCard metric={view.active_seconds} title="每月执行时长" unit="秒" testId="limit-active_seconds" />
+					<LimitCard metric={view.tokens} title={t("member.monthTokenTitle")} unit="Token" testId="limit-tokens" />
+					<LimitCard
+						metric={view.active_seconds}
+						title={t("member.durationTitle")}
+						unit={t("member.unitSeconds")}
+						testId="limit-active_seconds"
+					/>
 				</div>
 				<ActivityCard />
 				<div className="space-y-2 rounded-[var(--kit-radius)] bg-[var(--kit-bg-subtle)] p-4 text-[length:var(--kit-text-caption)] leading-relaxed text-[var(--kit-fg-muted)] [overflow-wrap:anywhere] md:p-5">
-					<p>Token 按输入与输出之和计算；执行时长不含会话闲置时间。</p>
-					<p>
-						自 {formatBeijingTime(view.accounting_started_at)} 起记录新受理执行的用量增量，
-						按该轮开始所属的计量月归属，不回填历史用量；延迟上报可能归入后续月份。
-					</p>
-					<p>
-						每日与每月额度独立计算；任一启用的指标达到限额后，后续发送会被拒绝。正在执行的一轮不会强制停止，可能超出限额。
-					</p>
-					<p>用量依赖采集结果，并非费用账单。用量待确认时，受限指标确认前暂不能继续发送；调整额度请联系管理员。</p>
-					{view.refreshed_at && <p>最近采集：{formatBeijingTime(view.refreshed_at)}</p>}
+					<p>{t("member.noteCompute")}</p>
+					<p>{t("member.noteSince", { start: formatBeijingTime(view.accounting_started_at) })}</p>
+					<p>{t("member.noteLimits")}</p>
+					<p>{t("member.noteCollection")}</p>
+					{view.refreshed_at && <p>{t("member.lastCollected", { time: formatBeijingTime(view.refreshed_at) })}</p>}
 				</div>
 			</div>
 		</div>

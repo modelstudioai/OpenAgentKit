@@ -539,6 +539,9 @@ Kit Server → KitClient → createKitChatProvider ─────────�
 - 体验页的 `src/lib/host.ts` 读取注入的宿主能力；能力缺失时回退浏览器实现。
   主题偏好优先采用宿主注入值，为 null 时继续读取浏览器暗色偏好；文件下载优先调用宿主
   `saveFile`，不支持时统一走 `saveBlobInBrowser`，不在业务组件重写对象 URL 下载逻辑。
+- 体验页在发送这一用户手势内按需申请浏览器通知权限；当前打开会话由运行态进入 idle 后
+  通过 Web Notification 提醒，点击通知聚焦页面。权限未授予、API 不可用或展示失败时静默
+  降级，不阻塞发送与会话状态；通知不进入 SDK、协议或服务端持久化。
 
 ## 安全边界
 

@@ -1,5 +1,7 @@
 import { ConfirmDialog } from "@openagentpack/kit-chat-ui";
+import i18n from "i18next";
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface ExitGuard {
 	requestExit: (exit: () => void) => void;
@@ -9,6 +11,7 @@ const Context = createContext<ExitGuard | null>(null);
 
 /** 菜单与编辑返回共用确认；确认后才卸载页面并触发既有批次清理。 */
 export function TemplateExitConfirmationProvider({ children }: { children: ReactNode }) {
+	const { t } = useTranslation("templates");
 	const hasUnpublished = useRef(false);
 	const [pendingExit, setPendingExit] = useState<(() => void) | null>(null);
 	const guard = useMemo<ExitGuard>(
@@ -28,9 +31,9 @@ export function TemplateExitConfirmationProvider({ children }: { children: React
 			{children}
 			{pendingExit ? (
 				<ConfirmDialog
-					title="确认退出"
-					body="退出后未发布的内容将被清空，是否确认退出？"
-					confirmLabel="确认退出"
+					title={t("exit.title")}
+					body={t("exit.body")}
+					confirmLabel={t("exit.confirm")}
 					onCancel={() => setPendingExit(null)}
 					onConfirm={() => {
 						setPendingExit(null);
@@ -44,7 +47,7 @@ export function TemplateExitConfirmationProvider({ children }: { children: React
 
 export function useTemplateExitConfirmation() {
 	const guard = useContext(Context);
-	if (!guard) throw new Error("缺少模版退出确认上下文");
+	if (!guard) throw new Error(i18n.t("runtime.missingTemplateExitContext"));
 	return guard;
 }
 

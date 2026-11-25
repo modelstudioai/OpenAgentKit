@@ -1,7 +1,19 @@
 import type { SessionSummary } from "@openagentkit/sdk/protocol";
-import { type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	createContext,
+	type ReactNode,
+	type RefObject,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import { format, resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
 import { SessionList } from "../session-list/index.tsx";
 import { ErrorState } from "../states/index.ts";
+import sessionSidebarStrings, { type SessionSidebarStrings } from "./strings.ts";
 
 /** 选中高亮与分组自动展开的归属分区：同一会话会同时出现在「智能体」与「最近」两个分区。 */
 export type SessionSidebarSection = "groups" | "recent";
@@ -83,11 +95,17 @@ export interface SessionSidebarProps {
 	/** 检索结果分组头的展示名解析；不传用 slug。 */
 	agentName?: (slug: string) => string;
 	className?: string;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<SessionSidebarStrings>;
 }
 
 const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]";
 const HOVER_ROW =
 	"transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none hover:bg-[var(--kit-nav-active)]";
+
+/** 内部词典下传：根组件解析后放 context，叶子直接读；未走根组件时回落 zh-CN。 */
+const SessionStringsContext = createContext<SessionSidebarStrings>(sessionSidebarStrings["zh-CN"]);
+const useSessionStrings = () => useContext(SessionStringsContext);
 
 /** 分组行首的字符徽标：Agent 没有头像资产，取展示名首字符做轻量身份标记。 */
 function GroupAvatar({ name }: { name: string }) {
@@ -206,14 +224,16 @@ function PageStatus({
 	empty: boolean;
 	searching: boolean;
 }) {
+	const strings = useSessionStrings();
 	const className = "px-2 py-2 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]";
 	if (page.loading || page.loadingMore)
 		return (
 			<p role="status" className={className}>
-				{page.loadingMore ? "正在加载更多会话…" : `正在加载${title}…`}
+				{page.loadingMore ? strings.loadingMore : format(strings.loadingTitle, { title })}
 			</p>
 		);
-	if (!page.error && empty) return <p className={className}>{searching ? "已加载会话中无匹配项" : `暂无${title}`}</p>;
+	if (!page.error && empty)
+		return <p className={className}>{searching ? strings.noMatchLoaded : format(strings.emptyTitle, { title })}</p>;
 	return null;
 }
 
@@ -239,6 +259,7 @@ function DirectoryPageList({
 	scrollRoot: RefObject<HTMLDivElement | null>;
 	list: DirectoryListProps;
 }) {
+	const strings = useSessionStrings();
 	const endRef = useRef<HTMLDivElement | null>(null);
 	useLoadOnScroll(
 		scrollRoot,
@@ -262,7 +283,7 @@ function DirectoryPageList({
 						onClick={() => page.onLoadMore?.()}
 						className="flex w-full cursor-pointer items-center justify-center rounded-[var(--kit-radius-sm)] px-2 py-2 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)] transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none hover:bg-[var(--kit-nav-active)] hover:text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] disabled:cursor-wait disabled:opacity-50"
 					>
-						加载更多会话
+						{strings.loadMore}
 					</button>
 				) : null}
 			</div>
@@ -303,9 +324,12 @@ function SearchResults({
 		return [...byAgent.entries()];
 	}, [search.sessions]);
 	const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+	const strings = useSessionStrings();
 	return (
 		<div data-testid="session-search-results">
-			<p className="px-2 pb-1 text-[length:var(--kit-text-caption)] font-medium text-[var(--kit-fg-muted)]">全部会话</p>
+			<p className="px-2 pb-1 text-[length:var(--kit-text-caption)] font-medium text-[var(--kit-fg-muted)]">
+				{strings.allSessions}
+			</p>
 			{groups.map(([slug, sessions]) => (
 				<SectionToggle
 					key={slug}
@@ -332,7 +356,7 @@ function SearchResults({
 				>
 					<SessionList
 						variant="workspace"
-						ariaLabel={`搜索结果：${agentName(slug)}`}
+						ariaLabel={format(strings.searchResultsAria, { name: agentName(slug) })}
 						sessions={sessions}
 						activeId={activeId}
 						activeStatus={activeStatus}
@@ -343,11 +367,11 @@ function SearchResults({
 			{search.error ? <ErrorState message={search.error} onRetry={search.onRetry} /> : null}
 			{search.loading || search.loadingMore ? (
 				<p role="status" className="px-2 py-2 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
-					{search.loadingMore ? "正在加载更多会话…" : "正在加载会话…"}
+					{search.loadingMore ? strings.loadingMore : strings.loadingSessions}
 				</p>
 			) : null}
 			{!search.error && !search.loading && groups.length === 0 ? (
-				<p className="px-2 py-2 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">没有匹配的会话</p>
+				<p className="px-2 py-2 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">{strings.noMatch}</p>
 			) : null}
 			<div ref={endRef}>
 				{search.hasMore && !search.error ? (
@@ -358,7 +382,7 @@ function SearchResults({
 						onClick={() => search.onLoadMore?.()}
 						className="flex w-full cursor-pointer items-center justify-center rounded-[var(--kit-radius-sm)] px-2 py-2 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)] transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none hover:bg-[var(--kit-nav-active)] hover:text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] disabled:cursor-wait disabled:opacity-50"
 					>
-						加载更多会话
+						{strings.loadMore}
 					</button>
 				) : null}
 			</div>
@@ -386,6 +410,7 @@ function AgentGroup({
 	onNewChat?: (groupId: string) => void;
 	list: DirectoryListProps;
 }) {
+	const strings = useSessionStrings();
 	useEffect(() => {
 		if (open) group.onLoad?.();
 	}, [open, group.onLoad]);
@@ -404,7 +429,7 @@ function AgentGroup({
 					<span className="min-w-0 flex-1 truncate text-[length:var(--kit-text-label)] font-medium">{group.name}</span>
 					{group.initialized ? (
 						<span
-							title={`已加载 ${group.sessions.length} 条会话`}
+							title={format(strings.loadedCount, { count: group.sessions.length })}
 							className="shrink-0 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)] tabular-nums"
 						>
 							{group.sessions.length}
@@ -416,8 +441,8 @@ function AgentGroup({
 					<button
 						type="button"
 						data-testid={`sidebar-group-new-${group.id}`}
-						aria-label={`在${group.name}中新建会话`}
-						title={`在${group.name}中新建会话`}
+						aria-label={format(strings.newInGroup, { name: group.name })}
+						title={format(strings.newInGroup, { name: group.name })}
 						onClick={() => onNewChat(group.id)}
 						className={`mr-0.5 grid size-6 shrink-0 cursor-pointer place-items-center rounded-[var(--kit-radius-xs)] text-[var(--kit-fg-muted)] transition-[opacity,color] duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none hover:text-[var(--kit-fg)] ${FOCUS_RING} [@media(hover:hover)_and_(pointer:fine)_and_(not_(any-pointer:coarse))]:opacity-0 group-hover/head:opacity-100 group-focus-within/head:opacity-100`}
 					>
@@ -442,8 +467,8 @@ function AgentGroup({
 				<div inert={!open || undefined} className="ml-5 min-h-0 overflow-hidden">
 					<DirectoryPageList
 						page={group}
-						title="会话"
-						ariaLabel={`会话列表：${group.name}`}
+						title={strings.sessionsTitle}
+						ariaLabel={format(strings.listAria, { name: group.name })}
 						testId={`group-sessions-${group.id}`}
 						sessions={filter(group.sessions)}
 						enabled={open}
@@ -467,19 +492,24 @@ function DirectoryEmptyState({
 	sessionsEmpty: boolean;
 	noMatch: boolean;
 }) {
+	const strings = useSessionStrings();
 	if (sessionsEmpty)
 		return loading ? (
 			<p role="status" className="px-2 py-4 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
-				正在加载会话…
+				{strings.loadingSessions}
 			</p>
 		) : (
 			<div className="px-2 py-4 text-[length:var(--kit-text-caption)] leading-relaxed text-[var(--kit-fg-muted)]">
-				<p>还没有会话记录</p>
-				<p className="mt-1">发送第一条消息后，会话会显示在这里。</p>
+				<p>{strings.firstUse}</p>
+				<p className="mt-1">{strings.firstUseHint}</p>
 			</div>
 		);
 	if (noMatch)
-		return <p className="px-2 py-4 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">无匹配会话</p>;
+		return (
+			<p className="px-2 py-4 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
+				{strings.noMatchShort}
+			</p>
+		);
 	return null;
 }
 
@@ -508,8 +538,9 @@ function GroupsSection({
 		if (!activeGroupId) return;
 		setOpenGroups((prev) => (prev.has(activeGroupId) ? prev : new Set(prev).add(activeGroupId)));
 	}, [activeGroupId]);
+	const strings = useSessionStrings();
 	return (
-		<SectionToggle label="智能体" open={open} onToggle={() => setOpen((value) => !value)}>
+		<SectionToggle label={strings.agents} open={open} onToggle={() => setOpen((value) => !value)}>
 			{groups.map((group) => (
 				<AgentGroup
 					key={group.id}
@@ -567,6 +598,7 @@ function DirectoryBody({
 	recentOpen: boolean;
 	onRecentToggle: () => void;
 }) {
+	const strings = useSessionStrings();
 	const filter = useCallback(
 		(rows: SessionSummary[]) => {
 			const q = keyword.trim().toLowerCase();
@@ -606,11 +638,11 @@ function DirectoryBody({
 					list={list}
 				/>
 			)}
-			<SectionToggle label="最近" open={recentOpen} onToggle={onRecentToggle}>
+			<SectionToggle label={strings.recent} open={recentOpen} onToggle={onRecentToggle}>
 				<DirectoryPageList
 					page={recent}
-					title="最近会话"
-					ariaLabel="最近会话"
+					title={strings.recentSessions}
+					ariaLabel={strings.recentSessions}
 					testId="recent-sessions"
 					sessions={filteredRecent}
 					enabled={recentOpen}
@@ -650,7 +682,9 @@ export function SessionSidebar({
 	search,
 	agentName,
 	className,
+	strings: stringsOverride,
 }: SessionSidebarProps) {
+	const strings = resolveStrings(sessionSidebarStrings, useKitLocale(), stringsOverride);
 	const scrollRoot = useRef<HTMLDivElement | null>(null);
 	const [recentOpen, setRecentOpen] = useState(true);
 	const keyword = searchInput;
@@ -683,86 +717,92 @@ export function SessionSidebar({
 	};
 
 	return (
-		<div className={`flex min-h-0 flex-1 flex-col ${className ?? ""}`}>
-			{/* pb-3 是「搜索 → 智能体」的 12px 分区间距：分区间距统一由前一内容的收尾负责。 */}
-			<div className="shrink-0 px-3 pt-1.5 pb-3">
-				<div className="flex items-center gap-2 rounded-[var(--kit-radius-sm)] border border-[var(--kit-border-subtle)] bg-[var(--kit-surface)] px-2.5 py-1.5 transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none focus-within:border-[var(--kit-border)]">
-					<svg
-						aria-hidden="true"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						strokeWidth="1.5"
-						className="size-3.5 shrink-0 text-[var(--kit-fg-muted)]"
-					>
-						<circle cx="10.5" cy="10.5" r="6.5" />
-						<path strokeLinecap="round" d="m16 16 4 4" />
-					</svg>
-					<input
-						type="search"
-						data-testid="sidebar-search"
-						value={keyword}
-						onChange={(event) => onSearchInput(event.target.value)}
-						placeholder="搜索会话"
-						aria-label="搜索会话"
-						className="min-w-0 flex-1 border-none bg-transparent text-[length:var(--kit-text-label)] outline-none placeholder:text-[var(--kit-fg-muted)]"
-					/>
-				</div>
-			</div>
-			<div ref={scrollRoot} data-testid="session-directory-scroll" className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
-				{searching && search ? (
-					<SearchResults
-						search={search}
-						activeId={activeId}
-						activeStatus={activeStatus}
-						agentName={agentName ?? ((slug: string) => slug)}
-						onSelect={(session) => onSelect(session, "groups")}
-						scrollRoot={scrollRoot}
-					/>
-				) : (
-					<DirectoryBody
-						groups={groups}
-						recent={recent}
-						loading={loading}
-						error={error}
-						onReload={onReload}
-						activeGroupId={activeGroupId ?? null}
-						keyword={keyword}
-						filtering={filtering}
-						scrollRoot={scrollRoot}
-						onNewChat={onNewChat}
-						list={list}
-						recentList={recentList}
-						recentOpen={recentOpen}
-						onRecentToggle={() => setRecentOpen((value) => !value)}
-					/>
-				)}
-			</div>
-			{actionError ? (
-				<div
-					role="alert"
-					className="flex shrink-0 items-start gap-2 border-t border-[var(--kit-border-subtle)] px-3 py-2 text-[length:var(--kit-text-caption)] leading-relaxed [overflow-wrap:anywhere]"
-				>
-					<p className="min-w-0 flex-1 text-[var(--kit-danger)]">{actionError}</p>
-					<button
-						type="button"
-						aria-label="关闭错误提示"
-						onClick={onDismissError}
-						className={`grid size-5 shrink-0 place-items-center rounded-[var(--kit-radius-xs)] text-[var(--kit-fg-muted)] transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none hover:bg-[var(--kit-nav-active)] hover:text-[var(--kit-fg)] ${FOCUS_RING}`}
-					>
+		<SessionStringsContext.Provider value={strings}>
+			<div className={`flex min-h-0 flex-1 flex-col ${className ?? ""}`}>
+				{/* pb-3 是「搜索 → 智能体」的 12px 分区间距：分区间距统一由前一内容的收尾负责。 */}
+				<div className="shrink-0 px-3 pt-1.5 pb-3">
+					<div className="flex items-center gap-2 rounded-[var(--kit-radius-sm)] border border-[var(--kit-border-subtle)] bg-[var(--kit-surface)] px-2.5 py-1.5 transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none focus-within:border-[var(--kit-border)]">
 						<svg
 							aria-hidden="true"
 							viewBox="0 0 24 24"
 							fill="none"
 							stroke="currentColor"
 							strokeWidth="1.5"
-							className="size-3"
+							className="size-3.5 shrink-0 text-[var(--kit-fg-muted)]"
 						>
-							<path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+							<circle cx="10.5" cy="10.5" r="6.5" />
+							<path strokeLinecap="round" d="m16 16 4 4" />
 						</svg>
-					</button>
+						<input
+							type="search"
+							data-testid="sidebar-search"
+							value={keyword}
+							onChange={(event) => onSearchInput(event.target.value)}
+							placeholder={strings.searchPlaceholder}
+							aria-label={strings.searchPlaceholder}
+							className="min-w-0 flex-1 border-none bg-transparent text-[length:var(--kit-text-label)] outline-none placeholder:text-[var(--kit-fg-muted)]"
+						/>
+					</div>
 				</div>
-			) : null}
-		</div>
+				<div
+					ref={scrollRoot}
+					data-testid="session-directory-scroll"
+					className="min-h-0 flex-1 overflow-y-auto px-3 pb-3"
+				>
+					{searching && search ? (
+						<SearchResults
+							search={search}
+							activeId={activeId}
+							activeStatus={activeStatus}
+							agentName={agentName ?? ((slug: string) => slug)}
+							onSelect={(session) => onSelect(session, "groups")}
+							scrollRoot={scrollRoot}
+						/>
+					) : (
+						<DirectoryBody
+							groups={groups}
+							recent={recent}
+							loading={loading}
+							error={error}
+							onReload={onReload}
+							activeGroupId={activeGroupId ?? null}
+							keyword={keyword}
+							filtering={filtering}
+							scrollRoot={scrollRoot}
+							onNewChat={onNewChat}
+							list={list}
+							recentList={recentList}
+							recentOpen={recentOpen}
+							onRecentToggle={() => setRecentOpen((value) => !value)}
+						/>
+					)}
+				</div>
+				{actionError ? (
+					<div
+						role="alert"
+						className="flex shrink-0 items-start gap-2 border-t border-[var(--kit-border-subtle)] px-3 py-2 text-[length:var(--kit-text-caption)] leading-relaxed [overflow-wrap:anywhere]"
+					>
+						<p className="min-w-0 flex-1 text-[var(--kit-danger)]">{actionError}</p>
+						<button
+							type="button"
+							aria-label={strings.closeError}
+							onClick={onDismissError}
+							className={`grid size-5 shrink-0 place-items-center rounded-[var(--kit-radius-xs)] text-[var(--kit-fg-muted)] transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none hover:bg-[var(--kit-nav-active)] hover:text-[var(--kit-fg)] ${FOCUS_RING}`}
+						>
+							<svg
+								aria-hidden="true"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="1.5"
+								className="size-3"
+							>
+								<path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+							</svg>
+						</button>
+					</div>
+				) : null}
+			</div>
+		</SessionStringsContext.Provider>
 	);
 }

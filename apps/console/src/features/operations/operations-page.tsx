@@ -1,21 +1,31 @@
 import type { AuditLogView } from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Button, Empty, Result, Table } from "antd";
+import type { TFunction } from "i18next";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { adminApi } from "../../lib/api.ts";
 
-const actionLabels: Record<string, string> = {
-	"templates.create": "新建智能体",
-	"templates.update": "编辑智能体",
-	"templates.delete": "删除智能体",
-	"templates.listing": "上架智能体",
-	"catalog.create": "新建智能体",
-	"catalog.update": "编辑智能体",
-	"catalog.delete": "删除智能体",
-	"catalog.list": "上架智能体",
-	"catalog.unlist": "下架智能体",
-	"branding.update": "更新品牌配置",
+const actionLabels: Record<
+	string,
+	| "actions.create"
+	| "actions.update"
+	| "actions.delete"
+	| "actions.listing"
+	| "actions.unlist"
+	| "actions.brandingUpdate"
+> = {
+	"templates.create": "actions.create",
+	"templates.update": "actions.update",
+	"templates.delete": "actions.delete",
+	"templates.listing": "actions.listing",
+	"catalog.create": "actions.create",
+	"catalog.update": "actions.update",
+	"catalog.delete": "actions.delete",
+	"catalog.list": "actions.listing",
+	"catalog.unlist": "actions.unlist",
+	"branding.update": "actions.brandingUpdate",
 };
 
 function detailOf(row: AuditLogView): { name?: string; version?: number } {
@@ -31,68 +41,76 @@ function detailOf(row: AuditLogView): { name?: string; version?: number } {
 	}
 }
 
-const columns: TableColumnsType<AuditLogView> = [
-	{
-		title: "操作时间",
-		dataIndex: "at",
-		width: 190,
-		render: (at: string) => <time dateTime={at}>{new Date(at).toLocaleString("zh-CN", { hour12: false })}</time>,
-	},
-	{ title: "操作", dataIndex: "action", width: 160, render: (action: string) => actionLabels[action] ?? action },
-	{
-		title: "操作对象",
-		key: "target",
-		width: 280,
-		render: (_, row) => {
-			const detail = detailOf(row);
-			return (
-				<div className="break-words">
-					{detail.name ? <p>{detail.name}</p> : null}
-					<p className="text-xs text-neutral-500">{row.target ?? "全局配置"}</p>
-					{detail.version !== undefined ? <p className="text-xs text-neutral-500">配置版本 v{detail.version}</p> : null}
-				</div>
-			);
+function columns(t: TFunction<"operations">): TableColumnsType<AuditLogView> {
+	return [
+		{
+			title: t("columns.at"),
+			dataIndex: "at",
+			width: 190,
+			render: (at: string) => <time dateTime={at}>{new Date(at).toLocaleString("zh-CN", { hour12: false })}</time>,
 		},
-	},
-];
+		{
+			title: t("columns.action"),
+			dataIndex: "action",
+			width: 160,
+			render: (action: string) => (action in actionLabels ? t(actionLabels[action]!) : action),
+		},
+		{
+			title: t("columns.target"),
+			key: "target",
+			width: 280,
+			render: (_, row) => {
+				const detail = detailOf(row);
+				return (
+					<div className="break-words">
+						{detail.name ? <p>{detail.name}</p> : null}
+						<p className="text-xs text-neutral-500">{row.target ?? t("globalTarget")}</p>
+						{detail.version !== undefined ? (
+							<p className="text-xs text-neutral-500">{t("version", { version: detail.version })}</p>
+						) : null}
+					</div>
+				);
+			},
+		},
+	];
+}
 
 export function OperationsPage() {
+	const { t } = useTranslation("operations");
 	const [page, setPage] = useState(1);
 	const pageSize = 20;
 	const logs = useAdminQuery(`audit:${page}`, (signal) =>
 		adminApi.audit.list({ limit: pageSize, offset: (page - 1) * pageSize }, signal),
 	);
 	return (
-		<section aria-label="操作日志" className="space-y-4">
-			<p className="text-sm text-neutral-500">
-				仅记录当前管理员对智能体的新建、编辑、删除、上架、下架及员工端品牌配置的修改。
-			</p>
+		<section aria-label={t("title")} className="space-y-4">
+			<p className="text-sm text-neutral-500">{t("note")}</p>
 			{logs.error ? (
 				<Result
 					status="error"
-					title="操作日志加载失败"
+					title={t("loadFailed")}
 					subTitle={logs.error}
 					extra={
-						<Button aria-label="重试" onClick={() => void logs.refresh()}>
-							重试
+						<Button aria-label={t("retry")} onClick={() => void logs.refresh()}>
+							{t("retry")}
 						</Button>
 					}
 				/>
 			) : (
 				<Table<AuditLogView>
 					rowKey="id"
-					columns={columns}
+					columns={columns(t)}
 					dataSource={logs.data?.data ?? []}
 					loading={logs.loading || !logs.data}
 					scroll={{ x: 630 }}
-					locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无操作记录" /> }}
+					locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("empty")} /> }}
 					pagination={{
 						current: page,
 						pageSize,
 						total: logs.data?.total ?? 0,
 						showSizeChanger: false,
 						hideOnSinglePage: true,
-						showTotal: (total) => `共 ${total} 条操作记录`,
+						showTotal: (total) => t("total", { total }),
 						onChange: setPage,
 					}}
 				/>

@@ -1,6 +1,8 @@
 import { MAX_MEMORY_ENTRIES, MemoryEntrySchema } from "@openagentkit/sdk/protocol";
 import { Button, Input, Modal } from "antd";
 import { useId, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { localizedValidationMessage } from "../../lib/validation-message.ts";
 import styles from "./template-forms.module.less";
 import type { TemplateMemoryEntry } from "./template-memory-draft.ts";
 import { TemplateMemoryEntryList } from "./template-memory-entry-list.tsx";
@@ -16,6 +18,7 @@ function MemoryEntryDialog({
 	onSave: (entry: TemplateMemoryEntry) => void;
 	onClose: () => void;
 }) {
+	const { t } = useTranslation("templates");
 	const [key, setKey] = useState(initial?.key ?? "");
 	const [content, setContent] = useState(initial?.content ?? "");
 	const [error, setError] = useState<string | null>(null);
@@ -23,11 +26,11 @@ function MemoryEntryDialog({
 	function save() {
 		const parsed = MemoryEntrySchema.safeParse({ key, content });
 		if (!parsed.success) {
-			setError(parsed.error.issues[0]?.message ?? "请检查条目配置");
+			setError(parsed.error.issues[0] ? localizedValidationMessage(parsed.error.issues[0]) : t("memory.entries.check"));
 			return;
 		}
 		if (siblings.some((entry) => entry.id !== initial?.id && entry.key === parsed.data.key)) {
-			setError("条目路径不能重复");
+			setError(t("memory.entries.duplicate"));
 			return;
 		}
 		onSave({ ...parsed.data, id: initial?.id ?? crypto.randomUUID() });
@@ -38,23 +41,23 @@ function MemoryEntryDialog({
 			open
 			centered
 			width={672}
-			title={initial ? "编辑记忆条目" : "新增记忆条目"}
+			title={initial ? t("memory.entries.editTitle") : t("memory.entries.addTitle")}
 			onCancel={onClose}
 			styles={{ body: { maxHeight: "calc(100dvh - 260px)", overflowY: "auto" } }}
 			footer={
 				<div className={styles.drawerFooter}>
-					<Button onClick={onClose}>取消</Button>
+					<Button onClick={onClose}>{t("cancel")}</Button>
 					<Button type="primary" onClick={save}>
-						{initial ? "保存" : "添加"}
+						{initial ? t("memory.entries.save") : t("memory.entries.add")}
 					</Button>
 				</div>
 			}
 		>
 			<div className={styles.dialogBody}>
-				<p className={styles.metaText}>条目保存在当前表单，下一步随新记忆库一起发布。</p>
+				<p className={styles.metaText}>{t("memory.entries.hint")}</p>
 				<div className={styles.stack2}>
 					<label htmlFor={`${prefix}-key`}>
-						条目路径{" "}
+						{t("memory.entries.path")}{" "}
 						<span aria-hidden="true" className={styles.errorColor}>
 							*
 						</span>
@@ -64,11 +67,11 @@ function MemoryEntryDialog({
 						value={key}
 						onChange={(event) => setKey(event.target.value)}
 						maxLength={1024}
-						placeholder="例如：project/guide.md"
+						placeholder={t("memory.entries.pathPlaceholder")}
 					/>
 				</div>
 				<div className={styles.stack2}>
-					<label htmlFor={`${prefix}-content`}>正文</label>
+					<label htmlFor={`${prefix}-content`}>{t("memory.entries.content")}</label>
 					<Input.TextArea
 						id={`${prefix}-content`}
 						rows={10}
@@ -98,6 +101,7 @@ export function TemplateMemoryEntries({
 	disabled: boolean;
 	onEditingChange: (editing: boolean) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const [editor, setEditor] = useState<{ initial?: TemplateMemoryEntry; opener: HTMLButtonElement } | null>(null);
 	function edit(opener: HTMLElement, initial?: TemplateMemoryEntry) {
 		// antd Button 只把 currentTarget 声明为 HTMLElement，实际渲染是 <button>。
@@ -105,15 +109,15 @@ export function TemplateMemoryEntries({
 		onEditingChange(true);
 	}
 	return (
-		<section aria-label="记忆条目" className={styles.blockStack}>
+		<section aria-label={t("memory.entries.listAria")} className={styles.blockStack}>
 			<div className={styles.rowBetween}>
-				<h4 className={styles.sectionLabel}>记忆条目（{value.length}）</h4>
+				<h4 className={styles.sectionLabel}>{t("memory.entries.section", { count: value.length })}</h4>
 				<Button
 					size="small"
 					disabled={disabled || value.length >= MAX_MEMORY_ENTRIES}
 					onClick={(event) => edit(event.currentTarget)}
 				>
-					新增条目
+					{t("memory.entries.addEntry")}
 				</Button>
 			</div>
 			<TemplateMemoryEntryList
@@ -125,20 +129,20 @@ export function TemplateMemoryEntries({
 							size="small"
 							className={styles.linkButton}
 							disabled={disabled}
-							aria-label={`编辑条目 ${entry.key}`}
+							aria-label={t("memory.entries.editAria", { key: entry.key })}
 							onClick={(event) => edit(event.currentTarget, entry)}
 						>
-							编辑
+							{t("memory.entries.edit")}
 						</Button>
 						<Button
 							type="link"
 							size="small"
 							className={styles.linkButton}
 							disabled={disabled}
-							aria-label={`删除条目 ${entry.key}`}
+							aria-label={t("memory.entries.removeAria", { key: entry.key })}
 							onClick={() => onChange(value.filter((item) => item.id !== entry.id))}
 						>
-							删除
+							{t("memory.entries.remove")}
 						</Button>
 					</>
 				)}

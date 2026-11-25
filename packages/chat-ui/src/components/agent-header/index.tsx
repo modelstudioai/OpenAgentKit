@@ -1,5 +1,7 @@
 import type { AgentSummary } from "@openagentkit/sdk/protocol";
 import type { ReactNode } from "react";
+import { resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
+import agentHeaderStrings, { type AgentHeaderStrings } from "./strings.ts";
 
 export interface AgentHeaderProps {
 	agent: AgentSummary | null;
@@ -13,6 +15,8 @@ export interface AgentHeaderProps {
 	/** 显式传入时替代默认的新会话按钮；传 null 可隐藏操作区。 */
 	actions?: ReactNode;
 	onNewSession?: () => void;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<AgentHeaderStrings>;
 }
 
 /** 图片地址使用 img，其余图标值（如 emoji）按文本展示。 */
@@ -40,8 +44,9 @@ function AgentTitle({
 	agents,
 	onPickAgent,
 	compact,
-}: Pick<AgentHeaderProps, "agent" | "agents" | "onPickAgent" | "compact">) {
-	const name = agent?.display_name ?? "未选择 Agent";
+	strings,
+}: Pick<AgentHeaderProps, "agent" | "agents" | "onPickAgent" | "compact"> & { strings: AgentHeaderStrings }) {
+	const name = agent?.display_name ?? strings.noAgent;
 	if (!agents?.length || !onPickAgent) {
 		return (
 			<strong
@@ -55,7 +60,7 @@ function AgentTitle({
 	return (
 		<div className={compact ? "relative inline-flex max-w-full align-middle" : "contents"}>
 			<select
-				aria-label="切换 Agent"
+				aria-label={strings.switchAgent}
 				title={name}
 				value={agent?.slug ?? ""}
 				onChange={(event) => onPickAgent(event.target.value)}
@@ -93,7 +98,9 @@ export function AgentHeader({
 	compact = false,
 	actions,
 	onNewSession,
+	strings: stringsOverride,
 }: AgentHeaderProps) {
+	const strings = resolveStrings(agentHeaderStrings, useKitLocale(), stringsOverride);
 	const actionContent =
 		actions !== undefined ? (
 			actions
@@ -103,7 +110,7 @@ export function AgentHeader({
 				onClick={onNewSession}
 				className="rounded-[var(--kit-radius-sm)] border border-[var(--kit-border)] bg-[var(--kit-bg-subtle)] px-3 py-1.5 text-[length:var(--kit-text-label)]"
 			>
-				新会话
+				{strings.newSession}
 			</button>
 		) : null;
 	return (
@@ -113,7 +120,7 @@ export function AgentHeader({
 			{compact && leading ? <div className="flex shrink-0 items-center">{leading}</div> : leading}
 			<AgentIcon agent={agent} compact={compact} />
 			<div className="min-w-0 flex-1">
-				<AgentTitle agent={agent} agents={agents} onPickAgent={onPickAgent} compact={compact} />
+				<AgentTitle agent={agent} agents={agents} onPickAgent={onPickAgent} compact={compact} strings={strings} />
 				{!compact ? (
 					<div className="truncate text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
 						{agent?.description ?? ""}

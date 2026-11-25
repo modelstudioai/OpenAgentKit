@@ -5,6 +5,7 @@ import {
 	type RemoteAgentVersionDetail,
 	RemoteSkillReferenceSchema,
 } from "@openagentkit/sdk/protocol";
+import i18n from "i18next";
 import { configObject } from "./agent-version-configuration.ts";
 import type { AgentCapabilities } from "./template-agent-capability-picker.tsx";
 import {
@@ -68,10 +69,11 @@ export function agentFormDraftChanged(initial: AgentFormDraft, draft: AgentFormD
 }
 
 function builtinNames(configs: Record<string, unknown>[], defaultEnabled: boolean, path: string) {
+	const t = i18n.getFixedT(null, "templates");
 	const names = new Set<string>(defaultEnabled ? BUILTIN_TOOLS : []);
 	for (const [index, tool] of configs.entries()) {
 		const name = text(tool.name);
-		if (!name) rejectAgentCopy(`${path}.configs[${index}].name`, "工具名称缺失，无法复制此工具。");
+		if (!name) rejectAgentCopy(`${path}.configs[${index}].name`, t("agent.copy.toolNameMissing"));
 		parseAgentCopy(
 			ProjectAgentCreateInputSchema.shape.tools.unwrap().shape.builtin.element.safeParse(name),
 			`${path}.configs[${index}].name`,
@@ -105,6 +107,7 @@ function builtinConfiguration(
 }
 
 function toolsFromConfiguration(value: unknown): ProjectAgentCreateInput["tools"] {
+	const t = i18n.getFixedT(null, "templates");
 	if (value == null) return undefined;
 	if (!Array.isArray(value)) return parseAgentCopy(ProjectAgentCreateInputSchema.shape.tools.safeParse(value), "tools");
 	const result: NonNullable<ProjectAgentCreateInput["tools"]> = { builtin: [], mcp: [] };
@@ -136,7 +139,7 @@ function toolsFromConfiguration(value: unknown): ProjectAgentCreateInput["tools"
 					path,
 				),
 			);
-		} else rejectAgentCopy(`${path}.type`, "当前创建流程不支持此工具类型。");
+		} else rejectAgentCopy(`${path}.type`, t("agent.copy.unsupportedToolType"));
 		// MCP 声明目前只支持启用范围，不能丢弃独立的审批策略。
 		checkCopyPolicy(group, path);
 		checkCopyPolicy(defaults, defaultsPath);
@@ -148,14 +151,14 @@ function toolsFromConfiguration(value: unknown): ProjectAgentCreateInput["tools"
 }
 
 function mcpFromConfiguration(raw: unknown, path: string) {
+	const t = i18n.getFixedT(null, "templates");
 	const entry = configObject(raw);
 	checkCopyPolicy(entry, path);
 	let unsupportedField: string | undefined;
 	if (entry.url) unsupportedField = "url";
 	else if (entry.server_url) unsupportedField = "server_url";
 	else if (entry.type && entry.type !== "official") unsupportedField = "type";
-	if (unsupportedField)
-		rejectAgentCopy(`${path}.${unsupportedField}`, "当前 SDK 创建流程仅支持官方 MCP，无法原样复制此服务。");
+	if (unsupportedField) rejectAgentCopy(`${path}.${unsupportedField}`, t("agent.copy.unsupportedMcp"));
 	return { name: text(entry.name ?? entry.server_code ?? raw), type: "official" as const };
 }
 
@@ -164,6 +167,7 @@ export function createAgentFormDraft(
 	detail?: AgentFormDetail,
 	skillNames: Record<string, string> = {},
 ): { draft: AgentFormDraft; error?: string; issues: AgentCopyIssue[] } {
+	const t = i18n.getFixedT(null, "templates");
 	const config = detail?.configuration ?? {};
 	const model = configObject(config.model);
 	const providerModel = model.bailian;
@@ -185,7 +189,7 @@ export function createAgentFormDraft(
 		...redactedCopyIssues({ name: detail?.name }),
 		...(detail?.redacted_fields ?? []).map((field) => ({
 			field,
-			reason: "字段已脱敏，无法获取完整原值来创建副本。",
+			reason: t("agent.copy.redacted"),
 		})),
 	];
 	const collect = <T>(field: string, read: () => T): T | undefined => {
@@ -193,9 +197,7 @@ export function createAgentFormDraft(
 			return read();
 		} catch (error) {
 			issues.push(
-				...(error instanceof AgentCopyError
-					? error.issues
-					: [{ field, reason: "配置解析失败，无法转换成可编辑字段。" }]),
+				...(error instanceof AgentCopyError ? error.issues : [{ field, reason: t("agent.copy.parseFailed") }]),
 			);
 			return undefined;
 		}
@@ -219,7 +221,7 @@ export function createAgentFormDraft(
 						return entry.version != null;
 					})
 				)
-					rejectAgentCopy("multiagent.agents", "当前 SDK 不支持子 Agent 固定版本，无法完整另存此配置。");
+					rejectAgentCopy("multiagent.agents", t("agent.copy.fixedSubAgentVersion"));
 				return parseAgentCopy(ProjectAgentMultiagentSchema.safeParse(config.multiagent), "multiagent");
 			});
 			if (multiagent) {
@@ -267,7 +269,7 @@ export function createAgentFormDraft(
 	return {
 		draft,
 		issues: uniqueIssues,
-		...(issues.length ? { error: "此版本暂时无法编辑另存，以下配置无法完整复制：" } : {}),
+		...(issues.length ? { error: t("agent.copy.hint") } : {}),
 	};
 }
 

@@ -4,6 +4,8 @@ import {
 	ProjectEnvironmentNetworkingSchema,
 	type RemoteEnvironmentDetail,
 } from "@openagentkit/sdk/protocol";
+import i18n from "i18next";
+import { localizedValidationMessage } from "../../lib/validation-message.ts";
 
 export const ENVIRONMENT_PACKAGE_MANAGERS = ["apt", "npm", "pip", "go", "cargo", "gem"] as const;
 export interface EnvironmentCreateDraft {
@@ -36,12 +38,13 @@ export function createEnvironmentDraft(detail?: RemoteEnvironmentDetail): Enviro
 }
 
 function metadataInput(rows: EnvironmentCreateDraft["metadata"]) {
+	const t = i18n.getFixedT(null, "templates");
 	const metadata = new Map<string, string>();
 	for (const row of rows) {
 		const key = row.key.trim();
 		if (!key && !row.value.trim()) continue;
-		if (!key) throw new Error("请填写元数据键");
-		if (metadata.has(key)) throw new Error("元数据键不可重复");
+		if (!key) throw new Error(t("agent.environment.config.metadataKeyRequired"));
+		if (metadata.has(key)) throw new Error(t("agent.environment.config.metadataDuplicate"));
 		metadata.set(key, row.value.trim());
 	}
 	return metadata;
@@ -58,6 +61,7 @@ function networkingInput(draft: EnvironmentCreateDraft) {
 }
 
 export function environmentFormInput(draft: EnvironmentCreateDraft, revision: string): ProjectEnvironmentCreateInput {
+	const t = i18n.getFixedT(null, "templates");
 	const packages: NonNullable<ProjectEnvironmentCreateInput["packages"]> = {};
 	for (const row of draft.packages) {
 		if (!row.value.trim()) continue;
@@ -74,15 +78,19 @@ export function environmentFormInput(draft: EnvironmentCreateDraft, revision: st
 		...(Object.keys(packages).length ? { packages } : {}),
 		...(metadata.size ? { metadata: Object.fromEntries(metadata) } : {}),
 	});
-	if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "请检查环境配置");
+	if (!parsed.success)
+		throw new Error(
+			parsed.error.issues[0] ? localizedValidationMessage(parsed.error.issues[0]) : t("agent.environment.config.check"),
+		);
 	return parsed.data;
 }
 
 export function environmentValidationError(draft: EnvironmentCreateDraft): string | undefined {
+	const t = i18n.getFixedT(null, "templates");
 	try {
 		environmentFormInput(draft, "draft");
 	} catch (error) {
-		return error instanceof Error ? error.message : "请检查环境配置";
+		return error instanceof Error ? error.message : t("agent.environment.config.check");
 	}
 }
 

@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import {
 	configList,
 	configObject,
@@ -5,21 +6,22 @@ import {
 	versionMcpServers,
 	versionToolkits,
 } from "./agent-version-configuration.ts";
-import { MANAGED_AGENT_MODELS } from "./managed-agent-models.ts";
+import { MANAGED_AGENT_MODELS, managedAgentModelLabel } from "./managed-agent-models.ts";
 import type { AgentFormDetail } from "./template-agent-form-draft.ts";
 
 /** 创建预览与管理列表共用字段顺序及配置投影。 */
 export const AGENT_CONFIGURATION_FIELDS = [
-	{ key: "model", label: "模型" },
-	{ key: "multiagent", label: "Multi-Agent 模式" },
-	{ key: "description", label: "描述" },
-	{ key: "instructions", label: "系统提示词" },
-	{ key: "tools", label: "工具" },
-	{ key: "mcp_servers", label: "MCP 服务器" },
-	{ key: "skills", label: "技能" },
+	{ key: "model", label: "fields.model" },
+	{ key: "multiagent", label: "fields.multiagent" },
+	{ key: "description", label: "fields.description" },
+	{ key: "instructions", label: "fields.instructions" },
+	{ key: "tools", label: "fields.tools" },
+	{ key: "mcp_servers", label: "fields.mcpServers" },
+	{ key: "skills", label: "fields.skills" },
 ] as const;
 
 export function agentConfigurationValues(detail?: AgentFormDetail) {
+	const t = i18n.getFixedT(null, "templates");
 	const config = detail?.configuration ?? {};
 	const fields = configObject(config.model);
 	const provider = fields.bailian;
@@ -27,9 +29,11 @@ export function agentConfigurationValues(detail?: AgentFormDetail) {
 		fields.name ?? fields.id ?? configObject(provider).name ?? configObject(provider).id ?? provider ?? config.model,
 	);
 	const toolkits = versionToolkits(config.tools).filter((group) => group.kind !== "mcp");
+	const managed = MANAGED_AGENT_MODELS.find((option) => option.id === model);
 	return {
-		model: (MANAGED_AGENT_MODELS.find((option) => option.id === model)?.name ?? model) || "未选择",
-		multiagent: configObject(config.multiagent).type === "coordinator" ? "已开启" : "未开启",
+		model: (managed ? managedAgentModelLabel(managed) : model) || t("common.notSelected"),
+		multiagent:
+			configObject(config.multiagent).type === "coordinator" ? t("configuration.enabled") : t("configuration.disabled"),
 		description: detail?.description || "—",
 		instructions: config.instructions || "—",
 		tools: [
@@ -55,6 +59,9 @@ export function agentConfigurationValues(detail?: AgentFormDetail) {
 export type AgentConfigurationKey = (typeof AGENT_CONFIGURATION_FIELDS)[number]["key"];
 
 export function agentConfigurationText(detail: AgentFormDetail, key: AgentConfigurationKey) {
+	const t = i18n.getFixedT(null, "templates");
 	const value = agentConfigurationValues(detail)[key];
-	return Array.isArray(value) ? value.join("\n") || (key === "skills" ? "未选择" : "未配置") : value;
+	return Array.isArray(value)
+		? value.join("\n") || (key === "skills" ? t("common.notSelected") : t("common.notConfigured"))
+		: value;
 }

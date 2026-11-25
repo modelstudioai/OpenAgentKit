@@ -3,7 +3,9 @@ import ReactMarkdown, { type Components, type ExtraProps } from "react-markdown"
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { CodeHighlighter } from "../code-highlighter/index.tsx";
+import { useKitStrings } from "../kit-i18n/index.ts";
 import { Mermaid } from "../mermaid/index.tsx";
+import markdownStrings from "./strings.ts";
 
 function hasClosingFence(source: string, quoted: boolean) {
 	const lines = source.split(/\r?\n/);
@@ -84,7 +86,7 @@ const components: Components = {
 	hr: ({ node, ...props }) => <hr {...props} className="my-6 border-0 border-t border-[var(--kit-border-subtle)]" />,
 	table: ({ node, ...props }) => (
 		<section
-			aria-label="表格"
+			aria-label={useKitStrings(markdownStrings).table}
 			// biome-ignore lint/a11y/noNoninteractiveTabindex: 横向滚动区域需要接收键盘焦点，让方向键可访问屏幕外的列。
 			tabIndex={0}
 			className="my-4 max-w-full overflow-x-auto rounded-[var(--kit-radius-sm)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
