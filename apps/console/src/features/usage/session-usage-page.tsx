@@ -1,7 +1,9 @@
 import type { MemberView, TemplateUsageRow } from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
+import type { TFunction } from "i18next";
 import { Button, Empty, Input, Result, Segmented, Spin, Table, Tag } from "antd";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import { RemoteResourcePicker } from "../catalog/remote-resource-picker.tsx";
@@ -16,10 +18,15 @@ import { DefaultUsageLimits, useUsageLimitAccess } from "./usage-limit-panels.ts
 
 type UsageTab = "members" | "templates";
 
-function usageColumns(onSelect: (member: MemberView) => void, onLimits?: (member: MemberView) => void) {
+function usageColumns(
+	onSelect: (member: MemberView) => void,
+	onLimits: ((member: MemberView) => void) | undefined,
+	t: TFunction<"usage">,
+	tc: TFunction<"common">,
+) {
 	return [
 		{
-			title: "成员",
+			title: t("sessionPage.colMember"),
 			dataIndex: "member_id",
 			fixed: "left",
 			render: (_, row: MemberView) => (
@@ -30,29 +37,36 @@ function usageColumns(onSelect: (member: MemberView) => void, onLimits?: (member
 			),
 		},
 		{
-			title: "会话数",
+			title: t("sessionPage.colSessionCount"),
 			align: "right" as const,
 			render: (_, row: MemberView) => {
 				const summary = row.usage_summary;
 				return (
 					<div>
-						<span className={styles.tabularNum}>{summary?.session_count ?? "待获取"}</span>
-						{summary && <span className={styles.cellSub}>含已删除 {summary.deleted_session_count}</span>}
+						<span className={styles.tabularNum}>{summary?.session_count ?? tc("collection.pending")}</span>
+						{summary && (
+							<span className={styles.cellSub}>
+								{t("sessionPage.deletedSub", { count: summary.deleted_session_count })}
+							</span>
+						)}
 					</div>
 				);
 			},
 		},
-		...usageMetrics.map(([key, label]) => ({
-			title: label,
+		...usageMetrics.map(([key, labelKey]) => ({
+			title: tc(labelKey),
 			align: "right" as const,
 			render: (_: unknown, row: MemberView) => {
 				const summary = row.usage_summary;
 				return (
 					<div>
-						<span className={styles.tabularNum}>{usageValue(summary, key)}</span>
+						<span className={styles.tabularNum}>{usageValue(summary, key, tc)}</span>
 						{summary && (
 							<span className={styles.cellSub}>
-								覆盖 {summary.metrics[key].covered_sessions} / {summary.session_count} 个会话
+								{tc("collection.coverage", {
+									covered: summary.metrics[key].covered_sessions,
+									total: summary.session_count,
+								})}
 							</span>
 						)}
 					</div>
@@ -60,20 +74,20 @@ function usageColumns(onSelect: (member: MemberView) => void, onLimits?: (member
 			},
 		})),
 		{
-			title: "用量采集",
+			title: t("sessionPage.colCollection"),
 			render: (_, row: MemberView) => <UsageCollectionStatus summary={row.usage_summary} />,
 		},
 		{
-			title: "操作",
+			title: t("sessionPage.colActions"),
 			fixed: "right",
 			render: (_, row: MemberView) => (
 				<div className={styles.rowActions}>
 					<Button type="link" size="small" onClick={() => onSelect(row)}>
-						会话明细
+						{t("sessionPage.sessionDetail")}
 					</Button>
 					{onLimits && (
 						<Button type="link" size="small" onClick={() => onLimits(row)}>
-							设置限额
+							{t("panels.setLimit")}
 						</Button>
 					)}
 				</div>
@@ -91,11 +105,13 @@ function SessionUsageTable({
 	onSelect: (member: MemberView) => void;
 	onLimits?: (member: MemberView) => void;
 }) {
+	const { t } = useTranslation(["usage", "common"]);
+	const { t: tc } = useTranslation();
 	return (
 		<Table
 			rowKey="member_id"
 			size="middle"
-			columns={usageColumns(onSelect, onLimits)}
+			columns={usageColumns(onSelect, onLimits, t, tc)}
 			dataSource={rows}
 			pagination={false}
 			scroll={{ x: "max-content" }}
@@ -113,6 +129,7 @@ function SessionUsageContent({
 	onSelect: (member: MemberView) => void;
 	onLimits?: (member: MemberView) => void;
 }) {
+	const { t } = useTranslation("usage");
 	if (members.loading) {
 		return (
 			<div className={styles.loadingRow}>
@@ -132,7 +149,7 @@ function SessionUsageContent({
 							members.reload();
 						}}
 					>
-						重试
+						{t("sessionPage.retry")}
 					</Button>
 				}
 			/>
@@ -145,12 +162,12 @@ function SessionUsageContent({
 			description={
 				members.search ? (
 					<span>
-						未找到匹配的成员
+						{t("sessionPage.emptySearch")}
 						<br />
-						<span className={styles.cellMeta}>试试其他用户名或显示名。</span>
+						<span className={styles.cellMeta}>{t("sessionPage.searchHint")}</span>
 					</span>
 				) : (
-					"暂无成员用量"
+					t("sessionPage.emptyDefault")
 				)
 			}
 		/>
@@ -167,20 +184,21 @@ function MembersTabSection({
 	onSelect: (member: MemberView) => void;
 	onLimits?: (member: MemberView) => void;
 }) {
+	const { t } = useTranslation(["usage", "members"]);
 	return (
 		<>
 			<p className={styles.cellMeta} style={{ marginTop: "10px" }}>
-				各项 Token 独立展示，缺失值不按 0 计算；采集失败时保留上次数据。进入会话明细可按 Agent 筛选、刷新用量。
+				{t("sessionPage.note")}
 			</p>
 			<SessionUsageContent members={members} onSelect={onSelect} onLimits={onLimits} />
 			{!members.error && (members.page > 1 || members.hasNext) && (
-				<nav aria-label="用量列表分页" className={styles.pager}>
+				<nav aria-label={t("sessionPage.pagerAria")} className={styles.pager}>
 					<Button size="small" disabled={members.loading || members.page === 1} onClick={members.previous}>
-						上一页
+						{t("members:list.prev")}
 					</Button>
-					<span>第 {members.page} 页</span>
+					<span>{t("members:list.pageOf", { page: members.page })}</span>
 					<Button size="small" disabled={members.loading || !members.hasNext} onClick={members.next}>
-						下一页
+						{t("members:list.next")}
 					</Button>
 				</nav>
 			)}
@@ -198,6 +216,7 @@ function MembersSearchForm({
 	onChange: (value: string) => void;
 	onSubmit: () => void;
 }) {
+	const { t } = useTranslation("usage");
 	return (
 		<form
 			className={styles.searchForm}
@@ -207,15 +226,15 @@ function MembersSearchForm({
 			}}
 		>
 			<Input
-				aria-label="用户名或显示名搜索"
-				placeholder="用户名或显示名搜索"
+				aria-label={t("sessionPage.searchPlaceholder")}
+				placeholder={t("sessionPage.searchPlaceholder")}
 				maxLength={254}
 				value={value}
 				onChange={(event) => onChange(event.target.value)}
 				className={styles.searchInput}
 			/>
 			<Button htmlType="submit" className={styles.searchSubmit}>
-				搜索
+				{t("sessionPage.search")}
 			</Button>
 		</form>
 	);
@@ -231,24 +250,25 @@ function TemplatePicker({
 	onChange: (templateId: string) => void;
 	templatesList: ReturnType<typeof useAdminQuery<TemplateUsageRow[]>>;
 }) {
+	const { t } = useTranslation("usage");
 	const rows = templatesList.data ?? [];
 	return (
 		<div className={styles.pickerControl}>
 			<RemoteResourcePicker
 				value={value}
 				onChange={onChange}
-				label="选择模版"
+				label={t("sessionPage.selectTemplate")}
 				hideLabel
-				resource="模版"
-				placeholder="全部"
-				defaultOption={{ id: "", name: "全部" }}
+				resource={t("sessionPage.resourceTemplate")}
+				placeholder={t("sessionPage.all")}
+				defaultOption={{ id: "", name: t("sessionPage.all") }}
 				/* 候选与下方统计卡同源，展开重拉会连带整页刷新。 */
 				refreshOnOpen={false}
 				remote={{
 					data: rows.map((row) => ({
 						id: row.template_id,
 						name: row.name,
-						tag: row.deleted ? <Tag>已删除</Tag> : undefined,
+						tag: row.deleted ? <Tag>{t("sessionPage.deletedTag")}</Tag> : undefined,
 						detail: row.remote_agent_name,
 					})),
 					loading: templatesList.loading || (!templatesList.data && !templatesList.error),
@@ -312,22 +332,23 @@ function UsageControls({
 	selectedTemplateId: string;
 	onTemplateSelect: (id: string) => void;
 }) {
+	const { t } = useTranslation("usage");
 	return (
 		<div className={styles.controlsRow}>
 			<Segmented
-				aria-label="用量视角"
+				aria-label={t("sessionPage.viewAria")}
 				value={tab}
 				onChange={(value) => onTabChange(value as UsageTab)}
 				options={[
-					{ label: "模版用量", value: "templates" },
-					{ label: "成员用量", value: "members" },
+					{ label: t("sessionPage.tabTemplates"), value: "templates" },
+					{ label: t("sessionPage.tabMembers"), value: "members" },
 				]}
 			/>
 			{tab === "members" ? (
 				<MembersSearchForm value={memberSearch} onChange={onMemberSearch} onSubmit={onMemberSearchSubmit} />
 			) : (
 				<div className={styles.pickerInline}>
-					<span className={styles.inlineLabel}>选择模版</span>
+					<span className={styles.inlineLabel}>{t("sessionPage.selectTemplate")}</span>
 					<TemplatePicker value={selectedTemplateId} onChange={onTemplateSelect} templatesList={templatesList} />
 				</div>
 			)}
@@ -336,7 +357,7 @@ function UsageControls({
 				loading={tab === "members" ? members.loading : templatesList.loading}
 				onClick={() => (tab === "members" ? members.reload() : void templatesList.refresh())}
 			>
-				刷新列表
+				{t("sessionPage.refreshList")}
 			</Button>
 		</div>
 	);
@@ -344,17 +365,15 @@ function UsageControls({
 
 /** 限额引导区：成员视角展示全局默认月度限额；模版没有全局默认限额，指路逐模版设置入口。 */
 function UsageLimitsArea({ tab, access }: { tab: UsageTab; access: ReturnType<typeof useUsageLimitAccess> }) {
+	const { t } = useTranslation("usage");
 	if (tab === "templates")
-		return (
-			<p className={styles.mutedNote}>
-				模版限额按模版逐个设置：在各模版用量卡片的「设置限额」中配置限额上限，未设置的模版不限量。
-			</p>
-		);
+		return <p className={styles.mutedNote}>{t("sessionPage.templateLimitsHint")}</p>;
 	return <DefaultUsageLimits client={access.client} canWrite={access.canWrite} />;
 }
 
 /** 复用成员累计快照；成员分页不改变每位成员的全量 Session 汇总。 */
 export function SessionUsagePage() {
+	const { t } = useTranslation("usage");
 	const members = useMembers();
 	const access = useUsageLimitAccess();
 	const client = useMemo(getAdminClient, []);
@@ -386,12 +405,12 @@ export function SessionUsagePage() {
 		<section aria-labelledby="session-usage-heading" className={styles.pageRoot}>
 			<header>
 				<h2 id="session-usage-heading" className={styles.pageTitle}>
-					Session 用量
+					{t("sessionPage.title")}
 				</h2>
 				<p className={styles.pageSub}>
 					{tab === "templates"
-						? "按模版统计从其上架条目发起的体验会话用量，跨成员汇总，包含已删除会话保存的用量。管理员调试、匿名及外部账号会话不计入。"
-						: "按成员统计全部体验会话的累计用量，包含已删除会话保存的用量。管理员调试、匿名及外部账号会话不计入。"}
+						? t("sessionPage.subTemplates")
+						: t("sessionPage.subMembers")}
 				</p>
 			</header>
 			{access.identity.error && (
@@ -405,7 +424,7 @@ export function SessionUsagePage() {
 								void access.identity.refresh();
 							}}
 						>
-							重试
+							{t("sessionPage.retry")}
 						</Button>
 					}
 				/>

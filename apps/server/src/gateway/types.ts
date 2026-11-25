@@ -134,6 +134,14 @@ export interface PlanDiffEntry {
  * Provider 数据面抽象。路由层只认这个接口；真实与 mock 走同一条路径，
  * 同一套契约用例跑两遍防漂移。见 AGENTS.md 不变量 1 与 docs/architecture.md。
  */
+/** 会话产物：Provider Files API 中 scope=session 的文件，不属于上传目录。 */
+export interface SessionArtifactFile {
+	file_id: string;
+	filename: string;
+	content_type?: string;
+	size?: number;
+}
+
 export interface ProviderGateway {
 	resourceDraftDocument(id: string, assetRoot: string, storage: YamlDraftStorage): ResourceDraftGateway;
 	readonly mode: "sdk" | "mock";
@@ -206,6 +214,8 @@ export interface ProviderGateway {
 	getRemoteEnvironment(environmentId: string): Promise<RemoteEnvironmentDetail | null>;
 	/** 仅返回有上传来源证据的文件，保留扫描状态供管理端选择。 */
 	listRemoteFiles(): Promise<RemoteFile[]>;
+	/** 会话产物：Files API 按 scope=session 过滤的文件（Agent 生成物）。 */
+	listSessionFiles(sessionId: string): Promise<SessionArtifactFile[]>;
 	/** 非上传文件或不存在时返回 null；用于目录保存时重新验证，不信任客户端摘要。 */
 	getRemoteFile(fileId: string): Promise<RemoteFile | null>;
 	listRemoteMemoryStores(): Promise<RemoteMemoryStore[]>;

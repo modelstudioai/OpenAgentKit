@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { format, resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
+import fileCardStrings, { type FileCardStrings } from "./strings.ts";
 
 export interface FileCardProps {
 	name: string;
@@ -12,6 +14,8 @@ export interface FileCardProps {
 	onClick?: () => void;
 	onDownload?: () => void;
 	className?: string;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<FileCardStrings>;
 }
 
 function cx(...values: Array<string | false | undefined>): string {
@@ -30,20 +34,20 @@ function fileIcon(name: string, type = ""): string {
 }
 
 /** 已知 MIME 的友好叫法；未知类型不展示占位词，交给徽标表达。 */
-function typeLabel(type = ""): string | undefined {
+function typeLabel(type: string | undefined, strings: FileCardStrings): string | undefined {
 	if (!type) return undefined;
-	if (type === "text/csv") return "表格";
-	if (type.startsWith("image/")) return "图片";
-	if (type.startsWith("audio/")) return "音频";
-	if (type.startsWith("video/")) return "视频";
+	if (type === "text/csv") return strings.types.spreadsheet;
+	if (type.startsWith("image/")) return strings.types.image;
+	if (type.startsWith("audio/")) return strings.types.audio;
+	if (type.startsWith("video/")) return strings.types.video;
 	if (type === "application/pdf") return "PDF";
-	if (type.startsWith("text/")) return "文本";
-	if (/^application\/(x-)?(zip|tar|gzip|rar|7z)/.test(type)) return "压缩包";
+	if (type.startsWith("text/")) return strings.types.text;
+	if (/^application\/(x-)?(zip|tar|gzip|rar|7z)/.test(type)) return strings.types.archive;
 	if (
 		type.startsWith("application/vnd.ms-excel") ||
 		type.startsWith("application/vnd.openxmlformats-officedocument.spreadsheetml")
 	) {
-		return "表格";
+		return strings.types.spreadsheet;
 	}
 	return undefined;
 }
@@ -72,11 +76,13 @@ export function FileCard({
 	onClick,
 	onDownload,
 	className,
+	strings: stringsOverride,
 }: FileCardProps) {
+	const strings = resolveStrings(fileCardStrings, useKitLocale(), stringsOverride);
 	const inactive = disabled || loading;
 	const activate = onClick ?? onDownload;
-	const secondLine = loading ? "加载中…" : description;
-	const typeText = secondLine ? undefined : typeLabel(type);
+	const secondLine = loading ? strings.loading : description;
+	const typeText = secondLine ? undefined : typeLabel(type, strings);
 	const actionClass =
 		"shrink-0 rounded-[var(--kit-radius-sm)] p-1.5 text-[var(--kit-fg-muted)] transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] disabled:cursor-not-allowed";
 	return (
@@ -95,7 +101,7 @@ export function FileCard({
 						<button
 							type="button"
 							disabled={inactive}
-							aria-label={`${onClick ? "打开" : "下载"} ${name}`}
+							aria-label={format(onClick ? strings.open : strings.download, { name })}
 							title={name}
 							onClick={activate}
 							className="min-w-0 truncate rounded-[var(--kit-radius-sm)] text-left text-[length:var(--kit-text-label)] text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] enabled:hover:underline disabled:cursor-not-allowed"
@@ -120,7 +126,7 @@ export function FileCard({
 			{onClick && onDownload ? (
 				<button
 					type="button"
-					aria-label={`下载 ${name}`}
+					aria-label={format(strings.download, { name })}
 					disabled={inactive}
 					onClick={onDownload}
 					className={`${actionClass} enabled:hover:bg-[var(--kit-surface)] enabled:hover:text-[var(--kit-fg)]`}

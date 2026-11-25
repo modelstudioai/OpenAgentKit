@@ -1,0 +1,18 @@
+---
+title: 界面语言（chat-ui 词典）
+description: KitLocaleProvider 设定组件文案语言，strings prop 覆盖单个组件措辞
+---
+
+`chat-ui` 的文案不依赖外部 i18n 库：每个组件在自身目录的 `strings.ts` 提供 zh-CN 与 en 词典，
+键对齐由仓库门禁 `pnpm check:i18n` 守护，复制（copy-in）后依然零配置可跑。
+
+```tsx
+import { KitLocaleProvider, Sender } from "@openagentpack/kit-chat-ui";
+```
+
+- `<KitLocaleProvider locale="en">` 切换整棵子树的组件文案语言；未包裹时回落 zh-CN。
+- `strings` prop 让单个组件覆盖个别键（如 `<Sender strings={{ send: "提交" }} />`）；
+  传入自研词典即可接入第三种语言，无需 fork 组件源码。
+- 组件内部取词用 `useKitStrings(dict)`；宿主侧纯合并用 `resolveStrings(dict, locale, overrides)`。
+- 词条含 `{{name}}` 占位时用 `formatKitStrings(template, values)` 做轻量插值。
+- 词典只覆盖界面标签，不翻译会话内容、文件名或 Provider 返回的数据。

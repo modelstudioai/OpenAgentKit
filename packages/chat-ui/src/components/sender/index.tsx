@@ -20,6 +20,8 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { resolveStrings, useKitLocale, useKitStrings } from "../kit-i18n/index.ts";
+import senderStrings, { type SenderStrings } from "./strings.ts";
 
 export type SenderSubmitType = "enter" | "shiftEnter" | false;
 export type SenderSemantic = "root" | "prefix" | "input" | "suffix" | "footer";
@@ -32,6 +34,8 @@ interface SenderState {
 	submitDisabled: boolean;
 	clear: () => void;
 	cancel: () => void;
+	/** 已按 locale 与调用方覆盖合并好的词典，叶子组件统一从这里取文案。 */
+	strings: SenderStrings;
 }
 
 const SenderContext = createContext<SenderState>({
@@ -42,6 +46,7 @@ const SenderContext = createContext<SenderState>({
 	submitDisabled: true,
 	clear: () => undefined,
 	cancel: () => undefined,
+	strings: senderStrings["zh-CN"],
 });
 
 function cx(...names: Array<string | false | undefined>): string {
@@ -52,7 +57,7 @@ const ACTION =
 	"inline-flex shrink-0 items-center justify-center text-[length:var(--kit-text-base)] whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] disabled:cursor-not-allowed disabled:opacity-50";
 
 function SendButton({ children }: { children?: ReactNode }) {
-	const { value, disabled, loading, submitDisabled, variant } = useContext(SenderContext);
+	const { value, disabled, loading, submitDisabled, variant, strings } = useContext(SenderContext);
 	return (
 		<button
 			type="submit"
@@ -63,13 +68,13 @@ function SendButton({ children }: { children?: ReactNode }) {
 				variant === "workspace" ? "h-10 min-w-10 rounded-full px-2.5" : "rounded-[var(--kit-radius-sm)] px-4 py-2",
 			)}
 		>
-			{children ?? (variant === "workspace" ? <SenderActionIcon action="send" /> : "发送")}
+			{children ?? (variant === "workspace" ? <SenderActionIcon action="send" /> : strings.send)}
 		</button>
 	);
 }
 
 function LoadingButton({ children }: { children?: ReactNode }) {
-	const { cancel, variant } = useContext(SenderContext);
+	const { cancel, variant, strings } = useContext(SenderContext);
 	return (
 		<button
 			type="button"
@@ -81,15 +86,16 @@ function LoadingButton({ children }: { children?: ReactNode }) {
 					: "rounded-[var(--kit-radius-sm)] bg-[var(--kit-danger)] px-4 py-2 font-semibold text-[var(--kit-danger-fg)]",
 			)}
 		>
-			{children ?? (variant === "workspace" ? <SenderActionIcon action="stop" /> : "停止")}
+			{children ?? (variant === "workspace" ? <SenderActionIcon action="stop" /> : strings.stop)}
 		</button>
 	);
 }
 
 function SenderActionIcon({ action }: { action: "send" | "stop" }) {
+	const { strings } = useContext(SenderContext);
 	return (
 		<>
-			<span className="sr-only">{action === "send" ? "发送" : "停止"}</span>
+			<span className="sr-only">{action === "send" ? strings.send : strings.stop}</span>
 			<svg aria-hidden="true" viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
 				{action === "send" ? (
 					<path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m-6 6 6-6 6 6" />
@@ -101,8 +107,8 @@ function SenderActionIcon({ action }: { action: "send" | "stop" }) {
 	);
 }
 
-function ClearButton({ children = "清空" }: { children?: ReactNode }) {
-	const { value, disabled, clear } = useContext(SenderContext);
+function ClearButton({ children }: { children?: ReactNode }) {
+	const { value, disabled, clear, strings } = useContext(SenderContext);
 	return (
 		<button
 			type="button"
@@ -113,7 +119,7 @@ function ClearButton({ children = "清空" }: { children?: ReactNode }) {
 				"rounded-[var(--kit-radius-sm)] border border-[var(--kit-border)] px-4 py-2 text-[var(--kit-fg-muted)]",
 			)}
 		>
-			{children}
+			{children ?? strings.clear}
 		</button>
 	);
 }
@@ -230,6 +236,8 @@ export interface SenderProps {
 	/** 编辑区选区变化（value 文本 offset）；配合 Suggestion 的 value/caret 自动触发使用。 */
 	onSelectionChange?: (selection: SenderSelection) => void;
 	submitType?: SenderSubmitType;
+	/** 覆盖组件内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<SenderStrings>;
 	autoSize?: boolean | { minRows?: number; maxRows?: number };
 	inputProps?: AriaAttributes & { id?: string; role?: AriaRole };
 	prefix?: ReactNode;
@@ -250,12 +258,6 @@ export interface SenderRef {
 	/** 替换 value 中的 [start, end) 并恢复光标；用于 Suggestion 选中后插入技能标记。 */
 	replaceRange: (start: number, end: number, text: string) => void;
 }
-
-const PLACEHOLDER: Record<string, string> = {
-	enter: "输入消息，Enter 发送，Shift+Enter 换行",
-	shiftEnter: "输入消息，Shift+Enter 发送，Enter 换行",
-	false: "输入消息",
-};
 
 function rowRange(autoSize: SenderProps["autoSize"]): [number, number] {
 	if (autoSize === false) return [1, 1];
@@ -407,19 +409,49 @@ function forEachFlow(root: HTMLElement, visit: (node: Node) => boolean | undefin
 	walk(root);
 }
 
-/** 编辑区 DOM → 草稿文本：chip 还原为 `/name ` 标记，br 还原为换行；纯换行内容按空草稿。
+/** 浏览器原生换行会生成 div/p 行块（Enter 与 Playwright fill 均如此），按行拼接。 */
+function isBlockElement(node: Node): node is HTMLElement {
+	return node.nodeType === Node.ELEMENT_NODE && /^(DIV|P)$/.test((node as HTMLElement).tagName);
+}
+
+function inlineText(node: Node): string {
+	if (isSkillChip(node)) return `${SKILL_INPUT_PREFIX}${node.dataset.skill} `;
+	if (node.nodeName === "BR") return "\n";
+	if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? "";
+	let out = "";
+	for (const child of Array.from(node.childNodes)) out += inlineText(child);
+	return out;
+}
+
+function blockLines(parent: Node): string[] {
+	const lines: string[] = [];
+	let current = "";
+	let hasInline = false;
+	const flush = () => {
+		if (!hasInline) return;
+		lines.push(current);
+		current = "";
+		hasInline = false;
+	};
+	for (const child of Array.from(parent.childNodes)) {
+		if (isBlockElement(child)) {
+			flush();
+			// 空行由浏览器渲染成只含一个 br 的行块；它是一个空行而不是额外换行。
+			if (child.childNodes.length === 1 && child.firstChild?.nodeName === "BR") lines.push("");
+			else lines.push(...blockLines(child));
+			continue;
+		}
+		current += inlineText(child);
+		hasInline = true;
+	}
+	flush();
+	return lines;
+}
+
+/** 编辑区 DOM → 草稿文本：chip 还原为 `/name ` 标记，br 与行块还原为换行；纯换行内容按空草稿。
  *  导出仅供测试与宿主投影核对，不属于公共组件 API（index.ts 不转发）。 */
 export function serializeEditable(root: HTMLElement): string {
-	let out = "";
-	const walk = (node: Node) => {
-		for (const child of Array.from(node.childNodes)) {
-			if (isSkillChip(child)) out += `${SKILL_INPUT_PREFIX}${child.dataset.skill} `;
-			else if (child.nodeName === "BR") out += "\n";
-			else if (child.nodeType === Node.TEXT_NODE) out += child.textContent ?? "";
-			else walk(child);
-		}
-	};
-	walk(root);
+	const out = blockLines(root).join("\n");
 	return /^\n*$/.test(out) ? "" : out;
 }
 
@@ -510,14 +542,15 @@ function setCaretAtTextOffset(root: HTMLElement, offset: number): void {
 	selection.addRange(range);
 }
 
-/** Enter 提交判定：submitType=enter 时 Enter 提交、Shift+Enter 换行（shiftEnter 反之）；
- *  contenteditable 的默认回车会产生块级元素，换行统一改为插入 br。 */
+/** Enter 提交判定：返回“该不该提交”，而不是“这键我处理过了”——返回后者会让 Shift+Enter
+ *  插入换行的同一次按键把消息一起发出去。contenteditable 的默认回车产生块级元素，
+ *  因此换行统一阻止默认行为后改为插入 br。 */
 function submitKeyDown(event: KeyboardEvent<HTMLDivElement>, submitType: SenderSubmitType): boolean {
 	if (event.key !== "Enter" || submitType === false) return false;
 	const shouldSubmit = submitType === "enter" ? !event.shiftKey : event.shiftKey;
 	event.preventDefault();
 	if (!shouldSubmit) document.execCommand("insertLineBreak");
-	return true;
+	return shouldSubmit;
 }
 
 /** value↔DOM 同步：编辑动作（原子退格、选技能）改 value 后由 effect 重建 DOM 并恢复光标。
@@ -593,6 +626,7 @@ const InternalSender = forwardRef<SenderRef, SenderProps>(function Sender(
 		footer,
 		className,
 		classNames = {},
+		strings: stringsOverride,
 	},
 	ref,
 ) {
@@ -600,6 +634,7 @@ const InternalSender = forwardRef<SenderRef, SenderProps>(function Sender(
 	const value = controlledValue ?? innerValue;
 	const rootRef = useRef<HTMLFormElement>(null);
 	const inputRef = useRef<HTMLDivElement>(null);
+	const strings = resolveStrings(senderStrings, useKitLocale(), stringsOverride);
 	const skillNames = useMemo(() => skills?.map((skill) => skill.name) ?? EMPTY_SKILL_NAMES, [skills]);
 	const markers = skillInputMarkerRanges(value, skillNames);
 
@@ -673,6 +708,7 @@ const InternalSender = forwardRef<SenderRef, SenderProps>(function Sender(
 		submitDisabled,
 		clear: () => update(""),
 		cancel: () => onCancel?.(),
+		strings,
 	};
 
 	return (
@@ -703,9 +739,16 @@ const InternalSender = forwardRef<SenderRef, SenderProps>(function Sender(
 							suppressContentEditableWarning
 							role="textbox"
 							aria-multiline="true"
-							aria-label="消息输入"
+							aria-label={strings.inputLabel}
 							aria-disabled={editable ? undefined : "true"}
-							data-placeholder={placeholder ?? PLACEHOLDER[String(submitType)]}
+							data-placeholder={
+								placeholder ??
+								(submitType === "enter"
+									? strings.placeholderEnter
+									: submitType === "shiftEnter"
+										? strings.placeholderShiftEnter
+										: strings.placeholderPlain)
+							}
 							data-empty={value ? undefined : "true"}
 							onInput={handleInput}
 							onKeyDown={handleKeyDown}
@@ -750,6 +793,7 @@ export function SenderHeader({
 	children,
 	className,
 }: SenderHeaderProps) {
+	const strings = useKitStrings(senderStrings);
 	if (!open) return null;
 	return (
 		<div className={cx("min-w-0 border-b border-[var(--kit-border-subtle)]", className)}>
@@ -759,7 +803,7 @@ export function SenderHeader({
 					{closable ? (
 						<button
 							type="button"
-							aria-label="收起"
+							aria-label={strings.collapseLabel}
 							onClick={() => onOpenChange?.(false)}
 							className="rounded px-1 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)] hover:text-[var(--kit-fg)]"
 						>

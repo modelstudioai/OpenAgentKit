@@ -1,4 +1,17 @@
-export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+import { resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
+import errorStateStrings, { type ErrorStateStrings } from "./strings.ts";
+
+export function ErrorState({
+	message,
+	onRetry,
+	strings: stringsOverride,
+}: {
+	message: string;
+	onRetry?: () => void;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<ErrorStateStrings>;
+}) {
+	const strings = resolveStrings(errorStateStrings, useKitLocale(), stringsOverride);
 	return (
 		<div
 			role="alert"
@@ -17,7 +30,9 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
 				<path d="M12 7v6m0 4h.01" />
 			</svg>
 			<div className="min-w-0 flex-1">
-				<strong className="text-[length:var(--kit-text-base)] font-medium text-[var(--kit-danger)]">出错了</strong>
+				<strong className="text-[length:var(--kit-text-base)] font-medium text-[var(--kit-danger)]">
+					{strings.heading}
+				</strong>
 				<p className="mt-1 whitespace-pre-wrap text-[length:var(--kit-text-label)] leading-6 text-[var(--kit-fg-muted)] [overflow-wrap:anywhere]">
 					{message}
 				</p>
@@ -27,7 +42,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
 						onClick={onRetry}
 						className="mt-3 min-h-10 rounded-[var(--kit-radius-sm)] border border-[var(--kit-border)] bg-[var(--kit-surface)] px-3 py-2 text-[length:var(--kit-text-label)] font-medium transition-colors hover:bg-[var(--kit-bg-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
 					>
-						重试
+						{strings.retry}
 					</button>
 				) : null}
 			</div>

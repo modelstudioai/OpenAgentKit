@@ -12,14 +12,17 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "clean": "rm -rf dist",
-    "e2e": "pnpm --filter @openagentpack/kit-server build && node e2e/clean-data.mjs && playwright test"
+    "e2e": "pnpm --filter @openagentpack/kit-server build && node e2e/clean-data.mjs && playwright test",
+    "e2e:vue": "pnpm --filter @openagentpack/kit-server build && pnpm --filter @openagentpack/kit-chat-ui-vue... build && node e2e/clean-vue-data.mjs && playwright test -c playwright.vue.config.ts"
   },
   "dependencies": {
     "@openagentpack/kit-chat-ui": "workspace:*",
     "@openagentkit/sdk": "workspace:*",
     "@radix-ui/react-dialog": "^1.3.1",
+    "i18next": "^27.1.5",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "react-i18next": "^18.0.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",

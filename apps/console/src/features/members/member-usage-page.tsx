@@ -7,8 +7,10 @@ import type {
 	UsageToolRow,
 } from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
+import type { TFunction } from "i18next";
 import { Button, Empty, Popover, Result, Spin, Table, Tabs, Tag } from "antd";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { createAdminClient } from "../../lib/admin/index.ts";
 import { memberUsageAgentKey } from "../../lib/admin/member-usage.ts";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
@@ -23,8 +25,8 @@ import { MemberUsageLimits } from "../usage/usage-limit-panels.tsx";
 import styles from "./members.module.less";
 import { collectionLabels, UsageMetrics } from "./usage-metrics.tsx";
 
-function captureTime(value?: string) {
-	return value ? new Date(value).toLocaleString("zh-CN", { hour12: false }) : "尚未采集";
+function captureTime(value: string | undefined, t: TFunction<"members">) {
+	return value ? new Date(value).toLocaleString("zh-CN", { hour12: false }) : t("capture.never");
 }
 
 /** 会话列表行的短时间（月/日 时:分）。 */
@@ -68,65 +70,83 @@ function telemetryHasNext(summary: UsageSummary | undefined, pageNo: number) {
 	return pageNo * SESSION_TELEMETRY_PAGE_SIZE < longest;
 }
 
-const modelColumns: TableColumnsType<UsageModelRow> = [
-	{ title: "模型名", dataIndex: "model_name", render: (value: string | null) => value ?? "未归因" },
-	{ title: "调用次数", align: "right", render: (_, row) => countText(row.usage.call_count.value) },
-	{ title: "失败次数", align: "right", render: (_, row) => countText(row.usage.failed_count.value) },
-	{
-		title: "输入",
-		align: "right",
-		render: (_, row) => <span className={styles.tabularNum}>{countText(row.usage.input_tokens.value)}</span>,
-	},
-	{
-		title: "输出",
-		align: "right",
-		render: (_, row) => <span className={styles.tabularNum}>{countText(row.usage.output_tokens.value)}</span>,
-	},
-	{
-		title: "缓存读取",
-		align: "right",
-		render: (_, row) => <span className={styles.tabularNum}>{countText(row.usage.cache_read_tokens.value)}</span>,
-	},
-	{
-		title: "缓存创建",
-		align: "right",
-		render: (_, row) => <span className={styles.tabularNum}>{countText(row.usage.cache_creation_tokens.value)}</span>,
-	},
-];
+function modelColumns(t: TFunction<"members">): TableColumnsType<UsageModelRow> {
+	return [
+		{
+			title: t("columnsModel.modelName"),
+			dataIndex: "model_name",
+			render: (value: string | null) => value ?? t("columnsModel.unattributed"),
+		},
+		{ title: t("columnsModel.callCount"), align: "right", render: (_, row) => countText(row.usage.call_count.value) },
+		{ title: t("columnsModel.failedCount"), align: "right", render: (_, row) => countText(row.usage.failed_count.value) },
+		{
+			title: t("columnsModel.input"),
+			align: "right",
+			render: (_, row) => <span className={styles.tabularNum}>{countText(row.usage.input_tokens.value)}</span>,
+		},
+		{
+			title: t("columnsModel.output"),
+			align: "right",
+			render: (_, row) => <span className={styles.tabularNum}>{countText(row.usage.output_tokens.value)}</span>,
+		},
+		{
+			title: t("columnsModel.cacheRead"),
+			align: "right",
+			render: (_, row) => <span className={styles.tabularNum}>{countText(row.usage.cache_read_tokens.value)}</span>,
+		},
+		{
+			title: t("columnsModel.cacheCreation"),
+			align: "right",
+			render: (_, row) => <span className={styles.tabularNum}>{countText(row.usage.cache_creation_tokens.value)}</span>,
+		},
+	];
+}
 
 function SessionModelTable({ rows, loading }: { rows: UsageModelRow[]; loading?: boolean }) {
+	const { t } = useTranslation("members");
 	return (
 		<Table
 			rowKey={(row) => row.model_name ?? "unknown"}
 			size="small"
 			loading={loading}
-			columns={modelColumns}
+			columns={modelColumns(t)}
 			dataSource={rows}
 			pagination={false}
 			scroll={{ x: "max-content" }}
-			locale={{ emptyText: "该会话无模型调用" }}
+			locale={{ emptyText: t("telemetry.noModelCalls") }}
 		/>
 	);
 }
 
-const toolColumns: TableColumnsType<UsageToolRow> = [
-	{ title: "工具名", dataIndex: "tool_name", render: (value: string | null) => value ?? "未知" },
-	{ title: "来源", dataIndex: "source", render: (value: string | null) => value ?? "未知" },
-	{ title: "调用次数", align: "right", render: (_, row) => countText(row.usage.call_count.value) },
-	{ title: "失败次数", align: "right", render: (_, row) => countText(row.usage.failed_count.value) },
-];
+function toolColumns(t: TFunction<"members">): TableColumnsType<UsageToolRow> {
+	return [
+		{
+			title: t("columnsTool.toolName"),
+			dataIndex: "tool_name",
+			render: (value: string | null) => value ?? t("columnsTool.unknown"),
+		},
+		{
+			title: t("columnsTool.source"),
+			dataIndex: "source",
+			render: (value: string | null) => value ?? t("columnsTool.unknown"),
+		},
+		{ title: t("columnsModel.callCount"), align: "right", render: (_, row) => countText(row.usage.call_count.value) },
+		{ title: t("columnsModel.failedCount"), align: "right", render: (_, row) => countText(row.usage.failed_count.value) },
+	];
+}
 
 function SessionToolTable({ rows, loading }: { rows: UsageToolRow[]; loading?: boolean }) {
+	const { t } = useTranslation("members");
 	return (
 		<Table
 			rowKey={(row) => `${row.source ?? "unknown"}/${row.tool_name ?? "unknown"}`}
 			size="small"
 			loading={loading}
-			columns={toolColumns}
+			columns={toolColumns(t)}
 			dataSource={rows}
 			pagination={false}
 			scroll={{ x: "max-content" }}
-			locale={{ emptyText: "该会话无工具调用" }}
+			locale={{ emptyText: t("telemetry.noToolCalls") }}
 		/>
 	);
 }
@@ -145,12 +165,13 @@ function SessionTelemetryView({
 	hasNext: boolean;
 	onPage: (pageNo: number) => void;
 }) {
+	const { t } = useTranslation("members");
 	const [tab, setTab] = useState<"models" | "tools">("models");
 	return (
 		<>
 			{loading ? (
 				<p role="status" className={styles.telemetryLoading}>
-					正在加载…
+					{t("telemetry.loadingShort")}
 				</p>
 			) : null}
 			<Tabs
@@ -161,8 +182,10 @@ function SessionTelemetryView({
 						key: "models",
 						label: (
 							<>
-								模型调用
-								<span className={styles.tabCount}>{countText(shown.usage.total.model_call_count.value)} 次</span>
+								{t("telemetry.modelsTab")}
+								<span className={styles.tabCount}>
+									{t("telemetry.callTimes", { count: countText(shown.usage.total.model_call_count.value) })}
+								</span>
 							</>
 						),
 						children: <SessionModelTable rows={slicePage(shown.usage.models, pageNo)} />,
@@ -171,8 +194,10 @@ function SessionTelemetryView({
 						key: "tools",
 						label: (
 							<>
-								工具调用
-								<span className={styles.tabCount}>{countText(shown.usage.total.tool_call_count.value)} 次</span>
+								{t("telemetry.toolsTab")}
+								<span className={styles.tabCount}>
+									{t("telemetry.callTimes", { count: countText(shown.usage.total.tool_call_count.value) })}
+								</span>
 							</>
 						),
 						children: <SessionToolTable rows={slicePage(shown.usage.tools, pageNo)} />,
@@ -180,13 +205,13 @@ function SessionTelemetryView({
 				]}
 			/>
 			{hasNext || pageNo > 1 ? (
-				<nav aria-label="会话用量明细分页" className={styles.telemetryPager}>
+				<nav aria-label={t("telemetry.pagerAria")} className={styles.telemetryPager}>
 					<Button size="small" disabled={pageNo === 1} onClick={() => onPage(pageNo - 1)}>
-						上一页
+						{t("list.prev")}
 					</Button>
-					<span>第 {pageNo} 页</span>
+					<span>{t("list.pageOf", { page: pageNo })}</span>
 					<Button size="small" disabled={!hasNext} onClick={() => onPage(pageNo + 1)}>
-						下一页
+						{t("list.next")}
 					</Button>
 				</nav>
 			) : null}
@@ -198,6 +223,7 @@ function SessionTelemetryView({
  *  切换会话/页码期间保留上一次已就绪的内容直到新数据到位（或确认出错），明细区不塌缩，避免整页闪动。
  *  已删除会话在 Provider 侧明细不可得：不发请求，直接展示专属空态。 */
 function SessionUsageTelemetry({ sessionId, deleted }: { sessionId: string; deleted?: boolean }) {
+	const { t } = useTranslation("members");
 	const client = useMemo(getAdminClient, []);
 	/** 页码随会话自动归位：会话变了视同第 1 页。组件跨会话保持挂载（重挂会丢掉上次内容导致闪动）。 */
 	const [page, setPage] = useState({ sessionId, pageNo: 1 });
@@ -218,7 +244,7 @@ function SessionUsageTelemetry({ sessionId, deleted }: { sessionId: string; dele
 		return (
 			<div className={styles.telemetryRoot}>
 				<p role="status" className={styles.telemetryEmpty}>
-					已删除会话不再提供模型/工具明细，用量数字来自删除前的采集快照。
+					{t("telemetry.deletedEmpty")}
 				</p>
 			</div>
 		);
@@ -233,7 +259,7 @@ function SessionUsageTelemetry({ sessionId, deleted }: { sessionId: string; dele
 					title={error}
 					extra={
 						<Button size="small" onClick={() => void query.refresh()}>
-							重试
+							{t("telemetry.retry")}
 						</Button>
 					}
 				/>
@@ -249,7 +275,7 @@ function SessionUsageTelemetry({ sessionId, deleted }: { sessionId: string; dele
 			) : null}
 			{!error && !shown ? (
 				<p role="status" className={styles.telemetryEmpty}>
-					{loading ? "正在加载该会话的模型/工具用量…" : "该会话暂无模型/工具用量。"}
+					{loading ? t("telemetry.loading") : t("telemetry.empty")}
 				</p>
 			) : null}
 		</div>
@@ -258,16 +284,17 @@ function SessionUsageTelemetry({ sessionId, deleted }: { sessionId: string; dele
 
 /** 选中会话的用量统计卡：六张独立蓝/灰交替浅色卡，缺失不按 0 计算。 */
 function SessionStatCards({ session }: { session: MemberSessionUsage }) {
+	const { t } = useTranslation(["members", "common"]);
 	const metrics = { ...session.usage, ...session.stats };
 	/** 已采集但 Provider 未返回的指标用「未返回」，未采集的用「待获取」。 */
-	const missingText = session.captured_at ? "未返回" : "待获取";
+	const missingText = session.captured_at ? t("common:collection.notReturned") : t("common:collection.pending");
 	const items: Array<{ label: string; value: number | null; unit?: string }> = [
-		{ label: "输入 Token", value: metrics.input_tokens ?? null },
-		{ label: "输出 Token", value: metrics.output_tokens ?? null },
-		{ label: "缓存读取 Token", value: metrics.cache_read_input_tokens ?? null },
-		{ label: "缓存写入 Token", value: metrics.cache_creation_input_tokens ?? null },
-		{ label: "执行时长", value: metrics.active_seconds ?? null, unit: "秒" },
-		{ label: "会话时长", value: metrics.duration_seconds ?? null, unit: "秒" },
+		{ label: t("common:metrics.inputTokens"), value: metrics.input_tokens ?? null },
+		{ label: t("common:metrics.outputTokens"), value: metrics.output_tokens ?? null },
+		{ label: t("common:metrics.cacheRead"), value: metrics.cache_read_input_tokens ?? null },
+		{ label: t("common:metrics.cacheWrite"), value: metrics.cache_creation_input_tokens ?? null },
+		{ label: t("usagePage.statActiveTime"), value: metrics.active_seconds ?? null, unit: t("usagePage.unitSeconds") },
+		{ label: t("usagePage.statSessionTime"), value: metrics.duration_seconds ?? null, unit: t("usagePage.unitSeconds") },
 	];
 	return (
 		<dl className={styles.metricsGrid}>
@@ -300,6 +327,7 @@ function SessionListRow({
 	selected: boolean;
 	onSelect: (sessionId: string) => void;
 }) {
+	const { t } = useTranslation("members");
 	return (
 		<button
 			type="button"
@@ -311,18 +339,18 @@ function SessionListRow({
 			<span className={styles.sMain}>
 				<span className={styles.sTitleLine}>
 					<span className={styles.sTitle}>{session.title || session.session_id}</span>
-					{session.deleted_at ? <Tag>已删除</Tag> : null}
+					{session.deleted_at ? <Tag>{t("deletedTag")}</Tag> : null}
 				</span>
 				<span className={styles.sSub}>
-					{session.agent_slug} · 创建 {listTime(session.created_at)}
+					{session.agent_slug} · {t("capture.created", { time: listTime(session.created_at) })}
 				</span>
 			</span>
 			<span className={styles.sNums}>
 				<span>
-					输入 <b>{sessionNum(session.usage?.input_tokens)}</b>
+					{t("session.rowInput")} <b>{sessionNum(session.usage?.input_tokens)}</b>
 				</span>
 				<span>
-					输出 <b>{sessionNum(session.usage?.output_tokens)}</b>
+					{t("session.rowOutput")} <b>{sessionNum(session.usage?.output_tokens)}</b>
 				</span>
 			</span>
 		</button>
@@ -341,15 +369,16 @@ function SessionUsageDetail({
 	onSelect: (sessionId: string) => void;
 	pagination: { page: number; hasNext: boolean; loading: boolean; onPrevious: () => void; onNext: () => void };
 }) {
+	const { t } = useTranslation("members");
 	/** 仅当所选会话仍在当前筛选/分页结果里时才展示明细，避免明细与列表范围脱节。 */
 	const selected = rows.find((row) => row.session_id === selectedId) ?? null;
 	return (
 		<section aria-labelledby="member-session-detail-heading" className={styles.sectionBlock}>
 			<div className={styles.blockHead}>
 				<h2 id="member-session-detail-heading" className={styles.blockTitle}>
-					会话用量明细
+					{t("session.detailTitle")}
 				</h2>
-				<span className={styles.headMeta}>点击会话查看明细，明细随筛选与分页联动</span>
+				<span className={styles.headMeta}>{t("session.detailHint")}</span>
 			</div>
 			<div className={styles.splitGrid}>
 				<div className={styles.listCol}>
@@ -363,17 +392,17 @@ function SessionUsageDetail({
 						</ul>
 					</div>
 					{(pagination.page > 1 || pagination.hasNext) && (
-						<nav aria-label="成员会话分页" className={styles.listPager}>
+						<nav aria-label={t("session.pagerAria")} className={styles.listPager}>
 							<Button
 								size="small"
 								disabled={pagination.loading || pagination.page === 1}
 								onClick={pagination.onPrevious}
 							>
-								上一页
+								{t("list.prev")}
 							</Button>
-							<span>第 {pagination.page} 页</span>
+							<span>{t("list.pageOf", { page: pagination.page })}</span>
 							<Button size="small" disabled={pagination.loading || !pagination.hasNext} onClick={pagination.onNext}>
-								下一页
+								{t("list.next")}
 							</Button>
 						</nav>
 					)}
@@ -382,15 +411,14 @@ function SessionUsageDetail({
 					<div className={styles.detailStack}>
 						<div className={styles.sdHead}>
 							<h3 className={styles.sdTitle}>{selected.title || selected.session_id}</h3>
-							{selected.deleted_at ? <Tag>已删除 · 用量保留</Tag> : null}
-							<Tag>{collectionLabels[selected.collection_status]}</Tag>
+							{selected.deleted_at ? <Tag>{t("deletedKept")}</Tag> : null}
+							<Tag>{t(collectionLabels[selected.collection_status], { ns: "common" })}</Tag>
 						</div>
 						<p className={styles.sessionMeta}>
 							<code className={styles.sdCode} title={selected.session_id}>
 								{shortId(selected.session_id)}
 							</code>{" "}
-							· {selected.agent_slug} · {selected.status || "—"} · 创建 {captureTime(selected.created_at)} · 采集{" "}
-							{captureTime(selected.captured_at)}
+							· {selected.agent_slug} · {selected.status || "—"} · {t("capture.created", { time: captureTime(selected.created_at, t) })} · {t("capture.capturedAt", { time: captureTime(selected.captured_at, t) })}
 						</p>
 						<SessionStatCards session={selected} />
 						<SessionUsageTelemetry sessionId={selected.session_id} deleted={Boolean(selected.deleted_at)} />
@@ -402,27 +430,23 @@ function SessionUsageDetail({
 }
 
 function MemberSummary({ summary }: { summary: MemberUsageSummary }) {
+	const { t } = useTranslation("members");
 	return (
 		<>
 			{["failed", "partial"].includes(summary.refresh_status) && (
 				<p role="status" className={styles.summaryNote}>
-					部分会话用量尚未成功获取，合计可能不完整。已保存的数据仍保留，可点击刷新用量重试。
+					{t("usagePage.incomplete")}
 				</p>
 			)}
 			<UsageMetrics summary={summary} />
 			<p className={styles.metricsFoot}>
 				<Popover
-					content={
-						<span className={usageStyles.preLine}>
-							各指标独立统计，未知字段不按 0 计算。缓存 Token 与输入 Token 的包含关系由 Provider
-							决定，此处不相加。统计范围与明细筛选一致，合计不受分页影响。
-						</span>
-					}
-					title="口径说明"
+					content={<span className={usageStyles.preLine}>{t("usagePage.metricsNote")}</span>}
+					title={t("usagePage.metricsNoteTitle")}
 					trigger="click"
 				>
 					<button type="button" className={usageStyles.popLink}>
-						口径说明
+						{t("usagePage.metricsNoteTitle")}
 					</button>
 				</Popover>
 			</p>
@@ -433,7 +457,7 @@ function MemberSummary({ summary }: { summary: MemberUsageSummary }) {
 export function MemberUsagePage({
 	member,
 	onBack,
-	backLabel = "返回成员列表",
+	backLabel,
 	editLimits = false,
 }: {
 	member: MemberView;
@@ -441,6 +465,7 @@ export function MemberUsagePage({
 	backLabel?: string;
 	editLimits?: boolean;
 }) {
+	const { t } = useTranslation("members");
 	const client = useMemo(() => createAdminClient({ request: adminRequest() }), []);
 	const usage = useMemberUsage(client, member.member_id);
 	const summary = usage.summary;
@@ -459,34 +484,34 @@ export function MemberUsagePage({
 		<section aria-labelledby="member-usage-heading" className={styles.pageRoot}>
 			<InnerLayout
 				titleId="member-usage-heading"
-				title={`${member.display_name}的会话用量`}
-				description={`${member.username} · 全部体验会话的累计用量，包含已删除会话。`}
+				title={t("usagePage.title", { name: member.display_name })}
+				description={t("usagePage.description", { username: member.username })}
 				onBack={onBack}
-				backLabel={backLabel}
+				backLabel={backLabel ?? t("route.backToMembers")}
 				right={
 					<Button loading={usage.loading || refreshing} onClick={() => void usage.refresh()}>
-						{refreshing ? "采集中…" : "刷新用量"}
+						{refreshing ? t("usagePage.refreshing") : t("usagePage.refresh")}
 					</Button>
 				}
 			/>
 			<section aria-labelledby="member-usage-summary-heading">
 				<div className={styles.blockHead}>
 					<h2 id="member-usage-summary-heading" className={styles.blockTitle}>
-						用量汇总
+						{t("usagePage.summaryTitle")}
 					</h2>
 					<div className={styles.agentFilter}>
-						<span>Agent</span>
+						<span>{t("usagePage.agentFilterLabel")}</span>
 						<div className={styles.agentFilterControl}>
 							{/* 候选来自成员用量响应本身，展开重拉会连带刷新整页。 */}
 							<RemoteResourcePicker
-								label="Agent 筛选"
+								label={t("usagePage.agentFilter")}
 								hideLabel
 								resource="Agent"
-								placeholder="全部 Agent"
+								placeholder={t("usagePage.allAgents")}
 								value={memberUsageAgentKey(usage.agent)}
 								onChange={(key) => usage.setAgent(usage.agents.find((agent) => memberUsageAgentKey(agent) === key))}
-								defaultOption={{ id: "", name: "全部 Agent" }}
-								emptyText="该成员暂无体验会话"
+								defaultOption={{ id: "", name: t("usagePage.allAgents") }}
+								emptyText={t("usagePage.pickerEmpty")}
 								refreshOnOpen={false}
 								showId={false}
 								remote={{
@@ -495,9 +520,9 @@ export function MemberUsagePage({
 										name: agent.display_name ?? agent.slug,
 										detail: agent.display_name ? agent.slug : undefined,
 										tag: agent.deleted ? (
-											<Tag>已删除</Tag>
+											<Tag>{t("deletedTag")}</Tag>
 										) : agent.catalog_entry_id === null ? (
-											<Tag>未关联</Tag>
+											<Tag>{t("agentUnlinked")}</Tag>
 										) : undefined,
 									})),
 									loading: usage.loading,
@@ -511,15 +536,17 @@ export function MemberUsagePage({
 						<>
 							<span className={styles.headSpacer} />
 							<span className={styles.headMeta} role="status">
-								会话 {summary.session_count}（已删除 {summary.deleted_session_count}） ·{" "}
-								{refreshing ? "正在采集" : "已处理"} {summary.completed_sessions} / {summary.session_count} · 最近采集{" "}
-								{captureTime(summary.refreshed_at)}
+								{t("usagePage.summarySessions", { count: summary.session_count, deleted: summary.deleted_session_count })} ·{" "}
+								{refreshing
+									? t("usagePage.progressRefreshing", { completed: summary.completed_sessions, total: summary.session_count })
+									: t("usagePage.progressDone", { completed: summary.completed_sessions, total: summary.session_count })} ·{" "}
+								{t("usagePage.lastCollected", { time: captureTime(summary.refreshed_at, t) })}
 							</span>
 						</>
 					) : null}
 				</div>
 				{usage.error && (
-					<Result status="error" title={usage.error} extra={<Button onClick={usage.retry}>重试</Button>} />
+					<Result status="error" title={usage.error} extra={<Button onClick={usage.retry}>{t("usagePage.retry")}</Button>} />
 				)}
 				{summary ? (
 					<MemberSummary summary={summary} />
@@ -550,9 +577,7 @@ export function MemberUsagePage({
 				!usage.error && (
 					<Empty
 						image={Empty.PRESENTED_IMAGE_SIMPLE}
-						description={
-							usage.agent ? "该成员在此 Agent 下还没有会话。" : "该成员开始使用体验页后，将在这里统计会话用量。"
-						}
+						description={usage.agent ? t("usagePage.emptyAgent") : t("usagePage.emptyDefault")}
 					/>
 				)
 			)}

@@ -1,5 +1,7 @@
 import type { RemoteEnvironmentDetail } from "@openagentkit/sdk/protocol";
+import i18n from "i18next";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 import styles from "./template-resources.module.less";
 
@@ -28,11 +30,11 @@ function updatedAtLabel(value?: string) {
 	const timestamp = new Date(value).getTime();
 	if (!Number.isFinite(timestamp)) return undefined;
 	const seconds = (timestamp - Date.now()) / 1_000;
-	const formatter = new Intl.RelativeTimeFormat("zh-CN", { numeric: "auto" });
+	const formatter = new Intl.RelativeTimeFormat(i18n.language, { numeric: "auto" });
 	for (const [size, unit] of timeUnits) {
 		if (Math.abs(seconds) >= size) return formatter.format(Math.round(seconds / size), unit);
 	}
-	return "刚刚";
+	return i18n.getFixedT(null, "templates")("agent.environment.detail.justNow");
 }
 
 function DetailSection({ title, children }: { title: string; children: ReactNode }) {
@@ -58,24 +60,38 @@ function DetailRows({ rows }: { rows: { key: string; label: string; value: strin
 }
 
 function Networking({ detail }: { detail: RemoteEnvironmentDetail }) {
+	const { t } = useTranslation("templates");
 	const networking = detail.configuration.networking;
 	const mode = detail.copy_restricted_fields?.includes("configuration.networking")
-		? "当前配置无法完整展示"
+		? t("agent.environment.config.restrictedConfig")
 		: networking?.type === "unrestricted"
-			? "不限制访问"
+			? t("agent.environment.networking.modeUnrestricted")
 			: networking?.type === "limited"
-				? "限制访问"
-				: "使用默认策略";
-	const access = (value?: boolean) => (value === undefined ? "使用默认设置" : value ? "允许" : "不允许");
-	const rows = [{ key: "type", label: "访问模式", value: mode }];
+				? t("agent.environment.networking.modeLimited")
+				: t("agent.environment.networking.modeDefault");
+	const access = (value?: boolean) =>
+		value === undefined
+			? t("agent.environment.networking.accessDefault")
+			: value
+				? t("agent.environment.networking.allow")
+				: t("agent.environment.networking.deny");
+	const rows = [{ key: "type", label: t("agent.environment.networking.accessMode"), value: mode }];
 	if (networking?.type === "limited")
 		rows.push(
-			{ key: "mcp", label: "MCP 服务访问", value: access(networking.allow_mcp_servers) },
-			{ key: "packages", label: "包管理器访问", value: access(networking.allow_package_managers) },
-			{ key: "hosts", label: "允许访问的主机", value: networking.allowed_hosts?.join("\n") || "未配置" },
+			{ key: "mcp", label: t("agent.environment.networking.mcpAccess"), value: access(networking.allow_mcp_servers) },
+			{
+				key: "packages",
+				label: t("agent.environment.networking.packageAccess"),
+				value: access(networking.allow_package_managers),
+			},
+			{
+				key: "hosts",
+				label: t("agent.environment.networking.hosts"),
+				value: networking.allowed_hosts?.join("\n") || t("agent.view.empty"),
+			},
 		);
 	return (
-		<DetailSection title="网络策略">
+		<DetailSection title={t("agent.environment.networking.title")}>
 			<DetailRows rows={rows} />
 		</DetailSection>
 	);
@@ -83,8 +99,14 @@ function Networking({ detail }: { detail: RemoteEnvironmentDetail }) {
 
 /** 与创建页使用同一环境合同，展示概览、网络策略、预装包和元数据。 */
 export function EnvironmentDetailView({ detail }: { detail: RemoteEnvironmentDetail }) {
+	const { t } = useTranslation("templates");
 	const type = detail.configuration.type;
-	const hostingLabel = type === "cloud" ? "云端" : type === "self_hosted" ? "本地" : undefined;
+	const hostingLabel =
+		type === "cloud"
+			? t("agent.environment.detail.cloud")
+			: type === "self_hosted"
+				? t("agent.environment.detail.local")
+				: undefined;
 	const updatedAt = updatedAtLabel(detail.updated_at);
 	const packages = packageManagers.flatMap((manager) =>
 		[
@@ -96,7 +118,7 @@ export function EnvironmentDetailView({ detail }: { detail: RemoteEnvironmentDet
 	const metadata = Object.entries(detail.metadata ?? {}).map(([key, value]) => ({
 		key,
 		label: key,
-		value: value === "[redacted]" ? "已隐藏" : value,
+		value: value === "[redacted]" ? t("agent.environment.detail.hidden") : value,
 	}));
 	return (
 		<div className={styles.envDetailRoot}>
@@ -106,24 +128,36 @@ export function EnvironmentDetailView({ detail }: { detail: RemoteEnvironmentDet
 					{hostingLabel ? <span className={tagClass()}>{hostingLabel}</span> : null}
 					{detail.package_status ? (
 						<span className={tagClass(detail.package_status)}>
-							{detail.package_status === "ready" ? "活跃" : "准备中"}
+							{detail.package_status === "ready"
+								? t("agent.environment.detail.ready")
+								: t("agent.environment.detail.preparing")}
 						</span>
 					) : null}
 				</div>
 				<p className={styles.detailMeta}>
 					{detail.environment_id}
-					{updatedAt ? <span title={detail.updated_at}> · 最后更新于 {updatedAt}</span> : null}
+					{updatedAt ? (
+						<span title={detail.updated_at}>{t("agent.environment.detail.lastUpdated", { time: updatedAt })}</span>
+					) : null}
 				</p>
 				{detail.description ? <p className={styles.detailDesc}>{detail.description}</p> : null}
 			</div>
 			<Networking detail={detail} />
 			{type === "cloud" ? (
-				<DetailSection title="预装包">
-					{packages.length ? <DetailRows rows={packages} /> : <p className={styles.detailMeta}>未配置预装包</p>}
+				<DetailSection title={t("agent.environment.fields.packages")}>
+					{packages.length ? (
+						<DetailRows rows={packages} />
+					) : (
+						<p className={styles.detailMeta}>{t("agent.environment.detail.noPackages")}</p>
+					)}
 				</DetailSection>
 			) : null}
-			<DetailSection title="元数据">
-				{metadata.length ? <DetailRows rows={metadata} /> : <p className={styles.detailMeta}>无元数据</p>}
+			<DetailSection title={t("agent.environment.fields.metadata")}>
+				{metadata.length ? (
+					<DetailRows rows={metadata} />
+				) : (
+					<p className={styles.detailMeta}>{t("agent.environment.detail.noMetadata")}</p>
+				)}
 			</DetailSection>
 		</div>
 	);

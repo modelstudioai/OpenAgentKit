@@ -1,6 +1,8 @@
 import type { RemoteAgentVersionDetail } from "@openagentkit/sdk/protocol";
 import { Button } from "antd";
+import i18n from "i18next";
 import { type ReactNode, useId, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
 	configList,
 	configObject,
@@ -17,21 +19,23 @@ function badgeClass(enabled?: boolean) {
 	return enabled === undefined || enabled ? styles.badge : `${styles.badge} ${styles.badgeOff}`;
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, children, plain = false }: { title: string; children: ReactNode; plain?: boolean }) {
 	return (
 		<section aria-label={title} className={styles.configSection}>
-			<h4 className={title === "版本" ? styles.sectionTitlePlain : styles.sectionTitleMed}>{title}</h4>
+			<h4 className={plain ? styles.sectionTitlePlain : styles.sectionTitleMed}>{title}</h4>
 			{children}
 		</section>
 	);
 }
 
 function Text({ children }: { children?: ReactNode }) {
-	return <p className={styles.plainText}>{children || "未配置"}</p>;
+	const { t } = useTranslation("templates");
+	return <p className={styles.plainText}>{children || t("agent.view.empty")}</p>;
 }
 
 function Value({ label, value }: { label: string; value: unknown }) {
-	const text = typeof value === "boolean" ? (value ? "开启" : "关闭") : configText(value);
+	const { t } = useTranslation("templates");
+	const text = typeof value === "boolean" ? (value ? t("agent.view.on") : t("agent.view.off")) : configText(value);
 	if (text === undefined) return null;
 	return (
 		<div className={styles.fieldStack}>
@@ -42,11 +46,12 @@ function Value({ label, value }: { label: string; value: unknown }) {
 }
 
 function Model({ value }: { value: unknown }) {
+	const { t } = useTranslation("templates");
 	const model = configObject(value);
 	const provider = model.bailian;
 	const fields = provider && typeof provider === "object" ? configObject(provider) : model;
 	const name = configText(fields.name) ?? configText(fields.id) ?? configText(provider) ?? configText(value);
-	if (!name) return <Text>未配置模型</Text>;
+	if (!name) return <Text>{t("agent.view.modelEmpty")}</Text>;
 	return (
 		<div className={styles.modelBox}>
 			<p className={styles.nameAny}>{name}</p>
@@ -55,52 +60,62 @@ function Model({ value }: { value: unknown }) {
 }
 
 function enabledLabel(value?: boolean) {
-	return value === undefined ? "未提供" : value ? "已启用" : "已禁用";
+	const t = i18n.getFixedT(null, "templates");
+	return value === undefined
+		? t("agent.view.enabledMissing")
+		: value
+			? t("agent.view.enabledYes")
+			: t("agent.view.enabledNo");
 }
 
 function sourceLabel(value: string) {
-	if (value === "official") return "官方";
-	if (["custom", "customer", "url", "http"].includes(value)) return "自定义";
+	const t = i18n.getFixedT(null, "templates");
+	if (value === "official") return t("agent.view.sourceOfficial");
+	if (["custom", "customer", "url", "http"].includes(value)) return t("agent.view.sourceCustom");
 	return value;
 }
 
 function Toolkit({ value, title = value.title }: { value: VersionToolkit; title?: string }) {
+	const { t } = useTranslation("templates");
 	const [expanded, setExpanded] = useState(true);
 	const contentId = useId();
 	return (
-		<section aria-label={`${title}配置`} className={styles.toolkitCard}>
+		<section aria-label={t("agent.view.configAria", { title })} className={styles.toolkitCard}>
 			<div className={styles.toolkitHeader}>
 				<div className={styles.headRow}>
 					<h5 className={styles.nameAny}>{title}</h5>
-					<span className={badgeClass()}>{value.tools.length} 项配置</span>
+					<span className={badgeClass()}>{t("agent.view.items", { count: value.tools.length })}</span>
 				</div>
 				<Button
 					size="small"
-					aria-label={`${expanded ? "收起" : "展开"}${title}工具配置`}
+					aria-label={t("agent.view.expandAria", {
+						action: expanded ? t("agent.view.collapse") : t("agent.view.expand"),
+						title,
+					})}
 					aria-expanded={expanded}
 					aria-controls={contentId}
 					onClick={() => setExpanded((current) => !current)}
 				>
-					{expanded ? "收起" : "展开"}
+					{expanded ? t("agent.view.collapse") : t("agent.view.expand")}
 				</Button>
 			</div>
 			<dl className={styles.toolkitGrid}>
-				<Value label="默认启用状态" value={enabledLabel(value.defaultEnabled)} />
-				<Value label="默认审批策略" value={value.defaultPermission} />
+				<Value label={t("agent.view.defaultEnabled")} value={enabledLabel(value.defaultEnabled)} />
+				<Value label={t("agent.view.defaultPermission")} value={value.defaultPermission} />
 			</dl>
 			<div id={contentId} hidden={!expanded} className={styles.toolkitBody}>
 				{value.tools.length ? (
-					<table aria-label={`${title}工具配置`} className={styles.toolkitTable}>
+					<table aria-label={t("agent.view.toolkitAria", { title })} className={styles.toolkitTable}>
 						<thead className={styles.toolkitThead}>
 							<tr>
 								<th scope="col" className={styles.toolkitTh}>
-									工具名称
+									{t("agent.view.toolName")}
 								</th>
 								<th scope="col" className={styles.toolkitTh25}>
-									启用状态
+									{t("agent.view.enableState")}
 								</th>
 								<th scope="col" className={styles.toolkitTh25}>
-									审批策略
+									{t("agent.view.permission")}
 								</th>
 							</tr>
 						</thead>
@@ -113,17 +128,21 @@ function Toolkit({ value, title = value.title }: { value: VersionToolkit; title?
 									</th>
 									<td className={styles.toolkitTd}>
 										<span aria-hidden="true" className={styles.toolkitTdLabel}>
-											启用状态
+											{t("agent.view.enableState")}
 										</span>
 										<span className={badgeClass(tool.enabled === true)}>{enabledLabel(tool.enabled)}</span>
-										{tool.inheritedEnabled ? <span className={styles.toolkitInherit}>跟随默认</span> : null}
+										{tool.inheritedEnabled ? (
+											<span className={styles.toolkitInherit}>{t("agent.view.followDefault")}</span>
+										) : null}
 									</td>
 									<td className={styles.toolkitTdAny}>
 										<span aria-hidden="true" className={styles.toolkitTdLabel}>
-											审批策略
+											{t("agent.view.permission")}
 										</span>
 										{tool.permission}
-										{tool.inheritedPermission ? <span className={styles.toolkitInherit}>跟随默认</span> : null}
+										{tool.inheritedPermission ? (
+											<span className={styles.toolkitInherit}>{t("agent.view.followDefault")}</span>
+										) : null}
 									</td>
 								</tr>
 							))}
@@ -131,7 +150,7 @@ function Toolkit({ value, title = value.title }: { value: VersionToolkit; title?
 					</table>
 				) : (
 					<div className={styles.toolkitEmpty}>
-						<Text>未单独配置工具，按默认设置执行</Text>
+						<Text>{t("agent.view.toolkitEmpty")}</Text>
 					</div>
 				)}
 			</div>
@@ -140,6 +159,7 @@ function Toolkit({ value, title = value.title }: { value: VersionToolkit; title?
 }
 
 function McpServer({ server }: { server: VersionMcpServer }) {
+	const { t } = useTranslation("templates");
 	return (
 		<article aria-label={server.name} className={styles.mcpCard}>
 			<div className={styles.entryRow}>
@@ -148,27 +168,32 @@ function McpServer({ server }: { server: VersionMcpServer }) {
 			</div>
 			{server.description ? <Text>{server.description}</Text> : null}
 			<dl className={`${styles.stack2} ${styles.textXs}`}>
-				{server.code !== server.name ? <Value label="服务标识" value={server.code} /> : null}
-				<Value label="服务地址" value={server.url} />
-				<Value label="连接协议" value={server.protocol} />
+				{server.code !== server.name ? <Value label={t("agent.view.serverCode")} value={server.code} /> : null}
+				<Value label={t("agent.view.serverUrl")} value={server.url} />
+				<Value label={t("agent.view.serverProtocol")} value={server.protocol} />
 			</dl>
-			{server.toolkit ? <Toolkit value={server.toolkit} title={server.name} /> : <Text>未提供工具配置</Text>}
+			{server.toolkit ? (
+				<Toolkit value={server.toolkit} title={server.name} />
+			) : (
+				<Text>{t("agent.view.noToolkit")}</Text>
+			)}
 		</article>
 	);
 }
 
 function Skills({ value }: { value: unknown }) {
+	const { t } = useTranslation("templates");
 	const skills = configList(value);
-	if (!skills.length) return <Text>未配置技能</Text>;
+	if (!skills.length) return <Text>{t("agent.view.noSkills")}</Text>;
 	return (
-		<ul aria-label="技能列表" className={styles.skillList}>
+		<ul aria-label={t("agent.view.sectionSkills")} className={styles.skillList}>
 			{skills.map((entry, index) => {
 				const skill = configObject(entry);
 				const id = configText(skill.skill_id ?? skill.skillId ?? skill.id ?? entry);
 				const name =
 					[skill.name, skill.skill_name, skill.skillName].map(configText).find((name) => name && name !== id) ??
 					id ??
-					"技能";
+					t("agent.view.skillFallback");
 				const version = configText(skill.version);
 				const type = configText(skill.type);
 				return (
@@ -200,16 +225,28 @@ export function AgentVersionConfigurationView({
 	versionContent?: ReactNode;
 	placeholder?: string;
 }) {
+	const { t } = useTranslation("templates");
 	return (
 		<div className={styles.shrinkRoot}>
-			<Section title="名称">{nameContent ?? <Text>{detail?.name}</Text>}</Section>
+			<Section title={t("agent.view.sectionName")} plain>
+				{nameContent ?? <Text>{detail?.name}</Text>}
+			</Section>
 			{versionContent || versionLabel ? (
-				<Section title="版本">{versionContent ?? <Text>{versionLabel}</Text>}</Section>
+				<Section title={t("agent.view.sectionVersion")} plain>
+					{versionContent ?? <Text>{versionLabel}</Text>}
+				</Section>
 			) : null}
 			{placeholder || !detail ? (
-				["模型", "描述", "系统提示词", "工具", "MCP 服务器", "技能"].map((title) => (
+				[
+					t("agent.view.sectionModel"),
+					t("agent.view.sectionDescription"),
+					t("agent.view.sectionInstructions"),
+					t("agent.view.sectionTools"),
+					t("agent.view.sectionMcp"),
+					t("agent.view.sectionSkills"),
+				].map((title) => (
 					<Section key={title} title={title}>
-						<Text>{placeholder ?? "请选择智能体"}</Text>
+						<Text>{placeholder ?? t("agent.view.selectAgent")}</Text>
 					</Section>
 				))
 			) : (
@@ -220,6 +257,7 @@ export function AgentVersionConfigurationView({
 }
 
 function ConfigurationFields({ detail }: { detail: Pick<RemoteAgentVersionDetail, "description" | "configuration"> }) {
+	const { t } = useTranslation("templates");
 	const config = detail.configuration;
 	const tools = versionToolkits(config.tools).filter((toolkit) => toolkit.kind !== "mcp");
 	const servers = versionMcpServers(config.mcp_servers, config.tools);
@@ -230,41 +268,43 @@ function ConfigurationFields({ detail }: { detail: Pick<RemoteAgentVersionDetail
 		!(multiagent.type === "coordinator" && Array.isArray(multiagent.agents) && members.length === 0);
 	return (
 		<>
-			<Section title="模型">
+			<Section title={t("agent.view.sectionModel")}>
 				<Model value={config.model} />
 			</Section>
-			<Section title="Multi-Agent 模式">
+			<Section title={t("agent.view.sectionMultiagent")}>
 				{multiagentEnabled ? (
 					<div className={styles.stack2}>
-						<p>协调 Agent</p>
-						<ul aria-label="子 Agent 配置" className={styles.stack2}>
+						<p>{t("agent.view.coordinator")}</p>
+						<ul aria-label={t("agent.view.subAgentsAria")} className={styles.stack2}>
 							{members.map((member) => {
 								const value = configObject(member);
 								const id =
 									configText(value.agent_id ?? value.id ?? member) ??
-									(value.type === "self" ? "Self" : "无法识别的子 Agent");
+									(value.type === "self" ? t("agent.view.self") : t("agent.view.unknownSubAgent"));
 								return (
 									<li key={id} className={styles.wrapAnywhere}>
 										{id}
-										{value.version != null ? ` · 版本 ${configText(value.version)}` : ""}
+										{value.version != null
+											? t("agent.view.versionSuffix", { version: configText(value.version) ?? "" })
+											: ""}
 									</li>
 								);
 							})}
 						</ul>
 					</div>
 				) : (
-					<Text>未开启</Text>
+					<Text>{t("agent.view.disabled")}</Text>
 				)}
 			</Section>
-			<Section title="描述">
+			<Section title={t("agent.view.sectionDescription")}>
 				<Text>{detail.description}</Text>
 			</Section>
-			<Section title="系统提示词">
+			<Section title={t("agent.view.sectionInstructions")}>
 				<div className={styles.instructionsBox}>
 					<Text>{config.instructions}</Text>
 				</div>
 			</Section>
-			<Section title="工具">
+			<Section title={t("agent.view.sectionTools")}>
 				{tools.length ? (
 					<div className={styles.blockStack}>
 						{tools.map((toolkit) => (
@@ -272,10 +312,10 @@ function ConfigurationFields({ detail }: { detail: Pick<RemoteAgentVersionDetail
 						))}
 					</div>
 				) : (
-					<Text>未配置工具</Text>
+					<Text>{t("agent.view.noTools")}</Text>
 				)}
 			</Section>
-			<Section title="MCP 服务器">
+			<Section title={t("agent.view.sectionMcp")}>
 				{servers.length ? (
 					<div className={styles.blockStack}>
 						{servers.map((server) => (
@@ -283,10 +323,10 @@ function ConfigurationFields({ detail }: { detail: Pick<RemoteAgentVersionDetail
 						))}
 					</div>
 				) : (
-					<Text>未配置 MCP 服务器</Text>
+					<Text>{t("agent.view.noMcp")}</Text>
 				)}
 			</Section>
-			<Section title="技能">
+			<Section title={t("agent.view.sectionSkills")}>
 				<Skills value={config.skills} />
 			</Section>
 		</>

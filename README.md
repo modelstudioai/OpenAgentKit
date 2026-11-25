@@ -66,7 +66,7 @@
 | UI 组件 `@openagentpack/kit-chat-ui` | Chat、Message、Sender、Attachments、FileCard、ToolApprovalCard 等 | 组合对话、输入、附件、文件和审批界面；支持将组件及声明依赖复制到业务项目中修改 |
 | 会话运行时 `@openagentkit/sdk` 的功能入口 | 流解析、请求、后端适配、消息状态、重连与会话动作 | 接入既有后端，管理流式数据与会话交互；非 React 应用可直接订阅会话状态 |
 | React hooks `@openagentkit/sdk/<功能>/hooks` | `useChat`、`useSessions`、`useAgentCatalog` 等 | 将连接、消息、发送、停止与审批绑定到 React 页面 |
-| 开发 Skill | `kit-components`、`use-kit-chat`、`kit-chat-provider`、`kit-database` | 指导 coding agent 组合组件、管理会话、接入对话后端和配置服务端数据库 |
+| 开发 Skill | `kit-components`、`use-kit-chat`、`kit-chat-provider`、`kit-database` | 指导 coding agent 组合组件、管理会话、接入对话后端和配置服务端数据库。三个对话 Skill 的离线包支持将组件、示例和 Kit SDK 源码复制到业务项目 |
 
 SDK 按功能导入，例如 `@openagentkit/sdk/chat`、`@openagentkit/sdk/chat/hooks`
 与 `@openagentkit/sdk/sessions/hooks`，不提供根聚合入口。
@@ -229,7 +229,7 @@ OpenAgentKit 原生对接百炼 Managed Agent（MA）协议，围绕会话、事
 
 ```bash
 pnpm install
-pnpm start                 # 首次引导配置，随后启动 server :8787 + web :5173 + console :5174
+pnpm start                 # 首次引导配置，随后启动 server :8787 + web :5173 + web-vue :5175 + console :5174
 ```
 
 没有根 `.env` 时，启动器引导选择 Mock 或真实百炼，生成随机 `ADMIN_TOKEN`，并以仅当前用户
@@ -241,8 +241,9 @@ Workspace ID 或 Base URL。管理员令牌只写入 `.env`，登录管理端时
 根 `.env` 的非空值覆盖 shell 同名变量。填入 Workspace ID 或 Base URL 后，另一地址字段的显式空值
 也会覆盖 shell 继承值。启动日志只打印被覆盖的变量名。
 
-开发时可用 `pnpm dev` 启动上述三个应用及文档站 `:3000`，或用 `pnpm start server web` /
-`pnpm dev server web` 只启动指定目标。`pnpm setup` 可选，仅用于启用仓库 Git hooks。
+开发时可用 `pnpm dev` 启动 server、web、web-vue 与 console；文档站用 `pnpm dev storybook`
+单独启动。也可用 `pnpm start server web` / `pnpm dev server web` 只启动指定目标。
+`pnpm setup` 可选，仅用于启用仓库 Git hooks。
 
 ### 配置
 
@@ -304,7 +305,6 @@ pnpm gate        # typecheck + lint + test + build + 架构检查 + 文档检查
 pnpm verify:push # pre-push hook 跑的就是这套
 ```
 
-提交信息使用简体中文 Conventional Commits，例如 `fix(server): 修复会话恢复`。
 Issue 与反馈：https://github.com/modelstudioai/OpenAgentKit/issues
 
 ## License

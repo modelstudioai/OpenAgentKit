@@ -1,5 +1,6 @@
 import { Alert, Button, Spin } from "antd";
 import { type ReactNode, useId, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import { AgentVersionConfigurationView } from "./agent-version-configuration-view.tsx";
@@ -21,12 +22,13 @@ export function TemplateAgentVersionHistory({
 	status: ReactNode;
 	onSelect: (version: number) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const [expandedVersion, setExpandedVersion] = useState<number | null | undefined>(selectedVersion);
 	const expanded = expandedVersion === undefined ? versions[0] : expandedVersion;
 	return (
-		<section aria-label="智能体版本列表" className={styles.historyRoot}>
+		<section aria-label={t("agent.history.listAria")} className={styles.historyRoot}>
 			{status}
-			<ol aria-label="智能体版本时间线" className={styles.shrinkRoot}>
+			<ol aria-label={t("agent.history.timelineAria")} className={styles.shrinkRoot}>
 				{versions.map((version) => (
 					<VersionRow
 						key={version}
@@ -61,9 +63,10 @@ function VersionRow({
 	onExpand: () => void;
 	onSelect: () => void;
 }) {
+	const { t } = useTranslation("templates");
 	const contentId = useId();
 	return (
-		<li aria-label={`智能体版本 v${version}`} className={styles.timelineRow}>
+		<li aria-label={t("agent.history.rowAria", { version })} className={styles.timelineRow}>
 			<span aria-hidden="true" className={styles.timelineLine} />
 			<span
 				aria-hidden="true"
@@ -72,16 +75,18 @@ function VersionRow({
 			<div className={selected ? `${styles.versionCard} ${styles.versionCardSelected}` : styles.versionCard}>
 				<button
 					type="button"
-					aria-label={`查看智能体版本 v${version}`}
+					aria-label={t("agent.history.viewAria", { version })}
 					aria-expanded={expanded}
 					aria-controls={contentId}
 					onClick={onExpand}
 					className={styles.versionButton}
 				>
 					<span className={styles.versionLabel}>v{version}</span>
-					{latest ? <VersionTag>最新</VersionTag> : null}
-					{selected ? <VersionTag>已选择</VersionTag> : null}
-					<span className={styles.versionToggle}>{expanded ? "收起配置" : "查看配置"}</span>
+					{latest ? <VersionTag>{t("agent.history.latest")}</VersionTag> : null}
+					{selected ? <VersionTag>{t("agent.history.selected")}</VersionTag> : null}
+					<span className={styles.versionToggle}>
+						{expanded ? t("agent.history.collapse") : t("agent.history.expand")}
+					</span>
 				</button>
 				<div id={contentId} hidden={!expanded}>
 					{expanded ? (
@@ -111,6 +116,7 @@ function VersionConfiguration({
 	version: number;
 	onSelect: () => void;
 }) {
+	const { t } = useTranslation("templates");
 	const client = useMemo(getAdminClient, []);
 	const detail = useAdminQuery(`templates:agent-version:${agentId}:${version}`, (signal) =>
 		client.remoteAgentVersion(agentId, version, signal),
@@ -129,7 +135,7 @@ function VersionConfiguration({
 					message={detail.error}
 					action={
 						<Button size="small" onClick={() => void detail.refresh()}>
-							重试
+							{t("retry")}
 						</Button>
 					}
 				/>
@@ -137,7 +143,7 @@ function VersionConfiguration({
 				<>
 					{detail.data.created_at ? (
 						<p className={styles.metaAny}>
-							创建时间：
+							{t("agent.history.createdAt")}
 							<time dateTime={detail.data.created_at}>
 								{new Date(detail.data.created_at).toLocaleString("zh-CN", { hour12: false })}
 							</time>
@@ -148,7 +154,7 @@ function VersionConfiguration({
 			) : null}
 			<div className={styles.rowEnd}>
 				<Button type="primary" disabled={loading || Boolean(detail.error) || !detail.data} onClick={onSelect}>
-					使用版本 v{version}
+					{t("agent.history.useVersion", { version })}
 				</Button>
 			</div>
 		</div>

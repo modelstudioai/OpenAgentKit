@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 import styles from "./stat-card.module.less";
 
@@ -8,7 +9,7 @@ export function StatCell({
 	value,
 	unit,
 	hint,
-	missingText = "待获取",
+	missingText,
 }: {
 	/** 标签可携带行内节点（如口径说明的 info 图标）。 */
 	label: ReactNode;
@@ -19,11 +20,12 @@ export function StatCell({
 	/** 缺失占位文案；已采集但 Provider 未返回的指标可用「未返回」与「待获取」区分。 */
 	missingText?: string;
 }) {
+	const { t } = useTranslation("common");
 	return (
 		<div className={styles.cellRoot}>
 			<dt className={styles.cellLabel}>{label}</dt>
 			{value === null ? (
-				<dd className={styles.cellMissing}>{missingText}</dd>
+				<dd className={styles.cellMissing}>{missingText ?? t("statPending")}</dd>
 			) : (
 				<dd className={styles.cellValue}>
 					{value.toLocaleString("zh-CN", { maximumFractionDigits: 2 })}

@@ -9,6 +9,8 @@
   执行过程组件位于 `components/process/`。
 - `src/index.ts`：公开导出；`registry.json`：复制入口、文件及依赖闭包。
 - `src/theme.css`：冻结视觉 token、外观、动效与 reduced-motion。
+- `src/components/kit-i18n/`：语言 Context 与词典合并；组件文案放同目录 `strings.ts`
+  （default 导出 `{ "zh-CN", en }`），registry 以 `deps: ["kit-i18n"]` 与 `extraFiles` 随 copy-in 闭包复制。
 - `tests/`：需要跨组件协作的回归；公开 API 与示例同步到开发 Skill。
 
 ## 不变量
@@ -30,6 +32,9 @@
    空态保持顶部阅读、用户滚动保留位置，消息/子线程变化不能跳走整个文档页。
 9. 消费方必须导入主题并显式配置 Tailwind `@source`；仅看到 DOM class
    不能证明 CSS 已生成。断点或主题修改要验证消费方的实际产物。
+10. 组件用户可见文案必须走同目录 `strings.ts` 词典（`useKitStrings` / `resolveStrings`），
+    公共组件暴露 `strings` 覆盖 prop；JSX 内不新增硬编码中文。en 与 zh-CN 键对齐由
+    `pnpm check:i18n` 守护；宿主未提供 Provider 时回落 zh-CN，copy-in 零配置行为不变。
 
 ## 修改步骤
 

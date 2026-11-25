@@ -1,6 +1,7 @@
 import type { PresetPackAgentResources } from "@openagentkit/sdk/protocol";
 import { Alert, Button, Empty, Input, Spin } from "antd";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { type RemoteAgent, useRemoteAgents } from "../catalog/use-remote-agents.ts";
 import { TemplateAgentDetailDrawer } from "./template-agent-detail-drawer.tsx";
 import { TemplateAgentVersionPicker } from "./template-agent-version-picker.tsx";
@@ -45,6 +46,7 @@ function TemplateAgentRow({
 	onDefaultVersion: (version: number) => void;
 	onVersionChange: (version: number) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const name = agent.name || agent.agent_id;
 	const occupied = boundTo !== undefined && !selected;
 	return (
@@ -58,7 +60,7 @@ function TemplateAgentRow({
 			/>
 			<div className={styles.actionCell}>
 				{agent.local && !occupied ? (
-					<span className={styles.metaText}>待发布</span>
+					<span className={styles.metaText}>{t("agent.detail.pendingPublish")}</span>
 				) : (
 					<TemplateAgentVersionPicker
 						agentId={agent.agent_id}
@@ -96,6 +98,7 @@ export function TemplateAgentList({
 	onSelect: (agent: TemplateAgentSelection, resources?: PresetPackAgentResources) => void;
 	onVersionChange: (agent: TemplateAgentSelection) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const remote = useRemoteAgents();
 	const local = useTemplateLocalResources();
 	const boundAgents = useAgentOccupancy();
@@ -138,13 +141,13 @@ export function TemplateAgentList({
 	const currentPage = Math.min(page, pageCount);
 	const rows = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 	return (
-		<section aria-label="智能体列表" className={styles.tableWrap}>
+		<section aria-label={t("agent.list.aria")} className={styles.tableWrap}>
 			<header className={styles.listToolbar2}>
 				<div className={styles.searchBox}>
 					<Input
 						type="search"
-						aria-label="搜索智能体"
-						placeholder="搜索名称或 ID"
+						aria-label={t("agent.list.searchAria")}
+						placeholder={t("agent.list.searchPlaceholder")}
 						value={search}
 						onChange={(event) => {
 							setSearch(event.target.value);
@@ -167,7 +170,7 @@ export function TemplateAgentList({
 						message={remote.error}
 						action={
 							<Button size="small" onClick={() => void remote.refresh()}>
-								重试
+								{t("retry")}
 							</Button>
 						}
 					/>
@@ -177,9 +180,9 @@ export function TemplateAgentList({
 				<Empty
 					description={
 						<span className={styles.mutedOnly}>
-							{query ? "未找到匹配的智能体" : "暂无可选智能体"}
+							{query ? t("agent.list.noMatch") : t("agent.list.empty")}
 							<br />
-							<span className={styles.textXs}>{query ? "请尝试其他名称或 ID。" : "当前服务没有可选智能体。"}</span>
+							<span className={styles.textXs}>{query ? t("agent.list.noMatchHint") : t("agent.list.emptyHint")}</span>
 						</span>
 					}
 				/>
@@ -187,11 +190,11 @@ export function TemplateAgentList({
 			{ready && rows.length > 0 ? (
 				<>
 					<div aria-hidden="true" className={styles.tableHead5}>
-						<span className={styles.headCol2}>名称</span>
+						<span className={styles.headCol2}>{t("agent.view.sectionName")}</span>
 						<span className={styles.headCol2}>ID</span>
-						<span>版本</span>
+						<span>{t("agent.view.sectionVersion")}</span>
 					</div>
-					<ul aria-label="智能体列表" className={styles.rowList}>
+					<ul aria-label={t("agent.list.aria")} className={styles.rowList}>
 						{rows.map((agent) => (
 							<TemplateAgentRow
 								key={agent.agent_id}
@@ -212,18 +215,14 @@ export function TemplateAgentList({
 			) : null}
 			{ready ? (
 				<footer className={styles.listFooter}>
-					<span>
-						共 {filtered.length} 个智能体 · 每页 {PAGE_SIZE} 条
-					</span>
-					<nav aria-label="智能体列表分页" className={styles.listPager}>
+					<span>{t("agent.list.count", { count: filtered.length, pageSize: PAGE_SIZE })}</span>
+					<nav aria-label={t("agent.list.paginationAria")} className={styles.listPager}>
 						<Button size="small" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>
-							上一页
+							{t("agent.skills.previous")}
 						</Button>
-						<span aria-live="polite">
-							第 {currentPage} / {pageCount} 页
-						</span>
+						<span aria-live="polite">{t("agent.skills.page", { page: currentPage, pages: pageCount })}</span>
 						<Button size="small" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)}>
-							下一页
+							{t("agent.skills.next")}
 						</Button>
 					</nav>
 				</footer>

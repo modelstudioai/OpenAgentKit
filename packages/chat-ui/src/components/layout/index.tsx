@@ -1,6 +1,8 @@
 import { useIsMobile } from "@openagentkit/sdk/hooks";
 import * as Dialog from "@radix-ui/react-dialog";
 import { type HTMLAttributes, type ReactNode, useEffect, useState } from "react";
+import { format, resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
+import layoutStrings, { type LayoutStrings } from "./strings.ts";
 
 export interface LayoutSidebarControls {
 	/** 业务导航或会话选择完成后关闭移动抽屉。 */
@@ -36,6 +38,8 @@ export interface LayoutProps extends HTMLAttributes<HTMLDivElement> {
 	/** 默认适配移动可视视口；嵌入或原生宿主管理高度时可关闭。 */
 	fitViewport?: boolean;
 	children: ReactNode;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<LayoutStrings>;
 }
 
 function useVisualViewport(container: HTMLElement | null, enabled: boolean) {
@@ -78,13 +82,21 @@ const ASIDE_CLOSE_CLASSES =
 	"grid size-8 shrink-0 place-items-center rounded-[var(--kit-radius-sm)] text-[var(--kit-fg-muted)] transition-colors hover:bg-[var(--kit-bg-subtle)] hover:text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]";
 
 /** 断点感知的抽屉关闭按钮；桌面端不渲染。必须挂在 Dialog.Root 内。 */
-function SidebarCloseToggle({ isMobile, label }: { isMobile: boolean; label: string }) {
+function SidebarCloseToggle({
+	isMobile,
+	label,
+	strings,
+}: {
+	isMobile: boolean;
+	label: string;
+	strings: LayoutStrings;
+}) {
 	if (!isMobile) return null;
 	return (
 		<Dialog.Close asChild>
 			<button
 				type="button"
-				aria-label={`关闭${label}`}
+				aria-label={format(strings.closeAria, { label })}
 				className="rounded-[var(--kit-radius-sm)] p-1 text-[var(--kit-fg-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
 			>
 				<MenuIcon close />
@@ -94,10 +106,10 @@ function SidebarCloseToggle({ isMobile, label }: { isMobile: boolean; label: str
 }
 
 /** 移动覆盖层的关闭按钮：经 Dialog.Close 触发 onAsideOpenChange(false)。 */
-function AsideCloseButton({ label }: { label: string }) {
+function AsideCloseButton({ label, strings }: { label: string; strings: LayoutStrings }) {
 	return (
 		<Dialog.Close asChild>
-			<button type="button" aria-label={`关闭${label}`} className={ASIDE_CLOSE_CLASSES}>
+			<button type="button" aria-label={format(strings.closeAria, { label })} className={ASIDE_CLOSE_CLASSES}>
 				<MenuIcon close />
 			</button>
 		</Dialog.Close>
@@ -105,14 +117,24 @@ function AsideCloseButton({ label }: { label: string }) {
 }
 
 /** 断点感知的抽屉触发按钮；桌面端或无侧栏时都不渲染。必须挂在 Dialog.Root 内。 */
-function SidebarMenuToggle({ isMobile, hasSidebar, label }: { isMobile: boolean; hasSidebar: boolean; label: string }) {
+function SidebarMenuToggle({
+	isMobile,
+	hasSidebar,
+	label,
+	strings,
+}: {
+	isMobile: boolean;
+	hasSidebar: boolean;
+	label: string;
+	strings: LayoutStrings;
+}) {
 	if (!isMobile || !hasSidebar) return null;
 	return (
 		<Dialog.Trigger asChild>
 			<button
 				type="button"
-				aria-label={`打开${label}`}
-				title={`打开${label}`}
+				aria-label={format(strings.openAria, { label })}
+				title={format(strings.openAria, { label })}
 				className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--kit-radius-sm)] text-[var(--kit-fg-muted)] transition-colors hover:bg-[var(--kit-bg-subtle)] hover:text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
 			>
 				<MenuIcon />
@@ -266,17 +288,21 @@ export function Layout({
 	sidebar,
 	header,
 	mobileTitle,
-	sidebarLabel = "导航菜单",
+	sidebarLabel,
 	dialogs,
 	aside,
 	asideOpen = true,
-	asideLabel = "资源面板",
+	asideLabel,
 	onAsideOpenChange,
 	fitViewport = true,
 	children,
 	className,
+	strings: stringsOverride,
 	...props
 }: LayoutProps) {
+	const strings = resolveStrings(layoutStrings, useKitLocale(), stringsOverride);
+	const sidebarText = sidebarLabel ?? strings.sidebarLabel;
+	const asideText = asideLabel ?? strings.asideLabel;
 	const isMobile = useIsMobile();
 	const hasSidebar = sidebar !== null && sidebar !== undefined;
 	const [open, setOpen] = useState(false);
@@ -287,8 +313,10 @@ export function Layout({
 		if (!isMobile) setOpen(false);
 		else onAsideOpenChange?.(false);
 	}, [isMobile, onAsideOpenChange]);
-	const closeButton = <SidebarCloseToggle isMobile={isMobile} label={sidebarLabel} />;
-	const menuToggle = <SidebarMenuToggle isMobile={isMobile} hasSidebar={hasSidebar} label={sidebarLabel} />;
+	const closeButton = <SidebarCloseToggle isMobile={isMobile} label={sidebarText} strings={strings} />;
+	const menuToggle = (
+		<SidebarMenuToggle isMobile={isMobile} hasSidebar={hasSidebar} label={sidebarText} strings={strings} />
+	);
 	const sidebarContent = (
 		<>
 			{typeof sidebar === "function" ? sidebar({ closeSidebar: () => setOpen(false), closeButton }) : sidebar}
@@ -296,7 +324,7 @@ export function Layout({
 		</>
 	);
 	const asideContent = renderAside(aside, {
-		closeButton: isMobile ? <AsideCloseButton label={asideLabel} /> : null,
+		closeButton: isMobile ? <AsideCloseButton label={asideText} strings={strings} /> : null,
 	});
 	return (
 		<Dialog.Root open={open && isMobile} onOpenChange={setOpen}>
@@ -305,7 +333,7 @@ export function Layout({
 					isMobile={isMobile}
 					hasSidebar={hasSidebar}
 					container={container}
-					sidebarLabel={sidebarLabel}
+					sidebarLabel={sidebarText}
 					open={open}
 					sidebarContent={sidebarContent}
 					dialogs={dialogs}
@@ -318,7 +346,7 @@ export function Layout({
 							isMobile={isMobile}
 							container={container}
 							open={asideOpen}
-							label={asideLabel}
+							label={asideText}
 							onOpenChange={onAsideOpenChange}
 						>
 							{asideContent}

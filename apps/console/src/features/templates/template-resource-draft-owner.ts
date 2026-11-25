@@ -1,4 +1,5 @@
 import { KitError, type ResourceDraftView } from "@openagentkit/sdk/protocol";
+import i18n from "i18next";
 import type { AdminClient } from "../../lib/admin/index.ts";
 
 type DraftClient = Pick<AdminClient["resourceDrafts"], "active" | "create" | "discard" | "get">;
@@ -34,6 +35,7 @@ export function createTemplateResourceDraftOwner(options: {
 	claim: () => Promise<{ release: () => void; cleanupKey: string }>;
 	onDraft: (draft: ResourceDraftView | null) => void;
 }) {
+	const t = i18n.getFixedT(null, "templates");
 	let leases = 0;
 	let left = false;
 	let draft: ResourceDraftView | null = null;
@@ -44,7 +46,7 @@ export function createTemplateResourceDraftOwner(options: {
 	let leaving: Promise<void> | undefined;
 	let keepalive = false;
 	const assertActive = () => {
-		if (left || leases === 0) throw new Error("已离开创建页面，请重新进入后新建资源。");
+		if (left || leases === 0) throw new Error(t("resourceDraftOwner.left"));
 	};
 	const accept = (result: ResourceDraftView | null) => {
 		draft = result;
@@ -69,8 +71,7 @@ export function createTemplateResourceDraftOwner(options: {
 			await discardCurrent();
 		} catch (error) {
 			// 只有服务端明确保护的发布中/未知结果可继续进入恢复路径。
-			if (!publicationUnresolved(error))
-				throw new Error("未发布资源清理失败，请重试清理后再新建资源。", { cause: error });
+			if (!publicationUnresolved(error)) throw new Error(t("resourceDraftOwner.cleanupFailed"), { cause: error });
 		}
 	}
 	function initialize() {
@@ -170,7 +171,7 @@ export function createTemplateResourceDraftOwner(options: {
 				accept(result);
 				assertActive();
 				if (result.status !== "draft" && result.status !== "failed")
-					throw new Error("当前资源草稿尚未完成，请关闭弹窗后恢复发布或清理。");
+					throw new Error(t("resourceDraftOwner.draftUnfinished"));
 				return result;
 			})();
 			creating = request;
@@ -186,15 +187,14 @@ export function createTemplateResourceDraftOwner(options: {
 
 /** Web Locks 由浏览器在崩溃/关闭时自动释放，避免用不可靠的过期时间抢占另一页。 */
 export function claimTemplateResourceDraftLock(scope: string): Promise<() => void> {
+	const t = i18n.getFixedT(null, "templates");
 	if (!globalThis.navigator?.locks)
-		return Promise.reject(
-			new TemplateResourceDraftUnavailableError("当前浏览器不支持安全创建本地资源，请使用支持 Web Locks 的浏览器。"),
-		);
+		return Promise.reject(new TemplateResourceDraftUnavailableError(t("resourceDraftOwner.noWebLocks")));
 	return new Promise((resolve, reject) => {
 		void navigator.locks
 			.request(`kit:template-resource-draft:${scope}`, { ifAvailable: true }, async (lock) => {
 				if (!lock) {
-					reject(new TemplateResourceDraftUnavailableError("另一个页面正在创建资源，请先退出该页面后重试。"));
+					reject(new TemplateResourceDraftUnavailableError(t("resourceDraftOwner.otherPage")));
 					return;
 				}
 				await new Promise<void>((release) => resolve(release));

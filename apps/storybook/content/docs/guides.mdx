@@ -36,7 +36,7 @@ pnpm kit:add chat --dir /path/to/my-agent-app
 
 ## 部署
 
-- 本地：`pnpm dev`；生产：`pnpm build` 后 `node apps/server/dist/bin.js` + 静态托管
+- 本地：`pnpm dev`（文档站用 `pnpm dev storybook`）；生产：`pnpm build` 后 `node apps/server/dist/bin.js` + 静态托管
   `apps/web/dist`、`apps/console/dist`。
 - 反代场景：server 的 `/api/config` 返回空 `apiBaseUrl`（同源语义）；跨域直连用
   `KIT_PUBLIC_BASE_URL` + `KIT_CORS_ORIGINS` 白名单。

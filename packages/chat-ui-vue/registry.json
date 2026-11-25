@@ -1,0 +1,201 @@
+{
+	"$schema": "https://openagentpack.dev/schema/kit-chat-ui-registry.json",
+	"name": "kit-chat-ui-vue",
+	"version": 1,
+	"usage": "pnpm kit:add <component> --framework vue --dir <project> 会把 Vue 组件源码复制进指定项目（copy-in），可自由修改；升级时按 docs 的 diff 指引合并。",
+	"components": {
+		"kit-i18n": {
+			"file": "src/components/kit-i18n/index.ts",
+			"deps": []
+		},
+		"states": {
+			"file": "src/components/states/index.ts",
+			"deps": ["empty-state", "error-state"]
+		},
+		"empty-state": {
+			"file": "src/components/empty-state/index.vue",
+			"deps": []
+		},
+		"error-state": {
+			"file": "src/components/error-state/index.vue",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/error-state/strings.ts"]
+		},
+		"menu": {
+			"file": "src/components/menu/index.ts",
+			"deps": [],
+			"npmDependencies": ["reka-ui"]
+		},
+		"tooltip": {
+			"file": "src/components/tooltip/index.ts",
+			"deps": []
+		},
+		"confirm-dialog": {
+			"file": "src/components/confirm-dialog/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/confirm-dialog/strings.ts"],
+			"npmDependencies": ["reka-ui"]
+		},
+		"code-highlighter": {
+			"file": "src/components/code-highlighter/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/code-highlighter/strings.ts", "src/components/slot-text.ts"],
+			"npmDependencies": ["@types/hast", "lowlight"]
+		},
+		"mermaid": {
+			"file": "src/components/mermaid/index.ts",
+			"deps": ["kit-i18n", "code-highlighter"],
+			"extraFiles": ["src/components/mermaid/strings.ts", "src/components/slot-text.ts"],
+			"npmDependencies": ["mermaid"]
+		},
+		"markdown": {
+			"file": "src/components/markdown/index.ts",
+			"deps": ["kit-i18n", "code-highlighter", "mermaid"],
+			"extraFiles": [
+				"src/components/markdown/strings.ts",
+				"src/components/slot-text.ts",
+				"src/components/markdown/index.ts"
+			],
+			"npmDependencies": ["@types/hast", "rehype-sanitize", "remark-gfm", "remark-parse", "remark-rehype", "unified"]
+		},
+		"sender": {
+			"file": "src/components/sender/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/sender/strings.ts"],
+			"npmDependencies": ["@openagentkit/sdk"]
+		},
+		"attachments": {
+			"file": "src/components/attachments/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/attachments/strings.ts"]
+		},
+		"actions": {
+			"file": "src/components/actions/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/actions/strings.ts"]
+		},
+		"message": {
+			"file": "src/components/message/index.ts",
+			"deps": [
+				"kit-i18n",
+				"markdown",
+				"sender",
+				"actions",
+				"process-execution-group",
+				"process-sub-agent-card",
+				"processing-indicator"
+			],
+			"extraFiles": ["src/components/message/strings.ts"],
+			"npmDependencies": ["@openagentkit/sdk"]
+		},
+		"message-anchor-rail": {
+			"file": "src/components/message-anchor-rail/index.ts",
+			"deps": ["kit-i18n", "tooltip"],
+			"extraFiles": ["src/components/message-anchor-rail/strings.ts"]
+		},
+		"message-list": {
+			"file": "src/components/message-list/index.ts",
+			"deps": ["kit-i18n", "message", "message-anchor-rail"],
+			"extraFiles": ["src/components/message-list/strings.ts"]
+		},
+		"suggestion": {
+			"file": "src/components/suggestion/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/suggestion/strings.ts"]
+		},
+		"chat": {
+			"file": "src/components/chat/index.ts",
+			"deps": ["kit-i18n", "message-list", "sender", "suggestion"],
+			"extraFiles": ["src/components/chat/strings.ts"],
+			"npmDependencies": ["@openagentkit/sdk"]
+		},
+		"process-step": {
+			"file": "src/components/process/step/index.ts",
+			"deps": []
+		},
+		"process-tool-summary": {
+			"file": "src/components/process/tool-summary/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/process/tool-summary/strings.ts"]
+		},
+		"process-reasoning-block": {
+			"file": "src/components/process/reasoning-block/index.ts",
+			"deps": ["kit-i18n", "process-step"],
+			"extraFiles": ["src/components/process/reasoning-block/strings.ts"]
+		},
+		"process-tool-call-card": {
+			"file": "src/components/process/tool-call-card/index.ts",
+			"deps": ["kit-i18n", "process-step", "process-tool-summary", "code-highlighter"],
+			"extraFiles": ["src/components/process/tool-call-card/strings.ts"],
+			"npmDependencies": ["lowlight"]
+		},
+		"process-execution-group": {
+			"file": "src/components/process/execution-group/index.ts",
+			"deps": ["kit-i18n", "process-step", "process-reasoning-block", "process-tool-call-card"],
+			"extraFiles": ["src/components/process/execution-group/strings.ts"]
+		},
+		"process-sub-agent-card": {
+			"file": "src/components/process/sub-agent-card/index.ts",
+			"deps": ["kit-i18n", "markdown", "process-reasoning-block", "process-tool-call-card"],
+			"extraFiles": ["src/components/process/sub-agent-card/strings.ts"],
+			"npmDependencies": ["@openagentkit/sdk"]
+		},
+		"processing-indicator": {
+			"file": "src/components/processing-indicator/index.ts",
+			"deps": ["kit-i18n", "process-step"],
+			"extraFiles": ["src/components/processing-indicator/strings.ts"]
+		},
+		"tool-approval-card": {
+			"file": "src/components/tool-approval-card/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/tool-approval-card/strings.ts"],
+			"npmDependencies": ["@openagentkit/sdk"]
+		},
+		"tool-approval-group": {
+			"file": "src/components/tool-approval-group/index.ts",
+			"deps": ["kit-i18n", "tool-approval-card"],
+			"extraFiles": ["src/components/tool-approval-group/strings.ts"],
+			"npmDependencies": ["@openagentkit/sdk"]
+		},
+		"layout": {
+			"file": "src/components/layout/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/layout/strings.ts"],
+			"npmDependencies": ["reka-ui", "@openagentkit/sdk"]
+		},
+		"session-list": {
+			"file": "src/components/session-list/index.ts",
+			"deps": ["kit-i18n", "tooltip", "process-step"],
+			"extraFiles": ["src/components/session-list/strings.ts"]
+		},
+		"session-sidebar": {
+			"file": "src/components/session-sidebar/index.ts",
+			"deps": ["kit-i18n", "session-list", "states"],
+			"extraFiles": ["src/components/session-sidebar/strings.ts"],
+			"npmDependencies": ["@openagentkit/sdk"]
+		},
+		"category-tabs": {
+			"file": "src/components/category-tabs/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/category-tabs/strings.ts"],
+			"npmDependencies": ["@openagentkit/sdk"]
+		},
+		"plaza-card": {
+			"file": "src/components/plaza-card/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/plaza-card/strings.ts"],
+			"npmDependencies": ["@openagentkit/sdk"]
+		},
+		"meter-bar": {
+			"file": "src/components/meter-bar/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/meter-bar/strings.ts"]
+		},
+		"activity-heatmap": {
+			"file": "src/components/activity-heatmap/index.ts",
+			"deps": ["kit-i18n"],
+			"extraFiles": ["src/components/activity-heatmap/strings.ts"]
+		}
+	},
+	"theme": "src/theme.css"
+}

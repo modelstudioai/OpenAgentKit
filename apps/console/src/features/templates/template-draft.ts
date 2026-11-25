@@ -1,4 +1,5 @@
 import type { PlazaCategory, PresetPackPreview, TemplateView } from "@openagentkit/sdk/protocol";
+import i18n from "i18next";
 import { type AgentPresentationDraft, EMPTY_AGENT_PRESENTATION } from "../catalog/agent-presentation-fields.tsx";
 import type { TemplateAgentSelection } from "./template-agent-list.tsx";
 import { type TemplateFileDraft, validateTemplateFiles } from "./template-file-draft.ts";
@@ -42,8 +43,10 @@ export function mergeTemplateRuntimeResources(
 	};
 	const fileError = validateTemplateFiles(result.files);
 	if (fileError) throw new Error(fileError);
-	if (result.memories.length > MAX_TEMPLATE_MEMORIES) throw new Error(`最多选择 ${MAX_TEMPLATE_MEMORIES} 个记忆库`);
-	if (result.vaults.length > MAX_TEMPLATE_VAULTS) throw new Error(`最多选择 ${MAX_TEMPLATE_VAULTS} 个密钥库`);
+	const t = i18n.getFixedT(null, "templates");
+	if (result.memories.length > MAX_TEMPLATE_MEMORIES)
+		throw new Error(t("memory.errors.selectMax", { max: MAX_TEMPLATE_MEMORIES }));
+	if (result.vaults.length > MAX_TEMPLATE_VAULTS) throw new Error(t("vault.errors.max", { max: MAX_TEMPLATE_VAULTS }));
 	return result;
 }
 

@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { AdminClient } from "../../lib/admin/index.ts";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
@@ -41,7 +42,9 @@ function useResourceDraft() {
 						return { release, cleanupKey };
 					} catch {
 						release();
-						throw new TemplateResourceDraftUnavailableError("无法保存资源清理凭证，请允许浏览器存储后重试。");
+						throw new TemplateResourceDraftUnavailableError(
+							i18n.getFixedT(null, "templates")("resourceDraft.storageError"),
+						);
 					}
 				},
 			}),
@@ -102,6 +105,6 @@ export function TemplateResourceDraftProvider({ children }: { children: ReactNod
 }
 export function useTemplateResourceDraft() {
 	const value = useContext(Context);
-	if (!value) throw new Error("缺少资源草稿上下文");
+	if (!value) throw new Error(i18n.getFixedT(null, "templates")("resourceDraft.missingContext"));
 	return value;
 }

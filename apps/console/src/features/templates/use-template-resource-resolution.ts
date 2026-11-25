@@ -1,5 +1,7 @@
 import type { ProjectResourceBindings } from "@openagentkit/sdk/protocol";
+import i18n from "i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import type { TemplateAgentSelection } from "./template-agent-list.tsx";
@@ -37,24 +39,25 @@ export function hasLocalResources(selection: TemplateRuntimeSelection) {
 }
 
 function assertDistinctBindings(selection: TemplateRuntimeSelection) {
+	const t = i18n.getFixedT(null, "templates");
 	const groups = [
 		selection.files.map((file) => file.file_id),
 		selection.memories.map((memory) => memory.memory_store_id),
 		selection.vaults.map((vault) => vault.vault_id),
 	];
-	if (groups.some((ids) => new Set(ids).size !== ids.length))
-		throw new Error("所选本地配置与云端条目指向同一资源，请取消重复项后重试。");
+	if (groups.some((ids) => new Set(ids).size !== ids.length)) throw new Error(t("resolution.duplicate"));
 }
 
 function resolveSelection(
 	selection: TemplateRuntimeSelection,
 	result: ProjectResourceBindings,
 ): TemplateRuntimeSelection {
+	const t = i18n.getFixedT(null, "templates");
 	const bindings = new Map(result.resources.map((item) => [`${item.type}:${item.id}`, item]));
 	function binding(type: ResourceType, item: TemplateLocalResource) {
 		const found = bindings.get(`${type}:${item.local?.id}`);
 		if (!found?.remote_id || (type === "agent" && (!Number.isInteger(found.version) || (found.version ?? 0) < 1)))
-			throw new Error("发布后的资源信息不完整，请重试读取资源。");
+			throw new Error(t("resolution.incomplete"));
 		return found;
 	}
 	const agent = selection.agent;
@@ -93,6 +96,7 @@ export function useTemplateResourceResolution(
 	selection: TemplateRuntimeSelection,
 	onResolved: (selection: TemplateRuntimeSelection) => void,
 ) {
+	const { t } = useTranslation("templates");
 	const client = useMemo(getAdminClient, []);
 	const resources = useTemplateLocalResources();
 	const drafts = useTemplateResourceDraft();
@@ -108,8 +112,7 @@ export function useTemplateResourceResolution(
 			onResolved(selection);
 			return;
 		}
-		if (!name || references.some((item) => item.projectName !== name))
-			throw new Error("所选本地资源与已发布项目不一致，请重新选择资源。");
+		if (!name || references.some((item) => item.projectName !== name)) throw new Error(t("resolution.mismatch"));
 		active.current?.abort();
 		const controller = new AbortController();
 		active.current = controller;

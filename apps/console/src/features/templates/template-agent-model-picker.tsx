@@ -1,6 +1,7 @@
 import type { Ref } from "react";
+import { useTranslation } from "react-i18next";
 import { RemoteResourcePicker } from "../catalog/remote-resource-picker.tsx";
-import { MANAGED_AGENT_MODELS } from "./managed-agent-models.ts";
+import { MANAGED_AGENT_MODELS, managedAgentModelLabel } from "./managed-agent-models.ts";
 
 const refresh = async () => undefined;
 
@@ -20,20 +21,25 @@ export function TemplateAgentModelPicker({
 	triggerRef?: Ref<{ focus: () => void }>;
 	options?: readonly { id: string; name: string }[];
 }) {
+	const { t } = useTranslation("templates");
+	const choices = (options ?? MANAGED_AGENT_MODELS).map((option) => ({
+		...option,
+		name: managedAgentModelLabel(option),
+	}));
 	return (
 		<RemoteResourcePicker
-			label="模型"
-			resource="模型"
-			placeholder="请选择模型"
+			label={t("agent.form.model")}
+			resource={t("agent.form.model")}
+			placeholder={t("agent.modelPicker.placeholder")}
 			required
 			error={error}
 			disabled={disabled}
 			triggerRef={triggerRef}
 			showId={false}
-			emptyText="暂无可选模型"
+			emptyText={t("agent.modelPicker.empty")}
 			value={value}
 			onChange={onChange}
-			remote={{ data: [...options], loading: false, error: null, refresh }}
+			remote={{ data: choices, loading: false, error: null, refresh }}
 		/>
 	);
 }

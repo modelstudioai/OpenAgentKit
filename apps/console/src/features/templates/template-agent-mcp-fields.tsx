@@ -1,4 +1,5 @@
 import { Button, Checkbox, Input } from "antd";
+import { useTranslation } from "react-i18next";
 import { type AgentMcpDraft, createMcpDraft, mcpDraftErrors } from "./template-agent-mcp-draft.ts";
 import styles from "./template-forms.module.less";
 
@@ -6,21 +7,22 @@ type Props = { value: AgentMcpDraft[]; onChange: (value: AgentMcpDraft[]) => voi
 
 /** MCP 只编辑页面草稿，下一步才生成本地 SDK 声明；标题由外层折叠卡提供。 */
 export function TemplateAgentMcpFields({ value, onChange, disabled }: Props) {
+	const { t } = useTranslation("templates");
 	const errors = mcpDraftErrors(value);
 	return (
 		<div className={styles.mcpRoot}>
 			<div className={styles.mcpHeader}>
-				<p className={styles.mcpIntro}>填写官方 MCP 的服务标识，最多添加 50 个。默认设置适用于未单独配置的工具。</p>
+				<p className={styles.mcpIntro}>{t("agent.mcpFields.intro", { max: 50 })}</p>
 				<Button
 					size="small"
 					disabled={disabled || value.length >= 50}
 					onClick={() => onChange([...value, createMcpDraft()])}
 				>
-					添加 MCP
+					{t("agent.mcpFields.add")}
 				</Button>
 			</div>
 			{value.length ? (
-				<fieldset aria-label="MCP 配置列表" className={styles.mcpList}>
+				<fieldset aria-label={t("agent.mcpFields.listAria")} className={styles.mcpList}>
 					{value.map((server) => (
 						<McpFields
 							key={server.id}
@@ -33,7 +35,7 @@ export function TemplateAgentMcpFields({ value, onChange, disabled }: Props) {
 					))}
 				</fieldset>
 			) : (
-				<p className={styles.metaText}>暂未添加 MCP</p>
+				<p className={styles.metaText}>{t("agent.mcpFields.empty")}</p>
 			)}
 		</div>
 	);
@@ -52,18 +54,23 @@ function McpFields({
 	disabled: boolean;
 	errors: Map<string, string>;
 }) {
+	const { t } = useTranslation("templates");
 	const nameId = `mcp-name-${server.id}`;
 	const serviceError = server.name.trim() ? errors.get(server.id) : undefined;
 	return (
-		<fieldset aria-label="MCP 配置" disabled={disabled} className={styles.serverCard}>
+		<fieldset aria-label={t("agent.mcpFields.configAria")} disabled={disabled} className={styles.serverCard}>
 			<div className={styles.removeRow}>
-				<Button size="small" aria-label={`移除 MCP ${server.name || "配置"}`} onClick={onRemove}>
-					移除
+				<Button
+					size="small"
+					aria-label={t("agent.mcpFields.removeAria", { name: server.name || t("agent.mcpFields.unnamed") })}
+					onClick={onRemove}
+				>
+					{t("agent.mcpFields.remove")}
 				</Button>
 			</div>
 			<div className={styles.fieldBlock}>
 				<label htmlFor={nameId}>
-					服务标识
+					{t("agent.mcpFields.serverLabel")}
 					<span aria-hidden="true" className={styles.requiredStar}>
 						*
 					</span>
@@ -72,7 +79,7 @@ function McpFields({
 					id={nameId}
 					required
 					maxLength={200}
-					placeholder="输入官方 MCP 服务标识"
+					placeholder={t("agent.mcpFields.placeholder")}
 					value={server.name}
 					status={serviceError ? "error" : undefined}
 					aria-describedby={serviceError ? `${nameId}-error` : undefined}
@@ -88,11 +95,11 @@ function McpFields({
 				checked={server.defaultEnabled}
 				onChange={(event) => onChange({ ...server, defaultEnabled: event.target.checked })}
 			>
-				默认启用工具
+				{t("agent.mcpFields.defaultEnabled")}
 			</Checkbox>
 			<div className={styles.toolsSection}>
 				<div className={styles.mcpHeader}>
-					<span>单工具配置（可选）</span>
+					<span>{t("agent.mcpFields.toolsTitle")}</span>
 					<Button
 						size="small"
 						disabled={server.tools.length >= 200}
@@ -100,7 +107,7 @@ function McpFields({
 							onChange({ ...server, tools: [...server.tools, { id: crypto.randomUUID(), name: "", enabled: true }] })
 						}
 					>
-						添加工具配置
+						{t("agent.mcpFields.addTool")}
 					</Button>
 				</div>
 				{server.tools.length ? (
@@ -109,7 +116,7 @@ function McpFields({
 							<div className={styles.toolRowMain}>
 								<div className={`${styles.fieldBlock} ${styles.fieldBlockFlex}`}>
 									<label htmlFor={`mcp-tool-${tool.id}`}>
-										工具名称
+										{t("agent.mcpFields.toolLabel")}
 										<span aria-hidden="true" className={styles.requiredStar}>
 											*
 										</span>
@@ -143,15 +150,17 @@ function McpFields({
 										})
 									}
 								>
-									启用
+									{t("agent.mcpFields.enable")}
 								</Checkbox>
 								<Button
 									size="small"
 									className={styles.removeButton}
-									aria-label={`移除工具配置 ${tool.name || "未命名"}`}
+									aria-label={t("agent.mcpFields.removeToolAria", {
+										name: tool.name || t("agent.mcpFields.toolUnnamed"),
+									})}
 									onClick={() => onChange({ ...server, tools: server.tools.filter((item) => item.id !== tool.id) })}
 								>
-									移除
+									{t("agent.mcpFields.remove")}
 								</Button>
 							</div>
 							{errors.has(tool.id) ? (
@@ -162,7 +171,7 @@ function McpFields({
 						</div>
 					))
 				) : (
-					<p className={styles.metaText}>未配置时，所有工具使用默认启用设置。</p>
+					<p className={styles.metaText}>{t("agent.mcpFields.toolsEmpty")}</p>
 				)}
 			</div>
 		</fieldset>

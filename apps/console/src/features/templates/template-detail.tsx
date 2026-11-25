@@ -2,6 +2,7 @@ import type { TemplateUsageRow, TemplateVersionView, TemplateView } from "@opena
 import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui";
 import * as Tabs from "@radix-ui/react-tabs";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import { ghostButtonClass, primaryButtonClass } from "../../lib/styles.ts";
@@ -59,6 +60,7 @@ function useTemplateDetail(id: string) {
 
 /** 详情页的用量 tab：以当前模版为唯一行复用用量页的模版用量面板，会话明细与限额设置沿用同一套子视图。 */
 function TemplateUsageTab({ templateId }: { templateId: string }) {
+	const { t } = useTranslation("templates");
 	const client = useMemo(getAdminClient, []);
 	/** 与用量页共用同一查询缓存，两边看到同一份模版用量行。 */
 	const templates = useAdminQuery("usage:templates", (signal) => client.usage.templates({}, signal));
@@ -82,10 +84,10 @@ function TemplateUsageTab({ templateId }: { templateId: string }) {
 		);
 	}
 	const loading = templates.loading || (!templates.data && !templates.error);
-	if (loading) return <EmptyState loading title="正在加载模版用量…" />;
+	if (loading) return <EmptyState loading title={t("detail.usageLoading")} />;
 	if (templates.error) return <ErrorState message={templates.error} onRetry={() => void templates.refresh()} />;
 	const row = templates.data?.find((item) => item.template_id === templateId) ?? null;
-	if (!row) return <EmptyState title="暂无该模版的用量" hint="模版保存并产生体验会话后，这里会展示用量统计。" />;
+	if (!row) return <EmptyState title={t("detail.usageEmpty")} hint={t("detail.usageEmptyHint")} />;
 	return (
 		<TemplateUsagePanel
 			rows={[row]}
@@ -141,6 +143,7 @@ export function TemplateDetail({
 	onApplied: (template: TemplateView) => void;
 	onPendingChange: (pending: boolean) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const {
 		identity,
 		current,
@@ -165,25 +168,25 @@ export function TemplateDetail({
 		return () => onPendingChange(false);
 	}, [busy, onPendingChange]);
 	return (
-		<section aria-label="模版详情" className={styles.pageStack}>
+		<section aria-label={t("detail.aria")} className={styles.pageStack}>
 			<InnerLayout
-				title={template?.name ?? "模版详情"}
+				title={template?.name ?? t("detail.title")}
 				description={
 					<div className={styles.stack2}>
 						<p className={styles.kitMonoCaption}>{id}</p>
 						{displayedVersion !== undefined ? (
-							<p className={styles.kitMetaNote}>模版版本：v{displayedVersion}</p>
+							<p className={styles.kitMetaNote}>{t("detail.version", { version: displayedVersion })}</p>
 						) : null}
 						{savedAt ? (
 							<p className={styles.kitMetaNote}>
-								保存时间：
+								{t("detail.savedAt")}
 								<time dateTime={savedAt}>{new Date(savedAt).toLocaleString("zh-CN", { hour12: false })}</time>
 							</p>
 						) : null}
 					</div>
 				}
 				onBack={onBack}
-				backLabel="返回模版列表"
+				backLabel={t("detail.backToList")}
 				right={
 					<>
 						<TemplateVersionDrawer
@@ -199,8 +202,14 @@ export function TemplateDetail({
 							}}
 						/>
 						{identity.data?.role === "admin" ? (
-							<button type="button" title="编辑当前版本" className={ghostButtonClass} disabled={busy} onClick={onEdit}>
-								编辑
+							<button
+								type="button"
+								title={t("detail.editTitle")}
+								className={ghostButtonClass}
+								disabled={busy}
+								onClick={onEdit}
+							>
+								{t("detail.edit")}
 							</button>
 						) : null}
 						{applyTarget ? (
@@ -211,7 +220,12 @@ export function TemplateDetail({
 								disabled={debugBusy}
 								onPendingChange={setApplying}
 								onApplied={(saved) => {
-									setNotice(`已应用 v${applyTarget.template.version}，当前版本为 v${saved.version}`);
+									setNotice(
+										t("detail.applied", {
+											version: applyTarget.template.version,
+											saved: saved.version,
+										}),
+									);
 									resetVersion();
 									void current.refresh();
 									onApplied(saved);
@@ -229,7 +243,7 @@ export function TemplateDetail({
 				currentRetry={() => void current.refresh()}
 				selectedVersion={selectedVersion}
 			/>
-			{loading ? <EmptyState loading title="正在加载模版…" /> : null}
+			{loading ? <EmptyState loading title={t("detail.loading")} /> : null}
 			{detail.error ? <ErrorState message={detail.error} onRetry={() => void detail.refresh()} /> : null}
 			<Tabs.Root
 				value={tab}
@@ -239,7 +253,7 @@ export function TemplateDetail({
 				}}
 				className={styles.pageStack}
 			>
-				<Tabs.List aria-label="模版详情" className={styles.tabList}>
+				<Tabs.List aria-label={t("detail.tabsAria")} className={styles.tabList}>
 					{(["information", "usage", "debug"] as const).map((value) => (
 						<Tabs.Trigger
 							key={value}
@@ -247,7 +261,11 @@ export function TemplateDetail({
 							disabled={busy}
 							className={tab === value ? primaryButtonClass : ghostButtonClass}
 						>
-							{value === "information" ? "模版信息" : value === "usage" ? "用量" : "调试"}
+							{value === "information"
+								? t("detail.tabInfo")
+								: value === "usage"
+									? t("detail.tabUsage")
+									: t("detail.tabDebug")}
 						</Tabs.Trigger>
 					))}
 				</Tabs.List>

@@ -12,7 +12,9 @@ import type {
 	ResourceDraftVaultCreateResult,
 } from "@openagentkit/sdk/protocol";
 import { Alert, Button } from "antd";
+import i18n from "i18next";
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import type { RemoteAgent } from "../catalog/use-remote-agents.ts";
@@ -197,25 +199,26 @@ export function TemplateLocalResourcesProvider({ children }: { children: ReactNo
 }
 export function useTemplateLocalResources() {
 	const context = useContext(Context);
-	if (!context) throw new Error("缺少模版资源上下文");
+	if (!context) throw new Error(i18n.getFixedT(null, "templates")("localResources.missingContext"));
 	return context;
 }
 export function TemplateLocalResourcesStatus() {
+	const { t } = useTranslation("templates");
 	const resources = useTemplateLocalResources();
 	return resources.error ? (
 		<Alert
 			type="error"
 			showIcon
-			message={`本地资源列表加载失败：${resources.error}`}
+			message={t("localResources.loadFailed", { error: resources.error })}
 			action={
 				<Button size="small" onClick={resources.retry}>
-					重试
+					{t("localResources.retry")}
 				</Button>
 			}
 		/>
 	) : resources.loading ? (
 		<p role="status" className={styles.formNote}>
-			正在读取本地资源发布状态…
+			{t("localResources.loading")}
 		</p>
 	) : null;
 }

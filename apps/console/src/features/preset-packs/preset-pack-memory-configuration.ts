@@ -1,4 +1,5 @@
 import type { MemoryStoreConfiguration, RemoteMemoryStore } from "@openagentkit/sdk/protocol";
+import i18n from "i18next";
 
 export type PresetPackMemoryConfiguration =
 	| { kind: "complete"; configuration: MemoryStoreConfiguration }
@@ -10,6 +11,7 @@ export async function loadPresetPackMemoryConfiguration(
 	signal: AbortSignal,
 	readConfiguration: (id: string, signal: AbortSignal) => Promise<MemoryStoreConfiguration>,
 	listStores: (signal: AbortSignal) => Promise<RemoteMemoryStore[]>,
+	notFoundMessage?: string,
 ): Promise<PresetPackMemoryConfiguration> {
 	try {
 		const configuration = await readConfiguration(id, signal);
@@ -20,7 +22,7 @@ export async function loadPresetPackMemoryConfiguration(
 		const stores = await listStores(signal);
 		signal.throwIfAborted();
 		const store = stores.find((item) => item.memory_store_id === id);
-		if (!store) throw new Error("记忆库不存在或已不可访问，请重新读取资源列表");
+		if (!store) throw new Error(notFoundMessage ?? i18n.t("memoryNotFound", { ns: "presetPacks" }));
 		return { kind: "reference", store };
 	}
 }

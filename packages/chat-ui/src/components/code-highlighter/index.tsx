@@ -1,6 +1,8 @@
 import { common, createLowlight } from "lowlight";
 import { type ReactNode, useMemo } from "react";
 import { Actions } from "../actions/index.tsx";
+import { resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
+import codeHighlighterStrings, { type CodeHighlighterStrings } from "./strings.ts";
 
 export interface CodeHighlighterProps {
 	children: string;
@@ -9,6 +11,8 @@ export interface CodeHighlighterProps {
 	copyable?: boolean;
 	showLineNumbers?: boolean;
 	className?: string;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<CodeHighlighterStrings>;
 }
 
 const highlighter = createLowlight(common);
@@ -50,7 +54,9 @@ export function CodeHighlighter({
 	copyable = true,
 	showLineNumbers = false,
 	className,
+	strings: stringsOverride,
 }: CodeHighlighterProps) {
+	const strings = resolveStrings(codeHighlighterStrings, useKitLocale(), stringsOverride);
 	const language = lang?.trim().toLowerCase() || "text";
 	const highlighted = useMemo(() => {
 		if (children.length > maxHighlightLength || !highlighter.registered(language)) return children;
@@ -67,7 +73,7 @@ export function CodeHighlighter({
 	return (
 		<section
 			data-code-highlighter
-			aria-label="代码块"
+			aria-label={strings.blockAria}
 			className={`my-2 min-w-0 overflow-hidden rounded-[var(--kit-radius)] border border-[var(--kit-border-subtle)] bg-[var(--kit-bg-subtle)] text-[var(--kit-fg)] ${className ?? ""}`}
 		>
 			{title !== false && (
@@ -77,7 +83,7 @@ export function CodeHighlighter({
 					</div>
 					{copyable && (
 						<div className="shrink-0">
-							<Actions.Copy text={children} label="复制代码" />
+							<Actions.Copy text={children} label={strings.copyCode} />
 						</div>
 					)}
 				</div>
@@ -85,7 +91,7 @@ export function CodeHighlighter({
 			{/* biome-ignore lint/a11y/useSemanticElements: 保留预格式文本容器，同时将实际滚动区命名为代码内容。 */}
 			<pre
 				role="region"
-				aria-label="代码内容"
+				aria-label={strings.contentAria}
 				// biome-ignore lint/a11y/noNoninteractiveTabindex: 代码的横向滚动区需要接收键盘焦点，让方向键可访问长行末尾。
 				tabIndex={0}
 				className="m-0 flex overflow-x-auto rounded-none border-0 bg-[var(--kit-bg-subtle)] p-3 font-mono text-[length:var(--kit-text-base)] leading-6 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--kit-focus)]"

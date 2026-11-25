@@ -1,7 +1,9 @@
 import { Button, Form, Select, Spin } from "antd";
 import type { DefaultOptionType } from "antd/es/select";
+import type { TFunction } from "i18next";
 import type { ComponentRef, ReactNode, Ref } from "react";
 import { useImperativeHandle, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import styles from "./catalog.module.less";
 
 interface ResourceOption {
@@ -56,12 +58,18 @@ function resourceNoun(resource: string) {
 	return resource === "Agent" ? ` ${resource}` : resource;
 }
 
-function notFoundContent(remote: RemoteResourceQuery, search: string, resource: string, emptyText?: string) {
+function notFoundContent(
+	remote: RemoteResourceQuery,
+	search: string,
+	resource: string,
+	emptyText: string | undefined,
+	t: TFunction<"catalog">,
+) {
 	if (remote.loading)
 		return (
 			<div role="status" className={styles.pickerLoading}>
 				<Spin size="small" />
-				正在加载{resource}…
+				{t("picker.loading", { noun: resource })}
 			</div>
 		);
 	if (remote.error)
@@ -74,14 +82,14 @@ function notFoundContent(remote: RemoteResourceQuery, search: string, resource: 
 						void remote.refresh();
 					}}
 				>
-					重试
+					{t("retry")}
 				</Button>
 			</div>
 		);
 	const noun = resourceNoun(resource);
 	return (
 		<p role="status" className={styles.pickerEmpty}>
-			{search.trim() ? `未找到匹配的${noun}` : (emptyText ?? `暂无远端${noun}`)}
+			{search.trim() ? t("picker.noMatch", { noun }) : (emptyText ?? t("picker.empty", { noun }))}
 		</p>
 	);
 }
@@ -110,6 +118,7 @@ function sourceOf(option: DefaultOptionType | undefined, byId: Map<string, Resou
 
 /** 远端资源共用的表单下拉：展示全部候选，键盘与搜索交互保持一致。 */
 export function RemoteResourcePicker(props: RemoteResourcePickerProps) {
+	const { t } = useTranslation("catalog");
 	const {
 		remote,
 		label,
@@ -193,7 +202,7 @@ export function RemoteResourcePicker(props: RemoteResourcePickerProps) {
 						if (props.multiple) props.onChange(value as string[]);
 						else props.onChange(value as string);
 					}}
-					notFoundContent={notFoundContent(remote, search, resource, props.emptyText)}
+					notFoundContent={notFoundContent(remote, search, resource, props.emptyText, t)}
 				/>
 			</Form.Item>
 		</Form>

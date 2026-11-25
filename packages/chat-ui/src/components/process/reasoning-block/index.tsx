@@ -1,10 +1,13 @@
+import { resolveStrings, useKitLocale } from "../../kit-i18n/index.ts";
 import { ProcessStep } from "../step/index.tsx";
+import reasoningBlockStrings, { type ReasoningBlockStrings } from "./strings.ts";
 
 export function ReasoningBlock({
 	text,
 	status,
 	className,
 	contentMaxHeight,
+	strings: stringsOverride,
 }: {
 	text: string;
 	status?: "streaming" | "done" | "failed" | "interrupted";
@@ -12,8 +15,10 @@ export function ReasoningBlock({
 	className?: string;
 	/** 展开内容区限高，透传 ProcessStep；不传用默认 max-h-80。 */
 	contentMaxHeight?: string;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<ReasoningBlockStrings>;
 }) {
-	const labels = { streaming: "思考中", done: "已思考", failed: "思考失败", interrupted: "已中断" };
+	const strings = resolveStrings(reasoningBlockStrings, useKitLocale(), stringsOverride);
 	// 预览取首个非空行；流式期间随正文增长，始终默认收起。
 	const preview = text
 		.split("\n")
@@ -21,8 +26,8 @@ export function ReasoningBlock({
 		.find(Boolean);
 	return (
 		<ProcessStep
-			ariaLabel="思考过程"
-			verb={status ? labels[status] : "思考过程"}
+			ariaLabel={strings.aria}
+			verb={status ? strings[status] : strings.title}
 			preview={preview}
 			state={status === "streaming" ? "running" : status === "failed" ? "failed" : status ? "done" : "idle"}
 			className={className}

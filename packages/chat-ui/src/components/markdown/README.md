@@ -33,4 +33,4 @@ pnpm kit:add markdown
 
 同目录测试：[markdown.test.tsx](markdown.test.tsx)。
 
-完整用法与参数见[文档站对应页面](../../../../../apps/storybook/content/docs/components/message.mdx)；全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。
+完整用法与参数见[文档站对应页面](../../../../../apps/storybook/content/docs/components/feedback/markdown.mdx)。全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。

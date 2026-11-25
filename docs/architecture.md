@@ -6,6 +6,7 @@
 | --- | --- | --- | --- |
 | `apps/server` | Node ESM | Node ≥ 24 | Hono 应用工厂 `createKitServer()`，数据面 + 控制面 |
 | `apps/web` | 纯静态 CSR | 浏览器 | 体验页，支持 Web / H5 |
+| `apps/web-vue` | 纯静态 CSR | 浏览器 | 体验页 Vue 3 平行实现；先做参考实现，暂不进发布产物 |
 | `apps/console` | 纯静态 CSR | 浏览器 | 管理端 |
 | `apps/storybook` | Next.js 静态导出（`out/`） | 构建使用 Node ≥24；部署为静态托管 | Fumadocs 文档站与组件预览 |
 
@@ -15,8 +16,8 @@
 真实百炼，生成 32 字节随机管理员令牌，并从 `.env.example` 创建权限为 `0600` 的 `.env`；
 API Key 输入隐藏回显，凭据和管理员令牌不写启动日志。已有 `.env` 原样复用，不轮换令牌或补写字段；
 引导取消不创建配置，独占创建防止并发覆盖。默认使用成员登录，Mock 与真实百炼分别使用
-`.scratch/local-demo/data` 与 `.data`。配置完成后接续 `scripts/dev.mjs`，默认启动 server、web、console，
-也可传入指定目标。`pnpm dev` 保留原有默认四个目标；两者都在启动应用前构建其工作区依赖。
+`.scratch/local-demo/data` 与 `.data`。配置完成后接续 `scripts/dev.mjs`，默认启动 server、web、web-vue、console，
+也可传入指定目标；文档站用 `pnpm dev storybook` 单独启动。两者都在启动应用前构建其工作区依赖。
 启动器按 Node dotenv 语义解析根 `.env`，非空值覆盖 shell 同名变量。`BAILIAN_BASE_URL` 与
 `BAILIAN_WORKSPACE_ID` 中一项已配置地址时，另一项的显式空值也覆盖 shell。合并结果只传给子进程。
 
@@ -25,12 +26,17 @@ API Key 输入隐藏回显，凭据和管理员令牌不写启动日志。已有
 ```text
 apps/server ──► @openagentpack/sdk（上游主入口，仅服务端 runtime import）
      └───────► @openagentkit/sdk/protocol 与 SDK 功能数据入口
-apps/web / apps/console / packages/chat-ui
+apps/web / apps/console / apps/web-vue / packages/chat-ui / packages/chat-ui-vue
      ├───────► @openagentkit/sdk/<功能>/hooks 与 @openagentkit/sdk/providers/kit/react
      │                    └──────► SDK 功能数据入口
      ├───────► @openagentkit/sdk/hooks（屏幕判断）
      └───────► SDK 功能数据入口与 @openagentkit/sdk/protocol
 ```
+
+`apps/web-vue` 与 `packages/chat-ui-vue` 使用对称的 Vue 入口：
+`@openagentkit/sdk/<功能>/hooks-vue` 与 `@openagentkit/sdk/providers/kit/vue`。
+Vue 适配只管理订阅与生命周期，业务请求、SSE 与快照仍由同一份 SDK 数据层执行；
+两套 UI 包互不 import，只共享生成镜像与 `apps/web` 的产品文案。
 
 自定义宿主注入的能力由体验页本地适配，不经过 SDK：
 `apps/web/src/lib/host.ts` 读取 `window.__OPENAGENTPACK_KIT_BRIDGE__`，缺失时回退浏览器实现。
@@ -539,6 +545,9 @@ Kit Server → KitClient → createKitChatProvider ─────────�
 - 体验页的 `src/lib/host.ts` 读取注入的宿主能力；能力缺失时回退浏览器实现。
   主题偏好优先采用宿主注入值，为 null 时继续读取浏览器暗色偏好；文件下载优先调用宿主
   `saveFile`，不支持时统一走 `saveBlobInBrowser`，不在业务组件重写对象 URL 下载逻辑。
+- 体验页在发送这一用户手势内按需申请浏览器通知权限；当前打开会话由运行态进入 idle 后
+  通过 Web Notification 提醒，点击通知聚焦页面。权限未授予、API 不可用或展示失败时静默
+  降级，不阻塞发送与会话状态；通知不进入 SDK、协议或服务端持久化。
 
 ## 安全边界
 

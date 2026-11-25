@@ -1,9 +1,11 @@
+import i18n from "i18next";
+
 export type AgentCopyIssue = { field: string; reason: string };
 type ValidationIssue = { path: PropertyKey[]; code: string };
 
 export class AgentCopyError extends Error {
 	constructor(readonly issues: AgentCopyIssue[]) {
-		super("无法完整复制配置");
+		super(i18n.getFixedT(null, "templates")("agent.copy.errorTitle"));
 	}
 }
 
@@ -53,27 +55,29 @@ const fieldNames = new Set([
 	"agent_id",
 ]);
 export function copyFieldPath(base: string, path: PropertyKey[]) {
+	const unknown = i18n.getFixedT(null, "templates")("agent.copy.unknownField");
 	return path.reduce<string>((current, key) => {
 		if (typeof key === "number") return `${current}[${key}]`;
-		return `${current}.${fieldNames.has(String(key)) ? String(key) : "[字段]"}`;
+		return `${current}.${fieldNames.has(String(key)) ? String(key) : `[${unknown}]`}`;
 	}, base);
 }
 
 function validationReason(issue: ValidationIssue) {
-	if (issue.path.at(-1) === "version") return "Skill 版本缺失或格式无效，需要明确的固定版本。";
+	const t = i18n.getFixedT(null, "templates");
+	if (issue.path.at(-1) === "version") return t("agent.copy.skillVersion");
 	switch (issue.code) {
 		case "invalid_type":
-			return "字段缺失或数据类型不符合创建要求。";
+			return t("agent.copy.invalidType");
 		case "too_small":
-			return "字段为空或内容长度不足。";
+			return t("agent.copy.tooSmall");
 		case "too_big":
-			return "字段长度或配置数量超过创建上限。";
+			return t("agent.copy.tooBig");
 		case "invalid_value":
-			return "字段取值不在当前支持的范围内。";
+			return t("agent.copy.invalidValue");
 		case "unrecognized_keys":
-			return "包含当前创建流程不支持的配置字段。";
+			return t("agent.copy.unrecognizedKeys");
 		default:
-			return "字段格式或引用不符合当前创建要求。";
+			return t("agent.copy.invalid");
 	}
 }
 
@@ -95,41 +99,50 @@ export function copyBuiltinPermission(entry: Record<string, unknown>, path: stri
 		(key) => entry[key] != null,
 	);
 	if (!key) return;
+	const t = i18n.getFixedT(null, "templates");
 	const value = entry[key];
 	const object = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 	const policy = object.type ?? value;
 	if (["allow", "always_allow", "never"].includes(String(policy))) return "allow";
 	if (["ask", "always_ask", "always"].includes(String(policy))) return "ask";
-	rejectAgentCopy(`${path}.${key}${object.type == null ? "" : ".type"}`, "当前 SDK 无法原样复制此工具审批或权限策略。");
+	rejectAgentCopy(`${path}.${key}${object.type == null ? "" : ".type"}`, t("agent.copy.unsupportedPolicy"));
 }
 
 export function checkCopyPolicy(entry: Record<string, unknown>, path: string) {
 	if (copyBuiltinPermission(entry, path) !== "ask") return;
+	const t = i18n.getFixedT(null, "templates");
 	const key = ["permission_policy", "permissionPolicy", "permission", "require_approval", "requireApproval"].find(
 		(key) => entry[key] != null,
 	)!;
 	const value = entry[key];
 	const hasType = value && typeof value === "object" && "type" in value;
-	rejectAgentCopy(`${path}.${key}${hasType ? ".type" : ""}`, "当前 SDK 无法原样复制此 MCP 工具审批或权限策略。");
+	rejectAgentCopy(`${path}.${key}${hasType ? ".type" : ""}`, t("agent.copy.unsupportedMcpPolicy"));
 }
 
 /** 只报告隐藏值的位置；字段标识以外的自由文本键不回显。 */
 export function redactedCopyIssues(value: unknown, path = ""): AgentCopyIssue[] {
+	const unknown = i18n.getFixedT(null, "templates")("agent.copy.unknownField");
 	if (typeof value === "string")
-		return value.includes("[redacted]") ? [{ field: path, reason: "字段已脱敏，无法获取完整原值来创建副本。" }] : [];
+		return value.includes("[redacted]")
+			? [{ field: path, reason: i18n.getFixedT(null, "templates")("agent.copy.redacted") }]
+			: [];
 	if (Array.isArray(value)) return value.flatMap((entry, index) => redactedCopyIssues(entry, `${path}[${index}]`));
 	if (!value || typeof value !== "object") return [];
 	return Object.entries(value).flatMap(([key, entry]) =>
-		redactedCopyIssues(entry, `${path ? `${path}.` : ""}${/^[A-Za-z_][A-Za-z0-9_]{0,63}$/.test(key) ? key : "[字段]"}`),
+		redactedCopyIssues(
+			entry,
+			`${path ? `${path}.` : ""}${/^[A-Za-z_][A-Za-z0-9_]{0,63}$/.test(key) ? key : `[${unknown}]`}`,
+		),
 	);
 }
 
 export function copyFieldLabel(field: string) {
-	if (field.startsWith("multiagent")) return "Multi-Agent 模式";
-	if (field.startsWith("tools")) return "工具";
-	if (field.startsWith("skills")) return "技能";
-	if (field.startsWith("mcp_servers")) return "MCP 服务器";
-	if (field.startsWith("instructions")) return "系统提示词";
-	if (field.startsWith("model")) return "模型";
-	return "基础配置";
+	const t = i18n.getFixedT(null, "templates");
+	if (field.startsWith("multiagent")) return t("agent.form.multiagent");
+	if (field.startsWith("tools")) return t("agent.form.tools");
+	if (field.startsWith("skills")) return t("agent.form.skills");
+	if (field.startsWith("mcp_servers")) return t("agent.form.mcp");
+	if (field.startsWith("instructions")) return t("agent.form.instructions");
+	if (field.startsWith("model")) return t("agent.form.model");
+	return t("agent.form.baseConfiguration");
 }

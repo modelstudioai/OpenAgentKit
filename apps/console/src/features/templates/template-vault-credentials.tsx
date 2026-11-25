@@ -1,5 +1,6 @@
 import { Button } from "antd";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import styles from "./template-forms.module.less";
 import { TemplateVaultCredentialDialog, type VaultCredentialDraft } from "./template-vault-credential-dialog.tsx";
 
@@ -16,6 +17,7 @@ export function TemplateVaultCredentials({
 	onEditingChange: (value: boolean) => void;
 	requireValues?: boolean;
 }) {
+	const { t } = useTranslation("templates");
 	const [editor, setEditor] = useState<{ initial?: VaultCredentialDraft; opener: HTMLButtonElement } | null>(null);
 	function open(opener: HTMLElement, initial?: VaultCredentialDraft) {
 		// antd Button 只把 currentTarget 声明为 HTMLElement，实际渲染是 <button>。
@@ -23,11 +25,13 @@ export function TemplateVaultCredentials({
 		onEditingChange(true);
 	}
 	return (
-		<section aria-label="密钥配置" className={styles.vaultRoot}>
+		<section aria-label={t("vault.credentials.aria")} className={styles.vaultRoot}>
 			<div className={styles.vaultHeader}>
-				<h3 className={styles.vaultTitle}>密钥{value.length ? `（${value.length}）` : ""}</h3>
+				<h3 className={styles.vaultTitle}>
+					{value.length ? t("vault.credentials.titleCount", { count: value.length }) : t("vault.credentials.title")}
+				</h3>
 				<Button size="small" disabled={disabled || value.length >= 100} onClick={(event) => open(event.currentTarget)}>
-					添加密钥
+					{t("vault.credentials.add")}
 				</Button>
 			</div>
 			{value.length ? (
@@ -40,35 +44,41 @@ export function TemplateVaultCredentials({
 									<Button
 										type="link"
 										size="small"
-										aria-label={`编辑密钥 ${item.input.name}`}
+										aria-label={t("vault.credentials.editAria", { name: item.input.name })}
 										className={styles.linkFlushSm}
 										disabled={disabled}
 										onClick={(event) => open(event.currentTarget, item)}
 									>
-										编辑
+										{t("vault.credentials.edit")}
 									</Button>
 									<Button
 										type="link"
 										size="small"
-										aria-label={`移除密钥 ${item.input.name}`}
+										aria-label={t("vault.credentials.removeAria", { name: item.input.name })}
 										className={styles.linkFlushSm}
 										disabled={disabled}
 										onClick={() => onChange(value.filter((entry) => entry.id !== item.id))}
 									>
-										移除
+										{t("vault.credentials.remove")}
 									</Button>
 								</div>
 							</div>
-							<p className={styles.credentialMeta}>{item.input.secret_name} · ••••••••</p>
-							<p className={styles.credentialMeta}>生效域名：{item.input.allowed_hosts.join("、")}</p>
+							<p className={styles.credentialMeta}>
+								{t("vault.credentials.secretMeta", { secretName: item.input.secret_name })}
+							</p>
+							<p className={styles.credentialMeta}>
+								{t("vault.credentials.hosts", {
+									hosts: item.input.allowed_hosts.join(t("vault.credentials.joinHosts")),
+								})}
+							</p>
 							{requireValues && !item.input.secret_value ? (
-								<p className={styles.credentialMeta}>变量值待重新填写</p>
+								<p className={styles.credentialMeta}>{t("vault.credentials.missingValue")}</p>
 							) : null}
 						</li>
 					))}
 				</ul>
 			) : (
-				<p className={styles.emptyNote}>暂无密钥，可先创建空密钥库。</p>
+				<p className={styles.emptyNote}>{t("vault.credentials.empty")}</p>
 			)}
 			{editor ? (
 				<TemplateVaultCredentialDialog

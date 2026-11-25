@@ -2,6 +2,7 @@ import type { UsageGranularity, UsageTrend, UsageTrendPoint } from "@openagentki
 import { ErrorState } from "@openagentpack/kit-chat-ui";
 import { Segmented, Tooltip } from "antd";
 import { type MouseEvent, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import styles from "./usage.module.less";
@@ -59,13 +60,25 @@ interface TrendBucketPoint {
 	unknown: boolean;
 }
 
-/** 柱状图元数据：TREND_METRICS 的条目与缓存 Token 系列共用；缓存 Token 仅作 Token 消耗视图的第二根柱，不进指标切换。 */
+/** 柱状图元数据：label/unit/legendHint 为 usage 词典键（字面量联合保证 t() 类型检查），渲染处用 t() 展开；
+ * 缓存 Token 仅作 Token 消耗视图的第二根柱，不进指标切换。 */
+type TrendChartKey =
+	| "trend.metricTokens"
+	| "trend.metricCalls"
+	| "trend.metricFailures"
+	| "trend.metricSeconds"
+	| "trend.metricCacheTokens"
+	| "trend.legendTotalTokens"
+	| "trend.legendCacheTokens"
+	| "trend.unitCallSuffix"
+	| "trend.unitSecondsSuffix";
+
 interface TrendChartMeta {
-	label: string;
-	/** 悬停文案的数值后缀；Token 系列的标签本身已含 Token，留空避免重复。 */
-	unit: string;
-	/** 图例中的口径说明；仅双系列图展示图例。 */
-	legendHint?: string;
+	label: TrendChartKey;
+	/** 悬停文案的数值后缀词典键；Token 系列的标签本身已含 Token，留空避免重复。 */
+	unit: TrendChartKey | "";
+	/** 图例中的口径说明词典键；仅双系列图展示图例。 */
+	legendHint?: TrendChartKey;
 	decimals: number;
 	pick: (total: UsageTrendPoint["usage"]["total"]) => number | null;
 }
@@ -74,21 +87,21 @@ interface TrendChartMeta {
  * pick 返回 null 表示该桶来源未知（协议未知=null，不按 0 折算），与区间合计共用同一 read 语义。 */
 const TREND_METRICS = {
 	tokens: {
-		label: "Token 消耗",
+		label: "trend.metricTokens",
 		unit: "",
-		legendHint: "输入+输出",
+		legendHint: "trend.legendTotalTokens",
 		decimals: 0,
 		pick: (total: UsageTrendPoint["usage"]["total"]) => total.total_tokens.value,
 	},
 	calls: {
-		label: "调用次数",
-		unit: " 次",
+		label: "trend.metricCalls",
+		unit: "trend.unitCallSuffix",
 		decimals: 0,
 		pick: (total: UsageTrendPoint["usage"]["total"]) => total.model_call_count.value,
 	},
 	failures: {
-		label: "失败次数",
-		unit: " 次",
+		label: "trend.metricFailures",
+		unit: "trend.unitCallSuffix",
 		decimals: 0,
 		pick: (total: UsageTrendPoint["usage"]["total"]) =>
 			total.model_failed_count.value === null || total.tool_failed_count.value === null
@@ -96,8 +109,8 @@ const TREND_METRICS = {
 				: total.model_failed_count.value + total.tool_failed_count.value,
 	},
 	runtime: {
-		label: "运行时长",
-		unit: " 秒",
+		label: "trend.metricSeconds",
+		unit: "trend.unitSecondsSuffix",
 		decimals: 1,
 		pick: (total: UsageTrendPoint["usage"]["total"]) =>
 			total.runtime_ms.value === null ? null : total.runtime_ms.value / 1000,
@@ -107,9 +120,9 @@ type TrendMetric = keyof typeof TREND_METRICS;
 
 /** 缓存 Token = 缓存读取 + 缓存写入；与总 Token 构成 Token 消耗视图的同桶双柱。任一来源未知则该桶未知。 */
 const CACHE_TOKEN_META: TrendChartMeta = {
-	label: "缓存 Token",
+	label: "trend.metricCacheTokens",
 	unit: "",
-	legendHint: "缓存读取+缓存写入",
+	legendHint: "trend.legendCacheTokens",
 	decimals: 0,
 	pick: (total) =>
 		total.cache_read_tokens.value === null || total.cache_creation_tokens.value === null
@@ -173,13 +186,14 @@ function TrendTotal({
 	unit?: string;
 	unknown?: boolean;
 }) {
+	const { t } = useTranslation("usage");
 	return (
 		<div className={styles.totalItem}>
 			<dt className={styles.totalLabel}>
 				{label}
 				{unknown ? (
-					<Tooltip title="统计区间内部分来源未返回该指标，未计入合计">
-						<sup className={styles.unknownMark}>含未知</sup>
+					<Tooltip title={t("trend.unknownMarkHint")}>
+						<sup className={styles.unknownMark}>{t("trend.unknownMark")}</sup>
 					</Tooltip>
 				) : null}
 			</dt>
@@ -193,14 +207,15 @@ function TrendTotal({
 
 /** 指标切换：Token 消耗 / 调用次数 / 失败次数 / 运行时长（量级悬殊，图内一次展示一个，汇总行始终同时给出五个总数）。 */
 function TrendMetricToggle({ value, onChange }: { value: TrendMetric; onChange: (metric: TrendMetric) => void }) {
+	const { t } = useTranslation("usage");
 	return (
 		<Segmented
-			aria-label="趋势指标"
+			aria-label={t("trend.metricAria")}
 			value={value}
 			onChange={(next) => onChange(next as TrendMetric)}
 			options={(Object.keys(TREND_METRICS) as TrendMetric[]).map((value) => ({
 				value,
-				label: TREND_METRICS[value].label,
+				label: t(TREND_METRICS[value].label),
 			}))}
 		/>
 	);
@@ -218,6 +233,7 @@ function TrendChart({
 	granularity: UsageGranularity;
 	currentKey: string;
 }) {
+	const { t } = useTranslation("usage");
 	const [primary] = series;
 	const areaRef = useRef<HTMLDivElement>(null);
 	const [hover, setHover] = useState<{ index: number; x: number; y: number; flip: boolean } | null>(null);
@@ -264,7 +280,7 @@ function TrendChart({
 					<div
 						ref={areaRef}
 						role="img"
-						aria-label="用量趋势柱状图"
+						aria-label={t("trend.chartAria")}
 						className={styles.chartArea}
 						onMouseMove={onTrack}
 						onMouseLeave={() => setHover(null)}
@@ -309,9 +325,11 @@ function TrendChart({
 											aria-hidden="true"
 											className={`${styles.chartTipDot} ${bar.variant === "accent" ? styles.legendAccent : styles.legendSecondary}`}
 										/>
-										<span className={styles.chartTipLabel}>{bar.meta.label}</span>
+										<span className={styles.chartTipLabel}>{t(bar.meta.label)}</span>
 										<span className={styles.chartTipValue}>
-											{bar.unknown ? "未知" : `${fmtFor(bar.meta)(bar.value)}${bar.meta.unit}`}
+											{bar.unknown
+												? t("trend.unknownBucket")
+												: `${fmtFor(bar.meta)(bar.value)}${bar.meta.unit ? t(bar.meta.unit) : ""}`}
 										</span>
 									</p>
 								))}
@@ -334,8 +352,8 @@ function TrendChart({
 					{series.map((s) => (
 						<span key={s.meta.label} className={styles.legendItem}>
 							<i aria-hidden="true" className={s.variant === "accent" ? styles.legendAccent : styles.legendSecondary} />
-							{s.meta.label}
-							{s.meta.legendHint ? `（${s.meta.legendHint}）` : ""}
+							{t(s.meta.label)}
+							{s.meta.legendHint ? `（${t(s.meta.legendHint)}）` : ""}
 						</span>
 					))}
 				</div>
@@ -409,16 +427,18 @@ function trendTotals(trend: UsageTrend) {
 
 /** 「全部」口径部分成功提示：coverage 仅在部分模版绑定智能体查询失败时出现。 */
 function TrendCoverageNote({ trend }: { trend: UsageTrend }) {
+	const { t } = useTranslation("usage");
 	if (!trend.coverage || trend.coverage.complete) return null;
 	return (
 		<p role="status" className={styles.loadingText}>
-			部分智能体数据缺失（{trend.coverage.missing_agent_ids.join("、")}），以下合计不含其用量。
+			{t("trend.coverageNote", { agents: trend.coverage.missing_agent_ids.join("、") })}
 		</p>
 	);
 }
 
 /** 趋势卡内容：coverage 提示 + 五项合计（未知来源标「含未知」）+ 图表 + 统计周期脚注。 */
 function TrendContent({ trend, metric, currentKey }: { trend: UsageTrend; metric: TrendMetric; currentKey: string }) {
+	const { t } = useTranslation("usage");
 	const totals = trendTotals(trend);
 	const hasUsage =
 		totals.tokens.value || totals.cache.value || totals.calls.value || totals.failures.value || totals.runtime.value;
@@ -426,34 +446,34 @@ function TrendContent({ trend, metric, currentKey }: { trend: UsageTrend; metric
 		<>
 			<TrendCoverageNote trend={trend} />
 			<dl className={styles.totals}>
-				<TrendTotal label={TREND_METRICS.tokens.label} value={totals.tokens.value} unknown={totals.tokens.unknown} />
-				<TrendTotal label={CACHE_TOKEN_META.label} value={totals.cache.value} unknown={totals.cache.unknown} />
-				<TrendTotal label={TREND_METRICS.calls.label} value={totals.calls.value} unknown={totals.calls.unknown} />
+				<TrendTotal label={t(TREND_METRICS.tokens.label)} value={totals.tokens.value} unknown={totals.tokens.unknown} />
+				<TrendTotal label={t(CACHE_TOKEN_META.label)} value={totals.cache.value} unknown={totals.cache.unknown} />
+				<TrendTotal label={t(TREND_METRICS.calls.label)} value={totals.calls.value} unknown={totals.calls.unknown} />
 				<TrendTotal
-					label={TREND_METRICS.failures.label}
+					label={t(TREND_METRICS.failures.label)}
 					value={totals.failures.value}
 					unknown={totals.failures.unknown}
 				/>
 				<TrendTotal
-					label={TREND_METRICS.runtime.label}
+					label={t(TREND_METRICS.runtime.label)}
 					value={totals.runtime.value}
-					unit="秒"
+					unit={t("trend.unitSecondsSuffix").trim()}
 					unknown={totals.runtime.unknown}
 				/>
 			</dl>
 			{hasUsage ? (
 				<TrendChartArea metric={metric} trend={trend} currentKey={currentKey} />
 			) : (
-				<p className={styles.emptyChart}>统计区间内暂无用量记录</p>
+				<p className={styles.emptyChart}>{t("trend.emptyChart")}</p>
 			)}
 			<p className={styles.footnote}>
-				统计周期：
+				{t("trend.periodLabel")}
 				{bucketLabel(trend.granularity, bucketKey(trend.granularity, Date.parse(trend.query_range.start_time)))}
 				{" – "}
 				{bucketLabel(trend.granularity, bucketKey(trend.granularity, Date.parse(trend.query_range.end_time) - 1))}
 				{trend.data_updated_at
-					? ` · 数据更新于 ${new Date(trend.data_updated_at).toLocaleString("zh-CN", { hour12: false })}`
-					: " · 暂无用量数据"}
+					? t("trend.dataUpdatedAt", { time: new Date(trend.data_updated_at).toLocaleString("zh-CN", { hour12: false }) })
+					: t("trend.noDataYet")}
 			</p>
 		</>
 	);
@@ -469,6 +489,7 @@ export function TemplateUsageTrendCard({
 	agentId?: string;
 	range: { start: number; end: number };
 }) {
+	const { t } = useTranslation("usage");
 	const client = useMemo(getAdminClient, []);
 	const [metric, setMetric] = useState<TrendMetric>("tokens");
 	const granularity = granularityOf(range.end - range.start);
@@ -484,7 +505,7 @@ export function TemplateUsageTrendCard({
 		<section aria-labelledby="template-usage-trend-heading" className={styles.card}>
 			<div className={styles.cardHeader}>
 				<h3 id="template-usage-trend-heading" className={styles.cardTitle}>
-					使用趋势
+					{t("trend.title")}
 				</h3>
 				<div className={styles.headerControls}>
 					<TrendMetricToggle value={metric} onChange={setMetric} />
@@ -492,7 +513,7 @@ export function TemplateUsageTrendCard({
 			</div>
 			{loading ? (
 				<p role="status" className={styles.loadingText}>
-					正在加载使用趋势…
+					{t("trend.loading")}
 				</p>
 			) : null}
 			{query.error ? <ErrorState message={query.error} onRetry={() => void query.refresh()} /> : null}

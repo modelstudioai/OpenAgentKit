@@ -14,7 +14,7 @@ export function InnerLayout({
 	titleId,
 	description,
 	onBack,
-	backLabel = "返回",
+	backLabel,
 	right,
 	children,
 }: {

@@ -1,9 +1,9 @@
-import { PROTOCOL_VERSION, PROTOCOL_VERSION_HEADER } from "@openagentkit/sdk/protocol";
-import { type ClientOperations, createKitClient } from "@openagentkit/sdk/providers/kit";
+import { KitError, PROTOCOL_VERSION, PROTOCOL_VERSION_HEADER } from "@openagentkit/sdk/protocol";
+import { type ClientOperations, createKitClient, type KitClient } from "@openagentkit/sdk/providers/kit";
 import type { RequestClient } from "@openagentkit/sdk/request";
 
 /** Demo configuration only. An external frontend replaces these paths and response mappings for its own backend. */
-export function createExampleClient(request: RequestClient) {
+export function createExampleClient(request: RequestClient): KitClient {
 	const headers = { [PROTOCOL_VERSION_HEADER]: PROTOCOL_VERSION };
 	const json = { ...headers, "Content-Type": "application/json" };
 	const session = (id: string) => `/api/kit/sessions/${encodeURIComponent(id)}`;
@@ -117,5 +117,30 @@ export function createExampleClient(request: RequestClient) {
 			mapResponse: (response) => response,
 		},
 	};
-	return createKitClient({ request, operations });
+	const client = createKitClient({ request, operations });
+	return {
+		...client,
+		auth: {
+			...client.auth,
+			login: (...args) =>
+				client.auth.login(...args).catch((error: unknown) => {
+					if (
+						!(error instanceof KitError) ||
+						error.status !== 401 ||
+						error.code !== "unauthorized" ||
+						error.messageKey
+					) {
+						throw error;
+					}
+					// 旧版 Kit Server 的登录 401 缺少 message_key，补齐后沿用现有本地化。
+					throw new KitError(error.code, error.message, {
+						details: error.details,
+						messageKey: "serverErrors.invalidCredentials",
+						messageParams: error.messageParams,
+						retryable: error.retryable,
+						status: error.status,
+					});
+				}),
+		},
+	};
 }

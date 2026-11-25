@@ -34,4 +34,4 @@ pnpm kit:add artifact-card
 
 组件依赖：[file-card](../file-card/README.md)。
 
-完整用法与参数见[文档站对应页面](../../../../../apps/storybook/content/docs/components/message.mdx)；全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。
+完整用法与参数见[文档站对应页面](../../../../../apps/storybook/content/docs/components/feedback/artifact-card.mdx)。全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。

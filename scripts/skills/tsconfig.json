@@ -13,6 +13,9 @@
       "@openagentpack/kit-chat-ui": [
         "../../packages/chat-ui/src/index.ts"
       ],
+      "@openagentpack/kit-chat-ui-vue": [
+        "../../packages/chat-ui-vue/src/index.ts"
+      ],
       "@openagentkit/sdk/chat": [
         "../../packages/sdk/src/chat/index.ts"
       ],
@@ -64,11 +67,20 @@
       "@openagentkit/sdk/hooks": [
         "../../packages/sdk/src/hooks/index.ts"
       ],
+      "@openagentkit/sdk/hooks-vue": [
+        "../../packages/sdk/src/hooks-vue/index.ts"
+      ],
       "@openagentkit/sdk/chat/hooks": [
         "../../packages/sdk/src/chat/hooks/index.ts"
       ],
+      "@openagentkit/sdk/chat/hooks-vue": [
+        "../../packages/sdk/src/chat/hooks-vue/index.ts"
+      ],
       "@openagentkit/sdk/sessions/hooks": [
         "../../packages/sdk/src/sessions/hooks/index.ts"
+      ],
+      "@openagentkit/sdk/sessions/hooks-vue": [
+        "../../packages/sdk/src/sessions/hooks-vue/index.ts"
       ],
       "@openagentkit/sdk/files/hooks": [
         "../../packages/sdk/src/files/hooks/index.ts"
@@ -87,6 +99,7 @@
   "include": [
     "src/**/examples/**/*.ts",
     "src/**/examples/**/*.tsx",
+    "src/**/examples/**/*.vue",
     "tests/fixtures/**/*.ts"
   ]
 }

@@ -3,6 +3,7 @@
 本页由 `pnpm gen:skills` 生成。更新公开 TypeScript 声明或中文 catalog 后重新生成。
 字段类型和必填性来自公开 API，行为说明依据所列文档整理。
 组件表格列出 Kit 自有属性。组件按声明继承标准的 React/DOM 属性。
+参考中的包名用于仓库内导入。业务项目按[复制组件和 Kit SDK](copy-in.md)改用本地源码入口。
 
 ## 目录
 
@@ -830,7 +831,7 @@ export type SendMessageRequest = { text: string; skills?: string[] | undefined; 
 | `attachments` | 否 | `{ file_id: string; filename?: string \| undefined; mount_path?: string \| undefined; size?: number \| undefined; }[] \| undefined` |
 | `client_message_id` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 1dc864117b708c6a5d56599b55821494870ab35e77f8d5510c5961c99f82a4fa; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
+<!-- source-sha256: f008d1a064b6a04a7388b710654aef8bdcee552ea1c0905a60e07aef568ed97b; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## SendMessageResponse
 
@@ -852,7 +853,7 @@ export type SendMessageResponse = { session_id: string; accepted: boolean; event
 | `accepted` | 是 | `boolean` |
 | `event_ids` | 是 | `string[]` |
 
-<!-- source-sha256: 1dc864117b708c6a5d56599b55821494870ab35e77f8d5510c5961c99f82a4fa; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
+<!-- source-sha256: f008d1a064b6a04a7388b710654aef8bdcee552ea1c0905a60e07aef568ed97b; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## ToolApprovalsResponse
 
@@ -914,7 +915,7 @@ export type ToolApprovalDecision = { batch_id: string; call_id: string; result: 
 
 ```ts
 declare class KitError {
-  constructor(code: ErrorCode, message: string, options?: { details?: unknown; retryable?: boolean; status?: number; });
+  constructor(code: ErrorCode, message: string, options?: { details?: unknown; messageKey?: string; messageParams?: KitErrorMessageParams; retryable?: boolean; status?: number; });
 }
 ```
 
@@ -922,6 +923,8 @@ declare class KitError {
 | --- | --- | --- |
 | `code` | 是 | `"invalid_request" \| "unauthorized" \| "forbidden" \| "not_found" \| "conflict" \| "confirmation_required" \| "rate_limited" \| "quota_exceeded" \| "request_pending" \| "provider_error" \| "not_implemented" \| "internal"` |
 | `details` | 否 | `unknown` |
+| `messageKey` | 否 | `string \| undefined` |
+| `messageParams` | 否 | `KitErrorMessageParams \| undefined` |
 | `retryable` | 是 | `boolean` |
 | `status` | 是 | `number` |
 | `toBody` | 是 | `() => KitErrorBody` |
@@ -930,7 +933,7 @@ declare class KitError {
 | `stack` | 否 | `string \| undefined` |
 | `cause` | 否 | `unknown` |
 
-<!-- source-sha256: 0d3c4159a0cc3cc2979689d0c75227001ef7dd285083b525e549913cd52140f3; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
+<!-- source-sha256: 97c46811e0d3727b5648a249d5566c657ba7392501d96f017e545a7e18403bc1; doc-sha256: c1f8643aef8e7a1223d1532f9ac682e3a9a43886e780333ebdf3ee024cebe717 -->
 
 ## BailianOperation
 
@@ -1158,7 +1161,7 @@ export type ClientOperations = { agent?: BackendOperation<[slug: string, signal?
 | `auth.me` | 否 | `any` |
 | `auth.logout` | 否 | `any` |
 
-<!-- source-sha256: f889584832ef86aac9f0354a7e6eca0672a1901ff7c46a04547f762d3d7a16e6; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
+<!-- source-sha256: f889584832ef86aac9f0354a7e6eca0672a1901ff7c46a04547f762d3d7a16e6; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## ClientOperation
 
@@ -1175,7 +1178,7 @@ export type ClientOperation = "agent" | "config" | "agents" | "plaza" | "usageLi
 ```
 
 
-<!-- source-sha256: f889584832ef86aac9f0354a7e6eca0672a1901ff7c46a04547f762d3d7a16e6; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
+<!-- source-sha256: f889584832ef86aac9f0354a7e6eca0672a1901ff7c46a04547f762d3d7a16e6; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## ExplicitKitClientOptions
 
@@ -1197,7 +1200,7 @@ import type { ExplicitKitClientOptions } from "@openagentkit/sdk/providers/kit";
 | `operations` | 是 | `ClientOperations` |
 | `chatProvider` | 否 | `ChatProvider \| undefined` |
 
-<!-- source-sha256: f889584832ef86aac9f0354a7e6eca0672a1901ff7c46a04547f762d3d7a16e6; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
+<!-- source-sha256: f889584832ef86aac9f0354a7e6eca0672a1901ff7c46a04547f762d3d7a16e6; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## createMemberSessionStorage
 
@@ -1214,7 +1217,7 @@ export function createMemberSessionStorage(baseUrl: string, getStorage: () => { 
 ```
 
 
-<!-- source-sha256: a9276ea062f185c6bd12f652590c3c3f2399fc90ccb652beeec628d4de57ab0e; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
+<!-- source-sha256: a9276ea062f185c6bd12f652590c3c3f2399fc90ccb652beeec628d4de57ab0e; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## normalizeMemberApiBaseUrl
 
@@ -1231,7 +1234,7 @@ export function normalizeMemberApiBaseUrl(value: string, origin: string): string
 ```
 
 
-<!-- source-sha256: a9276ea062f185c6bd12f652590c3c3f2399fc90ccb652beeec628d4de57ab0e; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
+<!-- source-sha256: a9276ea062f185c6bd12f652590c3c3f2399fc90ccb652beeec628d4de57ab0e; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## streamProtocolFrames
 
@@ -1435,7 +1438,7 @@ import type { KitErrorBody } from "@openagentkit/sdk/protocol";
 
 | 字段 | 必填 | 类型 |
 | --- | --- | --- |
-| `error` | 是 | `{ code: ErrorCode; message: string; details?: unknown; retryable?: boolean; }` |
+| `error` | 是 | `{ code: ErrorCode; message: string; message_key?: string; message_params?: KitErrorMessageParams; details?: unknown; retryable?: boolean; }` |
 
 
 ### MemberLoginRequest

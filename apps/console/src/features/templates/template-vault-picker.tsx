@@ -1,5 +1,6 @@
 import { Button, Drawer } from "antd";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import styles from "./template-forms.module.less";
 import { MAX_TEMPLATE_VAULTS, mergeImportedVaults, type TemplateVaultDraft } from "./template-vault-draft.ts";
 import { TemplateVaultSelection } from "./template-vault-selection.tsx";
@@ -11,6 +12,7 @@ export function TemplateVaultPicker({
 	value: TemplateVaultDraft[];
 	onChange: (value: TemplateVaultDraft[]) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
 	const [selection, setSelection] = useState<TemplateVaultDraft[]>([]);
@@ -25,17 +27,17 @@ export function TemplateVaultPicker({
 					setOpen(true);
 				}}
 			>
-				导入现有配置
+				{t("vault.config.importExisting")}
 			</Button>
 			<Drawer
 				open={open}
 				onClose={() => setOpen(false)}
 				destroyOnHidden
 				width={768}
-				title={<div className={styles.drawerTitle}>选择配置</div>}
+				title={<div className={styles.drawerTitle}>{t("vault.config.choose")}</div>}
 				footer={
 					<div className={styles.drawerFooter}>
-						<Button onClick={() => setOpen(false)}>取消</Button>
+						<Button onClick={() => setOpen(false)}>{t("cancel")}</Button>
 						<Button
 							type="primary"
 							disabled={selection.length + pending > MAX_TEMPLATE_VAULTS}
@@ -44,7 +46,7 @@ export function TemplateVaultPicker({
 								setOpen(false);
 							}}
 						>
-							确认选择
+							{t("memory.config.confirm")}
 						</Button>
 					</div>
 				}

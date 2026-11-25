@@ -1,5 +1,6 @@
 import type { TemplateVersionView } from "@openagentkit/sdk/protocol";
 import { EmptyState } from "@openagentpack/kit-chat-ui";
+import { useTranslation } from "react-i18next";
 import { TemplateDebugPreview } from "./template-debug-preview.tsx";
 
 /** 按详情所选版本挂载；离开调试 Tab 或切换版本时释放自建会话。 */
@@ -14,6 +15,7 @@ export function TemplateDetailDebug({
 	readOnly: boolean;
 	onBusyChange: (busy: boolean) => void;
 }) {
+	const { t } = useTranslation("templates");
 	if (canDebug)
 		return (
 			<TemplateDebugPreview
@@ -24,7 +26,7 @@ export function TemplateDetailDebug({
 					files: template.files,
 					memory_stores: template.memory_stores,
 					vault_ids: template.vault_ids,
-					title: `${template.name} · v${template.version} 调试`,
+					title: t("workflow.previewTitle", { name: `${template.name} · v${template.version}` }),
 				}}
 				agent={{ agent_id: template.remote_agent_id, name: template.remote_agent_name }}
 				name={template.name}
@@ -36,5 +38,5 @@ export function TemplateDetailDebug({
 				onBusyChange={onBusyChange}
 			/>
 		);
-	return <EmptyState loading={!readOnly} title={readOnly ? "当前身份只读，无法创建调试会话。" : "正在加载调试权限…"} />;
+	return <EmptyState loading={!readOnly} title={readOnly ? t("debug.detailReadOnly") : t("debug.detailLoading")} />;
 }

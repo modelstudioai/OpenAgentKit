@@ -73,6 +73,30 @@ describe("草稿 ↔ 编辑区 DOM 投影", () => {
 		);
 		expect(serializeEditable(multiline)).toBe("第一行\n第二行");
 	});
+
+	it("浏览器行块（Playwright fill / 原生回车）按行还原换行，空行不丢", () => {
+		const root = document.createElement("div");
+		const blank = () => {
+			const line = document.createElement("div");
+			line.append(document.createElement("br"));
+			return line;
+		};
+		const line = (text: string) => {
+			const block = document.createElement("div");
+			block.textContent = text;
+			return block;
+		};
+		root.append(
+			document.createTextNode("第一行"),
+			blank(),
+			line("```javascript"),
+			line('const answer = "x";'),
+			line("```"),
+			blank(),
+			line("最后"),
+		);
+		expect(serializeEditable(root)).toBe('第一行\n\n```javascript\nconst answer = "x";\n```\n\n最后');
+	});
 });
 
 describe("Sender 编辑区（contenteditable）", () => {

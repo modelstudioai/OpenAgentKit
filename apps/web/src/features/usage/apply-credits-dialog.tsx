@@ -1,5 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export interface ApplyCreditsValues {
 	requestedCredits: number;
@@ -19,6 +20,7 @@ export function ApplyCreditsDialog({
 	onClose: () => void;
 	onSubmit: (values: ApplyCreditsValues) => Promise<string | null>;
 }) {
+	const { t } = useTranslation("usage");
 	const [credits, setCredits] = useState("");
 	const [reason, setReason] = useState("");
 	const [submitting, setSubmitting] = useState(false);
@@ -79,12 +81,12 @@ export function ApplyCreditsDialog({
 							>
 								<div className="flex items-center justify-between gap-3">
 									<Dialog.Title className="text-[length:var(--kit-text-heading)] font-semibold">
-										申请 Credits
+										{t("dialog.title")}
 									</Dialog.Title>
 									<Dialog.Close asChild>
 										<button
 											type="button"
-											aria-label="关闭申请弹窗"
+											aria-label={t("dialog.close")}
 											disabled={submitting}
 											className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--kit-radius-sm)] text-[var(--kit-fg-muted)] transition-colors hover:bg-[var(--kit-bg-subtle)] hover:text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] disabled:cursor-not-allowed disabled:opacity-50"
 										>
@@ -102,11 +104,11 @@ export function ApplyCreditsDialog({
 									</Dialog.Close>
 								</div>
 								<Dialog.Description className="mt-2 text-[length:var(--kit-text-caption)] leading-relaxed text-[var(--kit-fg-muted)]">
-									提交后由管理员审批：通过后会提高长期月度上限，或发放当月加油包（月底失效）。
+									{t("dialog.note")}
 								</Dialog.Description>
 								<label className="mt-4 block">
 									<span className="mb-1 block text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
-										期望额度（Credits）
+										{t("dialog.creditsLabel")}
 									</span>
 									<input
 										type="number"
@@ -114,23 +116,23 @@ export function ApplyCreditsDialog({
 										step={1}
 										value={credits}
 										onChange={(e) => setCredits(e.target.value)}
-										placeholder="例如 200"
-										aria-label="期望额度"
+										placeholder={t("dialog.creditsPlaceholder")}
+										aria-label={t("dialog.creditsAria")}
 										data-testid="usage-apply-credits"
 										className="min-h-11 w-full min-w-0 rounded-[var(--kit-radius-sm)] border border-[var(--kit-border)] bg-[var(--kit-surface)] px-3 py-2 text-[length:var(--kit-text-heading)] placeholder:text-[var(--kit-fg-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] md:text-[length:var(--kit-text-label)]"
 									/>
 								</label>
 								<label className="mt-3 block">
 									<span className="mb-1 block text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
-										理由（可选，最多 400 字）
+										{t("dialog.reasonLabel")}
 									</span>
 									<textarea
 										rows={3}
 										maxLength={400}
 										value={reason}
 										onChange={(e) => setReason(e.target.value)}
-										placeholder="说明用途，便于审批"
-										aria-label="申请理由"
+										placeholder={t("dialog.reasonPlaceholder")}
+										aria-label={t("dialog.reasonAria")}
 										data-testid="usage-apply-reason"
 										className="w-full min-w-0 resize-none rounded-[var(--kit-radius-sm)] border border-[var(--kit-border)] bg-[var(--kit-surface)] px-3 py-2 text-[length:var(--kit-text-heading)] placeholder:text-[var(--kit-fg-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] md:text-[length:var(--kit-text-label)]"
 									/>
@@ -151,7 +153,7 @@ export function ApplyCreditsDialog({
 											disabled={submitting}
 											className="min-h-10 rounded-[var(--kit-radius-sm)] border border-[var(--kit-border)] px-4 py-2 text-[length:var(--kit-text-label)] font-medium transition-colors hover:bg-[var(--kit-bg-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] disabled:cursor-not-allowed disabled:opacity-50"
 										>
-											取消
+											{t("dialog.cancel")}
 										</button>
 									</Dialog.Close>
 									<button
@@ -160,7 +162,7 @@ export function ApplyCreditsDialog({
 										disabled={!valid || submitting}
 										className="min-h-10 rounded-[var(--kit-radius-sm)] bg-[var(--kit-accent)] px-4 py-2 text-[length:var(--kit-text-label)] font-medium text-[var(--kit-accent-fg)] transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] disabled:cursor-not-allowed disabled:opacity-50"
 									>
-										{submitting ? "提交中…" : "提交申请"}
+										{submitting ? t("dialog.submitting") : t("dialog.submit")}
 									</button>
 								</div>
 							</form>

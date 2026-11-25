@@ -1,0 +1,28 @@
+export default {
+	sectionAria: "Branding settings",
+	title: "Branding",
+	description:
+		"Configure the product name and logo shown at the top of the employee-side navigation. Upload an image by default, or switch to entering a URL. Changes apply the next time the employee side loads its configuration.",
+	loadFailed: "Failed to load branding settings",
+	retry: "Retry",
+	saved: "Saved; the employee side picks it up after refreshing.",
+	readOnly: "This identity is read-only and cannot change branding.",
+	saveFailed: "Save failed",
+	logoInvalidUrl: "Enter a site path starting with a single /, or an http(s) URL",
+	fileTypeInvalid: "Only PNG, JPEG, WebP, or SVG images are supported",
+	fileTooLarge: "Image must not exceed {{kb}}KB",
+	previewTitle: "Employee-side preview",
+	chooseImage: "Choose image",
+	removeLogo: "Remove current logo",
+	uploadHint: "PNG, JPEG, WebP, or SVG up to {{kb}}KB; the current logo is kept when no new image is chosen.",
+	logo: "Logo",
+	modeUpload: "Upload image",
+	modeUrl: "Enter URL",
+	logoUrl: "Logo URL",
+	urlHint:
+		"Use a site path starting with a single / or an http(s) URL; leave empty to fall back to the name's initial.",
+	productName: "Product name",
+	nameRequired: "Product name is required",
+	save: "Save",
+	reset: "Reset",
+};

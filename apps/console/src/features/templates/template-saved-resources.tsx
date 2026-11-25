@@ -1,6 +1,7 @@
 import type { TemplateVersionView } from "@openagentkit/sdk/protocol";
 import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import { AgentVersionConfigurationView } from "./agent-version-configuration-view.tsx";
@@ -20,6 +21,7 @@ function SavedResourceIdentity({ id, name }: { id: string; name?: string }) {
 }
 
 export function SavedAgentConfiguration({ template }: { template: TemplateVersionView }) {
+	const { t } = useTranslation("templates");
 	const version = template.agent_version ?? template.remote_agent_version;
 	const detail = useTemplateAgentDetail(
 		{ agent_id: template.remote_agent_id, name: template.remote_agent_name },
@@ -30,14 +32,18 @@ export function SavedAgentConfiguration({ template }: { template: TemplateVersio
 		<div className={styles.stack4}>
 			<AgentVersionConfigurationView
 				detail={detail.data}
-				versionLabel={version === undefined ? "未记录" : `v${version}`}
+				versionLabel={version === undefined ? t("savedResources.notRecorded") : `v${version}`}
 				nameContent={<SavedResourceIdentity id={template.remote_agent_id} name={template.remote_agent_name} />}
 				placeholder={
-					detail.error ? "基础配置暂不可用" : detail.loading || !detail.data ? "正在加载基础配置…" : undefined
+					detail.error
+						? t("savedResources.baseUnavailable")
+						: detail.loading || !detail.data
+							? t("savedResources.baseLoading")
+							: undefined
 				}
 			/>
 			{template.agent_version === undefined ? (
-				<p className={styles.versionNote}>未固定智能体运行版本，此处按记录版本展示；无版本记录时展示当前配置。</p>
+				<p className={styles.versionNote}>{t("savedResources.agentVersionNote")}</p>
 			) : null}
 			{detail.error ? <ErrorState message={detail.error} onRetry={() => void detail.refresh()} /> : null}
 		</div>
@@ -45,6 +51,7 @@ export function SavedAgentConfiguration({ template }: { template: TemplateVersio
 }
 
 export function SavedEnvironmentConfiguration({ id, name }: { id: string; name?: string }) {
+	const { t } = useTranslation("templates");
 	const detail = useTemplateEnvironmentDetail({ environment_id: id, name: name || id });
 	if (detail.error)
 		return (
@@ -57,13 +64,14 @@ export function SavedEnvironmentConfiguration({ id, name }: { id: string; name?:
 		return (
 			<div className={styles.stack3}>
 				<SavedResourceIdentity id={id} name={name} />
-				<EmptyState loading title="正在加载环境配置…" />
+				<EmptyState loading title={t("savedResources.loadingEnvironment")} />
 			</div>
 		);
 	return <EnvironmentDetailView detail={detail.data} />;
 }
 
 export function SavedMemoryConfiguration({ memory }: { memory: TemplateVersionView["memory_stores"][number] }) {
+	const { t } = useTranslation("templates");
 	const client = useMemo(getAdminClient, []);
 	const detail = useAdminQuery(`templates:saved-memory:${memory.memory_store_id}`, (signal) =>
 		client.remoteMemoryStoreConfiguration(memory.memory_store_id, signal),
@@ -74,31 +82,37 @@ export function SavedMemoryConfiguration({ memory }: { memory: TemplateVersionVi
 			<dl className={styles.stack3}>
 				{detail.data ? (
 					<div>
-						<dt className={styles.termLabel}>描述</dt>
-						<dd className={styles.termValuePre}>{detail.data.description || "未配置"}</dd>
+						<dt className={styles.termLabel}>{t("savedResources.description")}</dt>
+						<dd className={styles.termValuePre}>{detail.data.description || t("savedResources.notConfigured")}</dd>
 					</div>
 				) : null}
 				<div>
-					<dt className={styles.termLabel}>权限</dt>
-					<dd className={styles.termValue}>{memory.access === "read_only" ? "只读" : "读写"}</dd>
+					<dt className={styles.termLabel}>{t("savedResources.access")}</dt>
+					<dd className={styles.termValue}>
+						{memory.access === "read_only" ? t("savedResources.readOnly") : t("savedResources.readWrite")}
+					</dd>
 				</div>
 				<div>
-					<dt className={styles.termLabel}>说明</dt>
-					<dd className={styles.termValuePre}>{memory.instructions || "未配置"}</dd>
+					<dt className={styles.termLabel}>{t("savedResources.instructions")}</dt>
+					<dd className={styles.termValuePre}>{memory.instructions || t("savedResources.notConfigured")}</dd>
 				</div>
 			</dl>
 			{detail.error ? (
 				<ErrorState message={detail.error} onRetry={() => void detail.refresh()} />
 			) : detail.loading || !detail.data ? (
-				<EmptyState loading title="正在读取记忆条目…" />
+				<EmptyState loading title={t("memory.fields.loading")} />
 			) : (
-				<section aria-label="记忆条目" className={styles.stack3}>
-					<h4 className={styles.entriesTitle}>记忆条目（{detail.data.entries.length}）</h4>
+				<section aria-label={t("savedResources.entriesAria")} className={styles.stack3}>
+					<h4 className={styles.entriesTitle}>{t("savedResources.entries", { count: detail.data.entries.length })}</h4>
 					<TemplateMemoryEntryList value={detail.data.entries.map((entry) => ({ ...entry, id: entry.key }))} />
 				</section>
 			)}
 			{detail.data?.copy_restricted_fields?.length ? (
-				<p className={styles.versionNote}>部分内容已隐藏：{detail.data.copy_restricted_fields.join("、")}</p>
+				<p className={styles.versionNote}>
+					{t("savedResources.hidden", {
+						fields: detail.data.copy_restricted_fields.join(t("savedResources.separator")),
+					})}
+				</p>
 			) : null}
 		</div>
 	);

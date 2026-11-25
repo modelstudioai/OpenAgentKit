@@ -1085,6 +1085,9 @@ export function createMockGateway(
 				},
 			};
 		},
+		async listSessionFiles() {
+			return [];
+		},
 		async listRemoteFiles() {
 			const ids = new Set([
 				...uploads.keys(),

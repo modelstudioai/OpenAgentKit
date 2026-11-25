@@ -1,0 +1,55 @@
+---
+title: MeterBar 用量条
+description: 将当前用量和生效上限呈现为进度条，支持不限量状态
+---
+
+`MeterBar` 将已用量和生效上限显示为进度条。填充比例限制在 0% 到 100%，不限量时显示轨道。
+
+```tsx
+import { MeterBar } from "@openagentpack/kit-chat-ui";
+```
+
+copy-in 接入（复制后 import 改为项目内路径）
+
+```bash
+pnpm kit:add meter-bar
+```
+
+主题与渲染依赖见 [组件总览](/docs/components#主题)。
+
+## 何时使用
+
+- 在个人用量或管理端配额卡片中展示已用量占上限的比例。
+- 同时展示逐日用量时，在进度条旁使用 `ActivityHeatmap`。 [ActivityHeatmap 活跃热力图](/docs/components/plaza/activity-heatmap)
+
+## 代码演示
+
+拖动滑块调整已用额度。勾选「不限量」可查看无固定上限时的轨道。
+
+<Showcase name="meter-bar" />
+
+## 接入
+
+传入单位一致的 `value` 和 `max`。使用 `useQuota()` 时，将 `quota.unlimited` 传给 `unlimited`。
+有上限时，用 `quota.limit` 加上当月所有 `packs` 的 `credits` 得到 `max`。
+Kit 本地成员限额可直接使用限额查询返回的生效上限。页面负责展示具体数值和单位。 [广场与配额 Hooks](/docs/sdk/discovery-usage#配额与显式申请)
+
+## API
+
+### MeterBar
+
+| 属性 | 说明 | 类型 | 默认值 |
+| --- | --- | --- | --- |
+| `value` | 必填，当前已用量 | `number` | — |
+| `max` | 必填，生效上限。为 0 或负数时显示空轨道 | `number` | — |
+| `unlimited` | 为 true 时显示不限量轨道 | `boolean` | `false` |
+| `className` | 追加到轨道的 Tailwind 工具类，可调整高度 | `string` | `""` |
+
+## 主题变量（Design Token）
+
+| Token | 用途 | 默认主题 | 工作区主题 |
+| --- | --- | --- | --- |
+| `--kit-bg-subtle` | 轨道底色 | `#f6f7fb` | `#f7f7f7` |
+| `--kit-accent` | 已用额度的填充色 | `#4f46e5` | `#171717` |
+
+填充宽度的过渡遵循 `prefers-reduced-motion`。

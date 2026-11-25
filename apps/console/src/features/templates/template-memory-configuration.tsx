@@ -1,6 +1,7 @@
 import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui";
 import { Button, Input, Select } from "antd";
 import { type Ref, useId, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import { formRowClass, formRowIndent, formRowLabelClass } from "../../lib/form-row.ts";
@@ -55,6 +56,7 @@ function MemoryFields({
 	onRemove: () => void;
 	onEditingChange: (editing: boolean) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const model = useMemoryFieldsModel(row);
 	const { current, configuration, modified, restricted } = model;
 	const id = useId();
@@ -67,11 +69,11 @@ function MemoryFields({
 	}
 	return (
 		<fieldset disabled={disabled} className={styles.resourceCard}>
-			<legend className={styles.legendNote}>记忆库 {index + 1}</legend>
+			<legend className={styles.legendNote}>{t("memory.fields.index", { index: index + 1 })}</legend>
 			<fieldset disabled={restricted.length > 0} className={styles.configFields}>
 				<div className={formRowClass}>
 					<label htmlFor={`${id}-name`} className={formRowLabelClass}>
-						名称{" "}
+						{t("memory.fields.name")}{" "}
 						<span aria-hidden="true" className={styles.errorColor}>
 							*
 						</span>
@@ -79,12 +81,12 @@ function MemoryFields({
 					<div className={styles.shrinkRoot}>
 						<Input
 							id={`${id}-name`}
-							aria-label="记忆库名称"
+							aria-label={t("memory.fields.nameAria")}
 							value={current.name ?? ""}
 							readOnly={!configuration}
 							required
 							maxLength={64}
-							placeholder="请输入记忆库名称"
+							placeholder={t("memory.fields.namePlaceholder")}
 							onChange={(event) => onChange({ ...current, name: event.target.value })}
 						/>
 					</div>
@@ -93,12 +95,12 @@ function MemoryFields({
 					<>
 						<div className={formRowClass}>
 							<label htmlFor={`${id}-description`} className={formRowLabelClass}>
-								描述
+								{t("memory.fields.description")}
 							</label>
 							<div className={styles.shrinkRoot}>
 								<Input.TextArea
 									id={`${id}-description`}
-									aria-label="描述"
+									aria-label={t("memory.fields.description")}
 									rows={3}
 									value={configuration.description}
 									onChange={(event) => updateConfiguration({ description: event.target.value })}
@@ -114,50 +116,52 @@ function MemoryFields({
 					</>
 				) : row.referenceOnly ? (
 					<div className={`${styles.referenceNote} ${formRowIndent}`}>
-						<p>仅复用原记忆库，名称、描述和条目保持原配置。</p>
-						<Button onClick={() => onChange({ ...row, referenceOnly: undefined })}>读取配置以编辑</Button>
+						<p>{t("memory.fields.referenceNote")}</p>
+						<Button onClick={() => onChange({ ...row, referenceOnly: undefined })}>
+							{t("memory.fields.readToEdit")}
+						</Button>
 					</div>
 				) : model.detail.error ? (
 					<ErrorState message={model.detail.error} onRetry={() => void model.detail.refresh()} />
 				) : (
-					<EmptyState loading title="正在读取记忆条目…" />
+					<EmptyState loading title={t("memory.fields.loading")} />
 				)}
 			</fieldset>
 			{restricted.length ? (
 				<p role="status" className={styles.mutedOnly}>
-					以下内容无法完整复制，可复用原库或清空后重新填写：{restricted.join("、")}
+					{t("memory.fields.restricted", { fields: restricted.join(t("memory.fields.restoreSeparator")) })}
 				</p>
 			) : null}
-			{modified ? <p className={styles.mutedOnly}>修改后将创建新记忆库，原记忆库和条目保持不变。</p> : null}
+			{modified ? <p className={styles.mutedOnly}>{t("memory.fields.modified")}</p> : null}
 			<div className={formRowClass}>
 				<label htmlFor={`${id}-access`} className={formRowLabelClass}>
-					权限
+					{t("memory.fields.access")}
 				</label>
 				<div className={styles.shrinkRoot}>
 					<Select
 						id={`${id}-access`}
-						aria-label="权限"
+						aria-label={t("memory.fields.access")}
 						className={styles.fullControl}
 						value={row.access}
 						onChange={(access) => onChange({ ...current, access: access === "read_only" ? "read_only" : "read_write" })}
 						options={[
-							{ value: "read_only", label: "只读" },
-							{ value: "read_write", label: "读写" },
+							{ value: "read_only", label: t("memory.fields.readOnly") },
+							{ value: "read_write", label: t("memory.fields.readWrite") },
 						]}
 					/>
 				</div>
 			</div>
 			<div className={formRowClass}>
 				<label htmlFor={`${id}-instructions`} className={formRowLabelClass}>
-					说明
+					{t("memory.fields.instructions")}
 				</label>
 				<div className={styles.shrinkRoot}>
 					<Input.TextArea
 						id={`${id}-instructions`}
-						aria-label="说明"
+						aria-label={t("memory.fields.instructions")}
 						rows={3}
 						maxLength={4090}
-						placeholder="描述该记忆的用途或使用场景"
+						placeholder={t("memory.fields.instructionsPlaceholder")}
 						value={row.instructions}
 						onChange={(event) => onChange({ ...current, instructions: event.target.value })}
 					/>
@@ -168,11 +172,11 @@ function MemoryFields({
 					<Button
 						onClick={() => onChange({ ...row, name: current.configuration!.originalName, configuration: undefined })}
 					>
-						恢复原配置
+						{t("memory.fields.restore")}
 					</Button>
 				) : null}
-				<Button aria-label={`移除记忆 ${index + 1}`} onClick={onRemove}>
-					移除
+				<Button aria-label={t("memory.fields.removeAria", { index: index + 1 })} onClick={onRemove}>
+					{t("memory.fields.remove")}
 				</Button>
 			</div>
 		</fieldset>
@@ -190,6 +194,7 @@ export function TemplateMemoryConfiguration({
 	formRef: Ref<MemoryFormHandle>;
 	onPendingChange?: (pending: boolean) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const [initialRow] = useState(emptyTemplateMemory);
 	const [editing, setEditing] = useState(false);
 	const [importing, setImporting] = useState(false);
@@ -197,21 +202,19 @@ export function TemplateMemoryConfiguration({
 	const rows = value.length ? value : [initialRow];
 	const disabled = model.busy || model.identity.data?.role !== "admin";
 	const error = [validateTemplateMemories(value), model.error].find(
-		(message) => message && message !== "请输入记忆库名称",
+		(message) => message && message !== t("memory.errors.nameRequired"),
 	);
 	return (
-		<section aria-label="记忆库" className={styles.configRoot}>
+		<section aria-label={t("memory.config.title")} className={styles.configRoot}>
 			<header className={styles.configHeader}>
-				<h3 className={styles.sectionTitle}>记忆库</h3>
-				<p className={styles.mutedOnly}>
-					可选，最多配置 {MAX_TEMPLATE_MEMORIES} 个记忆库，每个库可独立设置权限和说明。
-				</p>
+				<h3 className={styles.sectionTitle}>{t("memory.config.title")}</h3>
+				<p className={styles.mutedOnly}>{t("memory.config.hint", { max: MAX_TEMPLATE_MEMORIES })}</p>
 			</header>
 			<div className={styles.configBody}>
 				<div className={styles.rowStart}>
 					<TemplateMemoryPicker value={value} onChange={onChange} onPendingChange={setImporting} />
 					<Button disabled={model.busy || !value.length} onClick={() => onChange([])}>
-						清空
+						{t("memory.config.clear")}
 					</Button>
 				</div>
 				{model.identity.error ? (
@@ -235,7 +238,7 @@ export function TemplateMemoryConfiguration({
 					disabled={disabled || rows.length >= MAX_TEMPLATE_MEMORIES}
 					onClick={() => onChange(value.length ? [...value, emptyTemplateMemory()] : [initialRow])}
 				>
-					添加记忆库
+					{t("memory.fields.add")}
 				</Button>
 				{error ? <ErrorState message={error} /> : null}
 			</div>

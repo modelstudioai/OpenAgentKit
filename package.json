@@ -28,23 +28,29 @@
     "format": "biome format --write .",
     "check:architecture": "dependency-cruiser --config .dependency-cruiser.cjs --output-type err --exclude '(^|/)(dist|\\.next|\\.source|out|public/skills)/' apps packages",
     "check:docs": "node scripts/check-docs.mjs",
+    "check:i18n": "node scripts/check-i18n.mjs",
     "check:no-inner-deps": "node scripts/check-no-inner-deps.mjs",
-    "gate": "pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm check:architecture && pnpm check:docs && pnpm check:no-inner-deps",
+    "gate": "pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm check:architecture && pnpm check:docs && pnpm check:i18n && pnpm check:chat-ui-vue && pnpm check:web-vue-shared && pnpm check:no-inner-deps",
     "verify:fast": "pnpm typecheck && pnpm check:docs",
     "verify:scoped": "pnpm typecheck && pnpm lint && pnpm check:docs",
-    "verify:push": "pnpm typecheck && pnpm lint && pnpm test && pnpm check:architecture && pnpm check:docs && pnpm check:no-inner-deps",
+    "verify:push": "pnpm typecheck && pnpm lint && pnpm test && pnpm check:architecture && pnpm check:docs && pnpm check:i18n && pnpm check:no-inner-deps",
     "verify:full": "pnpm gate",
     "verify:release": "pnpm gate",
     "gen:openapi": "pnpm --filter @openagentpack/kit-server gen:openapi && pnpm gen:api-types",
     "gen:api-types": "pnpm --filter @openagentkit/sdk gen:api-types",
     "gen:skills": "node scripts/skills/generate.mjs --write",
+    "gen:chat-ui-vue": "node scripts/kit/mirror-chat-ui-vue.mjs",
+    "check:chat-ui-vue": "node scripts/kit/mirror-chat-ui-vue.mjs --check",
+    "gen:web-vue-shared": "node scripts/kit/mirror-web-vue-shared.mjs",
+    "check:web-vue-shared": "node scripts/kit/mirror-web-vue-shared.mjs --check",
     "check:skills": "node scripts/skills/generate.mjs",
-    "typecheck:skills": "tsc -p scripts/skills/tsconfig.json --noEmit",
+    "typecheck:skills": "vue-tsc -p scripts/skills/tsconfig.json --noEmit",
     "pack:skills": "node scripts/skills/pack.mjs",
     "changeset": "changeset",
     "clean": "turbo run clean && rm -rf node_modules",
     "lint:strict": "biome check . --diagnostic-level=warn --error-on-warnings",
-    "e2e": "pnpm --filter web e2e"
+    "e2e": "pnpm --filter web e2e",
+    "e2e:vue": "pnpm --filter web e2e:vue"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.3",
@@ -57,7 +63,9 @@
     "esbuild": "0.25.12",
     "react": "^19.3.0",
     "turbo": "^2.11.7",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vue": "^3.5.0",
+    "vue-tsc": "^3.0.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

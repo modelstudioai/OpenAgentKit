@@ -25,4 +25,4 @@ pnpm kit:add states
 
 组件依赖：[empty-state](../empty-state/README.md)、[error-state](../error-state/README.md)。
 
-完整用法与参数见[文档站对应页面](../../../../../apps/storybook/content/docs/components/chrome.mdx)；全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。
+组合用法见[欢迎、加载与错误态](../../../../../apps/storybook/content/docs/components/chrome.mdx#欢迎加载与错误态)。全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。

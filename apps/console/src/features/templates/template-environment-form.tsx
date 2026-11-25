@@ -1,6 +1,7 @@
 import type { RemoteEnvironmentDetail } from "@openagentkit/sdk/protocol";
 import { ErrorState } from "@openagentpack/kit-chat-ui";
 import { type Ref, useEffect, useImperativeHandle, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
@@ -21,18 +22,18 @@ import { useTemplateDraftProject } from "./use-template-draft-project.ts";
 
 export type EnvironmentFormState = { dirty: boolean; valid: boolean; name?: string };
 export type EnvironmentFormHandle = { save: () => Promise<TemplateEnvironmentSelection | null> };
-const fieldLabels: Record<string, string> = {
-	name: "环境名称",
-	description: "描述",
-	metadata: "元数据",
-	scope: "作用域",
-	configuration: "其他环境配置",
-	"configuration.type": "环境类型",
-	"configuration.networking": "网络策略",
-	"configuration.packages": "预装包",
-	"configuration.environment_variables": "环境变量",
-	"configuration.setup_script": "初始化脚本",
-};
+const fieldLabels = {
+	name: "agent.environment.fields.name",
+	description: "agent.environment.fields.description",
+	metadata: "agent.environment.fields.metadata",
+	scope: "agent.environment.fields.scope",
+	configuration: "agent.environment.fields.configuration",
+	"configuration.type": "agent.environment.fields.type",
+	"configuration.networking": "agent.environment.fields.networking",
+	"configuration.packages": "agent.environment.fields.packages",
+	"configuration.environment_variables": "agent.environment.fields.environmentVariables",
+	"configuration.setup_script": "agent.environment.fields.setupScript",
+} as const;
 
 type Props = {
 	selected: TemplateEnvironmentSelection | null;
@@ -62,6 +63,7 @@ async function saveEnvironmentSource(
 }
 
 function useEnvironmentForm({ selected, detail, ref, onPendingChange, onStateChange }: Props) {
+	const { t } = useTranslation("templates");
 	const client = useMemo(getAdminClient, []);
 	const identity = useAdminQuery("templates:environment-form:identity", (signal) => client.identity(signal));
 	const [initial] = useState(() => createEnvironmentDraft(detail));
@@ -75,10 +77,10 @@ function useEnvironmentForm({ selected, detail, ref, onPendingChange, onStateCha
 	const valid = selected && !dirty ? true : !validationError && !issues.length;
 	const save = useAdminMutation(async () => {
 		if (!dirty) return selected;
-		if (identity.data?.role !== "admin" || issues.length) throw new Error("当前环境配置不可编辑");
+		if (identity.data?.role !== "admin" || issues.length) throw new Error(t("agent.environment.config.notEditable"));
 		const input = environmentFormInput(draft, "draft");
 		const current = await project.prepare();
-		if (current.overview.active_mutation) throw new Error("项目正在修改，请稍后重试。");
+		if (current.overview.active_mutation) throw new Error(t("agent.environment.config.projectBusy"));
 		const result = await saveEnvironmentSource(
 			client,
 			current.draft_id,
@@ -107,6 +109,7 @@ function useEnvironmentForm({ selected, detail, ref, onPendingChange, onStateCha
 }
 
 export function TemplateEnvironmentForm(props: Props) {
+	const { t } = useTranslation("templates");
 	const { selected, detail } = props;
 	const { identity, draft, setDraft, issues, dirty, validationError, busy, save, project } = useEnvironmentForm(props);
 	return (
@@ -115,11 +118,14 @@ export function TemplateEnvironmentForm(props: Props) {
 			{issues.length && detail ? (
 				<>
 					<div role="status" className={styles.copyIssuesPanel}>
-						<p>此环境包含当前表单无法完整复制的配置，可直接使用原环境，或清空后重新填写。</p>
+						<p>{t("agent.environment.config.copyIssues")}</p>
 						<ul className={styles.copyIssuesList}>
 							{issues.map((field) => (
 								<li key={field} className={styles.wrapAnywhere}>
-									{fieldLabels[field]}（<code>{field}</code>）
+									{t(fieldLabels[field as keyof typeof fieldLabels] ?? "agent.environment.fields.configuration")}
+									{t("agent.form.parenOpen")}
+									<code>{field}</code>
+									{t("agent.form.parenClose")}
 								</li>
 							))}
 						</ul>
@@ -137,10 +143,10 @@ export function TemplateEnvironmentForm(props: Props) {
 				</p>
 			) : null}
 			{dirty && selected && !selected.local ? (
-				<p className={styles.formNote}>修改后保存为新环境，原环境保持不变。</p>
+				<p className={styles.formNote}>{t("agent.environment.config.saveAsNew")}</p>
 			) : null}
 			{save.error || project.projects.error ? (
-				<ErrorState message={save.error || project.projects.error || "环境保存失败"} />
+				<ErrorState message={save.error || project.projects.error || t("agent.environment.config.saveFailed")} />
 			) : null}
 		</form>
 	);

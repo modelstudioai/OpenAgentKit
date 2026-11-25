@@ -1,4 +1,6 @@
 import { type AriaAttributes, type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
+import suggestionStrings, { type SuggestionStrings } from "./strings.ts";
 
 export interface SuggestionItem {
 	label: ReactNode;
@@ -53,6 +55,8 @@ export interface SuggestionProps<T = unknown> {
 	children: (props: SuggestionRenderProps<T>) => ReactNode;
 	className?: string;
 	classNames?: Partial<Record<SuggestionSemantic, string>>;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<SuggestionStrings>;
 }
 
 function cx(...names: Array<string | false | undefined>): string {
@@ -246,6 +250,7 @@ function SuggestionPopup({
 	classNames,
 	onHover,
 	onChoose,
+	strings,
 }: {
 	id: string;
 	columns: SuggestionItem[][];
@@ -254,6 +259,7 @@ function SuggestionPopup({
 	classNames: NonNullable<SuggestionProps["classNames"]>;
 	onHover: (depth: number, index: number) => void;
 	onChoose: (depth: number, index: number) => void;
+	strings: SuggestionStrings;
 }) {
 	return (
 		<div
@@ -268,7 +274,7 @@ function SuggestionPopup({
 					key={depth}
 					id={`${id}-list-${depth}`}
 					role="listbox"
-					aria-label={depth === 0 ? "快捷指令" : "下一级指令"}
+					aria-label={depth === 0 ? strings.shortcut : strings.nextLevel}
 					// 阻止 mousedown 的默认行为：点击候选时输入框不失焦，键盘可以继续操作
 					onMouseDown={(event) => event.preventDefault()}
 					className={cx(
@@ -309,7 +315,9 @@ export function Suggestion<T = unknown>({
 	children,
 	className,
 	classNames = {},
+	strings: stringsOverride,
 }: SuggestionProps<T>) {
+	const strings = resolveStrings(suggestionStrings, useKitLocale(), stringsOverride);
 	const id = useId();
 	const rootRef = useRef<HTMLDivElement>(null);
 	const [info, setInfo] = useState<T>();
@@ -418,6 +426,7 @@ export function Suggestion<T = unknown>({
 					classNames={classNames}
 					onHover={(depth, index) => setPath([...path.slice(0, depth), index])}
 					onChoose={choose}
+					strings={strings}
 				/>
 			) : null}
 		</div>

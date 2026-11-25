@@ -120,7 +120,6 @@ describe("本地成员认证", () => {
 		expect((await app.request("/api/kit/auth/me", { headers: headers(second.access_token) })).status).toBe(200);
 	});
 
-	// 14 次串行登录请求各跑一轮密码哈希，turbo 全量并行抢 CPU 时默认 5s 不够，显式放宽超时。
 	it("未知账号与错密码响应一致；参数错误不回显输入，匿名 cookie 不能绕过登录限流", async () => {
 		const { app } = await makeApp();
 		await seedMember(app);
@@ -134,7 +133,12 @@ describe("本地成员认证", () => {
 		const known = await wrong("alice");
 		expect(unknown.status).toBe(401);
 		expect(known.status).toBe(401);
-		expect(await unknown.json()).toEqual(await known.json());
+		const [unknownBody, knownBody] = [await unknown.json(), await known.json()];
+		expect(unknownBody).toEqual(knownBody);
+		// 专用 message_key 让 Web 端按界面语言翻译，不和会话过期共用提示。
+		expect(unknownBody).toMatchObject({
+			error: { code: "unauthorized", message_key: "serverErrors.invalidCredentials" },
+		});
 		const invalid = await wrong("alice", "sensitive-".repeat(100));
 		expect(invalid.status).toBe(400);
 		expect(await invalid.text()).not.toContain("sensitive-");
@@ -145,7 +149,7 @@ describe("本地成员认证", () => {
 		expect(limited.status).toBe(429);
 		expect(Number(limited.headers.get("retry-after"))).toBeGreaterThan(0);
 		expect(await limited.text()).not.toContain("Wrong!Password2026");
-	}, 15000);
+	}, 15_000);
 
 	it("成员会话/附件隔离，伪造匿名 cookie 与可信 JWT 都不能冒充 member_id", async () => {
 		const { app, config, db, services } = await makeApp({ KIT_JWT_SECRET: "trusted-signing-secret" });

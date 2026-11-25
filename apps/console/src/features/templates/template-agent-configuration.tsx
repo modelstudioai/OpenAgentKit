@@ -1,6 +1,7 @@
 import type { PresetPackAgentResources } from "@openagentkit/sdk/protocol";
 import { Alert, Button, Drawer } from "antd";
 import { type Ref, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { type AgentFormHandle, type AgentFormState, TemplateAgentForm } from "./template-agent-form.tsx";
 import { TemplateAgentList, useTemplateAgentListState } from "./template-agent-list.tsx";
 import { TemplateAgentVersionPicker } from "./template-agent-version-picker.tsx";
@@ -20,13 +21,14 @@ interface Props {
 }
 
 function AgentPicker({ selected, onSelect, onVersionChange }: Props) {
+	const { t } = useTranslation("templates");
 	const [open, setOpen] = useState(false);
 	const pendingSelection = useRef<{ agent: TemplateAgentSelection; resources?: PresetPackAgentResources } | null>(null);
 	const state = useTemplateAgentListState(selected);
 	return (
 		<>
 			<Button className={styles.pickerButton} onClick={() => setOpen(true)}>
-				导入现有配置
+				{t("agent.form.importExisting")}
 			</Button>
 			<Drawer
 				open={open}
@@ -39,7 +41,7 @@ function AgentPicker({ selected, onSelect, onVersionChange }: Props) {
 				}}
 				destroyOnHidden
 				width={768}
-				title={<div className={styles.drawerTitle}>选择配置</div>}
+				title={<div className={styles.drawerTitle}>{t("agent.form.chooseConfig")}</div>}
 			>
 				<TemplateAgentList
 					state={state}
@@ -64,12 +66,15 @@ function VersionField({
 	version?: number;
 	onChange: (agent: TemplateAgentSelection) => void;
 }) {
+	const { t } = useTranslation("templates");
 	if (!selected || selected.local) return <p className={styles.placeholder}>--</p>;
 	return (
 		<div className={styles.versionRow}>
 			<p className={styles.placeholder}>
-				{selected.agent_version === undefined ? "跟随最新版本" : `v${selected.agent_version}`}
-				{selected.agent_version === undefined && version !== undefined ? `（当前 v${version}）` : null}
+				{selected.agent_version === undefined ? t("agent.form.followLatest") : `v${selected.agent_version}`}
+				{selected.agent_version === undefined && version !== undefined
+					? t("agent.form.currentVersion", { version })
+					: null}
 			</p>
 			<TemplateAgentVersionPicker
 				key={selected.agent_id}
@@ -86,6 +91,7 @@ function VersionField({
 
 /** 选择已有版本填入可编辑表单；编辑后另存新 Agent，本地声明按原 ID 更新。 */
 export function TemplateAgentConfiguration(props: Props) {
+	const { t } = useTranslation("templates");
 	const { selected, onVersionChange, onStateChange } = props;
 	const detail = useTemplateAgentDetail(selected, selected?.agent_version, props.revision);
 	const ready = !selected || Boolean(!detail.loading && !detail.error && detail.data);
@@ -93,12 +99,12 @@ export function TemplateAgentConfiguration(props: Props) {
 		if (!ready) onStateChange({ dirty: false, valid: false });
 	}, [ready, onStateChange]);
 	return (
-		<section aria-label="基础配置" className={styles.configRoot}>
-			<h3 className={styles.configHeading}>基础配置</h3>
+		<section aria-label={t("agent.form.baseConfiguration")} className={styles.configRoot}>
+			<h3 className={styles.configHeading}>{t("agent.form.baseConfiguration")}</h3>
 			<div className={styles.configBody}>
 				<div className={styles.rowStart}>
 					<AgentPicker {...props} />
-					<Button onClick={props.onClear}>清空</Button>
+					<Button onClick={props.onClear}>{t("agent.form.clear")}</Button>
 				</div>
 				{detail.error ? (
 					<Alert
@@ -107,7 +113,7 @@ export function TemplateAgentConfiguration(props: Props) {
 						message={detail.error}
 						action={
 							<Button size="small" onClick={() => void detail.refresh()}>
-								重试
+								{t("retry")}
 							</Button>
 						}
 					/>
@@ -124,7 +130,7 @@ export function TemplateAgentConfiguration(props: Props) {
 					/>
 				) : (
 					<>
-						<p role="status">{detail.error ? "配置加载失败" : "正在加载配置…"}</p>
+						<p role="status">{detail.error ? t("agent.form.loadFailed") : t("agent.form.loading")}</p>
 						<VersionField selected={selected} onChange={onVersionChange} />
 					</>
 				)}

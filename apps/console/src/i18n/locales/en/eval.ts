@@ -1,0 +1,25 @@
+/** 键必须与 zh-CN 双向对齐（pnpm check:i18n 强制）。 */
+export default {
+	workspace: "Eval workspace",
+	workspaceAria: "Eval workspace",
+	workspaceUnconfigured: "(KIT_EVAL_WORKSPACES is not configured on the server)",
+	workspacePlaceholder: "Select a workspace",
+	readonlyPrefix: "Read-only browsing; run evaluations with ",
+	readonlySuffix: " (repository script/CI)",
+	runsTitle: "Runs (complete, newest first)",
+	emptyRuns: "No complete runs yet",
+	reportTitle: "Report {{id}}",
+	reportFrameTitle: "Eval report",
+	baseline: "(baseline {{baseline}}, Δ {{delta}})",
+	viewReport: "View report",
+	columns: {
+		run: "run",
+		skill: "skill",
+		passRate: "pass_rate",
+		baselineDelta: "baseline Δ",
+		infraExcluded: "infra excluded",
+		cases: "cases",
+		createdAt: "Created at",
+		actions: "Actions",
+	},
+};
