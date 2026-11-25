@@ -1,0 +1,48 @@
+---
+title: Markdown 富文本
+description: 经过净化的 GFM 正文，支持语法高亮和 Mermaid 图表
+---
+
+`Markdown` 将 Markdown 字符串渲染为富文本，支持 GFM 表格、代码围栏和 Mermaid 图表。
+宽表格在自身区域内横向滚动。
+
+```tsx
+import { Markdown } from "@openagentpack/kit-chat-ui";
+```
+
+## 接入
+
+copy-in 后将 import 改为项目内路径，并安装渲染依赖：
+
+```bash
+pnpm kit:add markdown
+pnpm add react-markdown@^10.1.0 rehype-sanitize@^6.0.0 remark-gfm@^4.0.1 lowlight@^3.3.0 mermaid@^11.12.0
+```
+
+`Message`、`Chat` 和 `ToolCallCard` 使用同一套 Markdown 渲染依赖。主题接入见 [组件总览](/docs/components#主题)。
+
+## 何时使用
+
+- 在消息或详情面板中渲染 Markdown 文本。
+- 只渲染一段代码或单张图表时，可分别使用 [CodeHighlighter](/docs/components/feedback/code-highlighter) 和 [Mermaid](/docs/components/feedback/mermaid)。
+
+## 代码演示
+
+代码围栏交给 `CodeHighlighter`，完整的 `mermaid` 围栏交给 `Mermaid`。流式生成中未闭合的 Mermaid 围栏先以源码显示。
+
+<Showcase name="markdown" />
+
+Provider 正文和工具输出属于不可信输入。自定义渲染时须保留 `rehype-sanitize`。
+
+## API
+
+### Markdown
+
+| 属性 | 说明 | 类型 | 默认值 |
+| --- | --- | --- | --- |
+| `children` | 必填，Markdown 原文 | `string` | — |
+
+## 主题变量（Design Token）
+
+`--kit-code-keyword`、`--kit-code-string` 和 `--kit-code-number` 随亮暗主题切换。
+色值见 [CodeHighlighter](/docs/components/feedback/code-highlighter#主题变量design-token)。

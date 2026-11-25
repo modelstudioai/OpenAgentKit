@@ -44,4 +44,4 @@ pnpm kit:add layout
 
 同目录测试：[layout.test.tsx](layout.test.tsx)。
 
-完整用法与参数见[文档站对应页面](../../../../../apps/storybook/content/docs/components/layout.mdx)；全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。
+完整用法与参数见[文档站对应页面](../../../../../apps/storybook/content/docs/components/layout/index.mdx)；全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。

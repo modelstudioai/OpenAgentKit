@@ -1,6 +1,10 @@
 import { cpSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
+export const sdkTarget = "src/sdk";
+export const componentTarget = "src/components/kit";
+export const exampleTarget = (skill) => `src/kit-examples/${skill}`;
+
 export function readRegistry(elementsRoot) {
 	return JSON.parse(readFileSync(join(elementsRoot, "registry.json"), "utf8"));
 }

@@ -3,7 +3,7 @@ title: CodeHighlighter 代码高亮
 description: 语法高亮代码块：语言、行号、自定义标题与完整复制
 ---
 
-`CodeHighlighter` 渲染可复制的语法高亮代码块，[Markdown](/docs/components/message#markdown) 的代码围栏
+`CodeHighlighter` 渲染可复制的语法高亮代码块，[Markdown](/docs/components/feedback/markdown) 的代码围栏
 与工具 JSON 输出已自动接入。未知语言按纯文本展示，复制始终是传入的原始代码。
 
 ```tsx
@@ -22,7 +22,7 @@ pnpm add lowlight@^3.3.0
 
 ## 何时使用
 
-- 展示工具输出、错误堆栈等独立代码块：`lang` 高亮加行号加复制；工具 JSON 输出的接线见 [Message](/docs/components/message)。
+- 使用 `lang` 为工具输出和错误堆栈等独立代码块高亮，并提供行号和复制。工具的 JSON 输出见 [ToolCallCard](/docs/components/feedback/tool-call-card)。
 - 需要文件名或自定义标题：`header` 传 ReactNode，`false` 隐藏整个工具栏。
 - 接 Markdown 正文时无需自行处理围栏：普通围栏由 Markdown 交给本组件，mermaid 围栏由 [Mermaid](/docs/components/feedback/mermaid) 渲染。
 

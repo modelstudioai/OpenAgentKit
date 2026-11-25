@@ -3,6 +3,7 @@
 本页由 `pnpm gen:skills` 生成。更新公开 TypeScript 声明或中文 catalog 后重新生成。
 字段类型和必填性来自公开 API，行为说明依据所列文档整理。
 组件表格列出 Kit 自有属性。组件按声明继承标准的 React/DOM 属性。
+参考中的包名用于仓库内导入。业务项目按[复制组件和 Kit SDK](copy-in.md)改用本地源码入口。
 
 ## 目录
 
@@ -80,7 +81,7 @@ export function useAgentResources(slug: string | null, options?: { client?: KitC
 ```
 
 
-<!-- source-sha256: 264b8d29d1436b1cbc21d18f844ccb26a7d9b0e4f1f52460cf47dde6fdbc419b; doc-sha256: 64bf687cc63bf830003ce6c346d5f544f3fc6c6006782970ffe57d87035703fc -->
+<!-- source-sha256: 264b8d29d1436b1cbc21d18f844ccb26a7d9b0e4f1f52460cf47dde6fdbc419b; doc-sha256: edbd80656eec18df56a447ff22ad267b039472460b8a1a3e61315fd155cf1872 -->
 
 ## useUsageLimits
 
@@ -98,7 +99,7 @@ export function useUsageLimits(options?: { client?: KitClient; enabled?: boolean
 ```
 
 
-<!-- source-sha256: 03cede5e643d6616b0ce387706848ef0c0316524008ca74f674e16fce04cb355; doc-sha256: 64bf687cc63bf830003ce6c346d5f544f3fc6c6006782970ffe57d87035703fc -->
+<!-- source-sha256: 03cede5e643d6616b0ce387706848ef0c0316524008ca74f674e16fce04cb355; doc-sha256: edbd80656eec18df56a447ff22ad267b039472460b8a1a3e61315fd155cf1872 -->
 
 ## createChatController
 
@@ -370,7 +371,7 @@ export function KitProvider({ client, children }: { client: KitClient; children:
 ```
 
 
-<!-- source-sha256: 56e8db9834976d7c7c2e4655e141009769b55abcaa5ec7d06ce0ab8ebdcf9674; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
+<!-- source-sha256: 56e8db9834976d7c7c2e4655e141009769b55abcaa5ec7d06ce0ab8ebdcf9674; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## createKitClient
 
@@ -389,7 +390,7 @@ export function createKitClient(options: KitClientOptions): KitClient;
 ```
 
 
-<!-- source-sha256: f889584832ef86aac9f0354a7e6eca0672a1901ff7c46a04547f762d3d7a16e6; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
+<!-- source-sha256: f889584832ef86aac9f0354a7e6eca0672a1901ff7c46a04547f762d3d7a16e6; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## ChatProvider
 
@@ -495,7 +496,7 @@ export function usePlaza(options?: { client?: KitClient; category?: PlazaCategor
 ```
 
 
-<!-- source-sha256: b1926f867ac3ba5b07425e39a4d3ffc26d6ca0e678081f8161b88078b20f3bc6; doc-sha256: 64bf687cc63bf830003ce6c346d5f544f3fc6c6006782970ffe57d87035703fc -->
+<!-- source-sha256: b1926f867ac3ba5b07425e39a4d3ffc26d6ca0e678081f8161b88078b20f3bc6; doc-sha256: edbd80656eec18df56a447ff22ad267b039472460b8a1a3e61315fd155cf1872 -->
 
 ## useQuota
 
@@ -514,7 +515,7 @@ export function useQuota(options?: { client?: KitClient; days?: number; }): { qu
 ```
 
 
-<!-- source-sha256: 69cc3fd8e03c994aab981f569007286ad5acd20c2436da5d22a51a3071277c1d; doc-sha256: 64bf687cc63bf830003ce6c346d5f544f3fc6c6006782970ffe57d87035703fc -->
+<!-- source-sha256: 69cc3fd8e03c994aab981f569007286ad5acd20c2436da5d22a51a3071277c1d; doc-sha256: edbd80656eec18df56a447ff22ad267b039472460b8a1a3e61315fd155cf1872 -->
 
 ## useQuotaRequests
 
@@ -533,7 +534,7 @@ export function useQuotaRequests(options?: { client?: KitClient; }): { requests:
 ```
 
 
-<!-- source-sha256: 06ab02741f46208caf9166aaebcfe23b8338648deaa4d3e1b667985fd481b008; doc-sha256: 64bf687cc63bf830003ce6c346d5f544f3fc6c6006782970ffe57d87035703fc -->
+<!-- source-sha256: 06ab02741f46208caf9166aaebcfe23b8338648deaa4d3e1b667985fd481b008; doc-sha256: edbd80656eec18df56a447ff22ad267b039472460b8a1a3e61315fd155cf1872 -->
 
 ## createMemberAuthController
 
@@ -550,7 +551,7 @@ export function createMemberAuthController(options: MemberAuthOptions): { getSna
 ```
 
 
-<!-- source-sha256: 279d84f9b175811c59e9cdc373f28686a29621828134c57edce934e036f59c88; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
+<!-- source-sha256: 279d84f9b175811c59e9cdc373f28686a29621828134c57edce934e036f59c88; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## MemberAuthController
 
@@ -576,7 +577,7 @@ export type MemberAuthController = { getSnapshot: () => MemberAuthSnapshot; subs
 | `retry` | 是 | `() => Promise<void>` |
 | `dispose` | 是 | `() => void` |
 
-<!-- source-sha256: 279d84f9b175811c59e9cdc373f28686a29621828134c57edce934e036f59c88; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
+<!-- source-sha256: 279d84f9b175811c59e9cdc373f28686a29621828134c57edce934e036f59c88; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## MemberAuthOptions
 
@@ -601,7 +602,7 @@ import type { MemberAuthOptions } from "@openagentkit/sdk/auth";
 | `createChatProvider` | 否 | `((request: RequestClient) => ChatProvider) \| undefined` |
 | `createClient` | 否 | `((request: RequestClient) => KitClient) \| undefined` |
 
-<!-- source-sha256: 279d84f9b175811c59e9cdc373f28686a29621828134c57edce934e036f59c88; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
+<!-- source-sha256: 279d84f9b175811c59e9cdc373f28686a29621828134c57edce934e036f59c88; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## MemberAuthSnapshot
 
@@ -628,7 +629,7 @@ import type { MemberAuthSnapshot } from "@openagentkit/sdk/auth";
 | `errorDetail` | 是 | `KitError \| null` |
 | `pending` | 是 | `boolean` |
 
-<!-- source-sha256: 279d84f9b175811c59e9cdc373f28686a29621828134c57edce934e036f59c88; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
+<!-- source-sha256: 279d84f9b175811c59e9cdc373f28686a29621828134c57edce934e036f59c88; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## MemberSessionStorage
 
@@ -649,7 +650,7 @@ import type { MemberSessionStorage } from "@openagentkit/sdk/auth";
 | `load` | 是 | `() => StoredMemberSession \| null` |
 | `save` | 是 | `(session: StoredMemberSession \| null) => void` |
 
-<!-- source-sha256: 279d84f9b175811c59e9cdc373f28686a29621828134c57edce934e036f59c88; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
+<!-- source-sha256: 279d84f9b175811c59e9cdc373f28686a29621828134c57edce934e036f59c88; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## StoredMemberSession
 
@@ -670,7 +671,7 @@ import type { StoredMemberSession } from "@openagentkit/sdk/auth";
 | `access_token` | 是 | `string` |
 | `expires_at` | 是 | `string` |
 
-<!-- source-sha256: 279d84f9b175811c59e9cdc373f28686a29621828134c57edce934e036f59c88; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
+<!-- source-sha256: 279d84f9b175811c59e9cdc373f28686a29621828134c57edce934e036f59c88; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## useMemberAuth
 
@@ -687,7 +688,7 @@ export function useMemberAuth(controller: MemberAuthController): { login: (input
 ```
 
 
-<!-- source-sha256: a856ff2e48f0bdc737bda1936dafc516a08534e08982fa46ca71bd8adbedec6e; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
+<!-- source-sha256: a856ff2e48f0bdc737bda1936dafc516a08534e08982fa46ca71bd8adbedec6e; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## ChatMultiAgent
 

@@ -17,7 +17,7 @@ pnpm kit:add message
 ```
 
 该命令复制源码及依赖组件，不自动安装 npm 包；渲染依赖的安装见
-[Markdown 接入](/docs/components/message#markdown)，主题接入见[组件总览](/docs/components#主题)。
+[Markdown 接入](/docs/components/feedback/markdown#接入)，主题接入见[组件总览](/docs/components#主题)。
 以下示例使用 workspace 包导入；copy-in 后改为项目中的组件路径。
 
 ## 何时使用
@@ -68,15 +68,18 @@ pnpm kit:add message
 <Showcase name="message-parts" />
 
 运行中的执行组保持展开，正文到达或消息完成后收起；组内思考与工具步骤默认收起，可手动展开。
+组头显示阶段、总步数与耗时，耗时来自分片时间戳。思考与工具步骤的摘要显示动作和内容预览。
 相同分片的内容更新保留用户手动开合。思考状态来自分片自己的 `status`，不由整条消息状态推断。
 未知内容保留为可展开的安全文本。
 
-更多工具状态、Markdown、代码和图表用法见[富内容分片](/docs/components/message)。
+单独接入见 [ReasoningBlock](/docs/components/feedback/reasoning-block)、
+[ToolCallCard](/docs/components/feedback/tool-call-card) 和 [Markdown](/docs/components/feedback/markdown)。
 子 Agent 的内嵌卡片通过 `multiAgent` 接入，见 [Chat 多 Agent 对话](/docs/components/chat#多-agent-对话)。
 
 ### 文件与操作回调
 
-用户上传的 `attachment` 与 Agent 交付的 `artifact` 都复用 [FileCard](/docs/components/feedback/file-card)。
+用户上传的 `attachment` 使用 [FileCard](/docs/components/feedback/file-card)，Agent 交付的
+`artifact` 使用 [ArtifactCard](/docs/components/feedback/artifact-card)。
 工作区布局将用户附件独立放在正文气泡上方；上传附件只展示文件信息。
 
 <Showcase name="message-files" />
@@ -94,7 +97,7 @@ pnpm kit:add message
 <Showcase name="message-skills" />
 
 `Message` 只还原消息展示，不执行技能。输入框的选择与提交见
-[Sender](/docs/components/express/sender) 和 [Chat](/docs/components/chat)。
+[Sender](/docs/components/chat/sender) 和 [Chat](/docs/components/chat)。
 
 ## API
 
