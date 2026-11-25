@@ -32,4 +32,4 @@ pnpm kit:add execution-group
 
 组件依赖：[reasoning-block](../reasoning-block/README.md)、[tool-call-card](../tool-call-card/README.md)。
 
-完整用法与参数见[文档站对应页面](../../../../../../apps/storybook/content/docs/components/message.mdx)；全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。
+执行过程的组合展示见 [Message 文档](../../../../../../apps/storybook/content/docs/components/general/message.mdx#富内容与执行过程)。全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。

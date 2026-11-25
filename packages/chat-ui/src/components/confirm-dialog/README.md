@@ -37,4 +37,4 @@ pnpm kit:add confirm-dialog
 
 源码入口为 [index.tsx](index.tsx)。copy-in 会保留目录层级并带入 registry 声明的依赖；主题接入见文档站。
 
-完整用法与参数见[文档站对应页面](../../../../../apps/storybook/content/docs/components/chrome.mdx)；全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。
+组合用法见[会话操作确认](../../../../../apps/storybook/content/docs/components/chrome.mdx#会话操作确认)。全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。

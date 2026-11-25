@@ -1,4 +1,14 @@
 {
   "title": "反馈",
-  "pages": ["actions", "tool-approval", "file-card", "code-highlighter", "mermaid"]
+  "pages": [
+    "actions",
+    "reasoning-block",
+    "tool-call-card",
+    "tool-approval",
+    "file-card",
+    "artifact-card",
+    "markdown",
+    "code-highlighter",
+    "mermaid"
+  ]
 }

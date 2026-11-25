@@ -6,6 +6,7 @@ import type { SessionSummary } from "@openagentkit/sdk/protocol";
 import {
 	AgentHeader,
 	EmptyState,
+	Layout,
 	Menu,
 	MenuContent,
 	MenuItem,
@@ -16,7 +17,7 @@ import {
 	StatusIndicator,
 	SubAgentPanel,
 } from "@openagentpack/kit-chat-ui";
-import { useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { LogoMark, MessageSquare, SignalBars } from "../icons.tsx";
 import { AGENT, AGENTS, SESSIONS } from "./layout-demo.tsx";
 import { MESSAGES } from "./message-demo.tsx";
@@ -495,7 +496,7 @@ export function AgentHeaderActionsDemo() {
 	);
 }
 
-/** 演示线程基座：loaded 即无加载态，mock 的 loadThreadEvents 保持空实现，时间线直接展示 messages。 */
+/** 演示线程默认已加载，历史预览可覆盖初始状态。 */
 function panelThread(id: string, overrides: Partial<ChatAgentThread>): ChatAgentThread {
 	return {
 		id,
@@ -560,28 +561,66 @@ const SUB_AGENT_MULTI: ChatMultiAgent = {
 	loadThreadEvents: async () => undefined,
 };
 
-/** 分区概览：research 按展示名分组计数，行内区分运行中/完成/失败；勾选后线程清空，分区整体不渲染。 */
-export function SubAgentPanelDemo() {
-	const [empty, setEmpty] = useState(false);
+function SubAgentResourcePreview({ multiAgent, children }: { multiAgent: ChatMultiAgent; children?: ReactNode }) {
+	const [asideOpen, setAsideOpen] = useState(true);
 	return (
-		<div
+		<Layout
 			data-kit-appearance="workspace"
-			className="flex min-w-0 flex-1 flex-col bg-[var(--kit-bg)] text-[var(--kit-fg)]"
+			className="flex-1"
+			header={() => (
+				<AgentHeader
+					agent={AGENT}
+					compact
+					actions={
+						<button
+							type="button"
+							className={CONTROL_CLASS}
+							aria-label={asideOpen ? "收起资源面板" : "展开资源面板"}
+							aria-pressed={asideOpen}
+							onClick={() => setAsideOpen((open) => !open)}
+						>
+							资源
+						</button>
+					}
+				/>
+			)}
+			asideOpen={asideOpen}
+			onAsideOpenChange={setAsideOpen}
+			aside={({ closeButton }) => (
+				<div className="flex min-h-0 flex-1 flex-col">
+					{closeButton ? (
+						<div className="flex min-h-14 shrink-0 items-center gap-2 border-b border-[var(--kit-border-subtle)] px-4">
+							<span className="min-w-0 flex-1 text-[length:var(--kit-text-label)] font-medium">资源</span>
+							{closeButton}
+						</div>
+					) : null}
+					<div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:py-5">
+						<SubAgentPanel multiAgent={multiAgent} />
+					</div>
+				</div>
+			)}
 		>
-			<div className={TOOLBAR_CLASS}>
-				<label className="flex items-center gap-2">
-					<input type="checkbox" checked={empty} onChange={(event) => setEmpty(event.target.checked)} />
-					清空线程（观察空态）
-				</label>
-			</div>
-			<div className="mx-auto flex w-80 min-h-0 flex-1 flex-col border-l border-[var(--kit-border-subtle)] px-4 py-4">
-				<SubAgentPanel multiAgent={empty ? { ...SUB_AGENT_MULTI, threads: [] } : SUB_AGENT_MULTI} />
-			</div>
-		</div>
+			{children}
+		</Layout>
 	);
 }
 
-/** 翻页演示：mock 400ms 拉取更早事件后清除 nextPageToken；期间按钮禁用并显示加载文案。 */
+/** 分区概览：research 按展示名分组计数，清空线程后分区整体不渲染。 */
+export function SubAgentPanelDemo() {
+	const [empty, setEmpty] = useState(false);
+	return (
+		<SubAgentResourcePreview multiAgent={empty ? { ...SUB_AGENT_MULTI, threads: [] } : SUB_AGENT_MULTI}>
+			<div className={TOOLBAR_CLASS}>
+				<label className="flex items-center gap-2">
+					<input type="checkbox" checked={empty} onChange={(event) => setEmpty(event.target.checked)} />
+					清空线程
+				</label>
+			</div>
+		</SubAgentResourcePreview>
+	);
+}
+
+/** 历史分页示例中追加到前面的较早事件。 */
 const SUB_AGENT_OLDER_MESSAGES: ChatMessage[] = [
 	{
 		id: "sub-agent-demo-0",
@@ -605,8 +644,7 @@ const SUB_AGENT_HISTORY_THREADS: ChatAgentThread[] = [
 		task: "对比三家云厂商的 API 定价与配额，输出对比表",
 		createdAt: "2026-11-10T01:30:00.000Z",
 		endedAt: "2026-11-10T01:30:48.000Z",
-		messages: SUB_AGENT_MESSAGES,
-		nextPageToken: "page-2",
+		loaded: false,
 	}),
 	panelThread("sthr-slide", {
 		name: "slide-maker",
@@ -615,6 +653,14 @@ const SUB_AGENT_HISTORY_THREADS: ChatAgentThread[] = [
 		createdAt: "2026-11-10T02:00:00.000Z",
 		endedAt: "2026-11-10T02:00:31.000Z",
 		historyAvailable: false,
+		messages: [
+			{
+				id: "sub-agent-slide-demo",
+				role: "assistant",
+				status: "done",
+				parts: [{ type: "text", id: "sub-agent-slide-demo:text", text: "已整理季度汇报的结构与逐页标题。" }],
+			},
+		],
 	}),
 ];
 
@@ -629,7 +675,7 @@ export function SubAgentPanelHistoryDemo() {
 		selectThread: () => undefined,
 		refreshThreads: async () => undefined,
 		loadThreadEvents: async (id, options) => {
-			if (!options?.more) return;
+			const more = options?.more === true;
 			setThreads((current) => current.map((thread) => (thread.id === id ? { ...thread, loading: true } : thread)));
 			await new Promise((resolve) => setTimeout(resolve, 400));
 			setThreads((current) =>
@@ -638,22 +684,14 @@ export function SubAgentPanelHistoryDemo() {
 						? {
 								...thread,
 								loading: false,
-								nextPageToken: null,
-								messages: [...SUB_AGENT_OLDER_MESSAGES, ...thread.messages],
+								loaded: true,
+								nextPageToken: more ? null : "page-2",
+								messages: more ? [...SUB_AGENT_OLDER_MESSAGES, ...thread.messages] : SUB_AGENT_MESSAGES,
 							}
 						: thread,
 				),
 			);
 		},
 	};
-	return (
-		<div
-			data-kit-appearance="workspace"
-			className="flex min-w-0 flex-1 flex-col bg-[var(--kit-bg)] text-[var(--kit-fg)]"
-		>
-			<div className="mx-auto flex w-80 min-h-0 flex-1 flex-col border-l border-[var(--kit-border-subtle)] px-4 py-4">
-				<SubAgentPanel multiAgent={multiAgent} />
-			</div>
-		</div>
-	);
+	return <SubAgentResourcePreview multiAgent={multiAgent} />;
 }

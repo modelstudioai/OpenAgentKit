@@ -15,7 +15,7 @@
 | Console | `pnpm --filter console test` | 管理客户端、导航、草稿所有权、资源表单与恢复 |
 | Web | `pnpm --filter web test` | 配置、身份隔离、宿主适配及页面纯逻辑 |
 | 文档站 | `pnpm --filter storybook test` | 接口文档与 Skill 链接；页面内容/预览另由静态构建及浏览器验证 |
-| 开发 Skill | `pnpm check:skills` / `pnpm typecheck:skills` / `pnpm test:skills` | 公开 API、生成漂移、示例编译、离线包及浏览器边界 |
+| 开发 Skill | `pnpm check:skills` / `pnpm typecheck:skills` / `pnpm test:skills` | 公开 API、生成漂移、示例编译、离线包、项目 copy-in 及浏览器边界 |
 | web / console E2E | `pnpm e2e` | 对话、重连、归档/删除、附件、管理端 plan → 确认 → 执行 |
 
 > Provider HTTP/SSE 合同由 gateway 层 fixture 保护；上层 hooks 测试不重复断言同一份映射。

@@ -3,6 +3,7 @@
 本页由 `pnpm gen:skills` 生成。更新公开 TypeScript 声明或中文 catalog 后重新生成。
 字段类型和必填性来自公开 API，行为说明依据所列文档整理。
 组件表格列出 Kit 自有属性。组件按声明继承标准的 React/DOM 属性。
+参考中的包名用于仓库内导入。业务项目按[复制组件和 Kit SDK](copy-in.md)改用本地源码入口。
 
 ## 目录
 
@@ -830,7 +831,7 @@ export type SendMessageRequest = { text: string; skills?: string[] | undefined; 
 | `attachments` | 否 | `{ file_id: string; filename?: string \| undefined; mount_path?: string \| undefined; size?: number \| undefined; }[] \| undefined` |
 | `client_message_id` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 8f77736d668c3eae6fd1440bbefa95a3b741e20c4888a5f8176e8531a8792b89; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
+<!-- source-sha256: 8f77736d668c3eae6fd1440bbefa95a3b741e20c4888a5f8176e8531a8792b89; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## SendMessageResponse
 
@@ -1158,7 +1159,7 @@ export type ClientOperations = { agent?: BackendOperation<[slug: string, signal?
 | `auth.me` | 否 | `any` |
 | `auth.logout` | 否 | `any` |
 
-<!-- source-sha256: f889584832ef86aac9f0354a7e6eca0672a1901ff7c46a04547f762d3d7a16e6; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
+<!-- source-sha256: f889584832ef86aac9f0354a7e6eca0672a1901ff7c46a04547f762d3d7a16e6; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## ClientOperation
 
@@ -1175,7 +1176,7 @@ export type ClientOperation = "agent" | "config" | "agents" | "plaza" | "usageLi
 ```
 
 
-<!-- source-sha256: f889584832ef86aac9f0354a7e6eca0672a1901ff7c46a04547f762d3d7a16e6; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
+<!-- source-sha256: f889584832ef86aac9f0354a7e6eca0672a1901ff7c46a04547f762d3d7a16e6; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## ExplicitKitClientOptions
 
@@ -1197,7 +1198,7 @@ import type { ExplicitKitClientOptions } from "@openagentkit/sdk/providers/kit";
 | `operations` | 是 | `ClientOperations` |
 | `chatProvider` | 否 | `ChatProvider \| undefined` |
 
-<!-- source-sha256: f889584832ef86aac9f0354a7e6eca0672a1901ff7c46a04547f762d3d7a16e6; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
+<!-- source-sha256: f889584832ef86aac9f0354a7e6eca0672a1901ff7c46a04547f762d3d7a16e6; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## createMemberSessionStorage
 
@@ -1214,7 +1215,7 @@ export function createMemberSessionStorage(baseUrl: string, getStorage: () => { 
 ```
 
 
-<!-- source-sha256: a9276ea062f185c6bd12f652590c3c3f2399fc90ccb652beeec628d4de57ab0e; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
+<!-- source-sha256: a9276ea062f185c6bd12f652590c3c3f2399fc90ccb652beeec628d4de57ab0e; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## normalizeMemberApiBaseUrl
 
@@ -1231,7 +1232,7 @@ export function normalizeMemberApiBaseUrl(value: string, origin: string): string
 ```
 
 
-<!-- source-sha256: a9276ea062f185c6bd12f652590c3c3f2399fc90ccb652beeec628d4de57ab0e; doc-sha256: 9193ba9d9c2f746ed173663962c3e16ea2dfd20d7e76ac9a17aa55ac6b9074bb -->
+<!-- source-sha256: a9276ea062f185c6bd12f652590c3c3f2399fc90ccb652beeec628d4de57ab0e; doc-sha256: 4c2b40f47124216a98f9ea6503bd98710fdfc352a86efbaf3b16868f14b4139a -->
 
 ## streamProtocolFrames
 

@@ -5,8 +5,8 @@ description: "用 OpenAgentKit 的 React 组件搭建对话界面，包括带会
 
 # Kit 对话组件
 
-用 `@openagentpack/kit-chat-ui` 的公开组件搭建所需界面。示例使用包导入。
-通过 copy-in 引入的项目应改为从本地组件路径导入。
+用 Kit 的公开组件搭建所需界面。先按[复制组件和 Kit SDK](references/copy-in.md)将所需组件、
+主题和 SDK 源码复制进应用。用 `--example` 复制示例时，脚本会生成组件和 SDK 的相对导入路径。
 
 ## 选择页面组合
 
@@ -40,8 +40,7 @@ description: "用 OpenAgentKit 的 React 组件搭建对话界面，包括带会
    文件上传成功后仍需显式挂载到会话。
 5. 工具审批与破坏性操作都需显式确认。`ToolApprovalCard` 提交一次经审阅的决定，并等待服务端权威状态。
    破坏性操作由应用获取计划和确认令牌。
-6. 使用 Tailwind 工具类和已有 `--kit-*` token。即使组件位于 workspace 或链接包中，
-   也要确保 Tailwind 能扫描组件源码。
+6. 使用 Tailwind 工具类和已有 `--kit-*` token，确保 Tailwind 能扫描复制后的组件源码。
 
 ## 示例
 

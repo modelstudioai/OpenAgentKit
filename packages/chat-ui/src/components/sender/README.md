@@ -72,4 +72,4 @@ pnpm kit:add sender
 
 同目录测试：[sender.test.tsx](sender.test.tsx)。
 
-完整用法与参数见[文档站对应页面](../../../../../apps/storybook/content/docs/components/express/sender.mdx)；全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。
+完整用法与参数见[文档站对应页面](../../../../../apps/storybook/content/docs/components/chat/sender.mdx)；全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。

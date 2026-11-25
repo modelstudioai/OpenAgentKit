@@ -3,8 +3,9 @@ title: Sender 输入框
 description: 受控输入、提交、停止生成与头尾插槽
 ---
 
-`Sender` 渲染对话输入框：受控草稿、回车/按钮提交与生成中停止，头尾插槽挂附件或技能。
-它只管理输入交互，不发送请求；与 [Chat](/docs/components/chat) 组合时由 Chat 接线会话状态。
+`Sender` 是可单独使用的对话输入框，支持草稿编辑、回车或按钮提交，以及生成中停止。
+调用方通过 `onSubmit` 和 `onCancel` 接入发送与停止。也可通过 [Chat](/docs/components/chat) 的
+`sender` 插槽替换默认输入框，在头尾插槽中加入附件或技能入口。
 
 ```tsx
 import { Sender } from "@openagentpack/kit-chat-ui";

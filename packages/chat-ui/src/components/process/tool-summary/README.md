@@ -34,4 +34,4 @@ pnpm kit:add tool-summary
 
 源码入口为 [index.ts](index.ts)。copy-in 会保留目录层级并带入 registry 声明的依赖；主题接入见文档站。
 
-完整用法与参数见[文档站对应页面](../../../../../../apps/storybook/content/docs/components/message.mdx)；全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。
+工具步骤的摘要展示见[工具调用卡文档](../../../../../../apps/storybook/content/docs/components/feedback/tool-call-card.mdx)。全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。

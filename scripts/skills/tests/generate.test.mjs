@@ -128,7 +128,14 @@ test("packed Skills are reproducible and preserve source modification times", ()
 		for (const name of [...names, "kit-skills"]) {
 			const archive = resolve(first, `${name}.tgz`);
 			assert.deepEqual(readFileSync(archive), readFileSync(resolve(second, `${name}.tgz`)));
-			assert.doesNotMatch(execFileSync("tar", ["-tzf", archive], { encoding: "utf8" }), /\/agents\/openai\.ya?ml$/im);
+			const entries = execFileSync("tar", ["-tzf", archive], { encoding: "utf8" });
+			assert.doesNotMatch(entries, /\/agents\/openai\.ya?ml$/im);
+			if (name === "kit-database" || name === "kit-skills") {
+				assert.deepEqual(
+					entries.split("\n").filter((path) => path.startsWith("kit-database/")),
+					["kit-database/SKILL.md"],
+				);
+			}
 			const extracted = resolve(directory, name);
 			mkdirSync(extracted);
 			execFileSync("tar", ["-xzf", archive, "-C", extracted]);
@@ -211,12 +218,12 @@ test("stale generated output fails read-only checking and can be regenerated det
 test("one generation synchronizes SDK and component examples with their source files", () => {
 	const directory = mkdtempSync(resolve(tmpdir(), "kit-skills-sdk-docs-"));
 	try {
-		for (const path of ["scripts/skills/src", "apps/storybook/content"]) {
+		for (const path of ["scripts/skills/src", "apps/storybook/content", "packages/chat-ui/src/components"]) {
 			cpSync(resolve(repositoryRoot, path), resolve(directory, path), { recursive: true });
 		}
 		const examples = [
 			["kit-chat-provider", "request.ts", "sdk/request.mdx"],
-			["kit-components", "layout.tsx", "components/layout.mdx"],
+			["kit-components", "layout.tsx", "components/layout/index.mdx"],
 		];
 		for (const [skill, example] of examples) {
 			const source = resolve(skillSourceRoot(directory, skill), "examples", example);
@@ -253,12 +260,14 @@ test("fixture repository generates API Skills and a configuration-only Skill", (
 			assert.equal(outputs.has(resolve(root, "agents/openai.yaml")), false);
 			assert.match(outputs.get(resolve(root, "references/api.md")), /^# API 参考\n/);
 			assert.match(outputs.get(resolve(root, "references/examples.md")), /\[源文件\]\(\.\.\/examples\/fixture\.ts\)/);
+			assert.equal(outputs.has(resolve(root, "scripts/install.mjs")), true);
 		}
 		const database = skillOutputRoot(directory, "kit-database");
 		assert.match(outputs.get(resolve(database, "SKILL.md")), /^---\nname: kit-database\n/);
 		assert.equal(outputs.has(resolve(database, "agents/openai.yaml")), false);
 		assert.equal(outputs.has(resolve(database, "references/api.md")), false);
 		assert.equal(outputs.has(resolve(database, "references/examples.md")), false);
+		assert.equal(outputs.has(resolve(database, "scripts/install.mjs")), false);
 	} finally {
 		rmSync(directory, { recursive: true, force: true });
 	}
