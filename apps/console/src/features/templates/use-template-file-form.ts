@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import { type Ref, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef } from "react";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
@@ -38,7 +39,8 @@ export function useTemplateFileForm(
 	}, [owner]);
 	useEffect(() => owner.retain(value), [owner, value]);
 	const save = useAdminMutation(() => {
-		if (hasPendingFiles(value) && identity.data?.role !== "admin") throw new Error("当前身份不可新建文件");
+		if (hasPendingFiles(value) && identity.data?.role !== "admin")
+			throw new Error(i18n.getFixedT(null, "templates")("file.errors.notAdmin"));
 		return owner.save(value);
 	});
 	useImperativeHandle(ref, () => ({ save: () => save.run() }));

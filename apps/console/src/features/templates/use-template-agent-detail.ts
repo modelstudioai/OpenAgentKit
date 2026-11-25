@@ -1,4 +1,5 @@
 import type { RemoteAgentVersionDetail } from "@openagentkit/sdk/protocol";
+import i18n from "i18next";
 import { useMemo } from "react";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
@@ -27,7 +28,7 @@ export async function loadTemplateAgentDetail(
 				.filter((value) => Number.isInteger(value) && value > 0)
 				.sort((a, b) => b - a)[0];
 		}
-		if (target === undefined) throw new Error("暂无可查看版本");
+		if (target === undefined) throw new Error(i18n.getFixedT(null, "templates")("agentDetail.noVersion"));
 		return client.remoteAgentVersion(agent.agent_id, target, signal);
 	}
 	const source = await client.draftResources.declaration(agent.local.projectName, "agent", agent.local.id, signal);
@@ -52,7 +53,7 @@ export function useTemplateAgentDetail(agent: TemplateAgentSelection | null, ver
 	return useAdminQuery<AgentDetail>(
 		`templates:agent-detail:${agent?.agent_id}:${version}:${revision}`,
 		(signal) => {
-			if (!agent) throw new Error("请选择智能体");
+			if (!agent) throw new Error(i18n.getFixedT(null, "templates")("agentDetail.selectAgent"));
 			return loadTemplateAgentDetail(client, agent, version, signal);
 		},
 		{ enabled: Boolean(agent) },

@@ -23,7 +23,7 @@ afterEach(async () => {
 function headers(token?: string) {
 	return {
 		"content-type": "application/json",
-		"x-kit-protocol-version": "2.0.0",
+		"x-kit-protocol-version": "3.0.0",
 		...(token ? { authorization: `Bearer ${token}` } : {}),
 	};
 }

@@ -5,7 +5,7 @@ root="$(git rev-parse --show-toplevel)"
 cd "$root" || exit 1
 # 注意：biome.json 的 files.includes 排除了 **/*.json，所以这里也不能把 json 交给 biome，
 # 否则「只改 package.json 的提交」会以 "No files were processed" 失败（2026-10-15 实测）。
-files="$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx|js|mjs|cjs|css)$' || true)"
+files="$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx|vue|js|mjs|cjs|css)$' || true)"
 if [ -z "$files" ]; then
   echo "pre-commit: 无可 lint 的暂存文件，跳过。"
   exit 0

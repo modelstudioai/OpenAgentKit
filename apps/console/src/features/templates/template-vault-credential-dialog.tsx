@@ -1,6 +1,8 @@
 import { type ProjectVaultCredentialInput, ProjectVaultCredentialInputSchema } from "@openagentkit/sdk/protocol";
 import { Button, Checkbox, Input, Modal, Select } from "antd";
 import { useId, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { localizedValidationMessage } from "../../lib/validation-message.ts";
 import styles from "./template-forms.module.less";
 
 export interface VaultCredentialDraft {
@@ -34,6 +36,7 @@ export function TemplateVaultCredentialDialog({
 	onSave: (value: VaultCredentialDraft) => void;
 	onClose: () => void;
 }) {
+	const { t } = useTranslation("templates");
 	const prefix = useId();
 	const source = initial?.input ?? {
 		name: "",
@@ -81,10 +84,12 @@ export function TemplateVaultCredentialDialog({
 			acknowledged,
 		});
 		const issues: Record<string, string> = {};
-		if (!result.success) for (const issue of result.error.issues) issues[String(issue.path[0])] ??= issue.message;
+		if (!result.success)
+			for (const issue of result.error.issues) issues[String(issue.path[0])] ??= localizedValidationMessage(issue);
 		const others = siblings.filter((item) => item.id !== initial?.id);
-		if (others.some((item) => item.input.name === name.trim())) issues.name = "密钥名称不能重复";
-		if (others.some((item) => item.input.secret_name === secretName.trim())) issues.secret_name = "变量名不能重复";
+		if (others.some((item) => item.input.name === name.trim())) issues.name = t("vault.dialog.duplicateName");
+		if (others.some((item) => item.input.secret_name === secretName.trim()))
+			issues.secret_name = t("vault.dialog.duplicateVariable");
 		setErrors(issues);
 		if (!result.success || Object.keys(issues).length) return;
 		onSave({ id: initial?.id ?? crypto.randomUUID(), input: result.data });
@@ -105,23 +110,23 @@ export function TemplateVaultCredentialDialog({
 			open
 			centered
 			width={512}
-			title={initial ? "编辑密钥" : "添加密钥"}
+			title={initial ? t("vault.dialog.editTitle") : t("vault.dialog.addTitle")}
 			onCancel={close}
 			styles={{ body: { maxHeight: "calc(100dvh - 220px)", overflowY: "auto" } }}
 			footer={
 				<div className={styles.formActions}>
-					<Button onClick={close}>取消</Button>
+					<Button onClick={close}>{t("cancel")}</Button>
 					<Button type="primary" disabled={!acknowledged && !unchangedImported} onClick={save}>
-						{initial ? "保存" : "添加"}
+						{initial ? t("vault.dialog.save") : t("vault.dialog.add")}
 					</Button>
 				</div>
 			}
 		>
 			<div className={styles.dialogBody}>
-				<p className={styles.metaText}>配置密钥后，随密钥库一起发布。</p>
+				<p className={styles.metaText}>{t("vault.dialog.hint")}</p>
 				<div className={styles.stack2}>
 					<label htmlFor={`${prefix}-name`}>
-						名称{" "}
+						{t("vault.dialog.name")}{" "}
 						<span aria-hidden="true" className={styles.errorColor}>
 							*
 						</span>
@@ -138,19 +143,19 @@ export function TemplateVaultCredentialDialog({
 					{error("name")}
 				</div>
 				<div className={styles.stack2}>
-					<label htmlFor={`${prefix}-type`}>类型</label>
+					<label htmlFor={`${prefix}-type`}>{t("vault.dialog.type")}</label>
 					<Select
 						id={`${prefix}-type`}
-						aria-label="密钥类型"
+						aria-label={t("vault.dialog.typeAria")}
 						disabled
 						value="environment_variable"
-						options={[{ value: "environment_variable", label: "环境变量" }]}
+						options={[{ value: "environment_variable", label: t("vault.dialog.typeEnvironment") }]}
 						className={styles.fullControl}
 					/>
 				</div>
 				<div className={styles.stack2}>
 					<label htmlFor={`${prefix}-variable`}>
-						变量名{" "}
+						{t("vault.dialog.variable")}{" "}
 						<span aria-hidden="true" className={styles.errorColor}>
 							*
 						</span>
@@ -159,7 +164,7 @@ export function TemplateVaultCredentialDialog({
 						id={`${prefix}-variable`}
 						required
 						maxLength={200}
-						placeholder="MY_API_KEY"
+						placeholder={t("vault.dialog.variablePlaceholder")}
 						value={secretName}
 						onChange={(event) => setSecretName(event.target.value)}
 						aria-invalid={Boolean(errors.secret_name)}
@@ -169,7 +174,7 @@ export function TemplateVaultCredentialDialog({
 				</div>
 				<div className={styles.stack2}>
 					<label htmlFor={`${prefix}-value`}>
-						变量值{" "}
+						{t("vault.dialog.value")}{" "}
 						<span aria-hidden="true" className={styles.errorColor}>
 							*
 						</span>
@@ -180,7 +185,7 @@ export function TemplateVaultCredentialDialog({
 						autoComplete="new-password"
 						spellCheck={false}
 						maxLength={500}
-						placeholder="请输入变量值"
+						placeholder={t("vault.dialog.valuePlaceholder")}
 						value={secretValue}
 						onChange={(event) => setSecretValue(event.target.value)}
 						aria-invalid={Boolean(errors.secret_value)}
@@ -189,28 +194,29 @@ export function TemplateVaultCredentialDialog({
 					{error("secret_value")}
 				</div>
 				<div className={styles.stack2}>
-					<label htmlFor={`${prefix}-placement`}>替换位置</label>
+					<label htmlFor={`${prefix}-placement`}>{t("vault.dialog.placement")}</label>
 					<Select
 						id={`${prefix}-placement`}
-						aria-label="替换位置"
+						aria-label={t("vault.dialog.placementAria")}
 						disabled
 						value="header"
-						options={[{ value: "header", label: "HTTP 请求头" }]}
+						options={[{ value: "header", label: t("vault.dialog.placementHeader") }]}
 						className={styles.fullControl}
 					/>
 				</div>
 				<div className={styles.previewBox}>
 					<p>
-						智能体发出：
+						{t("vault.dialog.previewAgent")}
 						<code className={styles.breakAll}>{`Authorization: Bearer \${${secretName || "MY_API_KEY"}}`}</code>
 					</p>
 					<p>
-						网关改写为：<code>Authorization: Bearer ••••••••</code>
+						{t("vault.dialog.previewGateway")}
+						<code>Authorization: Bearer ••••••••</code>
 					</p>
 				</div>
 				<div className={styles.stack2}>
 					<label htmlFor={`${prefix}-hosts`}>
-						密钥替换生效域名{" "}
+						{t("vault.dialog.hosts")}{" "}
 						<span aria-hidden="true" className={styles.errorColor}>
 							*
 						</span>
@@ -220,7 +226,7 @@ export function TemplateVaultCredentialDialog({
 						required
 						rows={2}
 						maxLength={3000}
-						placeholder="api.example.com, *.example.com"
+						placeholder={t("vault.dialog.hostsPlaceholder")}
 						value={hosts}
 						onChange={(event) => {
 							setHosts(event.target.value);
@@ -230,20 +236,14 @@ export function TemplateVaultCredentialDialog({
 						aria-describedby={`${prefix}-hosts-hint${errors.allowed_hosts ? ` ${prefix}-allowed_hosts-error` : ""}`}
 					/>
 					<p id={`${prefix}-hosts-hint`} className={styles.metaText}>
-						用逗号或换行分隔，支持 *. 通配子域，最多 10 个。单独填写 * 对所有域名生效。
+						{t("vault.dialog.hostsHint")}
 					</p>
 					{error("allowed_hosts")}
 				</div>
 				<div className={styles.acknowledgeBox}>
-					<p>
-						{allHosts
-							? "所有被访问域名都可能收到该密钥，请确认此范围符合预期。"
-							: "该密钥在当前工作空间内共享，有权限的用户可在会话中使用它访问对应服务。"}
-					</p>
+					<p>{allHosts ? t("vault.dialog.ackAll") : t("vault.dialog.ackShared")}</p>
 					<Checkbox checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)}>
-						{allHosts
-							? "我已知悉所有域名均可替换该密钥，并确认使用此范围。"
-							: "我已知悉该密钥为共享密钥，并对其保管与使用负责。"}
+						{allHosts ? t("vault.dialog.ackAllCheckbox") : t("vault.dialog.ackSharedCheckbox")}
 					</Checkbox>
 					{error("acknowledged")}
 				</div>

@@ -34,4 +34,4 @@ pnpm kit:add plaza-card
 
 同目录测试：[plaza.test.tsx](plaza.test.tsx)。
 
-完整用法与参数见[文档站对应页面](../../../../../apps/storybook/content/docs/components/plaza.mdx)；全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。
+完整用法与参数见[智能体卡片文档](../../../../../apps/storybook/content/docs/components/plaza/plaza-card.mdx)。全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。

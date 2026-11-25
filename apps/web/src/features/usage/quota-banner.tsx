@@ -1,4 +1,5 @@
 import { useQuotaRecovery } from "@openagentkit/sdk/usage/hooks";
+import { useTranslation } from "react-i18next";
 import { formatBeijingTime } from "../../lib/beijing-time.ts";
 import { formatExactTokenCount, formatTokenCount } from "../../lib/format-token-count.ts";
 import type { QuotaExceededDetails } from "../../lib/quota-error.ts";
@@ -13,6 +14,7 @@ export function QuotaBanner({
 	onRecovered: () => void;
 	onOpenUsage: () => void;
 }) {
+	const { t } = useTranslation("usage");
 	const limits = useQuotaRecovery();
 	const numberText = details.metric === "tokens" ? formatTokenCount : String;
 	const exactTokens =
@@ -20,7 +22,7 @@ export function QuotaBanner({
 			? `${formatExactTokenCount(details.used)}/${formatExactTokenCount(details.limit)} Token`
 			: undefined;
 	const label =
-		details.metric === "tokens" ? "Token" : details.metric === "active_seconds" ? "执行时长（秒）" : "Credits";
+		details.metric === "tokens" ? "Token" : details.metric === "active_seconds" ? t("quota.metricSeconds") : "Credits";
 	async function recheck() {
 		if (await limits.recheck()) onRecovered();
 	}
@@ -32,12 +34,14 @@ export function QuotaBanner({
 		>
 			<div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
 				<p className="text-[var(--kit-danger)]">
-					{details.period === "day" ? "今日" : "本月"} {label} 已达限额（
+					{t("quota.exceededPrefix", {
+						period: details.period === "day" ? t("quota.today") : t("quota.month"),
+						metric: label,
+					})}
 					<span title={exactTokens}>
 						{numberText(details.used)}/{numberText(details.limit)}
 					</span>
-					），
-					{formatBeijingTime(details.reset_at)} 重置，暂不能发送新消息。
+					{t("quota.exceededSuffix", { reset: formatBeijingTime(details.reset_at) })}
 				</p>
 				{(limits.error || limits.notice) && <p className="mt-2">{limits.error ?? limits.notice}</p>}
 			</div>
@@ -49,7 +53,7 @@ export function QuotaBanner({
 						onClick={() => void recheck()}
 						className="min-h-10 shrink-0 rounded-[var(--kit-radius-sm)] border border-[var(--kit-danger)]/40 px-3 py-2 font-medium text-[var(--kit-danger)] transition-colors hover:bg-[var(--kit-danger)]/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] disabled:cursor-not-allowed disabled:opacity-50"
 					>
-						{limits.loading ? "检查中…" : "重新检查额度"}
+						{limits.loading ? t("quota.rechecking") : t("quota.recheck")}
 					</button>
 				) : (
 					<button
@@ -57,7 +61,7 @@ export function QuotaBanner({
 						onClick={onOpenUsage}
 						className="min-h-10 shrink-0 rounded-[var(--kit-radius-sm)] border border-[var(--kit-danger)]/40 px-3 py-2 font-medium text-[var(--kit-danger)] transition-colors hover:bg-[var(--kit-danger)]/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
 					>
-						去申请
+						{t("quota.applyEntry")}
 					</button>
 				)}
 			</div>

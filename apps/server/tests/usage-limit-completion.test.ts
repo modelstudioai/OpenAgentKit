@@ -200,8 +200,9 @@ describe("月度限额的主会话完成证据", () => {
 	it("重建后的游标增大不能把同身份旧 idle 当作本轮完成", async () => {
 		const f = await setup(true);
 		const close = await f.open();
-		const firstEpoch = f.services.buffers.get(f.id)?.epoch;
 		await f.run("round-1");
+		const firstEpoch = f.services.buffers.get(f.id)?.epoch;
+		expect(firstEpoch).toBeTruthy();
 		await f.waitForState("running");
 		await close();
 		f.staleIdle();
@@ -209,8 +210,10 @@ describe("月度限额的主会话完成证据", () => {
 		// 新世代的状态排列在消息后，序号也更大，但没有跨世代更新证据。
 		f.events.push(f.events.shift()!);
 		await f.open();
-		expect(f.services.buffers.get(f.id)?.epoch).not.toBe(firstEpoch);
 		await expect(f.run("round-2")).rejects.toMatchObject({ code: "conflict" });
+		const currentEpoch = f.services.buffers.get(f.id)?.epoch;
+		expect(currentEpoch).toBeTruthy();
+		expect(currentEpoch).not.toBe(firstEpoch);
 		expect(f.send).toHaveBeenCalledTimes(1);
 	});
 

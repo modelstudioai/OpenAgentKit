@@ -1,6 +1,7 @@
 # 可编译示例
 
-本页由随附的示例源文件生成。请按应用需求调整回调和运行时配置。
+本页展示仓库中的示例源文件。
+TypeScript 示例可按[复制组件和 Kit SDK](copy-in.md)用 `--example` 接入，脚本会生成相对导入路径。
 
 ## backend-data.ts
 
@@ -85,7 +86,12 @@ export function createDataClient(request: RequestClient) {
 [源文件](../examples/backend-http.ts)
 
 ```ts
-import { KitError, SendMessageResponseSchema, ToolApprovalsResponseSchema } from "@openagentkit/sdk/protocol";
+import {
+	type EventsPage,
+	KitError,
+	SendMessageResponseSchema,
+	ToolApprovalsResponseSchema,
+} from "@openagentkit/sdk/protocol";
 import type { SessionEventChatProviderOptions } from "@openagentkit/sdk/providers/session-events";
 import { createRequest } from "@openagentkit/sdk/request";
 
@@ -125,8 +131,17 @@ export function createBackendHttp(config: BackendConfig) {
 	const sessionPath = (id: string) => `/sessions/${encodeURIComponent(id)}`;
 	const operations: Pick<
 		SessionEventChatProviderOptions,
-		"sendMessage" | "interrupt" | "toolApprovals" | "submitToolApproval"
+		"listEvents" | "sendMessage" | "interrupt" | "toolApprovals" | "submitToolApproval"
 	> = {
+		listEvents: {
+			buildRequest: ({ sessionId, limit, pageToken }) => {
+				const query = new URLSearchParams();
+				if (limit !== undefined) query.set("limit", String(limit));
+				if (pageToken) query.set("page_token", pageToken);
+				return { path: `${sessionPath(sessionId)}/events${query.size ? `?${query}` : ""}` };
+			},
+			mapResponse: async (response) => (await result(response)) as EventsPage,
+		},
 		sendMessage: {
 			buildRequest({ sessionId, body }) {
 				if (body.attachments?.length) throw new KitError("invalid_request", "请在创建会话时挂载已上传的文件。");

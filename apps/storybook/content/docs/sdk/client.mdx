@@ -270,7 +270,7 @@ export function KitRoot({ client, children }: { client: KitClient; children: Rea
 见[组件交互与后端调用](/docs/sdk/experience#组件绑定示例)。
 
 文件选择、粘贴、移除和上传状态由调用方组合
-[Sender 与 Attachments](/docs/components/express/sender) 管理。
+[Sender 与 Attachments](/docs/components/chat/sender) 管理。
 使用 `await client.downloadFile(fileId, { sessionId })` 下载 Artifact，再由宿主保存 Response
 中的字节；本人上传文件可以省略 sessionId。服务端检查文件归属，只允许挂载本人上传。
 旧数据库升级时，会从历史会话挂载索引补齐唯一原身份的文件归属；存在跨身份歧义或没有
@@ -305,9 +305,8 @@ Provider 的预签名 URL 不下发给浏览器。
 
 <Showcase name="kit-stream" />
 
-三个场景观察同一订阅入口：首订按 `reset → event* → ready` 重建，`after=1:8` 无 reset 续传，
-游标失效触发 reset。不要写成 `await client.stream(...); await client.sendMessage(...)`：
-这会一直等到连接关闭；需要发送与订阅协同时，用
+演示展示首次订阅、有效游标续传以及过期游标收到 `reset → ready` 后通过 `events` 查询历史。
+`client.stream()` 持续至订阅结束。需要发送与订阅协同时，用
 [Controller](/docs/sdk/use-chat/#无-react-的-chat-controller)。
 
 ## API
@@ -364,15 +363,15 @@ Operation 恢复属于 Console 应用接入层，不作为 SDK 导出；前端�
 | `after` | 续传上次成功消费的传输游标，视为不透明字符串 | `string \| null` | - |
 | `signal` | 取消订阅；调用方处理取消产生的异常 | `AbortSignal` | - |
 | `onEvent` | 接收 SDK `SessionEvent` 累计快照及本次传输游标 | `(event, cursor?) => void` | - |
-| `onReset` | 开始重建事件集合 | `() => void` | - |
-| `onReady` | 回放完成 | `({ sessionId, replayed, cursor? }) => void` | - |
+| `onReset` | 游标失效，等待就绪后读取历史 | `() => void` | - |
+| `onReady` | 实时订阅就绪 | `({ sessionId, replayed, cursor? }) => void` | - |
 | `onDone` | 流正常关闭，不替代业务执行状态 | `({ status, lastEventId }) => void` | - |
 | `onPing` | 收到保活时间戳 | `(t: number) => void` | - |
 
 ## 快照与游标
 
-- Kit Server 默认先订阅上游并缓冲实时事件，再回放完整分页历史：首次重建按
-  `reset → event* → ready` 交付，core 在 `ready` 原子切换历史并保留未确认的本地乐观消息。
+- 首次订阅或复位后，Controller 等待上游就绪，再调用独立的 `listEvents` 按页读取历史。
+  实时更新先缓冲，合并后一次性发布消息并保留未确认的本地乐观消息。
 - 同一 `event_id` 的后续帧可能是更新后的完整快照：交给 Store 更新快照再渲染，不能见重复 ID
   就丢弃，也不能重复追加累计文本。
 - 业务 `event_id` 与 SSE `id` 是两个字段：`after` 用 SSE `id` 续传，历史 API 的 `afterId` 用

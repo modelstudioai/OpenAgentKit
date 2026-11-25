@@ -1,10 +1,12 @@
+import i18n from "i18next";
+
 /** 历史快照的只读展示适配：兼容 Provider 工具集与 Kit 声明形状，不修改保存配置。 */
 export function configObject(value: unknown): Record<string, unknown> {
 	return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
 export function configText(value: unknown): string | undefined {
-	if (value === "[redacted]") return "已隐藏";
+	if (value === "[redacted]") return i18n.getFixedT(null, "templates")("agent.config.hidden");
 	return typeof value === "string" && value.trim() ? value : typeof value === "number" ? String(value) : undefined;
 }
 
@@ -12,13 +14,14 @@ export function configList(value: unknown): unknown[] {
 	return Array.isArray(value) ? value : value === undefined || value === null ? [] : [value];
 }
 
-export function permissionLabel(value: unknown, fallback = "总是允许"): string {
+export function permissionLabel(value: unknown, fallback?: string): string {
+	const t = i18n.getFixedT(null, "templates");
 	const policy = configText(configObject(value).type ?? value);
-	if (!policy) return fallback;
-	if (["allow", "always_allow", "never"].includes(policy)) return "总是允许";
-	if (["ask", "always_ask", "always"].includes(policy)) return "每次询问";
-	if (["deny", "never_allow"].includes(policy)) return "禁止调用";
-	return policy === "已隐藏" ? policy : "未识别的策略";
+	if (!policy) return fallback ?? t("agent.config.allow");
+	if (["allow", "always_allow", "never"].includes(policy)) return t("agent.config.allow");
+	if (["ask", "always_ask", "always"].includes(policy)) return t("agent.config.ask");
+	if (["deny", "never_allow"].includes(policy)) return t("agent.config.deny");
+	return policy === t("agent.config.hidden") ? policy : t("agent.config.unknown");
 }
 
 function policyOf(value: Record<string, unknown>): unknown {
@@ -45,6 +48,7 @@ export interface VersionToolkit {
 }
 
 function toolkit(value: unknown, id: string, fallbackPolicy?: unknown): VersionToolkit {
+	const t = i18n.getFixedT(null, "templates");
 	const item = configObject(value);
 	const defaults = configObject(item.default_config ?? item.defaultConfig);
 	const serverId = configText(item.mcp_server_name ?? item.mcpServerName);
@@ -69,7 +73,8 @@ function toolkit(value: unknown, id: string, fallbackPolicy?: unknown): VersionT
 		id,
 		kind,
 		serverId,
-		title: kind === "builtin" ? "内置工具" : (serverId ?? configText(item.name) ?? "工具集"),
+		title:
+			kind === "builtin" ? t("agent.config.builtin") : (serverId ?? configText(item.name) ?? t("agent.config.toolkit")),
 		defaultEnabled,
 		defaultPermission,
 		tools: [...tools.values()],
@@ -85,6 +90,7 @@ function canonicalToolName(name: string) {
 }
 
 export function versionToolkits(value: unknown): VersionToolkit[] {
+	const t = i18n.getFixedT(null, "templates");
 	if (Array.isArray(value)) return value.map((item, index) => toolkit(item, `toolkit:${index}`));
 	const declared = configObject(value);
 	const groups: VersionToolkit[] = [];
@@ -95,7 +101,7 @@ export function versionToolkits(value: unknown): VersionToolkit[] {
 		groups.push({
 			id: "builtin",
 			kind: "builtin",
-			title: "内置工具",
+			title: t("agent.config.builtin"),
 			defaultEnabled: false,
 			defaultPermission,
 			tools: names.map((name) => {
@@ -129,12 +135,13 @@ export interface VersionMcpServer {
 }
 
 export function versionMcpServers(value: unknown, tools: unknown): VersionMcpServer[] {
+	const t = i18n.getFixedT(null, "templates");
 	const groups = versionToolkits(tools).filter((item) => item.kind === "mcp");
 	const used = new Set<string>();
 	const servers = configList(value).map((entry, index) => {
 		const item = configObject(entry);
 		const code = configText(item.server_code ?? item.serverCode ?? item.name ?? entry);
-		const name = configText(item.server_name ?? item.serverName) ?? code ?? "MCP 服务";
+		const name = configText(item.server_name ?? item.serverName) ?? code ?? t("agent.config.mcpServer");
 		const group = groups.find((group) => group.serverId === code);
 		if (group) used.add(group.id);
 		const serverPolicy = policyOf(item) ?? item.require_approval ?? item.requireApproval;

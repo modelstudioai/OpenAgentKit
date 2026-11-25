@@ -10,7 +10,7 @@
 自己控制重连节奏；`EventSource` 三者都做不到。因此统一使用 `fetch` + `ReadableStream`
 读取 SSE 文本流，由 `@openagentkit/sdk/protocol` 的 `createSseParser()` 解析。
 
-## 帧与连接（协议 2.0）
+## 帧与连接（协议 3.0）
 
 默认数据面要求登录。成员通过 `Authorization: Bearer <access_token>` 传递登录令牌，
 由 Kit 密码登录或 Keycloak 签发，URL 禁止附带令牌。
@@ -31,15 +31,17 @@ SSE 发出 `error`（`code: unauthorized`、`retryable: false`）并关闭；客
 | --- | --- | --- |
 | `reset` | `{ session_id }` | 游标不可续传，开始重建 Provider 事件集合；保留本地乐观消息 |
 | `event` | `SessionEvent` | 最新累计快照；SSE `id` 是本次传输游标 |
-| `ready` | `{ session_id, after, replayed, cursor }` | 上游已连接、历史及缓冲事件已回放；允许发送 |
+| `ready` | `{ session_id, after, replayed, cursor }` | 实时订阅就绪，已补发有效游标之后的实时更新；`cursor` 为当前传输位置 |
 | `done` | `{ session_id, status, last_event_id, reason, cursor? }` | 流正常关闭；不替代业务事件的完成状态 |
 | `error` | `{ code, message, retryable }` | 明确的流错误；按 retryable 决定重连 |
 | `ping` | `{ t }` | 每 15s 保活；客户端 45s 无有效帧视为静默断流 |
 | `operation` | `{ operation_id, phase, progress, message? }` | 控制面 Operation 进度 |
 
 `reset/ready/done/error/ping/operation` 不是业务事件，不进入消息归并。
-重建采用 `reset → 历史 event → 缓冲 event → ready → 实时 event`，客户端在 ready 原子切换
-Provider 事件集合。普通 Turn 结束和等待工具批准都保留连接；会话切换/卸载取消浏览器订阅，
+首次订阅从 `ready` 开始，游标失效时发送 `reset → ready`，有效游标先补发实时变更再发 `ready`。
+空实时日志的起始游标为该连接世代的 `epoch:0`。首次和复位后 Client 在收到 `ready` 后
+通过各自的 `/events` 分页读取历史，同时缓冲实时事件，合并后一次性发布并开放发送。
+普通 Turn 结束和等待工具批准都保留连接；会话切换/卸载同时取消历史查询和订阅，
 最后一个订阅者离开后，非 running 的 pump 释放上游连接；仍在 running 的回合继续在服务端
 有界跟踪，以匹配本轮 Provider 终态并更新目录索引。当前脱离订阅的跟踪上限为 30 分钟，
 到期释放内存与连接，不发送 interrupt，也不将超时推断为业务完成；后续查询仍按历史与状态对账。
@@ -54,15 +56,16 @@ Provider 事件集合。普通 Turn 结束和等待工具批准都保留连接�
   `session_status` 决定会话阶段；单条消息完成不能代替会话 idle。
 - 完整正文调用 sanitizer 时传 `{ redact: false, truncate: false }`，不传 `includeRaw`；
   Provider 凭据、请求头和 SDK context 不进入响应，错误与日志仍脱敏。
-- 每个 Session 共用一个上游 pump：先建立连接并缓冲实时事件，再按升序读完历史分页，
-  合并后开放 ready。分页使用不透明 `page_token/next_page_token`，重复页游标明确失败。
+- 每个 Session 共用一条上游连接，上游就绪后开放实时订阅。Chat 按升序读取历史，
+  分页使用不透明 `page_token/next_page_token`，重复页游标明确失败。
   HTTP 历史与 SSE 的到达先后不代表快照的新旧；同 ID 重叠只接受相同快照或可证明的
   `in_progress → completed` 推进，丢弃迟到的 `in_progress` 降级。没有版本证据的冲突
-  必须在 ready 前明确失败，不能用缓冲帧无条件覆盖历史。
-- 用户消息及工具审批先等待 pump ready，再 POST 一次。SDK 的 `sendRemoteSessionEvents`
-  是通用发送入口，本身不负责等待订阅就绪。
-- server 内存保存最新事件索引和有界变更日志，事件正文不落 Kit 数据库。浏览器 `after` 只用于
-  Kit 传输日志，不作为百炼原生游标。日志被淘汰、epoch 变化或旧游标不可识别时发送 reset。
+  在发布前明确失败，保留此前已展示的消息。
+- 用户消息及工具审批先等待订阅及历史加载完成，再 POST 一次。服务端按需校验本代上游
+  的运行状态及待审批历史。SDK 的 `sendRemoteSessionEvents` 是通用发送入口。
+- 服务端分别维护有界实时传输日志和业务状态证据，事件正文只在内存中。实时日志按已投递的
+  实时快照去重。内部历史查询先读到的事件，随后仍可随实时流投递。浏览器 `after` 仅用于
+  Kit 传输日志。日志被淘汰、epoch 变化或旧游标不可识别时发送 reset。
 
 ## 快照归并与 Turn
 
@@ -76,7 +79,7 @@ Provider 事件集合。普通 Turn 结束和等待工具批准都保留连接�
 - 目录运行态由完整事件账本与受理中的 pending turn 共同推导。发送受理时只记录
   `client_message_id`、Provider 回执事件 ID 和发送前状态标记，不保存消息正文；pending turn 在
   本轮用户回显与主会话终态形成匹配证据前保持 running。历史或重放中的旧 idle 不得清除它。
-  没有上游泵的存量 running 在列表兜底对账时，不能仅凭详情 idle 判定完成，必须核对历史投影。
+  存量 `running` 行仅有建流前详情作为状态证据时，列表仍可通过最新 Provider 详情和历史投影对账。
 - 工具调用/结果按线程与 `call_id` 关联，同名并发不能按名称误配。参数与输出保留字符串或对象。
 - Artifact 优先取 SDK 派生的 `metadata.artifacts[]`，单数 `artifact` 仅作兼容。SDK 从已识别的
   `mark_artifacts` 工具结果提取文件；该数组不是 Provider 原生 SSE 字段。
@@ -88,31 +91,34 @@ Provider 事件集合。普通 Turn 结束和等待工具批准都保留连接�
 
 ## 默认链路的重连与取消
 
-SDK 负责 server→Provider 连接恢复；controller 负责浏览器→Kit Server 连接恢复。
-后者沿用指数退避（500ms 起、最大 15s、8 次、±20% jitter），携带最后成功消费的传输游标。
+上游连接中断会结束当前 SSE 世代。Controller 按指数退避（500ms 起、最大 15s、8 次、±20% jitter）
+重连 Kit Server，携带最后成功消费的传输游标。新世代通过独立分页恢复历史。
 
 | 情况 | 处理 |
 | --- | --- |
 | 网络错误 / 意外 EOF / 静默超时 / 可重试流错误 | 带 after 退避重连；不重发用户消息或审批 |
 | Keycloak access token 续期或 me 校验暂时失败 | 在旧令牌有效期内继续使用该身份和 SSE，退避重试续期或校验；到期仍未验证新令牌则结束登录 |
 | Keycloak access token 续期成功 | 验证 me 仍属于同一成员后，关闭使用旧令牌的 SSE 并带 after 和新令牌重连；保留当前业务状态 |
+| `/events` 上游限流或临时故障 | Gateway 保留 `retryable: true`。Controller 退避后重新订阅并恢复历史 |
 | 401/403、协议版本冲突、不可重试 Provider 错误 | 停止自动重试，提示具体原因 |
-| reset | 原子重建 Provider 事件集合，保留乐观 overlay |
+| reset | 连接就绪后重新请求历史并原子重建事件集合，保留乐观 overlay |
 | done | 关闭传输，不把未完成消息直接标为完成 |
 | 主动 abort / 会话切换 | 释放 reader、定时器和上游订阅，不重连、不交付已取消的缓冲帧 |
 
 ## 自建百炼后端的 ChatProvider 合同
 
-体验页使用公开 `createSessionEventChatProvider` 和显式 `useChat({ sessionId, provider })`，
-Kit Server 是标准事件示例后端。订阅采用本文相同的控制帧：后端先完成历史与实时对账，再发
-`ready`；客户端通过 `after` 配置传递不透明变更游标。工厂不内置 URL、鉴权或版本头，
+体验页使用公开 `createSessionEventChatProvider` 和显式 `useChat({ sessionId, provider })`。
+标准事件模式必填 `listEvents` 与 `stream`。后端在实时订阅就绪时发 `ready`，Client 通过历史
+分页恢复消息并通过 `after` 配置传递不透明变更游标。工厂不内置 URL、鉴权或版本头，
 这些由示例配置提供；无有效帧超时和自然断流继续报可恢复错误。
 同一工厂可配置自建后端的路径、HTTP 方法、JSON 包装与线程页顺序。原始百炼 SSE 仍走
 `createBailianChatProvider`；二者交付同一 `SessionEvent`，不重复转换标准事件。
 标准事件工厂默认等待 `ready` 最多 30 秒，45 秒无有效帧中断；配置只能取正整数。
+Controller 从收到 `ready` 开始给完整历史分页单独计时 30 秒，超时会取消本次查询和订阅并退避重试。
 
-`ChatProvider` 复用五个会话方法：`stream`、`sendMessage`、`interrupt`、`toolApprovals`、
-`submitToolApproval`。参数与返回值沿用 SDK Client 的公开类型，五项均必需。
+`ChatProvider` 复用 `stream`、`sendMessage`、`interrupt`、`toolApprovals`、
+`submitToolApproval`。标准纯实时接入还提供 `listEvents(sessionId, options): Promise<EventsPage>`。
+在适配器内已经处理历史重建的原始流 Provider 继续交付完整的回调生命周期。
 显式 Provider 仅替换该 `useChat` 的后端接入；Kit Server HTTP 协议、默认方法和默认值不变。
 
 可选 `listThreads(sessionId, { limit?, pageToken?, signal? })` 返回线程摘要分页，
@@ -134,8 +140,9 @@ Kit Server 是标准事件示例后端。订阅采用本文相同的控制帧：
   不回退。历史加载不调用主 Store 的 `applyEvent`，不改变乐观消息或审批覆盖状态。
 - Session/Provider 切换与卸载取消查询，代次检查丢弃迟到结果；Session SSE reset 使补充
   历史失效并在 ready 后重新加载，防止已撤回事件复活。切换线程不重新建立 Session SSE。
-- `useChat().multiAgent` 是共享展示与动作合同；`Chat` 原生呈现页签与只读子 Agent 历史。
-  主输入、草稿、附件及审批保留，子页仍提供返回主 Agent 和停止整轮执行的入口。
+- `useChat().multiAgent` 提供共享的展示数据与动作。`Chat` 在主消息流的派发位置展示子 Agent 卡片，
+  展开后可查看只读历史。`SubAgentPanel` 使用同一快照在资源面板展示派发记录和执行详情。
+  展开子线程时保留主输入区、草稿、附件和审批，主输入区可停止整轮执行。
 
 Provider 还可提供 `transformMessage({ messages, event, identity })`，返回
 `{ messages, artifacts? }`。这是浏览器内的展示转换策略，不是新增后端操作或 SSE 字段。
@@ -271,7 +278,9 @@ CR/LF/CRLF、多行 `data`、注释心跳与业务 JSON 分别处理，业务对
 
 ## 错误模型
 
-统一 `KitError`：`{ code, message, details?, retryable }`，HTTP 与流内共用一套 code。
+统一 `KitError`：`{ code, message, message_key?, message_params?, details?, retryable }`，
+HTTP 与流内共用一套 code。`message` 保留给日志和旧客户端兜底；新客户端优先按稳定的
+`message_key` + `message_params` 查词表，服务端不读取 `Accept-Language`。
 
 | code | HTTP | 含义 |
 | --- | --- | --- |
@@ -313,6 +322,8 @@ DELETE /api/kit/sessions/:sessionId        body { plan_id, confirm_token }
 - 消费即失效（重放 428）；空/畸形令牌先被 schema 拦下（400 invalid_request）；
   有实际资源变更的发布即使 `destructive=false`，也必须展示 diff 并由用户显式确认；
   声明与 state 都为空的只读空计划不触发发布或远端写入。
+- Plan diff 条目可带 `summary_key` + `summary_params`；客户端按自身命名空间渲染。
+  旧 `summary` 是服务端/SDK 自由文本，只作技术详情或旧客户端兜底，不作为本地化主文案。
 - **服务端与脚本不得代替用户作出确认**，不存在 `--yes` 或固定确认标记的旁路。
   已授权拥有的临时调试 Session 可按页面生命周期准备删除计划并携带有效令牌清理，
   不授权自动删除成员会话、他人资源或结果未知的批次。
@@ -357,7 +368,7 @@ SDK 完成后 StateBackend 最终保存失败仍保留已知结果；绑定、�
 迟到的旧报告不能覆盖新一次发布结果。`finalize` 返回 409 时保留服务端错误与收尾入口，
 不得回退到 Plan；仅未提供 `recovery_action` 的旧响应沿用原 409 兼容分支。
 
-管理员调试沿用同一 Kit v2 SessionEvent、共享 pump、ready 屏障、历史/实时去重与 after
+管理员调试沿用同一 Kit v3 SessionEvent、共享上游订阅、独立历史分页与 after
 游标恢复，仅入口改为 `/api/admin/debug/sessions/:id/*`。普通 Turn 结束仍保持连接；审批、
 消息发送不会因重连重发。会话和文件的 admin_debug 用途及管理员主体在每次访问时检查。
 
@@ -492,18 +503,17 @@ POST /api/kit/sessions/:id/messages       body { text, skills?: ["name", …], �
 
 本节只适用于 Kit Server；自建后端通过调用方的协议版本合同管理，不自动发送 Kit 版本头。
 
-`GET /api/config` 返回 `protocolVersion: "2.0.0"`。Kit 前后端同步升级，不维护旧快照流。
-客户端校验主版本并在发送、流订阅、审批请求携带 `x-kit-protocol-version: 2.0.0`；
+`GET /api/config` 返回 `protocolVersion: "3.0.0"`。员工端、Console、Server 与 Kit SDK 同步升级。
+客户端校验主版本并在发送、流订阅、审批请求携带 `x-kit-protocol-version: 3.0.0`；
 服务端拒绝缺失或主版本不匹配的请求（409），不会静默降级成语义不同的旧流。
 
 ## 上游恢复能力边界
 
 以下为默认 Kit Server 使用 SDK 网络接口时的边界，原始流自建后端遵循上文 ChatProvider 合同。
 
-Kit 的 ready 闸门保证首次上游订阅和历史合并完成后再提交。当前 SDK 只有成功连接的
-`onReady`，没有公开的断链状态回调，因此 SDK 内部短暂退避期间 Kit 无法可靠阻止所有新 POST；
-恢复后由 SDK 历史补拉收敛，业务 POST 不自动重发。若需要严格禁止这段时间的提交，须先扩展
-SDK 公开连接状态，本轮不读取 internal 实现。
+Kit Gateway 关闭上游 SDK 自动重连，断流时由 Kit 发送可恢复流错误并关闭订阅。
+客户端再建立订阅并走独立历史分页，服务端在提交前等待上游连接与业务状态校验。
+恢复仅重试读取和订阅。
 
 SDK 恢复时避免把无分片水位的 in_progress 历史与新 delta 直接相加；中间文本可能暂时被
 当前连接的局部快照替换，最终以 completed 全量快照收敛，不承诺断流期间逐字无损连续。

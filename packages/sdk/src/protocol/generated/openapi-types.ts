@@ -2015,6 +2015,162 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/kit/sessions/{sessionId}/artifacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    sessionId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 会话产物 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                file_id: string;
+                                filename: string;
+                                content_type?: string;
+                                size?: number;
+                            }[];
+                        };
+                    };
+                };
+                /** @description invalid_request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable?: boolean;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable?: boolean;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description forbidden / quota_exceeded */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable?: boolean;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable?: boolean;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description conflict / request_pending */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable?: boolean;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description confirmation_required */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable?: boolean;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description provider_error */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable?: boolean;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/kit/sessions/{sessionId}/messages": {
         parameters: {
             query?: never;
@@ -3153,7 +3309,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description SSE 事件流（reset/ready/event/done/error/ping） */
+                /** @description 实时 SSE。after 续传实时变更，reset 后通过事件分页恢复历史 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -3304,7 +3460,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description 本人上传的附件，或本人会话历史中已交付的文件（须携带 session_id） */
+                /** @description 本人上传的附件，或本人会话已交付的文件与 Agent 产物（须携带 session_id） */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -12007,6 +12163,10 @@ export interface paths {
                                     /** @default false */
                                     destructive: boolean;
                                     summary?: string;
+                                    summary_key?: string;
+                                    summary_params?: {
+                                        [key: string]: string | number | boolean | unknown;
+                                    };
                                 }[];
                             };
                         };
@@ -13007,6 +13167,10 @@ export interface paths {
                                     /** @default false */
                                     destructive: boolean;
                                     summary?: string;
+                                    summary_key?: string;
+                                    summary_params?: {
+                                        [key: string]: string | number | boolean | unknown;
+                                    };
                                 }[];
                             };
                         };
@@ -13651,6 +13815,10 @@ export interface paths {
                                     /** @default false */
                                     destructive: boolean;
                                     summary?: string;
+                                    summary_key?: string;
+                                    summary_params?: {
+                                        [key: string]: string | number | boolean | unknown;
+                                    };
                                 }[];
                             };
                         };
@@ -19150,6 +19318,10 @@ export interface paths {
                                     /** @default false */
                                     destructive: boolean;
                                     summary?: string;
+                                    summary_key?: string;
+                                    summary_params?: {
+                                        [key: string]: string | number | boolean | unknown;
+                                    };
                                 }[];
                                 project_revision: string;
                                 yaml_hash?: string;
@@ -20698,7 +20870,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description 复用 Kit Session SSE 协议与 after 游标 */
+                /** @description 实时 SSE。after 续传实时变更，reset 后通过调试事件分页恢复历史 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -21550,6 +21722,10 @@ export interface paths {
                                     /** @default false */
                                     destructive: boolean;
                                     summary?: string;
+                                    summary_key?: string;
+                                    summary_params?: {
+                                        [key: string]: string | number | boolean | unknown;
+                                    };
                                 }[];
                             };
                         };
@@ -21871,7 +22047,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description 本人调试上传或调试会话已交付文件；校验用途、归属与 Provider 历史 */
+                /** @description 本人调试上传或调试会话已交付文件与产物；校验用途、归属与 Provider 证据 */
                 200: {
                     headers: {
                         [name: string]: unknown;

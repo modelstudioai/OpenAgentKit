@@ -1,0 +1,25 @@
+@import "tailwindcss";
+@import "@openagentpack/kit-chat-ui-vue/theme.css";
+
+/*
+ * Tailwind v4 自动源探测会跳过 node_modules；workspace 包必须显式声明。
+ * 新增跨包组件目录时同步补一行。
+ */
+@source "../index.html";
+@source "./**/*.{ts,vue}";
+@source "../../../packages/chat-ui-vue/src/**/*.{vue,ts}";
+
+html,
+body,
+#root {
+	height: 100%;
+}
+body {
+	margin: 0;
+	background: var(--kit-bg);
+	color: var(--kit-fg);
+	font-family:
+		-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+		"Noto Sans CJK SC", sans-serif;
+	-webkit-font-smoothing: antialiased;
+}

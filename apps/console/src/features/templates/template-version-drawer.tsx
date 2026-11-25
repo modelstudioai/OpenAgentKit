@@ -1,5 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ghostButtonClass } from "../../lib/styles.ts";
 import styles from "./template-resources.module.less";
 import { TemplateVersionHistory } from "./template-version-history.tsx";
@@ -15,6 +16,7 @@ export function TemplateVersionDrawer({
 	disabled?: boolean;
 	onSelect: (version: number) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const [container, setContainer] = useState<HTMLDivElement | null>(null);
 	const [open, setOpen] = useState(false);
 	return (
@@ -22,7 +24,7 @@ export function TemplateVersionDrawer({
 			<Dialog.Root open={open} onOpenChange={setOpen}>
 				<Dialog.Trigger asChild>
 					<button type="button" className={ghostButtonClass} disabled={disabled}>
-						版本管理
+						{t("versionDrawer.trigger")}
 					</button>
 				</Dialog.Trigger>
 				{container ? (
@@ -30,10 +32,10 @@ export function TemplateVersionDrawer({
 						<Dialog.Overlay className={styles.overlay} />
 						<Dialog.Content aria-describedby={undefined} className={styles.panel}>
 							<header className={styles.panelHeader}>
-								<Dialog.Title className={styles.panelTitle}>版本管理</Dialog.Title>
+								<Dialog.Title className={styles.panelTitle}>{t("versionDrawer.title")}</Dialog.Title>
 								<Dialog.Close asChild>
-									<button type="button" aria-label="关闭版本管理" className={ghostButtonClass}>
-										关闭
+									<button type="button" aria-label={t("versionDrawer.closeAria")} className={ghostButtonClass}>
+										{t("versionDrawer.close")}
 									</button>
 								</Dialog.Close>
 							</header>

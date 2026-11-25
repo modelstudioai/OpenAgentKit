@@ -60,4 +60,4 @@ pnpm kit:add process-step
 
 源码入口为 [index.tsx](index.tsx)。copy-in 会保留目录层级并带入 registry 声明的依赖；主题接入见文档站。
 
-完整用法与参数见[文档站对应页面](../../../../../../apps/storybook/content/docs/components/message.mdx)；全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。
+思考和工具步骤的组合展示见 [Message 文档](../../../../../../apps/storybook/content/docs/components/general/message.mdx#富内容与执行过程)。全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。

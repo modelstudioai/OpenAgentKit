@@ -5,6 +5,7 @@ import type {
 	TemplateView,
 } from "@openagentkit/sdk/protocol";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { type AgentPresentationDraft, AgentPresentationFields } from "../catalog/agent-presentation-fields.tsx";
 import { PlazaCategoryField } from "../catalog/plaza-category-field.tsx";
 import { useConsoleRoute } from "../navigation/console-router.tsx";
@@ -64,6 +65,7 @@ function TemplateEditorForm({
 	onImportPreset,
 	onCancel,
 }: TemplateEditorProps) {
+	const { t } = useTranslation("templates");
 	const { route, complete } = useConsoleRoute();
 	const [initialDraft] = useState(() => createTemplateDraft(initialTemplate, initialPresetPack, initialDisplay));
 	const resourceDraft = useTemplateResourceDraft();
@@ -138,7 +140,8 @@ function TemplateEditorForm({
 		<section aria-labelledby="create-template-title" className={styles.editorRoot}>
 			<InnerLayout
 				titleId="create-template-title"
-				title={initialTemplate ? "编辑智能体" : "创建智能体"}
+				title={initialTemplate ? t("editor.titleEdit") : t("editor.titleCreate")}
+				backLabel={t("back")}
 				onBack={onCancel}
 				right={
 					onImportPreset && step === "config" ? (
@@ -203,10 +206,10 @@ function TemplateEditorForm({
 				/>
 				<div className={styles.editorMain}>
 					<fieldset disabled={busy} className={styles.shrinkRoot}>
-						<section aria-label="展示配置" className={styles.configCard}>
-							<h3 className={styles.sectionTitle}>展示配置</h3>
+						<section aria-label={t("editor.presentationSection")} className={styles.configCard}>
+							<h3 className={styles.sectionTitle}>{t("editor.presentationSection")}</h3>
 							<TemplateNameField inputRef={nameField} value={name} onChange={setName} />
-							<PlazaCategoryField label="分类" required value={category} onChange={setCategory} />
+							<PlazaCategoryField label={t("category")} required value={category} onChange={setCategory} />
 							<AgentPresentationFields value={presentation} onChange={setPresentation} />
 						</section>
 					</fieldset>

@@ -128,7 +128,7 @@ export function registerDebugRoutes(app: OpenAPIHono<AppEnv>) {
 			request: { headers: ProtocolVersionHeadersSchema, params, query: z.object({ after: z.string().optional() }) },
 			responses: {
 				200: {
-					description: "复用 Kit Session SSE 协议与 after 游标",
+					description: "实时 SSE。after 续传实时变更，reset 后通过调试事件分页恢复历史",
 					content: { "text/event-stream": { schema: z.string() } },
 				},
 				...errors,
@@ -176,6 +176,7 @@ export function registerDebugRoutes(app: OpenAPIHono<AppEnv>) {
 			await debug.requireSession(subject, sessionId);
 			const query = c.req.valid("query");
 			const page = await sessions.events(sessionId, {
+				signal: c.req.raw.signal,
 				afterId: query.after_id,
 				pageToken: query.page_token,
 				limit: query.limit,
@@ -365,7 +366,7 @@ export function registerDebugRoutes(app: OpenAPIHono<AppEnv>) {
 			},
 			responses: {
 				200: {
-					description: "本人调试上传或调试会话已交付文件；校验用途、归属与 Provider 历史",
+					description: "本人调试上传或调试会话已交付文件与产物；校验用途、归属与 Provider 证据",
 					content: { "application/octet-stream": { schema: z.string() } },
 				},
 				...errors,

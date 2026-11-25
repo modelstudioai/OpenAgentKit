@@ -2,6 +2,7 @@ import type { RemoteVaultDetail, ResourceDraftDeclaration } from "@openagentkit/
 import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui";
 import { Drawer } from "antd";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import type { TemplateVaultSelectionValue } from "./template-local-resources.tsx";
@@ -51,6 +52,7 @@ export function useTemplateVaultDetail(vault: TemplateVaultSelectionValue, enabl
 
 /** 选择列表保留只读详情抽屉；主表单复用同一查询加载编辑基线。 */
 export function TemplateVaultDetail({ vault }: { vault: TemplateVaultSelectionValue }) {
+	const { t } = useTranslation("templates");
 	const detail = useTemplateVaultDetail(vault);
 	if (detail.error)
 		return (
@@ -63,7 +65,7 @@ export function TemplateVaultDetail({ vault }: { vault: TemplateVaultSelectionVa
 		return (
 			<div className={styles.blockStack}>
 				<p className={styles.monoId}>{vault.vault_id}</p>
-				<EmptyState loading title="正在加载密钥库详情…" />
+				<EmptyState loading title={t("vault.detail.loading")} />
 			</div>
 		);
 	return <TemplateVaultDetailView detail={detail.data} local={Boolean(vault.local)} />;
@@ -71,22 +73,23 @@ export function TemplateVaultDetail({ vault }: { vault: TemplateVaultSelectionVa
 
 /** 创建页与运行时资源选择共用安全元数据视图，不展示密钥值。 */
 export function TemplateVaultDetailView({ detail, local = false }: { detail: RemoteVaultDetail; local?: boolean }) {
+	const { t } = useTranslation("templates");
 	const { name, vault_id, credentials } = detail;
 	return (
 		<div className={styles.detailRoot}>
 			<div className={styles.stack2}>
 				<h3 className={styles.detailName}>{name || vault_id}</h3>
 				<p className={styles.monoMetaAnywhere}>{vault_id}</p>
-				{local ? <p className={styles.metaText}>待发布</p> : null}
+				{local ? <p className={styles.metaText}>{t("vault.detail.pendingPublish")}</p> : null}
 			</div>
-			<section aria-label="密钥列表" className={styles.blockStack}>
-				<h3 className={styles.sectionLabel}>密钥（{credentials.length}）</h3>
+			<section aria-label={t("vault.detail.listAria")} className={styles.blockStack}>
+				<h3 className={styles.sectionLabel}>{t("vault.detail.section", { count: credentials.length })}</h3>
 				{credentials.length ? (
 					<table className={styles.credentialTable}>
-						<caption className={styles.srOnly}>密钥名称、变量名和生效域名</caption>
+						<caption className={styles.srOnly}>{t("vault.detail.tableCaption")}</caption>
 						<thead className={styles.credentialHead}>
 							<tr>
-								{["密钥名称", " 变量名", "生效域名"].map((label) => (
+								{[t("vault.detail.name"), t("vault.detail.variable"), t("vault.detail.hosts")].map((label) => (
 									<th key={label} scope="col" className={styles.credentialTh}>
 										{label}
 									</th>
@@ -114,7 +117,7 @@ export function TemplateVaultDetailView({ detail, local = false }: { detail: Rem
 						</tbody>
 					</table>
 				) : (
-					<EmptyState title="暂无密钥" />
+					<EmptyState title={t("vault.detail.empty")} />
 				)}
 			</section>
 		</div>
@@ -131,13 +134,14 @@ export function TemplateVaultDetailDrawer({
 	open: boolean;
 	onClose: () => void;
 }) {
+	const { t } = useTranslation("templates");
 	return (
 		<Drawer
 			open={open}
 			onClose={onClose}
 			destroyOnHidden
 			width={672}
-			title={<div className={styles.drawerTitle}>密钥库详情</div>}
+			title={<div className={styles.drawerTitle}>{t("vault.detail.title")}</div>}
 		>
 			<TemplateVaultDetail key={vault.vault_id} vault={vault} />
 		</Drawer>

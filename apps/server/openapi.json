@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "OpenAgentKit Server",
-    "version": "2.0.0"
+    "version": "3.0.0"
   },
   "tags": [
     {
@@ -247,7 +247,7 @@
           {
             "schema": {
               "type": "string",
-              "example": "2.0.0",
+              "example": "3.0.0",
               "description": "必填的 Kit 协议版本；当前要求 2.x，缺失或主版本不匹配返回 409。"
             },
             "required": true,
@@ -543,7 +543,7 @@
           {
             "schema": {
               "type": "string",
-              "example": "2.0.0",
+              "example": "3.0.0",
               "description": "必填的 Kit 协议版本；当前要求 2.x，缺失或主版本不匹配返回 409。"
             },
             "required": true,
@@ -4420,6 +4420,317 @@
         }
       }
     },
+    "/api/kit/sessions/{sessionId}/artifacts": {
+      "get": {
+        "tags": [
+          "kit"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "sessionId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "会话产物",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "file_id": {
+                            "type": "string"
+                          },
+                          "filename": {
+                            "type": "string"
+                          },
+                          "content_type": {
+                            "type": "string"
+                          },
+                          "size": {
+                            "type": "number",
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "file_id",
+                          "filename"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        },
+                        "details": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        },
+                        "details": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden / quota_exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        },
+                        "details": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        },
+                        "details": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "conflict / request_pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        },
+                        "details": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "confirmation_required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        },
+                        "details": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "provider_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        },
+                        "details": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/kit/sessions/{sessionId}/messages": {
       "post": {
         "tags": [
@@ -4437,7 +4748,7 @@
           {
             "schema": {
               "type": "string",
-              "example": "2.0.0",
+              "example": "3.0.0",
               "description": "必填的 Kit 协议版本；当前要求 2.x，缺失或主版本不匹配返回 409。"
             },
             "required": true,
@@ -6684,7 +6995,7 @@
           {
             "schema": {
               "type": "string",
-              "example": "2.0.0",
+              "example": "3.0.0",
               "description": "必填的 Kit 协议版本；当前要求 2.x，缺失或主版本不匹配返回 409。"
             },
             "required": true,
@@ -6695,7 +7006,7 @@
         ],
         "responses": {
           "200": {
-            "description": "SSE 事件流（reset/ready/event/done/error/ping）",
+            "description": "实时 SSE。after 续传实时变更，reset 后通过事件分页恢复历史",
             "content": {
               "text/event-stream": {
                 "schema": {
@@ -6985,7 +7296,7 @@
         ],
         "responses": {
           "200": {
-            "description": "本人上传的附件，或本人会话历史中已交付的文件（须携带 session_id）",
+            "description": "本人上传的附件，或本人会话已交付的文件与 Agent 产物（须携带 session_id）",
             "content": {
               "application/octet-stream": {
                 "schema": {
@@ -25330,6 +25641,28 @@
                               },
                               "summary": {
                                 "type": "string"
+                              },
+                              "summary_key": {
+                                "type": "string"
+                              },
+                              "summary_params": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "nullable": true
+                                    }
+                                  ]
+                                }
                               }
                             },
                             "required": [
@@ -27692,6 +28025,28 @@
                               },
                               "summary": {
                                 "type": "string"
+                              },
+                              "summary_key": {
+                                "type": "string"
+                              },
+                              "summary_params": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "nullable": true
+                                    }
+                                  ]
+                                }
                               }
                             },
                             "required": [
@@ -29243,6 +29598,28 @@
                               },
                               "summary": {
                                 "type": "string"
+                              },
+                              "summary_key": {
+                                "type": "string"
+                              },
+                              "summary_params": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "nullable": true
+                                    }
+                                  ]
+                                }
                               }
                             },
                             "required": [
@@ -42159,6 +42536,28 @@
                               },
                               "summary": {
                                 "type": "string"
+                              },
+                              "summary_key": {
+                                "type": "string"
+                              },
+                              "summary_params": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "nullable": true
+                                    }
+                                  ]
+                                }
                               }
                             },
                             "required": [
@@ -45074,7 +45473,7 @@
           {
             "schema": {
               "type": "string",
-              "example": "2.0.0",
+              "example": "3.0.0",
               "description": "必填的 Kit 协议版本；当前要求 2.x，缺失或主版本不匹配返回 409。"
             },
             "required": true,
@@ -45471,7 +45870,7 @@
           {
             "schema": {
               "type": "string",
-              "example": "2.0.0",
+              "example": "3.0.0",
               "description": "必填的 Kit 协议版本；当前要求 2.x，缺失或主版本不匹配返回 409。"
             },
             "required": true,
@@ -45482,7 +45881,7 @@
         ],
         "responses": {
           "200": {
-            "description": "复用 Kit Session SSE 协议与 after 游标",
+            "description": "实时 SSE。after 续传实时变更，reset 后通过调试事件分页恢复历史",
             "content": {
               "text/event-stream": {
                 "schema": {
@@ -46422,7 +46821,7 @@
           {
             "schema": {
               "type": "string",
-              "example": "2.0.0",
+              "example": "3.0.0",
               "description": "必填的 Kit 协议版本；当前要求 2.x，缺失或主版本不匹配返回 409。"
             },
             "required": true,
@@ -46813,7 +47212,7 @@
           {
             "schema": {
               "type": "string",
-              "example": "2.0.0",
+              "example": "3.0.0",
               "description": "必填的 Kit 协议版本；当前要求 2.x，缺失或主版本不匹配返回 409。"
             },
             "required": true,
@@ -47244,6 +47643,28 @@
                               },
                               "summary": {
                                 "type": "string"
+                              },
+                              "summary_key": {
+                                "type": "string"
+                              },
+                              "summary_params": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "nullable": true
+                                    }
+                                  ]
+                                }
                               }
                             },
                             "required": [
@@ -47885,7 +48306,7 @@
         ],
         "responses": {
           "200": {
-            "description": "本人调试上传或调试会话已交付文件；校验用途、归属与 Provider 历史",
+            "description": "本人调试上传或调试会话已交付文件与产物；校验用途、归属与 Provider 证据",
             "content": {
               "application/octet-stream": {
                 "schema": {

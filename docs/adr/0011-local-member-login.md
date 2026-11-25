@@ -1,6 +1,6 @@
 # ADR-0011：默认成员登录与可撤销身份
 
-> 状态更新：[ADR-0028](./0028-keycloak-member-oidc.md) 增加可选的 Keycloak OIDC 模式。
+> 状态更新：[ADR-0032](./0032-keycloak-member-oidc.md) 增加可选的 Keycloak OIDC 模式。
 > 本文的密码登录与匿名兼容规则仍适用于对应模式。
 
 ## 背景

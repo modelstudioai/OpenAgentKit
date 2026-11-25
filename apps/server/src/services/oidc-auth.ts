@@ -22,7 +22,10 @@ export interface OidcMemberGrant extends VerifiedToken {
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
 const unauthorized = () => new KitError("unauthorized", "企业登录已失效，请重新登录");
 const unbound = () =>
-	new KitError("forbidden", "企业账号尚未绑定 Kit 成员，请联系管理员", { details: { reason: "member_not_bound" } });
+	new KitError("forbidden", "企业账号尚未绑定 Kit 成员，请联系管理员", {
+		details: { reason: "member_not_bound" },
+		messageKey: "serverErrors.memberNotBound",
+	});
 
 function isInvalidToken(error: unknown): boolean {
 	return (

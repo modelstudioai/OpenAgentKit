@@ -1,6 +1,7 @@
 import { DeleteOutlined } from "@ant-design/icons";
 import { Button, Input, Select } from "antd";
 import { useId } from "react";
+import { useTranslation } from "react-i18next";
 
 import { EnvironmentNetworkingFields } from "./environment-networking-fields.tsx";
 import { ENVIRONMENT_PACKAGE_MANAGERS, type EnvironmentCreateDraft } from "./template-environment-form-draft.ts";
@@ -31,6 +32,7 @@ export function EnvironmentCreateFields({
 	value: EnvironmentCreateDraft;
 	onChange: (next: EnvironmentCreateDraft) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const id = useId();
 	const updatePackage = (id: string, patch: Partial<EnvironmentCreateDraft["packages"][number]>) =>
 		onChange({ ...value, packages: value.packages.map((row) => (row.id === id ? { ...row, ...patch } : row)) });
@@ -40,14 +42,14 @@ export function EnvironmentCreateFields({
 		<div className={styles.createRoot}>
 			<div className={`${styles.fieldStack} ${styles.body13}`}>
 				<label htmlFor={`${id}-name`}>
-					环境名称{" "}
+					{t("agent.environment.form.name")}{" "}
 					<span aria-hidden="true" className={styles.errorColor}>
 						*
 					</span>
 				</label>
 				<Input
 					id={`${id}-name`}
-					aria-label="环境名称"
+					aria-label={t("agent.environment.form.name")}
 					required
 					maxLength={50}
 					value={value.name}
@@ -55,10 +57,10 @@ export function EnvironmentCreateFields({
 				/>
 			</div>
 			<div className={`${styles.fieldStack} ${styles.body13}`}>
-				<label htmlFor={`${id}-description`}>描述</label>
+				<label htmlFor={`${id}-description`}>{t("agent.environment.form.description")}</label>
 				<Input.TextArea
 					id={`${id}-description`}
-					aria-label="描述"
+					aria-label={t("agent.environment.form.description")}
 					rows={3}
 					maxLength={200}
 					value={value.description}
@@ -66,14 +68,17 @@ export function EnvironmentCreateFields({
 				/>
 			</div>
 			<EnvironmentNetworkingFields value={value} onChange={onChange} />
-			<section aria-label="预装包" className={`${styles.shrinkRoot} ${styles.blockStack}`}>
+			<section
+				aria-label={t("agent.environment.form.packages")}
+				className={`${styles.shrinkRoot} ${styles.blockStack}`}
+			>
 				<div>
 					<div className={styles.rowBetweenSm}>
-						<h3 className={styles.heading13}>预装包</h3>
+						<h3 className={styles.heading13}>{t("agent.environment.form.packages")}</h3>
 						<Button
 							type="link"
 							size="small"
-							aria-label="添加预装包"
+							aria-label={t("agent.environment.form.addPackage")}
 							disabled={value.packages.length >= MAX_ROWS}
 							className={`${styles.shrinkZero} ${styles.linkButton}`}
 							onClick={() => {
@@ -84,11 +89,11 @@ export function EnvironmentCreateFields({
 								});
 							}}
 						>
-							<span aria-hidden="true">+</span> 添加
+							<span aria-hidden="true">+</span> {t("agent.environment.form.add")}
 						</Button>
 					</div>
 					<p id={`${id}-packages-hint`} className={styles.metaText}>
-						指定该环境中可用的包及其版本。多个值用空格分隔。
+						{t("agent.environment.form.packageHint")}
 					</p>
 				</div>
 				<div className={styles.stack2}>
@@ -96,7 +101,7 @@ export function EnvironmentCreateFields({
 						<div key={row.id} className={styles.entryRow}>
 							<div className={styles.managerCell}>
 								<Select
-									aria-label="包管理器"
+									aria-label={t("agent.environment.form.packageManager")}
 									value={row.manager}
 									className={styles.fullControl}
 									options={PACKAGE_MANAGERS.map((manager) => ({ value: manager, label: manager }))}
@@ -107,30 +112,33 @@ export function EnvironmentCreateFields({
 								/>
 							</div>
 							<Input
-								aria-label="包名称"
+								aria-label={t("agent.environment.form.packageName")}
 								aria-describedby={`${id}-packages-hint`}
-								placeholder="package package==1.0.0"
+								placeholder={t("agent.environment.form.packagePlaceholder")}
 								maxLength={200}
 								value={row.value}
 								onChange={(event) => updatePackage(row.id, { value: event.target.value })}
 								className={styles.flexFill}
 							/>
 							<RemoveRowButton
-								label={`移除预装包 ${index + 1}`}
+								label={t("agent.environment.form.removePackage", { index: index + 1 })}
 								onRemove={() => onChange({ ...value, packages: value.packages.filter((item) => item.id !== row.id) })}
 							/>
 						</div>
 					))}
 				</div>
 			</section>
-			<section aria-label="元数据" className={`${styles.metadataSection} ${styles.shrinkRoot}`}>
+			<section
+				aria-label={t("agent.environment.form.metadata")}
+				className={`${styles.metadataSection} ${styles.shrinkRoot}`}
+			>
 				<div>
 					<div className={styles.rowBetweenSm}>
-						<h3 className={styles.heading13}>元数据</h3>
+						<h3 className={styles.heading13}>{t("agent.environment.form.metadata")}</h3>
 						<Button
 							type="link"
 							size="small"
-							aria-label="添加元数据"
+							aria-label={t("agent.environment.form.addMetadata")}
 							disabled={value.metadata.length >= MAX_ROWS}
 							className={`${styles.shrinkZero} ${styles.linkButton}`}
 							onClick={() => {
@@ -138,11 +146,11 @@ export function EnvironmentCreateFields({
 								onChange({ ...value, metadata: [...value.metadata, { id: crypto.randomUUID(), key: "", value: "" }] });
 							}}
 						>
-							<span aria-hidden="true">+</span> 添加
+							<span aria-hidden="true">+</span> {t("agent.environment.form.add")}
 						</Button>
 					</div>
 					<p id={`${id}-metadata-hint`} className={styles.metaText}>
-						添加自定义键值对以标记和组织该环境。键必须为小写。
+						{t("agent.environment.form.metadataHint")}
 					</p>
 				</div>
 				<div className={styles.stack2}>
@@ -153,10 +161,10 @@ export function EnvironmentCreateFields({
 							<div key={row.id} className={`${styles.entryRow} ${styles.shrinkRoot}`}>
 								<div className={`${styles.flexFill} ${styles.fieldStack}`}>
 									<Input
-										aria-label="元数据键"
+										aria-label={t("agent.environment.form.metadataKey")}
 										aria-invalid={invalid}
 										aria-describedby={invalid ? `${id}-metadata-hint ${errorId}` : `${id}-metadata-hint`}
-										placeholder="client_key…"
+										placeholder={t("agent.environment.form.metadataKeyPlaceholder")}
 										maxLength={64}
 										value={row.key}
 										onChange={(event) => updateMetadata(row.id, { key: event.target.value })}
@@ -165,20 +173,20 @@ export function EnvironmentCreateFields({
 									/>
 									{invalid ? (
 										<p id={errorId} className={styles.errorSmall}>
-											键必须为小写字母
+											{t("agent.environment.form.metadataLowercase")}
 										</p>
 									) : null}
 								</div>
 								<Input
-									aria-label="元数据值"
-									placeholder="值"
+									aria-label={t("agent.environment.form.metadataValue")}
+									placeholder={t("agent.environment.form.metadataValuePlaceholder")}
 									maxLength={200}
 									value={row.value}
 									onChange={(event) => updateMetadata(row.id, { value: event.target.value })}
 									className={styles.flexFill}
 								/>
 								<RemoveRowButton
-									label={`移除元数据 ${index + 1}`}
+									label={t("agent.environment.form.removeMetadata", { index: index + 1 })}
 									onRemove={() => onChange({ ...value, metadata: value.metadata.filter((item) => item.id !== row.id) })}
 								/>
 							</div>

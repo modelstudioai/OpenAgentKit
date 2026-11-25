@@ -15,7 +15,7 @@ afterEach(() => {
 	vi.restoreAllMocks();
 	for (const close of cleanup.splice(0).reverse()) close();
 });
-const json = { "content-type": "application/json", "x-kit-protocol-version": "2.0.0" };
+const json = { "content-type": "application/json", "x-kit-protocol-version": "3.0.0" };
 const admin = { ...json, authorization: "Bearer admin-token" };
 
 function setup() {

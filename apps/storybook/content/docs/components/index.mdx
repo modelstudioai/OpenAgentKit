@@ -81,36 +81,57 @@ pnpm kit:add plaza         # 广场卡片、分类与用量展示
 
 ## 表达
 
-表达类组件覆盖输入、附件和快捷指令，调用方负责把交互接到 hooks 与 client。
+表达类组件为对话输入提供附件和快捷指令。
 
 <Cards>
-  <Card title="Sender 输入框" description="受控输入、提交、停止生成与头尾插槽" href="/docs/components/express/sender" />
   <Card title="Attachments 附件" description="输入框上方的附件暂存行：选择、拖放、上传状态与移除" href="/docs/components/express/attachments" />
   <Card title="Suggestion 快捷指令" description="输入触发、级联候选与键盘选择" href="/docs/components/express/suggestion" />
 </Cards>
 
 ## 反馈
 
-反馈类组件帮助用户阅读和处理 Agent 的回答：复制或评价回答、查看文件、阅读代码和图表。
+反馈类组件帮助用户阅读 Agent 的回答、查看执行步骤和产物，以及评价或复制内容。
 操作结果与业务请求由调用方管理。
 
 <Cards>
   <Card title="Actions 操作列表" description="自定义操作、复制回答与受控赞踩反馈" href="/docs/components/feedback/actions" />
+  <Card title="ReasoningBlock 思考块" description="可展开的思考摘要、全文与生命周期状态" href="/docs/components/feedback/reasoning-block" />
+  <Card title="ToolCallCard 工具调用卡" description="工具运行状态、输入参数和执行结果" href="/docs/components/feedback/tool-call-card" />
+  <Card title="ToolApprovalCard 工具审批" description="参数完整可查、允许与拒绝一步直提、多项横向翻页" href="/docs/components/feedback/tool-approval" />
   <Card title="FileCard 文件卡片" description="文件信息、加载态与预览、下载回调" href="/docs/components/feedback/file-card" />
+  <Card title="ArtifactCard 产物卡片" description="Agent 交付文件的预览与下载入口" href="/docs/components/feedback/artifact-card" />
+  <Card title="Markdown 富文本" description="正文排版、GFM 表格、代码高亮与 Mermaid" href="/docs/components/feedback/markdown" />
   <Card title="CodeHighlighter 代码高亮" description="代码语言、复制与行号" href="/docs/components/feedback/code-highlighter" />
   <Card title="Mermaid 图表" description="图表与源码切换、流式等待和错误恢复" href="/docs/components/feedback/mermaid" />
-  <Card title="ToolApprovalCard 工具审批" description="参数完整可查、允许与拒绝一步直提、多项横向翻页" href="/docs/components/feedback/tool-approval" />
 </Cards>
 
-## 组合与富内容
+## 布局
 
 <Cards>
   <Card title="Layout 整页布局" description="桌面侧栏、移动抽屉、页头与内容区" href="/docs/components/layout" />
-  <Card title="Chat 与 Sender 组合" description="主子 Agent、历史查询、消息与输入框的完整交互" href="/docs/components/chat" />
-  <Card title="富内容分片" description="思考过程、工具三态、Artifact 卡与 Markdown" href="/docs/components/message" />
+</Cards>
+
+## 对话
+
+<Cards>
+  <Card title="Chat 对话区" description="组合消息列表、欢迎态、流式状态和默认输入框" href="/docs/components/chat" />
+  <Card title="Sender 输入框" description="受控输入、提交、停止生成与头尾插槽" href="/docs/components/chat/sender" />
+</Cards>
+
+## 组合示例
+
+<Cards>
   <Card title="子 Agent 分区" description="资源面板中的派发任务与执行记录弹窗" href="/docs/components/general/sub-agent-panel" />
-  <Card title="页面组合与辅助交互" description="桌面侧栏、状态灯、子线程、空/错态与确认弹窗" href="/docs/components/chrome" />
-  <Card title="广场与用量" description="Agent 卡片、受控分类、配额进度与每日活动" href="/docs/components/plaza" />
+  <Card title="最佳实践" description="对话页布局、信息栏、会话操作确认、工具审批与错误重试" href="/docs/components/chrome" />
+</Cards>
+
+## 广场与用量
+
+<Cards>
+  <Card title="PlazaCard 智能体卡片" description="展示 Agent、能力与开始体验入口" href="/docs/components/plaza/plaza-card" />
+  <Card title="CategoryTabs 广场分类" description="在精选与分类之间切换" href="/docs/components/plaza/category-tabs" />
+  <Card title="MeterBar 用量条" description="展示已用额度相对上限的进度" href="/docs/components/plaza/meter-bar" />
+  <Card title="ActivityHeatmap 活跃热力图" description="用格子和色阶展示每日对话回合数" href="/docs/components/plaza/activity-heatmap" />
 </Cards>
 
 ## 组件清单
@@ -137,11 +158,14 @@ pnpm kit:add plaza         # 广场卡片、分类与用量展示
 | `SubAgentPanel` | `sub-agent-panel` | 资源面板中的子 Agent 概览与任务执行记录 |
 | `Layout` | `layout` | 整页布局与移动抽屉；侧栏、页头、弹窗和内容均由插槽注入 |
 | `Chat` | `chat` | 组合消息与输入；`multiAgent` 支持主子 Agent、只读历史、分页和重试 |
-| `ToolCallCard` | `message` | 工具调用卡（running / done / error + input/output） |
-| `ArtifactCard` | `message` | 交付文件卡（点击走 server 代理下载，屏蔽预签名 URL 过期） |
-| `ReasoningBlock` | `message` | 默认收起，摘要行露出思考预览；支持手动查看 |
+| `ToolCallCard` | `tool-call-card` | 工具调用的运行状态、输入参数和执行结果 |
+| `ArtifactCard` | `artifact-card` | 交付文件的展示、预览与下载回调 |
+| `ReasoningBlock` | `reasoning-block` | 可展开的思考摘要、全文与生命周期状态 |
 | `Markdown` | `markdown` | GFM 与 sanitize；代码块使用 `CodeHighlighter`，Mermaid 围栏使用 `Mermaid` |
-| `PlazaCard` / `CategoryTabs` / `MeterBar` / `ActivityHeatmap` | `plaza` | Agent 发现、分类选择、配额进度与每日活动 |
+| `PlazaCard` | `plaza-card` | Agent 卡片与开始体验入口 |
+| `CategoryTabs` | `category-tabs` | 精选和分类选择 |
+| `MeterBar` | `meter-bar` | 配额使用进度 |
+| `ActivityHeatmap` | `activity-heatmap` | 每日对话回合数 |
 | `StatusIndicator` / `EmptyState` / `ErrorState` / `ConfirmDialog` / `ThreadPanel` | `chrome` | 状态与辅助交互；`chrome` 也包含 `AgentHeader`（`EmptyState` / `ErrorState` 有独立 `states` 条目） |
 
 ## 主题

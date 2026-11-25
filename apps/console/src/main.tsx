@@ -1,7 +1,9 @@
 import { ErrorState } from "@openagentpack/kit-chat-ui";
+import i18n from "i18next";
 import { createRoot } from "react-dom/client";
 import styles from "./app.module.less";
 import { App } from "./app.tsx";
+import { initI18n } from "./i18n/index.ts";
 import { bootstrapAdmin } from "./lib/kit.ts";
 import "./styles.css";
 // 加载顺序约定（console AGENTS.md「UI 组件栈」）：Tailwind preflight 在前，antd 在后；
@@ -9,6 +11,7 @@ import "./styles.css";
 import "antd/dist/antd.css";
 
 const root = createRoot(document.getElementById("root") as HTMLElement);
+await initI18n();
 try {
 	const { config } = await bootstrapAdmin();
 	root.render(<App auth={config.auth} />);
@@ -16,7 +19,7 @@ try {
 	root.render(
 		<main className={styles.bootstrapMain}>
 			<ErrorState
-				message={error instanceof Error ? error.message : "无法读取服务配置"}
+				message={error instanceof Error ? error.message : i18n.t("runtime.configReadFailed")}
 				onRetry={() => window.location.reload()}
 			/>
 		</main>,

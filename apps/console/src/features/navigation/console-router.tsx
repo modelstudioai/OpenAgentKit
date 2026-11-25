@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useTemplateExitConfirmation } from "../templates/template-exit-confirmation.tsx";
 import { type ConsoleRoute, consoleRouteHref, parseConsoleRoute, sameTemplateForm } from "./console-route.ts";
@@ -103,6 +104,6 @@ export function ConsoleRouter({ children }: { children: ReactNode }) {
 
 export function useConsoleRoute() {
 	const router = useContext(Context);
-	if (!router) throw new Error("缺少管理端路由上下文");
+	if (!router) throw new Error(i18n.t("runtime.missingRouterContext"));
 	return router;
 }

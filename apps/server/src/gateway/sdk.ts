@@ -49,6 +49,7 @@ import { createSdkPresetPackGateway } from "./sdk-preset-pack-resources.ts";
 import { createSdkRemoteSkillGateway } from "./sdk-remote-skills.ts";
 import { createSdkVaultGateway } from "./sdk-vaults.ts";
 import { withSendRejection } from "./send-error.ts";
+import { sessionEventError } from "./session-event-error.ts";
 import { sessionUsageFromAttributes } from "./session-usage.ts";
 import type { GatewaySendInput, GatewaySessionInfo, ProviderGateway } from "./types.ts";
 import { createYamlDraftGateway } from "./yaml-draft-gateway.ts";
@@ -409,16 +410,25 @@ export function createSdkGateway(credentials: BailianCredentials): ProviderGatew
 			await sendRemoteSessionEvents(await ctx(), sessionId, [{ type: "interrupt" }]);
 		},
 		async listEvents(sessionId, options = {}) {
-			const page = await listSessionEvents(await ctx(), sessionId, {
-				event_format: "snapshot",
-				order: "asc",
-				...(options.pageToken ? { page_token: options.pageToken } : {}),
-				...(options.signal ? { signal: options.signal } : {}),
-				...(options.afterId ? { after_id: options.afterId } : {}),
-				...(options.limit ? { limit: options.limit } : {}),
-			});
-			if (page.has_more && !page.next_page) throw new KitError("provider_error", "事件历史缺少下一页游标");
-			return { events: page.events.map(toContract), next_page_token: page.next_page ?? null };
+			try {
+				const page = await listSessionEvents(await ctx(), sessionId, {
+					event_format: "snapshot",
+					order: "asc",
+					page_token: options.pageToken,
+					signal: options.signal,
+					after_id: options.afterId,
+					limit: options.limit,
+				});
+				if (page.has_more && !page.next_page) throw new KitError("provider_error", "事件历史缺少下一页游标");
+				return { events: page.events.map(toContract), next_page_token: page.next_page ?? null };
+			} catch (error) {
+				options.signal?.throwIfAborted();
+				if (error instanceof Error && error.name === "AbortError") throw error;
+				throw sessionEventError(error, {
+					transient: "查询会话历史暂时失败，请稍后重试",
+					permanent: "上游拒绝查询会话历史或协议不兼容",
+				});
+			}
 		},
 		async listThreads(sessionId, options = {}) {
 			return safeThreadQuery(async () => {
@@ -459,7 +469,7 @@ export function createSdkGateway(credentials: BailianCredentials): ProviderGatew
 			const iterable = streamSessionEvents(await ctx(), sessionId, {
 				event_format: "snapshot",
 				event_deltas: ["message", "reasoning"],
-				reconnect: true,
+				reconnect: false,
 				...(options.signal ? { signal: options.signal } : {}),
 				...(options.onReady ? { onReady: options.onReady } : {}),
 				...(options.afterId ? { after_id: options.afterId } : {}),
@@ -535,6 +545,29 @@ export function createSdkGateway(credentials: BailianCredentials): ProviderGatew
 					if (file) files.set(file.file_id, file);
 				}
 				pageToken = nextResourcePage(page, seenPages, "远端文件");
+			} while (pageToken);
+			return [...files.values()];
+		},
+		// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: 分页累加与协议字段映射平铺，拆开反而割裂
+		async listSessionFiles(sessionId) {
+			const files = new Map<string, { file_id: string; filename: string; content_type?: string; size?: number }>();
+			const seenPages = new Set<string>();
+			let pageToken: string | undefined;
+			do {
+				const page = await listRemoteFiles(await ctx(), {
+					limit: 100,
+					scope_id: sessionId,
+					...(pageToken ? { page: pageToken } : {}),
+				});
+				for (const info of page.data) {
+					files.set(info.id, {
+						file_id: info.id,
+						filename: info.filename || info.id,
+						...(info.mime_type ? { content_type: info.mime_type } : {}),
+						...(Number.isFinite(info.size_bytes) && info.size_bytes >= 0 ? { size: info.size_bytes } : {}),
+					});
+				}
+				pageToken = nextResourcePage(page, seenPages, "会话产物");
 			} while (pageToken);
 			return [...files.values()];
 		},

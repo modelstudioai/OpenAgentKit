@@ -1,8 +1,17 @@
 import { cpSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
+export const sdkTarget = "src/sdk";
+export const componentTarget = "src/components/kit";
+export const exampleTarget = (skill) => `src/kit-examples/${skill}`;
+
 export function readRegistry(elementsRoot) {
 	return JSON.parse(readFileSync(join(elementsRoot, "registry.json"), "utf8"));
+}
+
+/** 组件在源仓库内的全部文件：入口 + 词典（strings.ts）等附属文件。 */
+export function componentSourceFiles(entry) {
+	return [entry.file, ...(entry.extraFiles ?? [])];
 }
 
 /** 解析组件及其传递依赖的闭包；未知组件返回 null。 */

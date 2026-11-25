@@ -10,6 +10,7 @@ import {
 	type SessionSidebarPage,
 } from "@openagentpack/kit-chat-ui";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { type Branding, DEFAULT_BRAND_PRODUCT_NAME } from "../../lib/branding.ts";
 import type { NavigateFn, ViewId } from "../../lib/use-route.ts";
 import type {
@@ -17,6 +18,7 @@ import type {
 	SessionDirectorySection,
 } from "../../lib/use-session-directory.ts";
 import { MemberAccount, type MemberAccountProps } from "../auth/member-auth-gate.tsx";
+import { LanguageSwitcher } from "./language-switcher.tsx";
 
 const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]";
 const HOVER_ROW =
@@ -71,18 +73,19 @@ function BrandLogo({ logoUrl, productName }: { logoUrl?: string; productName: st
 
 /** 行尾「更多操作」菜单：重命名进 kit 的分区受控编辑，归档/删除走目录确认弹窗。 */
 function SessionRowMenu({ onClick }: { onClick: (action: "rename" | "archive" | "delete") => void }) {
+	const { t } = useTranslation("layout");
 	return (
 		<Menu>
 			<MenuTrigger asChild>
-				<button type="button" aria-label="更多操作" title="更多操作" className={ROW_TRIGGER_CLASS}>
+				<button type="button" aria-label={t("moreActions")} title={t("moreActions")} className={ROW_TRIGGER_CLASS}>
 					{ELLIPSIS_ICON}
 				</button>
 			</MenuTrigger>
 			<MenuContent align="end">
-				<MenuItem onSelect={() => onClick("rename")}>重命名</MenuItem>
-				<MenuItem onSelect={() => onClick("archive")}>归档</MenuItem>
+				<MenuItem onSelect={() => onClick("rename")}>{t("rename")}</MenuItem>
+				<MenuItem onSelect={() => onClick("archive")}>{t("archive")}</MenuItem>
 				<MenuItem className="text-[var(--kit-danger)]" onSelect={() => onClick("delete")}>
-					删除
+					{t("delete")}
 				</MenuItem>
 			</MenuContent>
 		</Menu>
@@ -126,6 +129,7 @@ function useDirectoryProps({
 	staleStatusId?: string | null;
 	go: (target: Parameters<NavigateFn>[0]) => void;
 }) {
+	const { t } = useTranslation("layout");
 	const [actionError, setActionError] = useState<string | null>(null);
 	// 编辑态按列表来源（分组/最近）收窄后交给 kit 做分区隔离：同一会话同时渲染在两个分区，
 	// 全局 editingId 会让两处编辑框同时挂载，挂载聚焦互相抢焦点后双双关闭。
@@ -146,19 +150,19 @@ function useDirectoryProps({
 				const listed = await directory.checkAgent(slug);
 				if (generation !== checkScope.generation) return;
 				if (!listed) {
-					setActionError("该智能体已下架，暂时无法新建会话。");
+					setActionError(t("errors.agentDelisted"));
 					return;
 				}
 				if (!agents.some((agent) => agent.slug === slug)) {
-					setActionError("智能体信息已更新，请刷新页面后重试。");
+					setActionError(t("errors.agentUpdated"));
 					return;
 				}
 				go({ view: "chat", agent: slug, session: null });
 			} catch {
-				if (generation === checkScope.generation) setActionError("无法确认智能体上架状态，请稍后重试。");
+				if (generation === checkScope.generation) setActionError(t("errors.agentCheckFailed"));
 			}
 		},
-		[agents, directory.checkAgent, go, checkScope],
+		[agents, directory.checkAgent, go, checkScope, t],
 	);
 	const onEdited = useCallback(
 		(id: string, title: string) => {
@@ -166,10 +170,10 @@ function useDirectoryProps({
 			directory
 				.rename(id, title)
 				.catch((error: unknown) =>
-					setActionError(`重命名会话失败：${error instanceof Error ? error.message : String(error)}`),
+					setActionError(t("errors.renameFailed", { message: error instanceof Error ? error.message : String(error) })),
 				);
 		},
-		[directory.rename],
+		[directory.rename, t],
 	);
 	const dismissError = useCallback(() => setActionError(null), []);
 	const requestSessionAction = useCallback(
@@ -284,6 +288,7 @@ export function SessionSidebar({
 	member,
 	onLogout,
 }: SessionSidebarProps) {
+	const { t } = useTranslation("layout");
 	const productName = branding.productName.trim() || DEFAULT_BRAND_PRODUCT_NAME;
 	const plazaActive = view === "plaza" || view === "new";
 	const go = useCallback(
@@ -364,10 +369,10 @@ export function SessionSidebar({
 					>
 						<path d="M12 5v14M5 12h14" strokeLinecap="round" />
 					</svg>
-					新聊天
+					{t("newChat")}
 				</button>
 			</div>
-			<nav aria-label="页面导航" className="shrink-0 px-3 pt-1 pb-1">
+			<nav aria-label={t("navAria")} className="shrink-0 px-3 pt-1 pb-1">
 				<button
 					type="button"
 					data-testid="sidebar-nav-plaza"
@@ -390,7 +395,7 @@ export function SessionSidebar({
 						<rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5" />
 						<rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5" />
 					</svg>
-					广场
+					{t("plaza")}
 				</button>
 			</nav>
 			<SessionDirectory
@@ -417,13 +422,13 @@ export function SessionSidebar({
 				agentName={agentName}
 			/>
 			<div className="flex shrink-0 items-center gap-1 border-t border-[var(--kit-border-subtle)] px-3 py-2">
-				<MemberAccount member={member} onLogout={onLogout} />
+				<MemberAccount member={member} onLogout={onLogout} languageControl={<LanguageSwitcher />} />
 				<span className="min-w-0 flex-1" />
 				<button
 					type="button"
 					data-testid="sidebar-usage"
-					aria-label="我的用量"
-					title="我的用量"
+					aria-label={t("views.usage")}
+					title={t("views.usage")}
 					aria-pressed={view === "usage"}
 					onClick={() => go({ view: "usage" })}
 					className={`flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[var(--kit-radius-sm)] px-2.5 py-1.5 text-[length:var(--kit-text-label)] transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none hover:bg-[var(--kit-nav-active)] hover:text-[var(--kit-fg)] ${FOCUS_RING} ${
@@ -442,7 +447,7 @@ export function SessionSidebar({
 					>
 						<path d="M3 12h4l3-8 4 16 3-8h4" />
 					</svg>
-					我的用量
+					{t("views.usage")}
 				</button>
 			</div>
 		</aside>

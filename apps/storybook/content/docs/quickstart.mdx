@@ -56,8 +56,9 @@ curl http://localhost:8787/healthz
 健康检查只证明服务已启动，真实百炼凭据和云端对话仍需在实际使用时验证。
 
 后续启动继续执行 `pnpm start`。需要指定目标时使用 `pnpm start server web`；
-开发者也可使用 `pnpm dev` 启动默认四个目标（包含文档站 `:3000`），或用
-`pnpm dev server web console` 只起应用。`pnpm setup` 是可选的 Git hooks 安装命令，不负责生成配置。
+开发者也可使用 `pnpm dev` 启动默认四个目标（server / web / web-vue / console），
+文档站用 `pnpm dev storybook` 单独启动；或用 `pnpm dev server web console` 只起应用。
+`pnpm setup` 是可选的 Git hooks 安装命令，不负责生成配置。
 
 ## 接下来
 

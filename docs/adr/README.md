@@ -10,7 +10,7 @@
 | [0003](./0003-node-sqlite-catalog-store.md) | 默认 SQLite，可配置 MySQL 或 PostgreSQL，共用表结构及迁移历史（见状态更新） |
 | [0004](./0004-webview-shell-strategy.md) | 桌面与移动壳复用 Web 产物（历史；原生壳已退役） |
 | [0005](./0005-copy-in-elements-registry.md) | elements 采用 copy-in registry 形态 |
-| [0006](./0006-session-snapshot-stream.md) | 会话快照流、独立变更游标与工具审批使用协议 v2 |
+| [0006](./0006-session-snapshot-stream.md) | 会话快照、独立变更游标与工具审批，历史交付由 ADR-0028 更新 |
 | [0007](./0007-custom-bailian-chat-provider.md) | ChatProvider 接入自建百炼后端，原始 SSE 转换复用 SDK |
 | [0008](./0008-stream-request-provider-chat.md) | Stream、Request、Provider、Chat 四层运行时与原始后端操作配置 |
 | [0009](./0009-provider-message-transform.md) | Provider 定义消息转换策略，Chat 持有事件快照和会话状态 |
@@ -32,4 +32,8 @@
 | [0025](./0025-console-owns-admin-client.md) | 管理端持有控制面客户端，SDK 仅公开通用调用状态 |
 | [0026](./0026-sdk-feature-modules.md) | SDK 按功能划分公开入口与 hooks |
 | [0027](./0027-skills-source-and-generated-output.md) | Skill 改为源目录 + 生成物，不再作为 workspace 包；状态更新改用中文内容 |
-| [0028](./0028-keycloak-member-oidc.md) | 员工 OIDC 信任 Keycloak access token，并显式绑定已有成员 |
+| [0028](./0028-split-session-history-stream.md) | 员工与调试会话独立分页历史和实时 SSE，协议 v3 |
+| [0029](./0029-dual-framework-vue-implementation.md) | Web 体验提供 Vue 3 平行实现：SDK hooks-vue、chat-ui-vue、web-vue，按 L2 等价验收 |
+| [0030](./0030-chat-ui-npm-package.md) | chat-ui 以 npm 整包发布：单包公共 npm、零 SDK runtime 依赖，copy-in 并存 |
+| [0031](./0031-one-way-capability-parity.md) | 业务侧能力单向对齐开源侧：业务侧功能集 ⊆ 开源侧功能集 |
+| [0032](./0032-keycloak-member-oidc.md) | 员工 OIDC 信任 Keycloak access token，并显式绑定已有成员 |

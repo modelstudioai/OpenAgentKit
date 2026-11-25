@@ -15,10 +15,15 @@ export const ERROR_CODES = [
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
 
+/** UI 可按 message_key 查词表；message 继续作为日志和旧客户端兜底。 */
+export type KitErrorMessageParams = Record<string, string | number | boolean | null>;
+
 export interface KitErrorBody {
 	error: {
 		code: ErrorCode;
 		message: string;
+		message_key?: string;
+		message_params?: KitErrorMessageParams;
 		details?: unknown;
 		retryable?: boolean;
 	};
@@ -27,18 +32,28 @@ export interface KitErrorBody {
 export class KitError extends Error {
 	readonly code: ErrorCode;
 	readonly details?: unknown;
+	readonly messageKey?: string;
+	readonly messageParams?: KitErrorMessageParams;
 	readonly retryable: boolean;
 	readonly status: number;
 
 	constructor(
 		code: ErrorCode,
 		message: string,
-		options: { details?: unknown; retryable?: boolean; status?: number } = {},
+		options: {
+			details?: unknown;
+			messageKey?: string;
+			messageParams?: KitErrorMessageParams;
+			retryable?: boolean;
+			status?: number;
+		} = {},
 	) {
 		super(message);
 		this.name = "KitError";
 		this.code = code;
 		this.details = options.details;
+		this.messageKey = options.messageKey;
+		this.messageParams = options.messageParams;
 		this.retryable = options.retryable ?? false;
 		this.status = options.status ?? httpStatusFor(code);
 	}
@@ -48,6 +63,8 @@ export class KitError extends Error {
 			error: {
 				code: this.code,
 				message: this.message,
+				...(this.messageKey !== undefined ? { message_key: this.messageKey } : {}),
+				...(this.messageParams !== undefined ? { message_params: this.messageParams } : {}),
 				...(this.details !== undefined ? { details: this.details } : {}),
 				retryable: this.retryable,
 			},
@@ -106,8 +123,14 @@ export async function errorFromResponse(response: Response): Promise<KitError> {
 		body = null;
 	}
 	if (isKitErrorBody(body)) {
-		const { code, message, details, retryable } = body.error;
-		return new KitError(code, message, { details, retryable, status: response.status });
+		const { code, message, message_key, message_params, details, retryable } = body.error;
+		return new KitError(code, message, {
+			details,
+			messageKey: message_key,
+			messageParams: message_params,
+			retryable,
+			status: response.status,
+		});
 	}
 	const fallback: ErrorCode =
 		response.status === 401

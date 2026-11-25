@@ -35,7 +35,10 @@ export function createKeycloakAdmin(file) {
 }
 
 function newOidcClient({ clientId, audience, webPort }) {
-	const origins = [`http://localhost:${webPort}`, `http://127.0.0.1:${webPort}`];
+	const origins = [...new Set([webPort, 5175])].flatMap((port) => [
+		`http://localhost:${port}`,
+		`http://127.0.0.1:${port}`,
+	]);
 	return {
 		clientId,
 		protocol: "openid-connect",

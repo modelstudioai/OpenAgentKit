@@ -1,6 +1,8 @@
 import type { UsageLimitConfig } from "@openagentkit/sdk/protocol";
 import { Alert, Button, Input, Modal, Segmented } from "antd";
+import type { TFunction } from "i18next";
 import { useId, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";
 
 import styles from "./usage.module.less";
@@ -13,21 +15,18 @@ const periodFields = (period: LimitPeriod) =>
 		? ({ tokens: "monthly_tokens", seconds: "monthly_active_seconds" } as const)
 		: ({ tokens: "daily_tokens", seconds: "daily_active_seconds" } as const);
 
-export function formatLimit(value: number | null, unit: string) {
-	return value === null ? "不限量" : `${value.toLocaleString("zh-CN", { maximumFractionDigits: 6 })} ${unit}`;
+export function formatLimit(value: number | null, unit: string, t: TFunction<"usage">) {
+	return value === null ? t("unlimited") : `${value.toLocaleString("zh-CN", { maximumFractionDigits: 6 })} ${unit}`;
 }
 
-export function limitsDescription(limits: UsageLimitConfig) {
+export function limitsDescription(limits: UsageLimitConfig, t: TFunction<"usage">) {
 	return [
-		`每月 Token（输入 + 输出）：${formatLimit(limits.monthly_tokens, "Token")}`,
-		`每月运行时长：${formatLimit(limits.monthly_active_seconds, "秒")}`,
-		`每日 Token（输入 + 输出）：${formatLimit(limits.daily_tokens, "Token")}`,
-		`每日运行时长：${formatLimit(limits.daily_active_seconds, "秒")}`,
+		t("limits.monthlyTokens", { value: formatLimit(limits.monthly_tokens, "Token", t) }),
+		t("limits.monthlySeconds", { value: formatLimit(limits.monthly_active_seconds, t("unitSeconds"), t) }),
+		t("limits.dailyTokens", { value: formatLimit(limits.daily_tokens, "Token", t) }),
+		t("limits.dailySeconds", { value: formatLimit(limits.daily_active_seconds, t("unitSeconds"), t) }),
 	].join("\n");
 }
-
-export const usageLimitNotice =
-	"按 UTC 统计：月度每轮归开始月，日度增量归采集确认日，均不回填启用前的历史。Token 为输入 + 输出，不额外累加缓存 Token；运行时长只统计执行时间。月度与日度独立生效，任一周期、任一指标达到限额即拦截后续发送；正在执行的一轮可能超限，不会强制停止。日度上限未设置时跟随月度上限约束，两者都未设置才不限量；日度上限不能高于月度上限。";
 
 type PendingChange = { kind: "save"; limits: UsageLimitConfig } | { kind: "reset"; limits: UsageLimitConfig };
 
@@ -36,23 +35,22 @@ function confirmBody(
 	title: string,
 	initial: UsageLimitConfig,
 	limits: UsageLimitConfig,
+	t: TFunction<"usage">,
 	mutationError?: string | null,
 ) {
-	return `修改前：\n${limitsDescription(initial)}\n\n修改后：\n${limitsDescription(limits)}\n\n${
+	const effect =
 		kind === "reset"
-			? "删除该成员的个人设置，之后跟随默认限额。"
-			: title === "默认限额"
-				? "影响所有跟随默认限额的成员；个人设置不变。"
-				: "为该成员保存个人限额，月度与日度设置整体覆盖默认值。"
-	}
-
-${usageLimitNotice}${
-	mutationError
-		? `
-
-保存失败：${mutationError}`
-		: ""
-}`;
+			? t("confirm.resetEffect")
+			: title === t("editor.defaultTitle")
+				? t("confirm.defaultEffect")
+				: t("confirm.memberEffect");
+	return t("confirm.body", {
+		before: limitsDescription(initial, t),
+		after: limitsDescription(limits, t),
+		effect,
+		notice: t("limitNotice"),
+		errorSuffix: mutationError ? t("confirm.errorSuffix", { message: mutationError }) : "",
+	});
 }
 
 /** 校验当前周期输入并生成完整限额草稿；校验失败返回错误文案。 */
@@ -61,6 +59,7 @@ function buildDraft(
 	period: LimitPeriod,
 	tokens: string,
 	hours: string,
+	t: TFunction<"usage">,
 ): { limits: UsageLimitConfig } | { error: string } {
 	const tokenText = tokens.trim();
 	const hourText = hours.trim();
@@ -71,9 +70,9 @@ function buildDraft(
 	const unchangedSeconds = hours === (initialSeconds === null ? "" : String(initialSeconds / 3600));
 	const seconds = hourText ? (unchangedSeconds ? initialSeconds : Number(hourText) * 3600) : null;
 	if (tokenValue !== null && (!/^\d+$/.test(tokenText) || !Number.isSafeInteger(tokenValue)))
-		return { error: "Token 限额须为非负安全整数，留空表示不限量。" };
+		return { error: t("validation.tokenNonNegative") };
 	if (seconds !== null && (!Number.isFinite(seconds) || seconds < 0))
-		return { error: "运行时长须为非负小时数，留空表示不限量。" };
+		return { error: t("validation.secondsNonNegative") };
 	return { limits: { ...initial, [fields.tokens]: tokenValue, [fields.seconds]: seconds } };
 }
 
@@ -85,14 +84,15 @@ export function LimitPeriodTabs({
 	period: LimitPeriod;
 	onChange: (period: LimitPeriod) => void;
 }) {
+	const { t } = useTranslation("usage");
 	return (
 		<Segmented
-			aria-label="限额周期"
+			aria-label={t("period.aria")}
 			value={period}
 			onChange={(value) => onChange(value as LimitPeriod)}
 			options={[
-				{ label: "按月", value: "month" },
-				{ label: "按日", value: "day" },
+				{ label: t("period.monthTab"), value: "month" },
+				{ label: t("period.dayTab"), value: "day" },
 			]}
 		/>
 	);
@@ -116,6 +116,7 @@ export function UsageLimitEditor({
 	onReset?: () => Promise<unknown>;
 	onClose: () => void;
 }) {
+	const { t } = useTranslation("usage");
 	const id = useId();
 	const [period, setPeriod] = useState<LimitPeriod>("month");
 	/** 指定周期的原始配置值（hourText 未改动时保持原秒数，避免小时换算丢精度）。 */
@@ -148,7 +149,7 @@ export function UsageLimitEditor({
 		setValidationError(null);
 	};
 	const prepare = () => {
-		const result = buildDraft(initial, period, tokens, hours);
+		const result = buildDraft(initial, period, tokens, hours, t);
 		if ("error" in result) {
 			setValidationError(result.error);
 			return;
@@ -167,16 +168,16 @@ export function UsageLimitEditor({
 				}}
 			>
 				<div className={styles.periodRow}>
-					<span className={styles.rowLabel}>周期</span>
+					<span className={styles.rowLabel}>{t("period.rowLabel")}</span>
 					<LimitPeriodTabs period={period} onChange={switchPeriod} />
 				</div>
 				<div className={styles.fieldsGrid}>
 					<label htmlFor={`${id}-tokens`} className={styles.fieldLabel}>
-						{period === "month" ? "每月" : "每日"} Token 上限（输入 + 输出）
+						{t("editor.tokensLabel", { period: period === "month" ? t("period.month") : t("period.day") })}
 						<Input
 							id={`${id}-tokens`}
 							inputMode="numeric"
-							placeholder="不限量"
+							placeholder={t("unlimited")}
 							value={tokens}
 							disabled={mutation.pending}
 							onChange={(event) => setTokens(event.target.value)}
@@ -184,11 +185,11 @@ export function UsageLimitEditor({
 						/>
 					</label>
 					<label htmlFor={`${id}-hours`} className={styles.fieldLabel}>
-						{period === "month" ? "每月" : "每日"}运行时长上限（小时）
+						{t("editor.hoursLabel", { period: period === "month" ? t("period.month") : t("period.day") })}
 						<Input
 							id={`${id}-hours`}
 							inputMode="decimal"
-							placeholder="不限量"
+							placeholder={t("unlimited")}
 							value={hours}
 							disabled={mutation.pending}
 							onChange={(event) => setHours(event.target.value)}
@@ -196,39 +197,37 @@ export function UsageLimitEditor({
 						/>
 					</label>
 				</div>
-				<p className={styles.hintText}>
-					当前周期两项分别留空表示不限量，0 表示不允许新增消耗；另一周期保持原值。小时数保存时换算为秒。
-				</p>
+				<p className={styles.hintText}>{t("editor.hint")}</p>
 				{validationError && <Alert type="error" showIcon message={validationError} />}
 				{mutation.error && !change && <Alert type="error" showIcon message={mutation.error} />}
 				<div className={styles.formActions}>
 					<Button type="primary" htmlType="submit" loading={mutation.pending}>
-						保存限额
+						{t("editor.save")}
 					</Button>
 					{canReset && onReset && (
 						<Button
 							disabled={mutation.pending || !defaults}
 							onClick={() => defaults && setChange({ kind: "reset", limits: defaults })}
 						>
-							恢复默认
+							{t("editor.restore")}
 						</Button>
 					)}
 					<Button disabled={mutation.pending} onClick={onClose}>
-						取消编辑
+						{t("editor.cancel")}
 					</Button>
 				</div>
 			</form>
 			{change && (
 				<Modal
-					title={change.kind === "reset" ? "确认恢复默认限额" : `确认${title}`}
+					title={change.kind === "reset" ? t("confirm.titleReset") : t("confirm.titleSave", { title })}
 					open
-					okText={change.kind === "reset" ? "确认恢复" : "确认保存"}
+					okText={change.kind === "reset" ? t("confirm.okReset") : t("confirm.okSave")}
 					confirmLoading={mutation.pending}
 					onOk={() => void mutation.run(change).catch(() => undefined)}
 					onCancel={() => setChange(null)}
 				>
 					<p className={styles.confirmBodyText}>
-						{confirmBody(change.kind, title, initial, change.limits, mutation.error)}
+						{confirmBody(change.kind, title, initial, change.limits, t, mutation.error)}
 					</p>
 				</Modal>
 			)}

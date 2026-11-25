@@ -33,9 +33,9 @@ export const KitRuntimeConfigSchema = z.object({
 });
 export type KitRuntimeConfig = z.infer<typeof KitRuntimeConfigSchema>;
 
-export const PROTOCOL_VERSION = "2.0.0";
+export const PROTOCOL_VERSION = "3.0.0";
 export const PROTOCOL_VERSION_HEADER = "x-kit-protocol-version";
 
 export function isProtocolCompatible(version: string): boolean {
-	return /^2\./.test(version);
+	return /^3\./.test(version);
 }

@@ -29,4 +29,4 @@ pnpm kit:add activity-heatmap
 
 源码入口为 [index.tsx](index.tsx)。copy-in 会保留目录层级并带入 registry 声明的依赖；主题接入见文档站。
 
-完整用法与参数见[文档站对应页面](../../../../../apps/storybook/content/docs/components/plaza.mdx)；全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。
+完整用法与参数见[活跃热力图文档](../../../../../apps/storybook/content/docs/components/plaza/activity-heatmap.mdx)。全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。

@@ -11,7 +11,7 @@ import type {
 } from "../../protocol/index.ts";
 import { KitError } from "../../protocol/index.ts";
 import type { RequestClient } from "../../request/index.ts";
-import type { ChatProvider, ThreadQueryOptions } from "../contract.ts";
+import type { ChatProvider, EventQueryOptions, ThreadQueryOptions } from "../contract.ts";
 import {
 	type BackendOperation,
 	type BackendRequestContext,
@@ -29,7 +29,9 @@ export interface SessionEventStreamOperation {
 
 export interface SessionEventChatProviderOptions {
 	request: RequestClient;
-	/** 标准 SessionEvent 与 reset/ready/event/ping/done/error 控制帧。 */
+	/** 升序历史分页，单独于实时订阅。 */
+	listEvents: BackendOperation<{ sessionId: string } & Omit<EventQueryOptions, "signal">, EventsPage>;
+	/** 实时 SessionEvent 与 reset/ready/event/ping/done/error 控制帧。 */
 	stream: SessionEventStreamOperation;
 	sendMessage: BackendOperation<{ sessionId: string; body: SendMessageRequest }, SendMessageResponse>;
 	interrupt: BackendOperation<{ sessionId: string }, { interrupted: boolean }>;
@@ -43,7 +45,9 @@ export interface SessionEventChatProviderOptions {
 }
 
 /** 已转换事件的后端接入；路径、鉴权、请求和 JSON 包装均由调用方配置。 */
-export function createSessionEventChatProvider(options: SessionEventChatProviderOptions): ChatProvider {
+export function createSessionEventChatProvider(
+	options: SessionEventChatProviderOptions,
+): ChatProvider & Required<Pick<ChatProvider, "listEvents">> {
 	for (const key of ["connectTimeoutMs", "idleTimeoutMs"] as const) {
 		const value = options[key];
 		if (value !== undefined && (!Number.isSafeInteger(value) || value < 1))
@@ -51,6 +55,14 @@ export function createSessionEventChatProvider(options: SessionEventChatProvider
 	}
 	return {
 		transformMessage: options.transformMessage ?? transformSessionEvent,
+		async listEvents(sessionId, { signal, ...query } = {}) {
+			const scope = new AbortScope(signal);
+			try {
+				return await executeOperation(options.request, options.listEvents, { sessionId, ...query }, scope);
+			} finally {
+				scope.dispose();
+			}
+		},
 		...(options.listThreads
 			? {
 					async listThreads(sessionId: string, query: ThreadQueryOptions = {}) {

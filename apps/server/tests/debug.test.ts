@@ -17,7 +17,7 @@ afterEach(() => {
 const headers = {
 	authorization: "Bearer debug-admin",
 	"content-type": "application/json",
-	"x-kit-protocol-version": "2.0.0",
+	"x-kit-protocol-version": "3.0.0",
 };
 const other = { ...headers, authorization: "Bearer other-admin" };
 const auditor = { ...headers, authorization: "Bearer auditor" };
@@ -148,7 +148,7 @@ describe("管理员调试合同", () => {
 		).toBe(404);
 		expect((await app.request(createPath, { method: "POST", headers: auditor, body: "{}" })).status).toBe(403);
 		// 相同 subject 的员工身份也不能访问调试域，不能靠管理员前缀作为隔离。
-		const employee = { cookie: `kit_subject=${identity.subject}`, "x-kit-protocol-version": "2.0.0" };
+		const employee = { cookie: `kit_subject=${identity.subject}`, "x-kit-protocol-version": "3.0.0" };
 		expect((await app.request(`/api/kit/sessions/${session.session_id}`, { headers: employee })).status).toBe(404);
 		expect((await app.request(`/api/kit/sessions/${session.session_id}/stream`, { headers: employee })).status).toBe(
 			404,
@@ -170,13 +170,16 @@ describe("管理员调试合同", () => {
 		expect(createRemote).not.toHaveBeenCalled();
 	});
 
-	it("调试 SSE 使用 Kit ready/after 协议，缺版本拒绝且重新连接不发送新消息", async () => {
+	it("调试历史分页独立，SSE 就绪和游标失效都不读取历史", async () => {
 		const { app, create, services } = setup();
 		const session = await create();
 		const path = `/api/admin/debug/sessions/${session.session_id}`;
 		expect((await app.request(`${path}/stream`, { headers: { authorization: headers.authorization } })).status).toBe(
 			409,
 		);
+		expect(
+			(await app.request(`${path}/stream`, { headers: { ...headers, "x-kit-protocol-version": "2.0.0" } })).status,
+		).toBe(409);
 		expect(
 			(
 				await app.request(`${path}/messages`, {
@@ -195,18 +198,25 @@ describe("管理员调试合同", () => {
 				})
 			).status,
 		).toBe(202);
+		await vi.waitFor(async () => expect((await services.gateway.getSession(session.session_id))?.status).toBe("idle"));
 		const send = vi.spyOn(services.gateway, "sendMessage");
+		const list = vi.spyOn(services.gateway, "listEvents");
 		const first = await readUntilReady(await app.request(`${path}/stream`, { headers }));
-		expect(first).toContain("event: reset");
-		const cursor = /"cursor":"([^"]+)"/.exec(first)?.[1];
-		expect(cursor).toBeTruthy();
+		expect(first).toContain("event: ready");
+		expect(first).not.toContain("event: event");
+		const cursor = "expired:1";
 		const resumed = await readUntilReady(
-			await app.request(`${path}/stream?after=${encodeURIComponent(cursor!)}`, { headers }),
+			await app.request(`${path}/stream?after=${encodeURIComponent(cursor)}`, { headers }),
 		);
+		expect(resumed).toContain("event: reset");
 		expect(resumed).toContain("event: ready");
 		expect(resumed).toContain(`"after":"${cursor}"`);
+		expect(resumed).not.toContain("event: event");
 		expect(send).not.toHaveBeenCalled();
-		expect((await app.request(`${path}/events`, { headers })).status).toBe(200);
+		expect(list).not.toHaveBeenCalled();
+		const history = await app.request(`${path}/events`, { headers });
+		expect(history.status).toBe(200);
+		expect(await history.text()).toContain("approval");
 		expect(await services.audit.list()).toEqual([]);
 	});
 

@@ -5,11 +5,15 @@ import type { ChatProvider } from "@openagentkit/sdk/providers";
 import { KitProvider } from "@openagentkit/sdk/providers/kit/react";
 import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui";
 import { type ReactNode, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { resolveServerErrorMessage } from "../../i18n/server-error.ts";
 import { MemberLoginForm } from "./member-login-form.tsx";
 
 export interface MemberAccountProps {
 	member: MemberView | null;
 	onLogout: () => Promise<void>;
+	/** 账号菜单底部附加控件（如语言切换），由宿主布局注入。 */
+	languageControl?: ReactNode;
 }
 
 export interface MemberExperienceProps extends MemberAccountProps {
@@ -24,26 +28,28 @@ export function MemberAuthGate({
 	controller: MemberAuthController;
 	children: (account: MemberExperienceProps) => ReactNode;
 }) {
+	const { t } = useTranslation("auth");
 	const auth = useMemberAuth(controller);
 	if (auth.status === "checking") {
 		return (
 			<main className="flex min-h-full min-w-0 items-center justify-center">
-				<EmptyState title="正在恢复登录状态…" loading />
+				<EmptyState title={t("restoring")} loading />
 			</main>
 		);
 	}
 	if (auth.client && (auth.status === "signed-in" || auth.status === "anonymous")) {
-		if (!auth.chatProvider) return <ErrorState message="未配置示例后端的 ChatProvider" />;
+		if (!auth.chatProvider) return <ErrorState message={t("missingProvider")} />;
 		return (
 			<KitProvider key={auth.generation} client={auth.client}>
 				{children({ member: auth.member, onLogout: auth.logout, chatProvider: auth.chatProvider })}
 			</KitProvider>
 		);
 	}
+	const error = auth.errorDetail ? (resolveServerErrorMessage(auth.errorDetail) ?? auth.error) : auth.error;
 	return (
 		<MemberLoginForm
 			pending={auth.pending}
-			error={auth.error}
+			error={error}
 			onLogin={auth.login}
 			onOidcLogin={controller.mode === "oidc" ? controller.loginWithOidc : undefined}
 			onRetry={auth.retry}
@@ -52,13 +58,14 @@ export function MemberAuthGate({
 }
 
 /** 账号区：头像旁常驻展示用户名，hover（桌面）或点击头像（触屏/键盘）展开浮层展示用户名与退出登录。 */
-export function MemberAccount({ member, onLogout }: MemberAccountProps) {
+export function MemberAccount({ member, onLogout, languageControl }: MemberAccountProps) {
+	const { t } = useTranslation("auth");
 	const [open, setOpen] = useState(false);
 	return (
 		<div className="group relative flex min-h-10 min-w-0 items-center justify-end">
 			<button
 				type="button"
-				aria-label={member ? `账号：${member.display_name}` : "账号信息"}
+				aria-label={member ? t("accountAria", { name: member.display_name }) : t("accountInfo")}
 				aria-expanded={open}
 				className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-full border border-[var(--kit-border)] bg-[var(--kit-surface)] text-[var(--kit-fg-muted)] transition-colors hover:bg-[var(--kit-nav-active)] hover:text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
 				onClick={() => setOpen((value) => !value)}
@@ -98,8 +105,11 @@ export function MemberAccount({ member, onLogout }: MemberAccountProps) {
 						className="min-w-0 truncate whitespace-nowrap text-[length:var(--kit-text-label)] font-medium"
 						title={member?.username}
 					>
-						{member?.display_name ?? "默认用户"}
+						{member?.display_name ?? t("defaultUser")}
 					</span>
+					{languageControl ? (
+						<div className="border-t border-[var(--kit-border-subtle)] pt-2">{languageControl}</div>
+					) : null}
 					{member ? (
 						<button
 							type="button"
@@ -121,7 +131,7 @@ export function MemberAccount({ member, onLogout }: MemberAccountProps) {
 							>
 								<path d="M10 4H5v16h5M9 12h11m-4-4 4 4-4 4" />
 							</svg>
-							退出登录
+							{t("logout")}
 						</button>
 					) : null}
 				</div>

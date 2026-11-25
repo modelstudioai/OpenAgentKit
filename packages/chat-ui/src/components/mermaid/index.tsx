@@ -1,6 +1,8 @@
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Actions } from "../actions/index.tsx";
 import { CodeHighlighter } from "../code-highlighter/index.tsx";
+import { resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
+import mermaidStrings, { type MermaidStrings } from "./strings.ts";
 
 export interface MermaidProps {
 	children: string;
@@ -10,6 +12,8 @@ export interface MermaidProps {
 	copyable?: boolean;
 	streaming?: boolean;
 	onRenderTypeChange?: (value: "image" | "code") => void;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<MermaidStrings>;
 }
 
 // Mermaid 的配置是模块级状态；串行初始化与渲染，避免多个图表互相覆盖主题。
@@ -82,13 +86,15 @@ async function renderDiagram(source: string, element: HTMLElement, active: () =>
 /** 严格模式的图表/源码双视图。流式未完成时展示源码，更新后自动恢复渲染。 */
 export function Mermaid({
 	children,
-	header = "Mermaid 图表",
+	header,
 	className,
 	defaultRenderType = "image",
 	copyable = true,
 	streaming = false,
 	onRenderTypeChange,
+	strings: stringsOverride,
 }: MermaidProps) {
+	const strings = resolveStrings(mermaidStrings, useKitLocale(), stringsOverride);
 	const root = useRef<HTMLElement>(null);
 	const panelId = useId();
 	const [renderType, setRenderType] = useState(defaultRenderType);
@@ -130,11 +136,13 @@ export function Mermaid({
 		<section
 			ref={root}
 			data-mermaid
-			aria-label="Mermaid 图表"
+			aria-label={strings.header}
 			className={`my-2 min-w-0 overflow-hidden rounded-[var(--kit-radius-sm)] border border-[var(--kit-border)] bg-[var(--kit-bg)] text-[var(--kit-fg)] ${className ?? ""}`}
 		>
 			<div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--kit-border)] bg-[var(--kit-bg-subtle)] px-3 py-1.5 text-xs">
-				{header != null && <div className="min-w-0 truncate text-[var(--kit-fg-muted)]">{header}</div>}
+				{header !== false && (
+					<div className="min-w-0 truncate text-[var(--kit-fg-muted)]">{header ?? strings.header}</div>
+				)}
 				<div className="flex items-center gap-1">
 					{(["image", "code"] as const).map((type) => (
 						<button
@@ -148,32 +156,32 @@ export function Mermaid({
 							}}
 							className="rounded-[var(--kit-radius-sm)] px-2 py-1 text-[var(--kit-fg-muted)] hover:bg-[var(--kit-bg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-accent)] aria-pressed:bg-[var(--kit-bg)] aria-pressed:text-[var(--kit-accent)]"
 						>
-							{type === "image" ? "图表" : "源码"}
+							{type === "image" ? strings.chart : strings.source}
 						</button>
 					))}
-					{copyable && <Actions.Copy text={children} label="复制图表源码" />}
+					{copyable && <Actions.Copy text={children} label={strings.copySource} />}
 				</div>
 			</div>
 			<div id={panelId} className="p-3">
 				{hasResources && (
 					<p role="status" className="mb-2 text-sm text-[var(--kit-fg-muted)]">
-						图片节点、嵌入资源及扩展节点语法仅显示源码。
+						{strings.resourceNotice}
 					</p>
 				)}
 				{streaming && (
 					<p role="status" className="mb-2 text-sm text-[var(--kit-fg-muted)]">
-						图表生成中，先显示源码。
+						{strings.streamingNotice}
 					</p>
 				)}
 				{current?.error && renderType === "image" && !streaming && (
 					<div role="alert" className="mb-2 flex flex-wrap items-center gap-2 text-sm text-[var(--kit-fg-muted)]">
-						<span>图表暂时无法渲染，请检查源码。</span>
+						<span>{strings.renderError}</span>
 						<button
 							type="button"
 							onClick={() => setRevision((value) => value + 1)}
 							className="text-[var(--kit-accent)] underline underline-offset-2"
 						>
-							重新渲染
+							{strings.rerender}
 						</button>
 					</div>
 				)}
@@ -183,11 +191,11 @@ export function Mermaid({
 					</CodeHighlighter>
 				) : current?.image ? (
 					<div className="overflow-x-auto">
-						<img src={current.image} alt="Mermaid 图表" className="mx-auto block max-w-full" />
+						<img src={current.image} alt={strings.header} className="mx-auto block max-w-full" />
 					</div>
 				) : (
 					<p role="status" className="text-sm text-[var(--kit-fg-muted)]">
-						正在渲染图表…
+						{strings.rendering}
 					</p>
 				)}
 			</div>

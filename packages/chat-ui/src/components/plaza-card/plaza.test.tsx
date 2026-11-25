@@ -2,6 +2,7 @@ import type { PlazaEntry } from "@openagentkit/sdk/protocol";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { PlazaCard, relativeUsedLabel } from "../plaza/index.ts";
+import plazaCardStrings from "./strings.ts";
 
 const ALL_ON = { streaming: true, fileUpload: true, artifacts: true, threads: true, reasoning: true };
 
@@ -68,8 +69,9 @@ describe("relativeUsedLabel", () => {
 	// now 注入后用本地构造日期，断言与时区无关。
 	it("按本地日历日差给出今天/昨天/N 天前", () => {
 		const now = new Date(2026, 10, 2, 12, 0, 0);
-		expect(relativeUsedLabel(new Date(2026, 10, 2, 0, 30).toISOString(), now)).toBe("今天使用过");
-		expect(relativeUsedLabel(new Date(2026, 10, 1, 20, 0).toISOString(), now)).toBe("昨天使用过");
-		expect(relativeUsedLabel(new Date(2026, 9, 30, 3, 0).toISOString(), now)).toBe("3 天前使用过");
+		const strings = plazaCardStrings["zh-CN"];
+		expect(relativeUsedLabel(new Date(2026, 10, 2, 0, 30).toISOString(), strings, now)).toBe("今天使用过");
+		expect(relativeUsedLabel(new Date(2026, 10, 1, 20, 0).toISOString(), strings, now)).toBe("昨天使用过");
+		expect(relativeUsedLabel(new Date(2026, 9, 30, 3, 0).toISOString(), strings, now)).toBe("3 天前使用过");
 	});
 });

@@ -47,16 +47,20 @@ export function CategoryTabs({
 	categories,
 	active,
 	onChange,
+	strings: stringsOverride,
 }: {
 	categories: { id: PlazaCategory; name: string; count: number }[];
 	active: PlazaTabId;
 	onChange: (next: PlazaTabId) => void;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<CategoryTabsStrings>;
 }) {
-	const tabs: { id: PlazaTabId; name: string }[] = [{ id: "featured", name: "精选" }, ...categories];
+	const strings = resolveStrings(categoryTabsStrings, useKitLocale(), stringsOverride);
+	const tabs: { id: PlazaTabId; name: string }[] = [{ id: "featured", name: strings.featured }, ...categories];
 	return (
 		<div
 			role="tablist"
-			aria-label="广场分类"
+			aria-label={strings.aria}
 			onKeyDown={(event) => moveCategoryFocus(event, tabs, onChange)}
 			className="flex min-w-0 gap-2 overflow-x-auto py-1"
 		>
@@ -83,3 +87,6 @@ export function CategoryTabs({
 		</div>
 	);
 }
+
+import { resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
+import categoryTabsStrings, { type CategoryTabsStrings } from "./strings.ts";

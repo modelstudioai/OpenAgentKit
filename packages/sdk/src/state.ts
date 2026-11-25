@@ -23,7 +23,17 @@ export function createObservable<T>(initial: T) {
 	};
 }
 
-const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
+type ErrorMessageResolver = (error: unknown) => string | undefined;
+
+let errorMessageResolver: ErrorMessageResolver | undefined;
+
+/** 宿主可注册错误文案解析器（如按 KitError.code 查本地词表）；返回 undefined 时沿用原 message。 */
+export function setKitErrorMessageResolver(resolver: ErrorMessageResolver | undefined) {
+	errorMessageResolver = resolver;
+}
+
+const message = (error: unknown) =>
+	errorMessageResolver?.(error) ?? (error instanceof Error ? error.message : String(error));
 
 /** 查询按请求代次隔离迟到结果；查询失败保留同一目标最近成功的快照。 */
 export function createQuery<T>(load: (signal: AbortSignal) => Promise<T>) {

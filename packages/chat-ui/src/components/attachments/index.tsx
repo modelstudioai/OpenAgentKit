@@ -1,6 +1,8 @@
 import { forwardRef, type ReactNode, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FileCard } from "../file-card/index.tsx";
+import { format, resolveStrings, useKitLocale } from "../kit-i18n/index.ts";
+import attachmentsStrings, { type AttachmentsStrings } from "./strings.ts";
 
 export interface AttachmentItem {
 	uid: string;
@@ -18,6 +20,8 @@ export interface AttachmentFileCardProps {
 	onRemove?: (item: AttachmentItem) => void;
 	disabled?: boolean;
 	className?: string;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<AttachmentsStrings>;
 }
 
 export interface AttachmentsPlaceholder {
@@ -45,6 +49,8 @@ export interface AttachmentsProps {
 	getDropContainer?: () => HTMLElement | null | undefined;
 	className?: string;
 	classNames?: Partial<Record<AttachmentsSemantic, string>>;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<AttachmentsStrings>;
 }
 
 export interface AttachmentsRef {
@@ -57,10 +63,11 @@ function cx(...names: Array<string | false | undefined>): string {
 	return names.filter(Boolean).join(" ");
 }
 
-const DEFAULT_PLACEHOLDER: Record<"inline" | "drop", AttachmentsPlaceholder> = {
-	inline: { title: "上传文件", description: "点击选择，或把文件拖放到这里" },
-	drop: { title: "松开即可添加文件" },
-};
+function defaultPlaceholder(type: "inline" | "drop", strings: AttachmentsStrings): AttachmentsPlaceholder {
+	return type === "inline"
+		? { title: strings.inlineTitle, description: strings.inlineDescription }
+		: { title: strings.dropTitle };
+}
 
 function PlaceholderBody({ placeholder }: { placeholder: AttachmentsPlaceholder }) {
 	return (
@@ -85,7 +92,14 @@ function PlaceholderBody({ placeholder }: { placeholder: AttachmentsPlaceholder 
 }
 
 /** 独立附件卡片；文件状态由调用方传入，上传中或禁用时不提供移除入口。 */
-export function AttachmentFileCard({ item, onRemove, disabled = false, className }: AttachmentFileCardProps) {
+export function AttachmentFileCard({
+	item,
+	onRemove,
+	disabled = false,
+	className,
+	strings: stringsOverride,
+}: AttachmentFileCardProps) {
+	const strings = resolveStrings(attachmentsStrings, useKitLocale(), stringsOverride);
 	const uploading = item.status === "uploading";
 	const failed = item.status === "error";
 	const removable = onRemove !== undefined && !uploading && !disabled;
@@ -100,16 +114,18 @@ export function AttachmentFileCard({ item, onRemove, disabled = false, className
 				description={
 					uploading ? (
 						<span className="flex flex-col">
-							{item.percent === undefined ? "上传中…" : `上传中 ${Math.round(item.percent)}%`}
+							{item.percent === undefined
+								? strings.uploading
+								: format(strings.uploadingPercent, { percent: Math.round(item.percent) })}
 							<progress
-								aria-label={`${item.name} 上传进度`}
+								aria-label={format(strings.progressAria, { name: item.name })}
 								max={100}
 								value={item.percent}
 								className="mt-1 h-1 w-full appearance-none overflow-hidden rounded-full [&::-moz-progress-bar]:bg-[var(--kit-accent)] [&::-webkit-progress-bar]:bg-[var(--kit-border)] [&::-webkit-progress-value]:bg-[var(--kit-accent)]"
 							/>
 						</span>
 					) : failed ? (
-						<div className="text-[var(--kit-danger)]">{item.description || "上传失败"}</div>
+						<div className="text-[var(--kit-danger)]">{item.description || strings.uploadFailed}</div>
 					) : (
 						item.description
 					)
@@ -118,7 +134,7 @@ export function AttachmentFileCard({ item, onRemove, disabled = false, className
 			{removable ? (
 				<button
 					type="button"
-					aria-label={`移除 ${item.name}`}
+					aria-label={format(strings.removeAria, { name: item.name })}
 					onClick={() => onRemove?.(item)}
 					className="absolute top-1 right-1 grid size-7 place-items-center rounded-[var(--kit-radius-sm)] text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)] hover:bg-[var(--kit-bg-subtle)] hover:text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
 				>
@@ -145,15 +161,17 @@ const AttachmentsBase = forwardRef<AttachmentsRef, AttachmentsProps>(function At
 		getDropContainer,
 		className,
 		classNames = {},
+		strings: stringsOverride,
 	},
 	ref,
 ) {
+	const strings = resolveStrings(attachmentsStrings, useKitLocale(), stringsOverride);
 	const rootRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const [dropTarget, setDropTarget] = useState<HTMLElement | null>(null);
 	const resolvePlaceholder = (type: "inline" | "drop") =>
 		(typeof placeholder === "function" ? placeholder(type) : type === "inline" ? placeholder : undefined) ??
-		DEFAULT_PLACEHOLDER[type];
+		defaultPlaceholder(type, strings);
 
 	const remaining = maxCount === undefined ? Number.POSITIVE_INFINITY : Math.max(0, maxCount - items.length);
 	const accepting = !disabled && remaining > 0 && Boolean(onPick || onSelectFiles);
@@ -270,12 +288,13 @@ const AttachmentsBase = forwardRef<AttachmentsRef, AttachmentsProps>(function At
 							onRemove={onRemove}
 							disabled={disabled}
 							className={classNames.item}
+							strings={strings}
 						/>
 					))}
 					{accepting ? (
 						<button
 							type="button"
-							aria-label="添加文件"
+							aria-label={strings.addFile}
 							onClick={select}
 							className="grid w-14 shrink-0 place-items-center rounded-[var(--kit-radius-sm)] border border-dashed border-[var(--kit-border)] text-[length:var(--kit-text-title)] text-[var(--kit-fg-muted)] hover:border-[var(--kit-accent)] hover:text-[var(--kit-accent)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--kit-focus)]"
 						>

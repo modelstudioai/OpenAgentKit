@@ -1,8 +1,10 @@
 import type { ChatAgentThread, ChatMultiAgent } from "@openagentkit/sdk/chat";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useRef, useState } from "react";
+import { format, resolveStrings, useKitLocale } from "../../kit-i18n/index.ts";
 import { ProcessSpinner } from "../step/index.tsx";
 import { formatDuration, isThreadRunning, StepRows, ThreadEventStates } from "../sub-agent-card/index.tsx";
+import subAgentPanelStrings, { type SubAgentPanelStrings } from "./strings.ts";
 
 /** 分区行首图标：与流内子 Agent 卡同款（执行流）。 */
 const FlowIcon = ({ className }: { className: string }) => (
@@ -33,9 +35,9 @@ function groupThreadsByName(threads: ChatAgentThread[]): SubAgentGroup[] {
 }
 
 /** 行尾元信息：运行中给进行中文案，失败给出错，完成给耗时。 */
-function taskMeta(thread: ChatAgentThread): string {
-	if (isThreadRunning(thread.status)) return "执行中";
-	if (thread.status === "failed") return "出错";
+function taskMeta(thread: ChatAgentThread, strings: SubAgentPanelStrings): string {
+	if (isThreadRunning(thread.status)) return strings.statusRunning;
+	if (thread.status === "failed") return strings.statusError;
 	return thread.createdAt && thread.endedAt
 		? formatDuration(Date.parse(thread.endedAt) - Date.parse(thread.createdAt))
 		: "";
@@ -45,21 +47,31 @@ const rowTransition =
 	"transition-colors duration-[var(--kit-duration-fast)] ease-[var(--kit-ease-out)] motion-reduce:transition-none";
 
 /** 弹窗头部状态文案：与卡头 HeadStatus 同词汇——失败给出错、运行中带逐秒计时、完成带耗时。 */
-function dialogStatusLabel(thread: ChatAgentThread, elapsed: string | null): string {
-	if (thread.status === "failed") return "执行出错";
-	if (isThreadRunning(thread.status)) return elapsed ? `正在执行 ${elapsed}` : "正在执行";
+function dialogStatusLabel(thread: ChatAgentThread, elapsed: string | null, strings: SubAgentPanelStrings): string {
+	if (thread.status === "failed") return strings.failed;
+	if (isThreadRunning(thread.status)) return elapsed ? format(strings.runningElapsed, { elapsed }) : strings.running;
 	const duration =
 		thread.createdAt && thread.endedAt
 			? formatDuration(Date.parse(thread.endedAt) - Date.parse(thread.createdAt))
 			: null;
-	return duration ? `已完成 · ${duration}` : "已完成";
+	return duration ? format(strings.completedWithDuration, { duration }) : strings.completed;
 }
 
 /**
  * 右栏「子 Agent」分区：当前会话用到的子 Agent 按展示名去重，展开看每次派发；
  * 点任务行打开执行记录弹窗（读子线程自身事件，不依赖主消息流加载）。无数据不渲染。
  */
-export function SubAgentPanel({ multiAgent, className = "" }: { multiAgent?: ChatMultiAgent; className?: string }) {
+export function SubAgentPanel({
+	multiAgent,
+	className = "",
+	strings: stringsOverride,
+}: {
+	multiAgent?: ChatMultiAgent;
+	className?: string;
+	/** 覆盖内置文案（键见 strings.ts）；语言由 KitLocaleProvider 提供，缺省 zh-CN。 */
+	strings?: Partial<SubAgentPanelStrings>;
+}) {
+	const strings = resolveStrings(subAgentPanelStrings, useKitLocale(), stringsOverride);
 	// 关闭只翻 open 位、保留 threadId：Radix 退出动画期间内容仍按最后线程渲染。
 	const [dialog, setDialog] = useState<{ open: boolean; threadId: string | null }>({ open: false, threadId: null });
 	const groups = multiAgent ? groupThreadsByName(multiAgent.threads) : [];
@@ -72,9 +84,11 @@ export function SubAgentPanel({ multiAgent, className = "" }: { multiAgent?: Cha
 					<summary
 						className={`-mx-2 flex min-w-0 cursor-pointer list-none select-none items-center gap-2 rounded-[var(--kit-radius-sm)] px-2 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] [&::-webkit-details-marker]:hidden ${rowTransition}`}
 					>
-						<span className="text-[length:var(--kit-text-label)] font-medium text-[var(--kit-fg-muted)]">子 Agent</span>
+						<span className="text-[length:var(--kit-text-label)] font-medium text-[var(--kit-fg-muted)]">
+							{strings.label}
+						</span>
 						<span className="text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)] tabular-nums">
-							· {groups.length}
+							{format(strings.dotCount, { count: groups.length })}
 						</span>
 						<svg
 							aria-hidden="true"
@@ -101,7 +115,7 @@ export function SubAgentPanel({ multiAgent, className = "" }: { multiAgent?: Cha
 											{group.name}
 										</span>
 										<span className="ml-auto shrink-0 text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)] tabular-nums">
-											{group.threads.length} 次
+											{format(strings.timesCount, { count: group.threads.length })}
 										</span>
 										<svg
 											aria-hidden="true"
@@ -135,10 +149,10 @@ export function SubAgentPanel({ multiAgent, className = "" }: { multiAgent?: Cha
 															/>
 														)}
 														<span className="min-w-0 flex-1 truncate text-[length:var(--kit-text-caption)] text-[var(--kit-fg-muted)]">
-															{thread.task ?? "未记录任务"}
+															{thread.task ?? strings.noTask}
 														</span>
 														<span className="shrink-0 text-[length:var(--kit-text-meta)] text-[var(--kit-fg-muted)] tabular-nums">
-															{taskMeta(thread)}
+															{taskMeta(thread, strings)}
 														</span>
 													</button>
 												</li>
@@ -153,6 +167,7 @@ export function SubAgentPanel({ multiAgent, className = "" }: { multiAgent?: Cha
 			) : null}
 			{active && multiAgent ? (
 				<SubAgentTaskDialog
+					strings={strings}
 					thread={active}
 					multiAgent={multiAgent}
 					open={dialog.open}
@@ -171,11 +186,13 @@ function SubAgentTaskDialog({
 	multiAgent,
 	open,
 	onClose,
+	strings,
 }: {
 	thread: ChatAgentThread;
 	multiAgent: ChatMultiAgent;
 	open: boolean;
 	onClose: () => void;
+	strings: SubAgentPanelStrings;
 }) {
 	const [container, setContainer] = useState<HTMLDivElement | null>(null);
 	const opener = useRef<HTMLElement | null>(null);
@@ -195,7 +212,7 @@ function SubAgentTaskDialog({
 		return () => window.clearInterval(timer);
 	}, [open, running]);
 	const elapsed = running && thread.createdAt ? formatDuration(Math.max(0, now - Date.parse(thread.createdAt))) : null;
-	const statusLabel = dialogStatusLabel(thread, elapsed);
+	const statusLabel = dialogStatusLabel(thread, elapsed, strings);
 	return (
 		<div ref={setContainer} className="contents">
 			<Dialog.Root open={open} onOpenChange={(next) => !next && onClose()}>
@@ -227,7 +244,7 @@ function SubAgentTaskDialog({
 									<Dialog.Close asChild>
 										<button
 											type="button"
-											aria-label="关闭"
+											aria-label={strings.close}
 											className={`grid size-6 shrink-0 place-items-center rounded-[var(--kit-radius-xs)] text-[var(--kit-fg-muted)] hover:bg-[var(--kit-bg-subtle)] hover:text-[var(--kit-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] ${rowTransition}`}
 										>
 											<svg
@@ -246,8 +263,8 @@ function SubAgentTaskDialog({
 								</header>
 								<div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4 pt-3">
 									<Dialog.Description className="max-h-40 overflow-y-auto pb-3 text-[length:var(--kit-text-label)] leading-[var(--kit-leading-body)] whitespace-pre-wrap [overflow-wrap:anywhere]">
-										<span className="text-[var(--kit-fg-muted)]">主 Agent 指令：</span>
-										{thread.task ?? "未记录任务"}
+										<span className="text-[var(--kit-fg-muted)]">{strings.mainTaskPrefix}</span>
+										{thread.task ?? strings.noTask}
 									</Dialog.Description>
 									<StepRows messages={thread.messages} />
 									<ThreadEventStates thread={thread} threadId={thread.id} multiAgent={multiAgent} />

@@ -1,4 +1,6 @@
 import { ProjectVaultCreateInputSchema, type RemoteVaultDetail } from "@openagentkit/sdk/protocol";
+import i18n from "i18next";
+import { localizedValidationMessage } from "../../lib/validation-message.ts";
 import { validateCatalogVaults } from "../catalog/catalog-vault-field.tsx";
 import type { TemplateVaultSelectionValue } from "./template-local-resources.tsx";
 import type { VaultCredentialDraft } from "./template-vault-credential-dialog.tsx";
@@ -65,6 +67,8 @@ export function vaultNeedsCreation(row: TemplateVaultDraft) {
 export const hasPendingVaults = (rows: TemplateVaultDraft[]) => rows.some(vaultNeedsCreation);
 
 export function vaultCreateInput(row: TemplateVaultDraft, revision: string) {
+	const t = i18n.getFixedT(null, "templates");
+	if (!(row.name ?? "").trim()) throw new Error(t("vault.errors.nameRequired"));
 	const credentials = row.creation?.credentials ?? row.configuration?.credentials ?? [];
 	const parsed = ProjectVaultCreateInputSchema.safeParse({
 		base_revision: revision,
@@ -74,15 +78,16 @@ export function vaultCreateInput(row: TemplateVaultDraft, revision: string) {
 	if (!parsed.success) {
 		const issue = parsed.error.issues[0];
 		if (row.configuration && issue?.path.at(-1) === "secret_value")
-			throw new Error("修改密钥库后，请重新填写保留密钥的变量值。");
-		throw new Error(issue?.message ?? "请检查密钥库配置");
+			throw new Error(t("vault.errors.secretValueRequired"));
+		throw new Error(issue ? localizedValidationMessage(issue) : t("vault.errors.check"));
 	}
 	return parsed.data;
 }
 
 export function validateTemplateVaults(rows: TemplateVaultDraft[]): string | null {
-	if (rows.length > MAX_TEMPLATE_VAULTS) return `最多选择 ${MAX_TEMPLATE_VAULTS} 个密钥库`;
-	if (new Set(rows.map((row) => row.vault_id.trim())).size !== rows.length) return "同一个密钥库只能选择一次";
+	const t = i18n.getFixedT(null, "templates");
+	if (rows.length > MAX_TEMPLATE_VAULTS) return t("vault.errors.max", { max: MAX_TEMPLATE_VAULTS });
+	if (new Set(rows.map((row) => row.vault_id.trim())).size !== rows.length) return t("vault.errors.duplicate");
 	const bindingError = validateCatalogVaults(
 		rows.filter((row) => !row.local && !row.creation).map((row) => row.vault_id),
 	);
@@ -90,7 +95,7 @@ export function validateTemplateVaults(rows: TemplateVaultDraft[]): string | nul
 	try {
 		for (const row of rows) if (vaultNeedsCreation(row)) vaultCreateInput(row, "draft");
 	} catch (error) {
-		return error instanceof Error ? error.message : "请检查密钥库配置";
+		return error instanceof Error ? error.message : t("vault.errors.check");
 	}
 	return null;
 }

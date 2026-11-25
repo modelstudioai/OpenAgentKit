@@ -49,6 +49,7 @@ export interface MemberAuthSnapshot {
 	chatProvider: ChatProvider | null;
 	generation: number;
 	error: string | null;
+	errorDetail: KitError | null;
 	pending: boolean;
 }
 
@@ -92,6 +93,14 @@ function streamEpoch(owner: Epoch, options: Parameters<ChatProvider["stream"]>[1
 	};
 }
 
+function loginFailureState(error: unknown, pendingLogout: boolean): Pick<MemberAuthSnapshot, "error" | "errorDetail"> {
+	if (pendingLogout) return { error: "服务端退出未完成，本地已锁定，请检查连接后重试。", errorDetail: null };
+	return {
+		error: error instanceof Error ? error.message : "登录失败，请重试",
+		errorDetail: error instanceof KitError ? error : null,
+	};
+}
+
 /**
  * Kit 成员身份生命周期。每次登录创建独立 client；旧 client 永久失效，
  * 因此延迟读取的附件、建会话重试与旧 SSE 都不能借新成员的身份继续执行。
@@ -119,6 +128,7 @@ export function createMemberAuthController(options: MemberAuthOptions) {
 		chatProvider: null,
 		generation: 0,
 		error: null,
+		errorDetail: null,
 		pending: false,
 	};
 	let epoch: Epoch | null = null;
@@ -148,6 +158,7 @@ export function createMemberAuthController(options: MemberAuthOptions) {
 			member: null,
 			generation: snapshot.generation + 1,
 			error: null,
+			errorDetail: null,
 		});
 	}
 	function clearStorage() {
@@ -310,6 +321,7 @@ export function createMemberAuthController(options: MemberAuthOptions) {
 		owner.chatProvider = provider
 			? {
 					transformMessage: provider.transformMessage?.bind(provider),
+					...(provider.listEvents ? { listEvents: provider.listEvents.bind(provider) } : {}),
 					...(provider.listThreads ? { listThreads: provider.listThreads.bind(provider) } : {}),
 					...(provider.listThreadEvents ? { listThreadEvents: provider.listThreadEvents.bind(provider) } : {}),
 					sendMessage: provider.sendMessage.bind(provider),
@@ -390,7 +402,7 @@ export function createMemberAuthController(options: MemberAuthOptions) {
 		if (oidc && error instanceof KitError && error.status === 403) {
 			clearStorage();
 			detach("signed-out");
-			publish({ error: error.message });
+			publish({ error: error.message, errorDetail: error });
 			return;
 		}
 		if (owner && error instanceof KitError && error.code === "unauthorized") {
@@ -478,8 +490,7 @@ export function createMemberAuthController(options: MemberAuthOptions) {
 		}
 		if (disposed) return;
 		detach(pendingLogout.size ? "error" : "signed-out");
-		const message = error instanceof Error ? error.message : "登录失败，请重试";
-		publish({ error: pendingLogout.size ? "服务端退出未完成，本地已锁定，请检查连接后重试。" : message });
+		publish(loginFailureState(error, pendingLogout.size > 0));
 		throw error;
 	}
 	async function login(input: MemberLoginRequest) {

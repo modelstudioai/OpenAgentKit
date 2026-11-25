@@ -1,6 +1,7 @@
 import { ErrorState } from "@openagentpack/kit-chat-ui";
 import { Button, Drawer } from "antd";
 import { type Ref, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
 	type EnvironmentFormHandle,
 	type EnvironmentFormState,
@@ -18,19 +19,20 @@ function EnvironmentPicker({
 	selected: TemplateEnvironmentSelection | null;
 	onSelect: (environment: TemplateEnvironmentSelection) => void;
 }) {
+	const { t } = useTranslation("templates");
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
 	return (
 		<>
 			<Button className={styles.pickerButton} onClick={() => setOpen(true)}>
-				导入现有配置
+				{t("agent.environment.config.importExisting")}
 			</Button>
 			<Drawer
 				open={open}
 				onClose={() => setOpen(false)}
 				destroyOnHidden
 				width={768}
-				title={<div className={styles.drawerTitle}>选择配置</div>}
+				title={<div className={styles.drawerTitle}>{t("agent.environment.config.choose")}</div>}
 			>
 				<TemplateEnvironmentList
 					selected={selected}
@@ -63,21 +65,22 @@ export function TemplateEnvironmentConfiguration({
 	onPendingChange?: (pending: boolean) => void;
 	onClear: () => void;
 }) {
+	const { t } = useTranslation("templates");
 	const detail = useTemplateEnvironmentDetail(selected, revision);
 	const ready = !selected || Boolean(!detail.loading && !detail.error && detail.data);
 	useEffect(() => {
 		if (!ready) onStateChange({ dirty: false, valid: false });
 	}, [ready, onStateChange]);
 	return (
-		<section aria-label="环境" className={styles.configRoot}>
+		<section aria-label={t("agent.environment.config.title")} className={styles.configRoot}>
 			<header className={styles.configHeader}>
-				<h3 className={styles.sectionTitle}>环境</h3>
-				<p className={styles.configHint}>可选，不配置时使用默认环境。</p>
+				<h3 className={styles.sectionTitle}>{t("agent.environment.config.title")}</h3>
+				<p className={styles.configHint}>{t("agent.environment.config.hint")}</p>
 			</header>
 			<div className={styles.configBody}>
 				<div className={styles.rowStart}>
 					<EnvironmentPicker selected={selected} onSelect={onSelect} />
-					<Button onClick={onClear}>清空</Button>
+					<Button onClick={onClear}>{t("agent.environment.config.clear")}</Button>
 				</div>
 				{detail.error ? <ErrorState message={detail.error} onRetry={() => void detail.refresh()} /> : null}
 				{ready ? (
@@ -90,7 +93,9 @@ export function TemplateEnvironmentConfiguration({
 						onPendingChange={onPendingChange}
 					/>
 				) : (
-					<p role="status">{detail.error ? "配置加载失败" : "正在加载配置…"}</p>
+					<p role="status">
+						{detail.error ? t("agent.environment.config.loadFailed") : t("agent.environment.config.loading")}
+					</p>
 				)}
 			</div>
 		</section>

@@ -24,10 +24,12 @@
 | --- | --- |
 | `apps/server` | Hono 服务端、Provider gateway、身份、确认与本地索引 |
 | `apps/web` | Web / H5 体验页，静态 CSR |
+| `apps/web-vue` | Web / H5 体验页的 Vue 3 平行实现，先做参考实现，暂不进发布产物 |
 | `apps/console` | 管理端，控制面客户端及业务 hooks |
 | `apps/storybook` | Fumadocs 文档站、真实组件预览与静态下载 |
 | `packages/sdk` | 按功能组织的数据 SDK、协议、Provider 和可选 React hooks |
 | `packages/chat-ui` | 可 copy-in 的 Chat 产品组件、主题与 registry |
+| `packages/chat-ui-vue` | chat-ui 的 Vue 3 平行实现，公开面与 L2 合同对齐 |
 | `packages/eval` | Node 侧 Skill 评测库及命令入口 |
 | `scripts/skills` / `assets/skills` | 中文开发 Skill 的人工源及生成物 |
 | `scripts/kit` | 组件复制与组件目录脚本 |
@@ -38,6 +40,7 @@
 - 完整 SDK 公开入口以 `packages/sdk/package.json` 为准；目录映射见目录规则。
 - 工作区只包含 `apps/*` 与 `packages/*`；目录与命令是否可用以当前清单为准，
   不按历史 ADR 的旧名称恢复已退役的包、原生壳、项目生成器或目录 Project API。
+- 配置 Kit Server 的 SQLite、MySQL 或 PostgreSQL 时，使用仓库内的 [kit-database](assets/skills/kit-database/SKILL.md)。
 
 ## 执行红线
 
@@ -57,12 +60,16 @@
 - 引入内网包、内网域名、私有网关或固定密钥注入；在 `apps/console` 之外引入 antd。
 - 前端业务请求假设与 server 同源；后端地址须经运行时配置解析。
 - 尚无第二个 Provider 的真实数据面合同就为它预建行为抽象。
+- Vue 组件库 import React 版 chat-ui，或 React 组件 import chat-ui-vue；两套 UI 只共享
+  生成镜像与 `apps/web` 的产品文案（ADR-0029）。
 
 ## UI 与交互
 
 1. 体验页和所有端的对话链路复用 `@openagentpack/kit-chat-ui`。缺少 Primitive 时按
    Radix + Tailwind v4 + CVA 补齐，并说明既有组件为何不够；新增组件必须有真实调用方。
    Console 的管理控件优先 antd v6，按页面渐进迁移，具体边界见 ADR-0015。
+   Vue 体验页复用 `@openagentpack/kit-chat-ui-vue`，组件按 L2 合同与 React 版一一对应，
+   公开注入点使用同名插槽（ADR-0029）。
 2. Chat UI 与体验页消费 `theme.css` 的冻结颜色、尺寸和动效 token，不在业务组件新增设计常量、
    内联样式表或 keyframes。Console 的 antd token、全局适配及既有 Less 样式归口见架构文档；
    文档站视觉层归 `apps/storybook/app/globals.css`。
@@ -107,14 +114,16 @@ Mock / 离线通过不代表真实 Cloud 已验收。Live 必须显式启用，�
 ```bash
 pnpm install
 pnpm setup              # 可选：启用仓库 .githooks
-pnpm start              # 首次引导配置并启动 server / web / console；已有 .env 原样复用
-pnpm dev                # server :8787 / web :5173 / console :5174 / storybook :3000
+pnpm start              # 首次引导配置并启动 server / web / web-vue / console；已有 .env 原样复用
+pnpm dev                # server :8787 / web :5173 / web-vue :5175 / console :5174
+pnpm dev storybook      # 文档站单独启动 :3000
 pnpm typecheck
 pnpm lint
 pnpm test
 pnpm build
 pnpm check:architecture
 pnpm check:docs
+pnpm check:i18n
 pnpm check:no-inner-deps
 pnpm gen:openapi
 pnpm gen:skills

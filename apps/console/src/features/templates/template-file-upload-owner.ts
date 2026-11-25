@@ -1,4 +1,5 @@
 import { KitError, type ProjectFileUpload, type ProjectFileUploadCommit } from "@openagentkit/sdk/protocol";
+import i18n from "i18next";
 import type { AdminClient } from "../../lib/admin/index.ts";
 import { type TemplateFileDraft, type TemplateFileReference, validateTemplateFiles } from "./template-file-draft.ts";
 
@@ -25,11 +26,12 @@ interface Options {
 
 /** 只在下一步保存变化项；暂存重试复用，替换/移除/离页释放未提交上传。 */
 export function createTemplateFileUploadOwner({ api, prepare, onCommitted }: Options) {
+	const t = i18n.getFixedT(null, "templates");
 	const uploads = new Map<string, Upload>();
 	let active = true;
 	let uncertain = false;
 	const assertActive = () => {
-		if (!active) throw new Error("文件保存已取消");
+		if (!active) throw new Error(t("file.errors.cancelled"));
 	};
 	async function discard(upload: Upload) {
 		if (!upload.committed) await api.discardFileUpload(upload.projectName, upload.staged.upload_id).catch(() => {});
@@ -58,7 +60,7 @@ export function createTemplateFileUploadOwner({ api, prepare, onCommitted }: Opt
 			const saved = references.find((file) => file.local?.id === entry.staged.file_key);
 			if (!saved) {
 				uncertain = true;
-				throw new Error("文件保存结果不完整，请退出当前页面后重新操作。");
+				throw new Error(t("file.errors.incomplete"));
 			}
 			entry.saved = saved;
 		}
@@ -68,7 +70,8 @@ export function createTemplateFileUploadOwner({ api, prepare, onCommitted }: Opt
 		const input = { base_revision: revision, upload_ids: ids };
 		const preview = await api.previewFileUploads(name, input);
 		assertActive();
-		if (!preview.can_commit) throw new Error(preview.diagnostics.join("；") || "文件声明校验未通过，请检查后重试。");
+		if (!preview.can_commit)
+			throw new Error(preview.diagnostics.join(t("file.errors.diagnosticSeparator")) || t("file.errors.previewFailed"));
 		let result: ProjectFileUploadCommit;
 		try {
 			result = await api.commitFileUploads(name, input);
@@ -79,7 +82,7 @@ export function createTemplateFileUploadOwner({ api, prepare, onCommitted }: Opt
 			)
 				throw error;
 			uncertain = true;
-			throw new Error("文件保存结果尚未确认，请退出当前页面后重新操作，避免重复创建。");
+			throw new Error(t("file.errors.uncertain"));
 		}
 		// commit 成功后暂存已消费；即使页面离开也不再把它当作待清理上传。
 		for (const entry of entries) entry.committed = true;
@@ -110,10 +113,10 @@ export function createTemplateFileUploadOwner({ api, prepare, onCommitted }: Opt
 			if (error) throw new Error(error);
 			const pending = rows.filter((file) => file.pending);
 			if (!pending.length) return rows;
-			if (uncertain) throw new Error("文件保存结果尚未确认，请退出当前页面后重新操作。");
+			if (uncertain) throw new Error(t("file.errors.uncertain"));
 			const current = await prepare();
 			assertActive();
-			if (current.overview.active_mutation) throw new Error("项目正在修改，请稍后重试。");
+			if (current.overview.active_mutation) throw new Error(t("file.errors.projectBusy"));
 			const entries: Upload[] = [];
 			for (const row of pending) entries.push(await stage(row, current.draft_id, current.overview.project_revision));
 			const unsaved = entries.filter((entry) => !entry.saved);

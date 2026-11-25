@@ -31,4 +31,4 @@ pnpm kit:add category-tabs
 
 源码入口为 [index.tsx](index.tsx)。copy-in 会保留目录层级并带入 registry 声明的依赖；主题接入见文档站。
 
-完整用法与参数见[文档站对应页面](../../../../../apps/storybook/content/docs/components/plaza.mdx)；全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。
+完整用法与参数见[广场分类文档](../../../../../apps/storybook/content/docs/components/plaza/category-tabs.mdx)。全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。

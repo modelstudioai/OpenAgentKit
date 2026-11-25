@@ -2,6 +2,7 @@ import { resolveApiBaseUrl } from "@openagentkit/sdk/config";
 import { errorFromResponse } from "@openagentkit/sdk/protocol";
 import { createKitClient } from "@openagentkit/sdk/providers/kit";
 import { createRequest } from "@openagentkit/sdk/request";
+import i18n from "i18next";
 import { adminToken, bindAdminBackend, normalizeAdminBaseUrl } from "./auth.ts";
 
 let request: ReturnType<typeof createRequest> | undefined;
@@ -33,6 +34,6 @@ export async function bootstrapAdmin(fetchImpl?: typeof fetch) {
 }
 
 export function adminRequest() {
-	if (!request) throw new Error("管理端尚未完成服务配置初始化");
+	if (!request) throw new Error(i18n.t("runtime.adminNotReady"));
 	return request;
 }

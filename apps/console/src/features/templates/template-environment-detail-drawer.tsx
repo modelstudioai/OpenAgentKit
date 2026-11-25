@@ -1,5 +1,6 @@
 import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui";
 import { Button, Drawer } from "antd";
+import { useTranslation } from "react-i18next";
 import { EnvironmentDetailView } from "./environment-detail-view.tsx";
 import type { TemplateEnvironmentSelection } from "./template-local-resources.tsx";
 import styles from "./template-resources.module.less";
@@ -17,6 +18,7 @@ export function TemplateEnvironmentDetailDrawer({
 	onClose: () => void;
 	onSelect?: () => void;
 }) {
+	const { t } = useTranslation("templates");
 	const detail = useTemplateEnvironmentDetail(open ? environment : null);
 	return (
 		<Drawer
@@ -24,7 +26,7 @@ export function TemplateEnvironmentDetailDrawer({
 			onClose={onClose}
 			destroyOnHidden
 			width={672}
-			title={<div className={styles.drawerTitle}>环境详情</div>}
+			title={<div className={styles.drawerTitle}>{t("agent.environment.detail.title")}</div>}
 			footer={
 				onSelect ? (
 					<div className={styles.rowEnd}>
@@ -36,7 +38,7 @@ export function TemplateEnvironmentDetailDrawer({
 								onSelect();
 							}}
 						>
-							确认选择
+							{t("agent.environment.detail.confirm")}
 						</Button>
 					</div>
 				) : undefined
@@ -45,7 +47,7 @@ export function TemplateEnvironmentDetailDrawer({
 			{detail.error ? (
 				<ErrorState message={detail.error} onRetry={() => void detail.refresh()} />
 			) : detail.loading || !detail.data ? (
-				<EmptyState loading title="正在加载环境详情…" />
+				<EmptyState loading title={t("agent.environment.detail.loading")} />
 			) : (
 				<EnvironmentDetailView detail={detail.data} />
 			)}

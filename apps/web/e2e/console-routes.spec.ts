@@ -236,8 +236,17 @@ test("详情调试请求期间浏览器返回被锁定，完成后可返回并�
 	await pathIs(page, `/templates/${template.template_id}/debug`);
 	await expect(page.getByRole("tab", { name: "调试", exact: true })).toHaveAttribute("aria-selected", "true");
 	const created = page.waitForResponse((r) => r.url() === `${api}/api/admin/debug/sessions` && r.status() === 201);
+	const history = page.waitForResponse((r) => /\/api\/admin\/debug\/sessions\/[^/]+\/events\?/.test(r.url()) && r.ok());
+	const live = page.waitForResponse(
+		(r) => /\/api\/admin\/debug\/sessions\/[^/]+\/stream(?:\?|$)/.test(r.url()) && r.ok(),
+	);
 	release?.();
 	const session = (await (await created).json()).data;
+	await Promise.all([history, live]);
+	const message = page.getByLabel("消息输入", { exact: true });
+	await message.fill("验证调试实时回复");
+	await page.getByRole("button", { name: "发送", exact: true }).click();
+	await expect(page.getByText(/mock gateway 的流式回答/).first()).toBeVisible();
 	await expect(page.getByRole("tab", { name: "模版信息", exact: true })).toBeEnabled();
 	await page.evaluate(() => history.back());
 	await pathIs(page, `/templates/${template.template_id}`);

@@ -110,6 +110,20 @@ describe("真实 SDK 的 HTTP/SSE 契约", () => {
 		expect(result.events[0]?.metadata?.raw).toBeUndefined();
 	});
 
+	it.each([
+		{ status: 429, retryable: true },
+		{ status: 503, retryable: true },
+		{ status: 403, retryable: false },
+	])("历史查询保留上游 $status 的重试语义并隐藏原始错误", async ({ status, retryable }) => {
+		setDefaultFetch(async () => Response.json({ message: `upstream ${secret}` }, { status }));
+		await expect(gateway().listEvents("session")).rejects.toMatchObject({
+			code: "provider_error",
+			status: 502,
+			retryable,
+			message: expect.not.stringContaining(secret),
+		});
+	});
+
 	it("累计增量进入 SDK accumulator，onReady 在首帧前触发且取消读取", async () => {
 		let controller!: ReadableStreamDefaultController<Uint8Array>;
 		let requested: URL | undefined;

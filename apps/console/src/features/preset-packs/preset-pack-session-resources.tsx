@@ -1,8 +1,10 @@
 import type { PresetPackAgentResources, PresetPackCreateInput, PresetPackPreview } from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Alert, Button, Empty, Result, Space, Spin, Table, Tag } from "antd";
+import type { TFunction } from "i18next";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import { useAdminMutation } from "../../lib/admin/use-admin-mutation.ts";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { adminApi, getAdminClient } from "../../lib/api.ts";
@@ -18,27 +20,37 @@ import {
 } from "./preset-pack-resource-groups.ts";
 import { presetPackResourceSelectionLimit, selectPresetPackResource } from "./preset-pack-resource-selection.ts";
 
-const resourceTypes: Record<string, string> = {
-	environment: "环境",
-	file: "文件",
-	memory_store: "记忆库",
-	vault: "密钥库",
-	github_repository: "代码仓库",
+const resourceTypes: Record<
+	string,
+	"types.environment" | "types.file" | "types.memoryStore" | "types.vault" | "types.github"
+> = {
+	environment: "types.environment",
+	file: "types.file",
+	memory_store: "types.memoryStore",
+	vault: "types.vault",
+	github_repository: "types.github",
 };
-const resourceColumns: TableColumnsType<PresetPackResourceRow> = [
-	{ title: "资源 ID", dataIndex: "id", render: (id?: string) => id ?? "—" },
-	{ title: "挂载路径", render: (_, resource) => resource.mountPaths.join("、") || "—" },
-	{
-		title: "权限",
-		render: (_, resource) =>
-			resource.accesses.map((access) => (access === "read_only" ? "只读" : "读写")).join("、") || "—",
-	},
-	{
-		title: "来源",
-		render: (_, resource) =>
-			resource.sources.map((source) => (source === "runtime" ? "运行时挂载" : "会话配置")).join("、"),
-	},
-];
+
+function resourceColumns(t: TFunction<"presetPacks">): TableColumnsType<PresetPackResourceRow> {
+	return [
+		{ title: t("resources.id"), dataIndex: "id", render: (id?: string) => id ?? "—" },
+		{ title: t("resources.mountPaths"), render: (_, resource) => resource.mountPaths.join(t("joinComma")) || "—" },
+		{
+			title: t("resources.access"),
+			render: (_, resource) =>
+				resource.accesses
+					.map((access) => (access === "read_only" ? t("detail.readOnly") : t("detail.readWrite")))
+					.join(t("joinComma")) || "—",
+		},
+		{
+			title: t("resources.source"),
+			render: (_, resource) =>
+				resource.sources
+					.map((source) => (source === "runtime" ? t("detail.sourceRuntime") : t("detail.sourceSession")))
+					.join(t("joinComma")),
+		},
+	];
+}
 
 function ResourceGroupTable({
 	group,
@@ -57,50 +69,55 @@ function ResourceGroupTable({
 	onView: (resource: PresetPackResourceRow) => void;
 	onRemove: (key: string) => void;
 }) {
-	const label = Object.hasOwn(resourceTypes, group.type) ? resourceTypes[group.type] : group.type;
+	const { t } = useTranslation("presetPacks");
+	const label = Object.hasOwn(resourceTypes, group.type) ? t(resourceTypes[group.type]!) : group.type;
 	const limit = presetPackResourceSelectionLimit(group.type);
-	const selectionRule = limit === 1 ? "单选" : limit ? `多选，最多 ${limit} 个` : "暂不支持关联";
+	const selectionRule =
+		limit === 1
+			? t("resources.ruleSingle")
+			: limit
+				? t("resources.ruleMulti", { limit })
+				: t("resources.ruleUnsupported");
 	const details =
 		group.type === "github_repository"
 			? [
-					...resourceColumns,
+					...resourceColumns(t),
 					{
-						title: "仓库 URL",
-						render: (_: unknown, resource: PresetPackResourceRow) => resource.repositoryUrls.join("、") || "—",
+						title: t("resources.repoUrl"),
+						render: (_: unknown, resource: PresetPackResourceRow) =>
+							resource.repositoryUrls.join(t("joinComma")) || "—",
 					},
 				]
-			: resourceColumns;
+			: resourceColumns(t);
 	const columns: TableColumnsType<PresetPackResourceRow> = [
 		...details,
 		{
-			title: "选择状态",
+			title: t("resources.selectState"),
 			render: (_, resource) =>
 				selectedKeys.includes(resource.key) ? (
 					<Space>
-						<Tag color="success">已选择</Tag>
+						<Tag color="success">{t("resources.selectedTag")}</Tag>
 						<Button
 							type="link"
 							size="small"
 							disabled={disabled}
-							aria-label={`取消选择${label}资源 ${resource.id}`}
+							aria-label={t("resources.deselectAria", { label, id: resource.id })}
 							onClick={(event) => {
 								event.stopPropagation();
 								onRemove(resource.key);
 							}}
 						>
-							取消选择
+							{t("resources.deselect")}
 						</Button>
 					</Space>
 				) : (
-					<Tag>未选择</Tag>
+					<Tag>{t("resources.notSelected")}</Tag>
 				),
 		},
 	];
 	return (
-		<section aria-label={`${label}资源`} className="space-y-4">
-			<h3 className="text-sm font-medium">
-				{label}（{selectionRule}）
-			</h3>
+		<section aria-label={t("resources.groupAria", { label })} className="space-y-4">
+			<h3 className="text-sm font-medium">{t("resources.groupTitle", { label, rule: selectionRule })}</h3>
 			<Table<PresetPackResourceRow>
 				rowKey="key"
 				columns={columns}
@@ -113,7 +130,10 @@ function ResourceGroupTable({
 				}
 				onRow={(resource) => ({
 					tabIndex: disabled ? -1 : 0,
-					"aria-label": `${label}资源 ${resource.id || "未命名资源"}`,
+					"aria-label": t("resources.rowAria", {
+						label,
+						id: resource.id || t("resources.unnamedResource"),
+					}),
 					"aria-haspopup": "dialog",
 					"aria-disabled": disabled,
 					onClick: () => {
@@ -131,11 +151,15 @@ function ResourceGroupTable({
 					emptyText: (
 						<Empty
 							image={Empty.PRESENTED_IMAGE_SIMPLE}
-							description={complete ? "暂无关联资源" : "暂无已成功读取的资源"}
+							description={complete ? t("resources.emptyLinked") : t("resources.emptyRead")}
 						/>
 					),
 				}}
-				pagination={{ pageSize: 10, showSizeChanger: false, showTotal: (total) => `共 ${total} 个资源` }}
+				pagination={{
+					pageSize: 10,
+					showSizeChanger: false,
+					showTotal: (total) => t("resources.totalResources", { total }),
+				}}
 			/>
 		</section>
 	);
@@ -171,9 +195,13 @@ function ResourceSelectionSlot({ container, children }: { container?: HTMLElemen
 }
 
 function ResourceEmptyState({ loading, complete }: { loading: boolean; complete?: boolean }) {
-	if (loading) return <Spin aria-label="正在读取运行时资源" />;
+	const { t } = useTranslation("presetPacks");
+	if (loading) return <Spin aria-label={t("resources.readingRuntime")} />;
 	return (
-		<Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={complete ? "暂无运行时资源" : "暂无已成功读取的资源"} />
+		<Empty
+			image={Empty.PRESENTED_IMAGE_SIMPLE}
+			description={complete ? t("resources.emptyRuntime") : t("resources.emptyRead")}
+		/>
 	);
 }
 
@@ -188,13 +216,14 @@ export function PresetPackResourceSelection({
 	onPendingChange,
 	onImport,
 	query,
-	actionLabel = "导入",
+	actionLabel,
 	requireSelection = false,
 	actionContainer,
 	feedbackContainer,
 }: ResourceSelectionProps & {
 	query: ReturnType<typeof usePresetPackResources>;
 }) {
+	const { t } = useTranslation("presetPacks");
 	const agentId = agent.agent_id;
 	const client = useMemo(getAdminClient, []);
 	const identity = useAdminQuery("preset-packs:identity", (signal) => client.identity(signal));
@@ -214,7 +243,7 @@ export function PresetPackResourceSelection({
 		for (const group of groups) {
 			for (const row of group.rows) {
 				if (!selectedResourceKeys.get(group.type)?.includes(row.key)) continue;
-				if (!row.id) throw new Error("所选资源缺少可复用的 ID，请取消选择后重试");
+				if (!row.id) throw new Error(t("resources.errNoIdForImport"));
 				resources.push({ type: group.type, resource_id: row.id });
 			}
 		}
@@ -242,28 +271,32 @@ export function PresetPackResourceSelection({
 		return (
 			<Result
 				status="error"
-				title="运行时资源加载失败"
+				title={t("resources.loadFailed")}
 				subTitle={loadError}
-				extra={<Button onClick={() => void Promise.allSettled([query.refresh(), identity.refresh()])}>重试</Button>}
+				extra={
+					<Button onClick={() => void Promise.allSettled([query.refresh(), identity.refresh()])}>
+						{t("resources.retry")}
+					</Button>
+				}
 			/>
 		);
 	return (
-		<section aria-label="运行时资源" className="space-y-4">
+		<section aria-label={t("resources.runtimeAria")} className="space-y-4">
 			<div className="flex flex-wrap items-center justify-between gap-4">
-				<h2 className="text-base font-medium">运行时资源</h2>
-				<span role="status" aria-label="已选运行时资源" className="text-sm">
-					已选择 {selectedCount} 个资源
+				<h2 className="text-base font-medium">{t("resources.runtimeTitle")}</h2>
+				<span role="status" aria-label={t("resources.selectedAria")} className="text-sm">
+					{t("resources.selectedCount", { count: selectedCount })}
 				</span>
 			</div>
 			{query.data && !query.data.complete ? (
 				<Alert
 					type="warning"
 					showIcon
-					title="部分运行时资源未完整读取"
-					description="当前仅展示成功读取的资源，可重新读取补齐。"
+					title={t("resources.incompleteTitle")}
+					description={t("resources.incompleteDesc")}
 					action={
 						<Button disabled={importing.pending} onClick={() => void query.refresh()}>
-							重新读取
+							{t("resources.reread")}
 						</Button>
 					}
 				/>
@@ -306,7 +339,7 @@ export function PresetPackResourceSelection({
 						type="error"
 						showIcon
 						closable
-						title="运行时资源导入失败"
+						title={t("resources.importFailed")}
 						description={importing.error}
 					/>
 				) : null}
@@ -324,7 +357,7 @@ export function PresetPackResourceSelection({
 							void importing.run().catch(() => undefined);
 						}}
 					>
-						{actionLabel}
+						{actionLabel ?? t("resources.importLabel")}
 					</Button>
 				</div>
 			</ResourceSelectionSlot>

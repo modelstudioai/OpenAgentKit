@@ -5,7 +5,7 @@ import type { ComponentType } from "react";
 import { isShowcaseName, type ShowcaseName } from "../lib/showcase-names.ts";
 import { MenuAlignDemo, MenuDemo } from "./demos/basic-demo.tsx";
 import { ChatDemo } from "./demos/chat-demo.tsx";
-import { StatesDemo, StatusDemo, ThreadDemo } from "./demos/chrome-demo.tsx";
+import { StatesDemo, StatusDemo } from "./demos/chrome-demo.tsx";
 import {
 	AttachmentFileCardDemo,
 	AttachmentsDemo,
@@ -60,7 +60,18 @@ import {
 	MessageListVirtualDemo,
 } from "./demos/message-list-examples.tsx";
 import { MultiAgentDemo } from "./demos/multi-agent-demo.tsx";
+import {
+	ACTIVITY_HEATMAP_CODE,
+	ActivityHeatmapDemo,
+	CATEGORY_TABS_CODE,
+	CategoryTabsDemo,
+	METER_BAR_CODE,
+	MeterBarDemo,
+	PLAZA_CARD_CODE,
+	PlazaCardDemo,
+} from "./demos/plaza-demo.tsx";
 import { BailianProviderDemo, TransformedProviderDemo, TransformMessageDemo } from "./demos/provider-demo.tsx";
+import { RESOURCE_PANEL_CODE } from "./demos/resource-panel-demo.tsx";
 import {
 	ApprovalDemo,
 	ControllerDemo,
@@ -84,6 +95,14 @@ const LayoutDemo = dynamic(() => import("./demos/layout-demo.tsx").then((module)
 	ssr: false,
 	loading: () => <p role="status">正在加载布局预览…</p>,
 });
+
+const ResourcePanelDemo = dynamic(
+	() => import("./demos/resource-panel-demo.tsx").then((module) => module.ResourcePanelDemo),
+	{
+		ssr: false,
+		loading: () => <p role="status">正在加载资源面板预览…</p>,
+	},
+);
 
 interface ShowcaseEntry {
 	title: string;
@@ -235,18 +254,30 @@ const AGENT_HEADER_ACTIONS_CODE = `import { AgentHeader, StatusIndicator } from 
 </div>
 // 显式传 actions（含 null）时替代默认新会话按钮；省略 actions 保留 onNewSession 的兼容按钮。`;
 
-const SUB_AGENT_PANEL_CODE = `import { SubAgentPanel } from "@openagentpack/kit-chat-ui";
+const SUB_AGENT_PANEL_CODE = `import { Layout, SubAgentPanel } from "@openagentpack/kit-chat-ui";
 
-// 资源面板（右栏）分区：multiAgent 直接来自 useChat() 快照
-<SubAgentPanel multiAgent={chat.multiAgent} />
-// 子 Agent 按展示名去重分组；会话内尚无线程时分区不渲染`;
+// resourcesOpen 由页头的资源按钮控制，multiAgent 来自 useChat()。
+<Layout
+  asideOpen={resourcesOpen}
+  onAsideOpenChange={setResourcesOpen}
+  aside={({ closeButton }) => (
+    <div className="flex min-h-0 flex-1 flex-col">
+      {closeButton ? (
+        <div className="flex min-h-14 items-center justify-between px-4">资源{closeButton}</div>
+      ) : null}
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:py-5">
+        <SubAgentPanel multiAgent={chat.multiAgent} />
+      </div>
+    </div>
+  )}
+>
+  {conversation}
+</Layout>`;
 
-const SUB_AGENT_PANEL_HISTORY_CODE = `import { SubAgentPanel } from "@openagentpack/kit-chat-ui";
+const SUB_AGENT_PANEL_HISTORY_CODE = `${SUB_AGENT_PANEL_CODE}
 
-// 点任务行打开该次派发的执行记录弹窗：主 Agent 指令 + 子线程自身事件时间线
-<SubAgentPanel multiAgent={chat.multiAgent} />
-// 时间线读子线程事件（loadThreadEvents），不依赖主消息流加载；
-// nextPageToken 非空时展示「加载更早消息」（more: true）翻页，historyAvailable 为 false 时提示仅显示本次连接收到的消息`;
+// 打开任务记录时按需读取该线程的历史。
+// nextPageToken 非空时可加载更早消息。历史不可用时保留本次连接收到的消息。`;
 
 const SESSION_SIDEBAR_CODE = `import { SessionSidebar } from "@openagentpack/kit-chat-ui";
 
@@ -938,18 +969,17 @@ const chat = useChat(sessionId);
   onStop={chat.stop}
 />
 </div>
-// 主 Agent 可发送；子 Agent 只读，支持历史分页与失败重试。
-// 子 Agent 在主消息流中展开只读历史，主输入草稿保持；不再另接 ThreadPanel。
-// 在线预览使用本地 ChatMultiAgent 数据；真实应用由 useChat / Provider 查询。`;
+// 子 Agent 卡片可展开查看历史、翻页和重试。开合卡片时保留主输入草稿。`;
 
-const APPROVAL_CODE = `import { ToolApprovalGroup } from "@openagentpack/kit-chat-ui";
+const APPROVAL_CODE = `import { ToolApprovalCard } from "@openagentpack/kit-chat-ui";
 import { useChat } from "@openagentkit/sdk/chat/hooks";
 
 const chat = useChat(sessionId);
+const approval = chat.approvals[0];
 
-{chat.approvals.length > 0 ? (
-  <ToolApprovalGroup
-    approvals={chat.approvals}
+{approval ? (
+  <ToolApprovalCard
+    approval={approval}
     onDecision={chat.submitApproval}
     onRefresh={chat.refreshApprovals}
     onStop={chat.stop}
@@ -1028,11 +1058,6 @@ const STATUS_CODE = `import { StatusIndicator } from "@openagentpack/kit-chat-ui
   <StatusIndicator variant="badge" connected={chat.connected} turnRunning={chat.turnRunning} phase={chat.phase} connection={chat.connection} error={chat.streamError} />
 </div>`;
 
-const THREAD_CODE = `import { ThreadPanel } from "@openagentpack/kit-chat-ui";
-
-// 仅用于兼容旧版分组视图；新接入使用 Chat multiAgent={chat.multiAgent}。
-{Object.keys(chat.threads).length > 0 ? <ThreadPanel threads={chat.threads} /> : null}`;
-
 const STATES_CODE = `import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui";
 
 {loading ? null : error ? <ErrorState message={error} onRetry={reload} /> : null}
@@ -1093,11 +1118,13 @@ parser.end();`;
 
 const KIT_STREAM_CODE = `import { createKitClient } from "@openagentkit/sdk/providers/kit";
 
-// mock fetchImpl 返回 Kit 协议流：reset → event* → ready → ping → event → done
+// mock fetchImpl 返回实时帧，游标失效时先发 reset，再发 ready
 const client = createKitClient({
   baseUrl: "/mock-kit",
-  fetchImpl: () =>
-    Promise.resolve(
+  fetchImpl: (input) =>
+    String(input).includes("/events?")
+      ? Promise.resolve(Response.json({ data: historySnapshots, next_page_token: null }))
+      : Promise.resolve(
       new Response(pacedStream(frames.map((frame) => new TextEncoder().encode(frame)), 450), {
         status: 200,
         headers: { "content-type": "text/event-stream" },
@@ -1105,13 +1132,20 @@ const client = createKitClient({
     ),
 });
 
+let needsHistory = !after;
 await client.stream("sess_demo", {
-  after, // "1:8" 续传；游标失效时服务端下发 reset 重建
+  after, // "1:8" 补发实时更新
   signal,
-  onReset: () => addLog("onReset() —— 游标不可续传，开始重建"),
+  onReset: () => { needsHistory = true; },
   onEvent: (event, cursor) =>
     addLog("onEvent cursor=" + cursor + " event_id=" + event.event_id + " type=" + event.type, JSON.stringify(event)),
-  onReady: ({ replayed, cursor }) => addLog("onReady replayed=" + replayed + " cursor=" + cursor),
+  onReady: ({ sessionId, replayed, cursor }) => {
+    addLog("onReady replayed=" + replayed + " cursor=" + cursor);
+    if (needsHistory) void client.events(sessionId, { limit: 100, signal }).then(
+      (page) => addLog("events", JSON.stringify(page)),
+      (error) => addLog(String(error)),
+    );
+  },
   onPing: (t) => addLog("onPing t=" + t + " —— 每 15s 保活"),
   onDone: ({ status, lastEventId }) => addLog("onDone status=" + status + " lastEventId=" + lastEventId),
 });`;
@@ -1559,13 +1593,13 @@ const SHOWCASES: Record<ShowcaseName, ShowcaseEntry> = {
 	},
 	"sub-agent-panel": {
 		title: "SubAgentPanel（分区概览与空态）",
-		command: "pnpm kit:add sub-agent-panel",
+		command: "pnpm kit:add sub-agent-panel && pnpm kit:add layout",
 		code: SUB_AGENT_PANEL_CODE,
 		Demo: SubAgentPanelDemo,
 	},
 	"sub-agent-panel-history": {
 		title: "SubAgentPanel（执行记录弹窗与历史加载）",
-		command: "pnpm kit:add sub-agent-panel",
+		command: "pnpm kit:add sub-agent-panel && pnpm kit:add layout",
 		code: SUB_AGENT_PANEL_HISTORY_CODE,
 		Demo: SubAgentPanelHistoryDemo,
 	},
@@ -1799,7 +1833,8 @@ const SHOWCASES: Record<ShowcaseName, ShowcaseEntry> = {
 	},
 	chrome: {
 		title: "Layout / AgentHeader / ConfirmDialog",
-		command: "pnpm kit:add layout && pnpm kit:add chrome && pnpm kit:add chat",
+		command:
+			"pnpm kit:add layout && pnpm kit:add chrome && pnpm kit:add chat && pnpm kit:add session-sidebar && pnpm kit:add menu",
 		code: LAYOUT_CODE,
 		Demo: LayoutDemo,
 	},
@@ -1809,13 +1844,38 @@ const SHOWCASES: Record<ShowcaseName, ShowcaseEntry> = {
 		code: STATUS_CODE,
 		Demo: StatusDemo,
 	},
-	threads: {
-		title: "ThreadPanel（旧版分组兼容）",
-		command: "pnpm kit:add chrome",
-		code: THREAD_CODE,
-		Demo: ThreadDemo,
+	"resource-panel": {
+		title: "Layout.aside（信息栏）",
+		command:
+			"pnpm kit:add layout && pnpm kit:add agent-header && pnpm kit:add status-indicator && pnpm kit:add chat && pnpm kit:add sub-agent-panel && pnpm kit:add file-card",
+		code: RESOURCE_PANEL_CODE,
+		Demo: ResourcePanelDemo,
 	},
 	states: { title: "EmptyState / ErrorState", command: "pnpm kit:add chrome", code: STATES_CODE, Demo: StatesDemo },
+	"plaza-card": {
+		title: "PlazaCard（智能体卡片）",
+		command: "pnpm kit:add plaza-card",
+		code: PLAZA_CARD_CODE,
+		Demo: PlazaCardDemo,
+	},
+	"category-tabs": {
+		title: "CategoryTabs（广场分类）",
+		command: "pnpm kit:add category-tabs",
+		code: CATEGORY_TABS_CODE,
+		Demo: CategoryTabsDemo,
+	},
+	"meter-bar": {
+		title: "MeterBar（用量条）",
+		command: "pnpm kit:add meter-bar",
+		code: METER_BAR_CODE,
+		Demo: MeterBarDemo,
+	},
+	"activity-heatmap": {
+		title: "ActivityHeatmap（活跃热力图）",
+		command: "pnpm kit:add activity-heatmap",
+		code: ACTIVITY_HEATMAP_CODE,
+		Demo: ActivityHeatmapDemo,
+	},
 	"sse-stream": {
 		title: "createSseStream（解码、分帧与取消）",
 		code: SSE_STREAM_CODE,

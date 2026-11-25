@@ -21,7 +21,7 @@
   管理员令牌。业务 API 按服务器认证模式校验 Bearer。只有显式 `KIT_AUTH_MODE=anonymous`
   才允许无 Bearer 的匿名身份。无效 Bearer 返回 401。`member_` 前缀保留给 Kit 成员，
   兼容外部 JWT 的 `sub` 禁用此前缀。
-- Session 消息发送、stream 与审批 GET/POST 要求 `x-kit-protocol-version: 2.0.0`（接受 2.x），
+- Session 消息发送、stream 与审批 GET/POST 要求 `x-kit-protocol-version: 3.0.0`（接受 3.x），
   缺失或混版返回 409。`after` 是 Kit 传输游标，与 Provider `event_id/after_id` 分离。
 - 时间戳一律 ISO-8601 UTC。ID 一律透传 Provider 原值，kit 不自造 ID（除 catalog /
   operation / plan 这类 kit 自有对象）。
@@ -92,6 +92,7 @@
 | `sessions.list` | `GET /api/kit/sessions` | 当前 subjectId 的体验会话摘要，`?agent_slug=&limit=&page_token=&include_archived=&q=`；按 `COALESCE(last_event_at,created_at)`、`session_id` 双字段倒序分页，返回 `{data,next_page_token}`。`limit` 为 1..200（缺省 50），`include_archived=false` 在分页前排除归档，缺省仍包含归档。`q` 为 1..100 字符关键词，在分页前按标题、智能体 slug 及当前 Catalog 展示名过滤，只覆盖本人体验会话索引。游标绑定身份、智能体筛选、归档条件及关键词，条件不匹配或游标无效返回 400；最后一页返回 null。仅查询运营索引，不读取事件正文。`last_event_at` 由发消息推进，订阅水合与归档仅同步状态，点开回看不改排序；运行态由完整事件账本和受理中的 pending turn 共同投影，重复的旧 idle 不得结束新回合。共享泵在订阅者离开后继续跟踪 running 回合到终态；仅对没有上游泵的存量 running 行在 2 分钟后兜底对账，详情 idle 仍需历史投影确认非 running，同一会话 60 秒内不重复探测，失败保留原值，最终一致 | ✅ |
 | `sessions.create` | `POST /api/kit/sessions` | `{ agent_slug, title?, files? }` → 建 Provider Session 并落本地索引；`files` 为已上传附件，服务层在建会话后经运行时挂载进 sandbox（创建载荷不带文件——创建时 file_resource 回显成功但沙箱不物化，实测 2026-11-03；mount_path 省略时按 `/mnt/session/uploads/<文件名>` 解析，重名自动 `-2`；挂载失败回滚已挂载并删除刚建会话），详情回显 `files`；已有会话追加挂载走 `sessions.messages.send` 的 `attachments`。provider wire 形状与沙箱物化矩阵见 `docs/research/bailian-session-file-mount.md` | ✅ |
 | `sessions.get` | `GET /api/kit/sessions/:sessionId` | 会话详情 + 归属校验（非本人 404，不泄露存在性）；含挂载的 `files`（本地索引为权威，运行时挂载 provider 不回显），Provider 返回时含累计 `usage` 与秒单位 `stats`，缺失不补零 | ✅ |
+| `sessions.artifacts.list` | `GET /api/kit/sessions/:sessionId/artifacts` | Provider Files API 按 `scope_id=sessionId` 返回 Agent 生成物（PDF/TTF/TXT 等），归属校验（非本人 404）；返回 `{data:[{file_id,filename,content_type?,size?}]}`，不读事件正文。SSE 事件中的 `artifact` 仍由 Chat 投影展示，两者按 `file_id` 合并 | ✅ |
 | `sessions.update` | `PATCH /api/kit/sessions/:sessionId` | 改标题（本地索引 + Provider 同步） | ✅ |
 | `sessions.plan` | `POST /api/kit/sessions/:sessionId/plan` | `{ action: archive\|delete }` → `{ plan_id, confirm_token, destructive, expires_at, diff }`；会话级破坏性动作的第一段 | ✅ |
 | `sessions.archive` | `POST /api/kit/sessions/:sessionId/archive` | `{ plan_id, confirm_token }` → 归档；空令牌 400、伪造/重放令牌 428 | ✅ |
@@ -101,12 +102,12 @@
 | `sessions.events.list` | `GET /api/kit/sessions/:sessionId/events` | 完整快照历史分页，`?after_id=&limit=&page_token=` | ✅ |
 | `sessions.threads.list` | `GET /api/kit/sessions/:sessionId/threads` | 子 Agent 线程摘要分页，`?limit=&page_token=`；校验本人 experience Session，SDK 查询并按绑定版本补充 Agent 名称 | ✅ |
 | `sessions.threads.events` | `GET /api/kit/sessions/:sessionId/threads/:threadId/events` | 子 Agent 完整快照事件分页，最新在前；`?limit=&page_token=`；仅接受 `sthr_*`，与 Session 一起交给 Provider 校验 | ✅ |
-| `sessions.stream` | `GET /api/kit/sessions/:sessionId/stream` | 协议 2.0 持久 SSE，`?after=` 为传输游标；帧定义见 `docs/protocol.md` | ✅ |
+| `sessions.stream` | `GET /api/kit/sessions/:sessionId/stream` | 协议 3.0 实时 SSE，`?after=` 续传实时变更，失效后通过 `sessions.events.list` 加载历史 | ✅ |
 | `sessions.tool-approvals.list` | `GET /api/kit/sessions/:sessionId/tool-approvals` | 当前 requires_action、批次、待办调用与请求详情；归属检查，历史请求不自动激活 | ✅ |
 | `sessions.tool-approvals.respond` | `POST /api/kit/sessions/:sessionId/tool-approvals` | `{ batch_id, call_id, result: allow/deny, deny_message? }`；单项决策，原因最多 200 字符；实时校验，过期/重复 409。本地成员 allow 还检查该轮开始月的限额，deny 不受额度阻止；提交成功不等于执行成功 | ✅ |
 | `files.upload` | `POST /api/kit/files` | multipart（字段名 `file`）上传附件 → `{ file_id, filename, size }`；记录当前 subjectId，只有本人可挂载；黑名单扩展名（`.mjs`，实测 provider 415 拒绝）返回 400 `invalid_request`；超过 `KIT_UPLOAD_MAX_BYTES`（默认 20 MiB）返回 413 | ✅ |
 | `files.status` | `GET /api/kit/files/:fileId` | 本人上传附件的安全扫描状态 → `{ file_id, status, available }`（`checking → available`，实测 15~20s）；越权 / 非本人上传 404。客户端在上传后轮询到 `available` 再发送，服务端发送前的扫描闸门保留为兜底 | ✅ |
-| `files.download` | `GET /api/kit/files/:fileId/download` | 鉴权代理下载：本人上传文件可直接下载；Artifact 须带 `?session_id=`，验证本人 Session 的 Provider 历史确有该文件；越权 / 无归属证据 404，屏蔽预签名 URL | ✅ |
+| `files.download` | `GET /api/kit/files/:fileId/download` | 鉴权代理下载：本人上传文件可直接下载；Artifact 须带 `?session_id=`，验证本人 Session 的 Provider 事件历史确有该文件，或它出现在该会话的 Files 产物清单（`scope_id=sessionId`）中；越权 / 无归属证据 404，屏蔽预签名 URL | ✅ |
 | `plaza.get` | `GET /api/kit/plaza` | 广场视图：已上架条目 + 每条目 `stats{mine,turns_30d,last_used_at}` + 顶层 `featured[]`/`popular[]`/`categories[]`；`?category=&q=` 过滤；popular 无用量数据时回退 ordering | ✅ |
 | `quota.get` | `GET /api/kit/quota` | 匿名/JWT 的兼容月度 Credits；本地成员只返回 Turn 运营计数，Credits 限额为不限量，应使用 `usageLimits.get` 查询有效限额；`?days=`（1..400，缺省 30）指定 `daily` 逐日 Turns 窗口（年维度热力一次查询近 53 周） | ✅ |
 | `usageLimits.get` | `GET /api/kit/usage-limits` | 当前本地成员 `{data: MemberUsageLimitView}`（含 `daily` 逐日增量供每日用量热力及 `day_state` 今日限额状态；`?days=`（1..400，缺省 30）指定 daily 窗口长度，含今天 UTC 零值补全）；匿名/JWT 返回 `{data:null}`，失败不得解释为非成员；禁止缓存 | ✅ |
@@ -209,7 +210,7 @@ Plan/确认令牌绑定批次、主体、当前修订号与声明及上传内容
 | `debug.sessions.createTemplate` | `POST /api/admin/debug/sessions` | `CreateTemplateDebugSessionRequest`：`{remote_agent_id,agent_version?,remote_environment_id?,title?,files?,memory_stores?,vault_ids?}`；`agent_version` 为显式绑定的正整数，省略使用最新版本；环境省略时使用智能体默认环境，不查询环境目录、不传 Provider 环境覆盖；服务端重新校验远端目标及显式资源元数据后按所选版本建会话，来源为 template，不需要项目声明或 Catalog；文件最多 10、记忆库最多 8、密钥库最多 10，只挂载 ID 与配置，不读取凭据 | ✅ |
 | `debug.sessions.get` | `GET /api/admin/debug/sessions/:sessionId` | 归属校验后返回详情及附件；source 区分 project/template，项目来源包含声明键及源码 revision/source_dirty，模版来源包含远端环境、记忆与密钥库挂载配置；均含远端 Agent ID | ✅ |
 | `debug.sessions.messages.send` | `POST /api/admin/debug/sessions/:sessionId/messages` | 同 SendMessageRequest；复用就绪、幂等发送及审批检查，不扣员工 Credits；中途附件 400 | ✅ |
-| `debug.sessions.stream` | `GET /api/admin/debug/sessions/:sessionId/stream` | 复用共享 SSE pump、Kit v2 reset/ready/event 与 after 续传 | ✅ |
+| `debug.sessions.stream` | `GET /api/admin/debug/sessions/:sessionId/stream` | 协议 3.0 实时 SSE，复用共享上游订阅与 after 续传，历史由 `debug.sessions.events` 分页 | ✅ |
 | `debug.sessions.events` | `GET /api/admin/debug/sessions/:sessionId/events` | Provider 历史分页，支持 after_id/page_token/limit；正文不落库 | ✅ |
 | `debug.sessions.threads` | `GET /api/admin/debug/sessions/:sessionId/threads` | 当前管理员所属调试会话的子 Agent 线程分页，支持 page_token/limit；与体验端共享 Provider 线程合同 | ✅ |
 | `debug.sessions.threadEvents` | `GET /api/admin/debug/sessions/:sessionId/threads/:threadId/events` | 当前管理员所属调试会话的子线程完整事件快照分页，最新在前；threadId 仅接受 sthr_*，不落库，客户端转为 ChatProvider 所需正序 | ✅ |

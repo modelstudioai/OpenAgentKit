@@ -2,8 +2,8 @@
 
 将执行阶段、连接状态和错误组合为文本或紧凑徽标。
 
-- `connected` / `turnRunning` 是基础状态，`phase` / `connection` 提供精确状态。
-- 重连中的错误仍展示重连状态，其他错误显示文案；组件不启动连接或重试。
+- `connected` 和 `turnRunning` 为必填项，`phase` 提供时作为执行阶段。
+- `connection` 为 `connecting` 或 `reconnecting` 时覆盖基础状态。有错误时，重连中保留重连提示，其余状态展示错误。
 
 ## Props
 
@@ -11,10 +11,10 @@
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| `connected` | `boolean` | 是 | — | 是否已建立连接；旧接入 props，新接入改传 `connection` |
-| `turnRunning` | `boolean` | 是 | — | 当前 Turn 是否在生成；与 `phase` 并存的旧 props |
+| `connected` | `boolean` | 是 | — | 是否已建立连接，可传 `chat.connection === "connected"` |
+| `turnRunning` | `boolean` | 是 | — | 当前回合是否在生成，可传 `chat.turnRunning` |
 | `phase` | `"running" \| "failed" \| "idle" \| "requires_action" \| "stopping" \| "interrupted"` | 否 | — | Turn 阶段，优先于由 `turnRunning` 推导 |
-| `connection` | `ConnectionState` | 否 | — | 连接状态；`connecting` / `reconnecting` 提示覆盖暂存错误 |
+| `connection` | `ConnectionState` | 否 | — | 连接状态，取值为 `disconnected`、`connecting`、`connected` 或 `reconnecting` |
 | `error` | `{ code: string; message: string; } \| null` | 否 | — | 流错误，与错误模型同一套 code |
 | `variant` | `"default" \| "badge"` | 否 | `"default"` | `badge` 在保留状态文本的同时提供紧凑徽标，适合空间受限的页头 |
 
@@ -36,4 +36,4 @@ pnpm kit:add status-indicator
 
 同目录测试：[status-indicator.test.tsx](status-indicator.test.tsx)。
 
-完整用法与参数见[文档站对应页面](../../../../../apps/storybook/content/docs/components/chrome.mdx)；全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。
+组合用法见[状态灯演示](../../../../../apps/storybook/content/docs/components/chrome.mdx#状态灯)。全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。

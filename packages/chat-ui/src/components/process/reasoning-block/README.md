@@ -34,4 +34,4 @@ pnpm kit:add reasoning-block
 
 组件依赖：[process-step](../step/README.md)。
 
-完整用法与参数见[文档站对应页面](../../../../../../apps/storybook/content/docs/components/message.mdx)；全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。
+完整用法与参数见[文档站对应页面](../../../../../../apps/storybook/content/docs/components/feedback/reasoning-block.mdx)。全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。

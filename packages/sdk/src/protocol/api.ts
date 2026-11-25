@@ -525,7 +525,10 @@ export const PlanDiffEntrySchema = z.object({
 	resource: z.string(),
 	action: z.enum(["create", "update", "delete", "noop"]),
 	destructive: z.boolean().default(false),
+	/** 旧服务端自由文本；UI 不再把它当作主文案。 */
 	summary: z.string().optional(),
+	summary_key: z.string().optional(),
+	summary_params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
 });
 
 export const PlanResponseSchema = z.object({

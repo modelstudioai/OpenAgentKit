@@ -18,7 +18,14 @@ export default defineConfig({
 		webUrl: "http://localhost:5203",
 		apiBaseUrl: "http://localhost:8799",
 	},
-	use: { ...devices["Desktop Chrome"], baseURL: "http://localhost:8799", channel: "chrome", trace: "off" },
+	// 固定中文：管理端与体验页都有按中文文案定位的交互，locale 漂移会让整条用例在登录步就找不到入口。
+	use: {
+		...devices["Desktop Chrome"],
+		baseURL: "http://localhost:8799",
+		channel: "chrome",
+		locale: "zh-CN",
+		trace: "off",
+	},
 	webServer: [
 		{
 			command: "pnpm --filter @openagentpack/kit-server exec tsx src/bin.ts",

@@ -1,6 +1,7 @@
 import type { MemberView } from "@openagentkit/sdk/protocol";
 import { Alert, Button, Descriptions, Form, Input, Modal, Popconfirm, Spin } from "antd";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { AdminClient } from "../../lib/admin/client.ts";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 
@@ -19,6 +20,7 @@ export function MemberOidcBindingDialog({
 	onClose: () => void;
 	onPendingChange: (pending: boolean) => void;
 }) {
+	const { t } = useTranslation("members");
 	const query = useAdminQuery(`members:oidc:${member.member_id}`, (signal) =>
 		client.members.oidcBinding(member.member_id, signal),
 	);
@@ -37,7 +39,7 @@ export function MemberOidcBindingDialog({
 			else await client.members.unbindOidc(member.member_id);
 			onClose();
 		} catch (cause) {
-			setError(cause instanceof Error ? cause.message : "更新绑定失败，请重试");
+			setError(cause instanceof Error ? cause.message : t("binding.updateFailed"));
 		} finally {
 			setPending(false);
 			onPendingChange(false);
@@ -47,26 +49,26 @@ export function MemberOidcBindingDialog({
 	return (
 		<Modal
 			open
-			title={`企业登录绑定 · ${member.display_name}`}
+			title={t("binding.title", { name: member.display_name })}
 			onCancel={pending ? undefined : onClose}
 			closable={!pending}
 			keyboard={!pending}
 			mask={{ closable: !pending }}
 			footer={[
 				<Button key="close" disabled={pending} onClick={onClose}>
-					关闭
+					{t("binding.close")}
 				</Button>,
 				canWrite && binding && !query.error ? (
 					<Popconfirm
 						key="unbind"
-						title="解除该成员的企业登录绑定？"
-						description="该成员在 Kit 的企业登录和会话订阅将立即失效。"
-						okText="解除绑定"
+						title={t("binding.unbindTitle")}
+						description={t("binding.unbindDescription")}
+						okText={t("binding.unbind")}
 						okButtonProps={{ danger: true }}
 						onConfirm={() => changeBinding("unbind")}
 					>
 						<Button danger loading={pending}>
-							解除绑定
+							{t("binding.unbind")}
 						</Button>
 					</Popconfirm>
 				) : canWrite && query.data && !query.error ? (
@@ -77,16 +79,16 @@ export function MemberOidcBindingDialog({
 						disabled={!sub.trim()}
 						onClick={() => void changeBinding("bind")}
 					>
-						保存绑定
+						{t("binding.save")}
 					</Button>
 				) : null,
 			]}
 		>
 			<Descriptions column={1} size="small">
 				<Descriptions.Item label="Keycloak Realm">{issuer}</Descriptions.Item>
-				<Descriptions.Item label="成员 ID">{member.member_id}</Descriptions.Item>
-				<Descriptions.Item label="绑定状态">
-					{query.data ? (binding ? "已绑定" : "未绑定") : "待读取"}
+				<Descriptions.Item label={t("columns.memberId")}>{member.member_id}</Descriptions.Item>
+				<Descriptions.Item label={t("binding.status")}>
+					{t(query.data ? (binding ? "binding.bound" : "binding.unbound") : "binding.pending")}
 				</Descriptions.Item>
 				{binding && <Descriptions.Item label="Keycloak subject">{binding.sub}</Descriptions.Item>}
 			</Descriptions>
@@ -97,7 +99,7 @@ export function MemberOidcBindingDialog({
 					message={query.error}
 					action={
 						<Button size="small" onClick={() => void query.refresh()}>
-							重试
+							{t("list.retry")}
 						</Button>
 					}
 				/>
@@ -105,7 +107,7 @@ export function MemberOidcBindingDialog({
 			{error && <Alert type="error" message={error} />}
 			{query.data && !query.error && !binding && canWrite && (
 				<Form layout="vertical" onFinish={() => void changeBinding("bind")}>
-					<Form.Item label="Keycloak subject" htmlFor="oidc-subject" extra="填写 Keycloak 在 sub 字段签发的用户标识。">
+					<Form.Item label="Keycloak subject" htmlFor="oidc-subject" extra={t("binding.subjectHint")}>
 						<Input
 							id="oidc-subject"
 							value={sub}

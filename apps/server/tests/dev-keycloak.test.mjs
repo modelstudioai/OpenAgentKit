@@ -6,7 +6,7 @@ import { provisionKeycloak } from "../scripts/keycloak-dev.mjs";
 import { prepareKeycloakHome } from "../scripts/keycloak-runtime.mjs";
 
 const config = { base: "http://127.0.0.1:8080", realm: "kit", clientId: "kit-web", audience: "kit-api", webPort: 5183 };
-const webOrigins = ["http://localhost:5183", "http://127.0.0.1:5183"];
+const webOrigins = ["http://localhost:5183", "http://127.0.0.1:5183", "http://localhost:5175", "http://127.0.0.1:5175"];
 const redirectUris = webOrigins.map((origin) => `${origin}/`);
 const admin = { username: "test-admin", password: "test-only" };
 const run = () => provisionKeycloak(config, admin, new AbortController().signal);

@@ -1,0 +1,68 @@
+---
+title: PlazaCard 智能体卡片
+description: 展示 Agent 的分类、能力与近期回合数，提供开始体验入口
+---
+
+`PlazaCard` 展示一个 Agent 的图标、名称、分类、描述、能力和近期回合数。点击「开始体验」时，组件将 Agent 的 `slug` 传给调用方。
+
+```tsx
+import { PlazaCard } from "@openagentpack/kit-chat-ui";
+```
+
+copy-in 接入（复制后 import 改为项目内路径）
+
+```bash
+pnpm kit:add plaza-card
+```
+
+主题与渲染依赖见 [组件总览](/docs/components#主题)。
+
+## 何时使用
+
+- 在 Agent 广场的精选、热门或搜索结果中展示条目，并提供进入对话的入口。
+- 同时展示多个分类时，用 `CategoryTabs` 切换列表。 [CategoryTabs 广场分类](/docs/components/plaza/category-tabs)
+
+## 代码演示
+
+点击「开始体验」，观察卡片回传的 Agent 标识。演示使用本地条目。
+
+<Showcase name="plaza-card" />
+
+## 接入
+
+将 `usePlaza().view.agents` 中的条目传给 `entry`，用 `onOpen` 切换当前 Agent 和会话。
+描述缺省时使用 Agent 的开场白。提供 `suggested_prompts` 时，卡片展示第一条示例问题。
+长标题和描述截断显示，鼠标悬停可查看完整文字。 [广场与配额 Hooks](/docs/sdk/discovery-usage#广场与配额查询)
+
+## API
+
+### PlazaCard
+
+| 属性 | 说明 | 类型 | 默认值 |
+| --- | --- | --- | --- |
+| `entry` | 必填，含展示信息和用量统计的 Agent 条目 | [`PlazaEntry`](#plazaentry) | — |
+| `onOpen` | 必填，点击「开始体验」时回传 Agent 标识 | `(slug: string) => void` | — |
+
+### PlazaEntry
+
+从 `@openagentkit/sdk/protocol` 导入。在 `AgentSummary` 基础上增加 `stats`，用于展示近 30 天回合数、当前用户是否用过和最近使用日期。 [AgentSummary](/docs/components/general/agent-header#agentsummary)
+
+| 属性 | 说明 | 类型 |
+| --- | --- | --- |
+| `category` | 卡片分类 | `PlazaCategory` |
+| `featured` | 为 true 时显示「精选」 | `boolean` |
+| `capabilities` | 显示启用的能力，如流式输出、文件上传和产物 | `AgentCapabilities` |
+| `stats.turns_30d` | 近 30 天的全局回合数 | `number` |
+| `stats.mine` | 当前用户用过时显示「我的」 | `boolean` |
+| `stats.last_used_at` | 可选，最近使用时间，按本地日历显示相对日期 | `string` |
+
+## 主题变量（Design Token）
+
+| Token | 用途 | 默认主题 | 工作区主题 |
+| --- | --- | --- | --- |
+| `--kit-surface` | 卡片底色 | `#ffffff` | `#ffffff` |
+| `--kit-border` | 卡片边框 | `#e3e6ef` | `#e5e5e5` |
+| `--kit-bg-subtle` | 分类标签和示例问题底色 | `#f6f7fb` | `#f7f7f7` |
+| `--kit-accent` / `--kit-accent-fg` | 行动按钮的底色和文字 | `#4f46e5` / `#ffffff` | `#171717` / `#ffffff` |
+
+卡片使用 `--kit-radius`，行动按钮的焦点环使用 `--kit-focus`。
