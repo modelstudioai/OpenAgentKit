@@ -1,8 +1,12 @@
 import { ArrowLeftOutlined } from "@ant-design/icons";
-import { CreateMemberRequestSchema, type CreateMemberResponse } from "@openagentkit/sdk/protocol";
+import {
+	CreateMemberRequestSchema,
+	type CreateMemberResponse,
+	type OidcClientConfig,
+} from "@openagentkit/sdk/protocol";
 import { Alert, Button, Input, Radio, Typography } from "antd";
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { localizedValidationMessage } from "../../lib/validation-message.ts";
 import styles from "./members.module.less";
 import { useCreateMember } from "./use-members.ts";
@@ -13,6 +17,7 @@ interface MemberDraft {
 	email: string;
 	password_mode: "auto" | "custom";
 	password: string;
+	oidc_binding: string;
 }
 
 const EMPTY_DRAFT: MemberDraft = {
@@ -21,15 +26,18 @@ const EMPTY_DRAFT: MemberDraft = {
 	email: "",
 	password_mode: "auto",
 	password: "",
+	oidc_binding: "",
 };
 
 function CreatedMember({
 	result,
 	passwordLogin,
+	canBindOidc,
 	onBack,
 }: {
 	result: CreateMemberResponse["data"];
 	passwordLogin: boolean;
+	canBindOidc: boolean;
 	onBack: () => void;
 }) {
 	const { t } = useTranslation("members");
@@ -47,6 +55,12 @@ function CreatedMember({
 					<dt className={styles.mutedText}>{t("columns.displayName")}</dt>
 					<dd className={styles.termValue}>{result.member.display_name}</dd>
 				</div>
+				{result.oidc_binding && (
+					<div>
+						<dt className={styles.mutedText}>{t("create.boundSubject")}</dt>
+						<dd className={styles.monoValue}>{result.oidc_binding.sub}</dd>
+					</div>
+				)}
 			</dl>
 			{passwordLogin && result.initial_password && (
 				<div className={styles.passwordPanel}>
@@ -61,7 +75,8 @@ function CreatedMember({
 					</Typography.Text>
 				</div>
 			)}
-			<p className={styles.mutedText}>{t(passwordLogin ? "create.memberAdded" : "create.memberAddedOidc")}</p>
+			{passwordLogin && <p className={styles.mutedText}>{t("create.memberAdded")}</p>}
+			{canBindOidc && !result.oidc_binding && <p className={styles.mutedText}>{t("create.memberAddedOidc")}</p>}
 			<Button type="primary" onClick={onBack}>
 				{t("create.backToList")}
 			</Button>
@@ -79,10 +94,12 @@ function FieldError({ field, errors }: { field: keyof MemberDraft; errors: Recor
 
 export function CreateMemberPage({
 	passwordLogin,
+	oidc,
 	onBack,
 	onPendingChange,
 }: {
 	passwordLogin: boolean;
+	oidc?: OidcClientConfig;
 	onBack: () => void;
 	onPendingChange: (pending: boolean) => void;
 }) {
@@ -90,6 +107,8 @@ export function CreateMemberPage({
 	const [draft, setDraft] = useState<MemberDraft>(EMPTY_DRAFT);
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const creation = useCreateMember(onPendingChange);
+	const sub = draft.oidc_binding.trim();
+	const oidcBinding = oidc && sub ? { sub } : undefined;
 	const update = (field: keyof MemberDraft, value: string) => {
 		setDraft((current) => ({ ...current, [field]: value }));
 		setErrors((current) => ({ ...current, [field]: "" }));
@@ -103,6 +122,7 @@ export function CreateMemberPage({
 			auth_type: "local",
 			password_mode: passwordMode,
 			...(passwordMode === "custom" ? { password: draft.password } : {}),
+			oidc_binding: oidcBinding,
 		});
 		if (!parsed.success) {
 			const next: Record<string, string> = {};
@@ -116,7 +136,15 @@ export function CreateMemberPage({
 		setErrors({});
 		if (await creation.create(parsed.data)) setDraft(EMPTY_DRAFT);
 	};
-	if (creation.result) return <CreatedMember result={creation.result} passwordLogin={passwordLogin} onBack={onBack} />;
+	if (creation.result)
+		return (
+			<CreatedMember
+				result={creation.result}
+				passwordLogin={passwordLogin}
+				canBindOidc={Boolean(oidc)}
+				onBack={onBack}
+			/>
+		);
 	return (
 		<form
 			noValidate
@@ -207,57 +235,103 @@ export function CreateMemberPage({
 					/>
 					<FieldError field="email" errors={errors} />
 				</div>
-				<div>
-					<p className={styles.sectionLabel}>{t("columns.authMethod")}</p>
-					<p className={styles.staticField}>{t(passwordLogin ? "columns.authLocal" : "columns.authOidc")}</p>
-				</div>
-				{passwordLogin && (
-					<fieldset className={styles.passwordSection}>
-						<legend className={styles.legendTitle}>{t("create.passwordSection")}</legend>
-						<Radio.Group
-							disabled={creation.pending}
-							value={draft.password_mode}
-							onChange={(event) => {
-								if (event.target.value === "auto") {
-									update("password_mode", "auto");
-									update("password", "");
-									return;
-								}
-								update("password_mode", "custom");
-							}}
-						>
-							<Radio value="auto">{t("create.autoPassword")}</Radio>
-							<Radio value="custom">{t("create.customPassword")}</Radio>
-						</Radio.Group>
-						{draft.password_mode === "auto" ? (
-							<p className={styles.autoPasswordHint}>{t("create.autoPasswordHint")}</p>
+				<section className={styles.authMethods} aria-labelledby="member-auth-methods">
+					<h3 id="member-auth-methods" className={styles.sectionLabel}>
+						{t("columns.authMethod")}
+					</h3>
+					{passwordLogin && oidc && <p className={styles.mutedText}>{t("create.dualLogin")}</p>}
+					<fieldset className={styles.authMethod}>
+						<legend className={styles.legendTitle}>{t("create.passwordLogin")}</legend>
+						{passwordLogin ? (
+							<>
+								<Radio.Group
+									disabled={creation.pending}
+									value={draft.password_mode}
+									onChange={(event) => {
+										if (event.target.value === "auto") {
+											update("password_mode", "auto");
+											update("password", "");
+											return;
+										}
+										update("password_mode", "custom");
+									}}
+								>
+									<Radio value="auto">{t("create.autoPassword")}</Radio>
+									<Radio value="custom">{t("create.customPassword")}</Radio>
+								</Radio.Group>
+								{draft.password_mode === "auto" ? (
+									<p className={styles.autoPasswordHint}>{t("create.autoPasswordHint")}</p>
+								) : (
+									<div className={styles.fieldRow}>
+										<label htmlFor="member-password">
+											{t("create.initialPassword")}{" "}
+											<span aria-hidden="true" className={styles.requiredMark}>
+												*
+											</span>
+										</label>
+										<Input.Password
+											id="member-password"
+											name="password"
+											autoComplete="new-password"
+											required
+											maxLength={32}
+											value={draft.password}
+											onChange={(event) => update("password", event.target.value)}
+											aria-invalid={!!errors.password}
+											aria-describedby="member-password-hint member-password-error"
+										/>
+										<p id="member-password-hint" className={styles.fieldHint}>
+											{t("create.passwordHint")}
+										</p>
+										<FieldError field="password" errors={errors} />
+									</div>
+								)}
+							</>
 						) : (
-							<div className={styles.fieldRow}>
-								<label htmlFor="member-password">
-									{t("create.initialPassword")}{" "}
-									<span aria-hidden="true" className={styles.requiredMark}>
-										*
-									</span>
-								</label>
-								<Input.Password
-									id="member-password"
-									name="password"
-									autoComplete="new-password"
-									required
-									maxLength={32}
-									value={draft.password}
-									onChange={(event) => update("password", event.target.value)}
-									aria-invalid={!!errors.password}
-									aria-describedby="member-password-hint member-password-error"
-								/>
-								<p id="member-password-hint" className={styles.fieldHint}>
-									{t("create.passwordHint")}
-								</p>
-								<FieldError field="password" errors={errors} />
-							</div>
+							<p className={styles.mutedText}>{t("create.passwordDisabled")}</p>
 						)}
 					</fieldset>
-				)}
+					<fieldset className={styles.authMethod}>
+						<legend className={styles.legendTitle}>{t("create.ssoLogin")}</legend>
+						{oidc ? (
+							<div className={styles.fieldRow}>
+								<label htmlFor="member-oidc_binding">
+									{t("create.oidcSubject")} <span className={styles.mutedText}>{t("create.optional")}</span>
+								</label>
+								<Input
+									id="member-oidc_binding"
+									name="oidc_binding"
+									maxLength={255}
+									value={draft.oidc_binding}
+									onChange={(event) => update("oidc_binding", event.target.value)}
+									aria-invalid={!!errors.oidc_binding}
+									aria-describedby="member-oidc-binding-hint member-oidc_binding-error"
+								/>
+								<p id="member-oidc-binding-hint" className={styles.fieldHint}>
+									{t("create.oidcSubjectHint")}
+									{oidc.adminUsersUrl && (
+										<>
+											{" "}
+											<Trans
+												t={t}
+												i18nKey="create.oidcAdminUrl"
+												values={{ url: oidc.adminUsersUrl }}
+												components={{
+													adminLink: (
+														<Typography.Link href={oidc.adminUsersUrl} target="_blank" rel="noopener noreferrer" />
+													),
+												}}
+											/>
+										</>
+									)}
+								</p>
+								<FieldError field="oidc_binding" errors={errors} />
+							</div>
+						) : (
+							<p className={styles.mutedText}>{t("create.oidcDisabled")}</p>
+						)}
+					</fieldset>
+				</section>
 			</fieldset>
 		</form>
 	);

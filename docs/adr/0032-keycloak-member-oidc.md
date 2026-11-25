@@ -8,14 +8,18 @@ Keycloak 上游逐步接入钉钉、飞书等企业身份源。
 ## 决策
 
 1. 独立部署默认使用 `member` 模式。部署可切换至 `oidc`，员工端走 Keycloak OIDC 授权码和
-   PKCE S256，业务 API 直接使用 Keycloak 的 access token。该模式关闭员工密码登录，
-   并拒绝旧 Kit 成员令牌、兼容外部 JWT 和匿名访问。控制面继续使用管理端身份。
+   PKCE S256，业务 API 直接使用 Keycloak 的 access token。该模式默认只允许企业登录。
+   设置 `KIT_OIDC_PASSWORD_LOGIN=true` 后，员工端同时提供 Kit 成员密码登录，业务 API
+   接受这两种登录签发的令牌。同一成员通过两种登录方式获得同一个 `member_id`。
+   `oidc` 模式下的员工身份限于已绑定的企业账号和明确启用的 Kit 成员凭据。控制面使用管理端身份。
 2. Kit Server 固定信任一个配置好的 Keycloak Realm，并从该 Realm 获取签名公钥。
    验证 RS256 签名、issuer、API audience、授权客户端、有效期和令牌用途之后，
-   用 `(iss, sub)` 匹配管理员显式维护的一对一成员绑定。员工登录保持既有 `member_id`。
+   用 `(iss, sub)` 匹配管理员显式维护的一对一成员绑定。管理员可在创建成员时同时绑定，
+   也可在成员列表为已有成员绑定。员工登录保持既有 `member_id`。
 3. Web 内存保存 Keycloak 令牌。SDK 重新通过 `auth.me` 确认续期仍是同一 Kit 成员，
    再用新令牌和原游标续接 SSE。退出只撤销本次 Kit 登录使用的有效 access token，
    保留 Keycloak 的统一登录会话。Kit 数据库保存撤销标识的哈希直到令牌到期。
+   同时启用密码登录时，浏览器会话存储仅保存 Kit 签发的成员令牌，退出撤销当前登录的凭据。
 4. Keycloak 管理上游 OAuth 身份代理和账号关联。钉钉或飞书用户关联到原 Realm 用户后，
    Kit 可继续使用同一个 `(iss, sub)` 绑定。
 
@@ -26,7 +30,7 @@ Keycloak 负责签发凭据，Kit 负责业务授权和成员归属。以 issuer
 
 ## 后果
 
-切换前可先配置 Realm 和绑定。解绑即时停止对应 Kit 访问和 SSE，重新绑定要求使用绑定后
+切换前可先配置 Realm 和绑定。解绑即时停止该企业身份的 Kit 访问和 SSE，重新绑定要求使用绑定后
 签发的令牌。删除或跨 Realm 重建 Keycloak 用户会产生新的身份绑定需求。
 
 本地验签依赖 access token 有效期感知 Keycloak 侧停用或退出。需要即时收回 Kit 访问时，

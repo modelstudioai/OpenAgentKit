@@ -72,12 +72,16 @@ export function registerMemberRoutes(app: OpenAPIHono<AppEnv>) {
 			responses: {
 				...errors,
 				201: {
-					description: "已创建。启用密码登录且选择自动生成时返回一次初始密码",
+					description: "已创建成员并保存可选的企业绑定。启用密码登录且选择自动生成时返回一次初始密码",
 					content: { "application/json": { schema: CreateMemberResponseSchema } },
 				},
 				400: {
 					...errors[400],
-					description: "成员参数无效，或企业登录模式提交了自定义密码",
+					description: "成员参数无效、密码登录关闭时提交了自定义密码，或未配置 Keycloak 时提交了企业绑定",
+				},
+				409: {
+					...errors[409],
+					description: "用户名已存在（不区分大小写），或 Keycloak 用户已有绑定",
 				},
 			},
 		}),

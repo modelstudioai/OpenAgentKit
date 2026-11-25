@@ -99,10 +99,7 @@
                                   ]
                                 },
                                 "passwordLogin": {
-                                  "type": "boolean",
-                                  "enum": [
-                                    false
-                                  ]
+                                  "type": "boolean"
                                 },
                                 "oidc": {
                                   "type": "object",
@@ -114,6 +111,10 @@
                                     "clientId": {
                                       "type": "string",
                                       "minLength": 1
+                                    },
+                                    "adminUsersUrl": {
+                                      "type": "string",
+                                      "format": "uri"
                                     }
                                   },
                                   "required": [
@@ -154,6 +155,10 @@
                                     "clientId": {
                                       "type": "string",
                                       "minLength": 1
+                                    },
+                                    "adminUsersUrl": {
+                                      "type": "string",
+                                      "format": "uri"
                                     }
                                   },
                                   "required": [
@@ -21852,6 +21857,18 @@
                           "local"
                         ]
                       },
+                      "oidc_binding": {
+                        "type": "object",
+                        "properties": {
+                          "sub": {
+                            "type": "string",
+                            "pattern": "^[!-~]{1,255}$"
+                          }
+                        },
+                        "required": [
+                          "sub"
+                        ]
+                      },
                       "password_mode": {
                         "type": "string",
                         "enum": [
@@ -21895,6 +21912,18 @@
                           "local"
                         ]
                       },
+                      "oidc_binding": {
+                        "type": "object",
+                        "properties": {
+                          "sub": {
+                            "type": "string",
+                            "pattern": "^[!-~]{1,255}$"
+                          }
+                        },
+                        "required": [
+                          "sub"
+                        ]
+                      },
                       "password_mode": {
                         "type": "string",
                         "enum": [
@@ -21924,7 +21953,7 @@
         },
         "responses": {
           "201": {
-            "description": "已创建。启用密码登录且选择自动生成时返回一次初始密码",
+            "description": "已创建成员并保存可选的企业绑定。启用密码登录且选择自动生成时返回一次初始密码",
             "content": {
               "application/json": {
                 "schema": {
@@ -22143,6 +22172,31 @@
                         },
                         "initial_password": {
                           "type": "string"
+                        },
+                        "oidc_binding": {
+                          "type": "object",
+                          "properties": {
+                            "sub": {
+                              "type": "string",
+                              "pattern": "^[!-~]{1,255}$"
+                            },
+                            "issuer": {
+                              "type": "string",
+                              "format": "uri"
+                            },
+                            "member_id": {
+                              "type": "string"
+                            },
+                            "bound_at": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "sub",
+                            "issuer",
+                            "member_id",
+                            "bound_at"
+                          ]
                         }
                       },
                       "required": [
@@ -22158,7 +22212,7 @@
             }
           },
           "400": {
-            "description": "成员参数无效，或企业登录模式提交了自定义密码",
+            "description": "成员参数无效、密码登录关闭时提交了自定义密码，或未配置 Keycloak 时提交了企业绑定",
             "content": {
               "application/json": {
                 "schema": {
@@ -22294,7 +22348,7 @@
             }
           },
           "409": {
-            "description": "用户名已存在（不区分大小写）",
+            "description": "用户名已存在（不区分大小写），或 Keycloak 用户已有绑定",
             "content": {
               "application/json": {
                 "schema": {

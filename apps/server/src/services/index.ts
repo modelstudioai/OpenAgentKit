@@ -77,10 +77,10 @@ export function createKitServices(
 	const operations = createOperationStore(database);
 	const audit = createAuditLog(database);
 	const memberStore = createMemberStore(database);
-	const members = createMemberService({ store: memberStore, audit, passwordLogin: config.authMode !== "oidc" });
 	const oidcAuth = config.oidc
 		? createOidcAuthService({ config: config.oidc, store: createOidcAuthStore(database), members: memberStore, audit })
 		: undefined;
+	const members = createMemberService({ store: memberStore, audit, passwordLogin: config.passwordLogin, oidcAuth });
 	const memberUsage = createMemberUsageService({
 		store: usageSnapshots,
 		members: memberStore,

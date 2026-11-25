@@ -50,7 +50,7 @@ export function MemberAuthGate({
 		<MemberLoginForm
 			pending={auth.pending}
 			error={error}
-			onLogin={auth.login}
+			onLogin={controller.passwordLogin ? auth.login : undefined}
 			onOidcLogin={controller.mode === "oidc" ? controller.loginWithOidc : undefined}
 			onRetry={auth.retry}
 		/>

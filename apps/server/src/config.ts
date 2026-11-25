@@ -27,6 +27,7 @@ export interface OidcConfig {
 	issuer: string;
 	clientId: string;
 	audience: string;
+	adminUsersUrl: string;
 }
 
 export interface ServerConfig {
@@ -37,6 +38,7 @@ export interface ServerConfig {
 	jwtSecret?: string;
 	/** 默认要求成员或可信 JWT 身份；匿名演示必须显式开启。 */
 	authMode: "member" | "anonymous" | "oidc";
+	passwordLogin: boolean;
 	oidc?: OidcConfig;
 	corsOrigins: string[];
 	gatewayMode: "auto" | "mock" | "sdk";
@@ -111,6 +113,23 @@ function parseAuthMode(env: NodeJS.ProcessEnv): ServerConfig["authMode"] {
 	return mode;
 }
 
+const KEYCLOAK_REALM_PATH = /\/realms\/([A-Za-z0-9._-]+)$/;
+
+function isKeycloakBrowserUrl(url: URL): boolean {
+	const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+	return (url.protocol === "https:" || (local && url.protocol === "http:")) && !url.username && !url.password;
+}
+
+function parseKeycloakUsersUrl(issuer: string, override?: string): string {
+	const value = override?.trim();
+	if (!value) return issuer.replace(KEYCLOAK_REALM_PATH, "/admin/master/console/#/$1/users");
+	const url = URL.parse(value);
+	if (!url || !isKeycloakBrowserUrl(url) || url.search) {
+		throw new Error("KIT_KEYCLOAK_USERS_URL 必须是无凭据和查询参数的 HTTPS URL；本地回环地址支持 HTTP");
+	}
+	return url.href;
+}
+
 function parseOidc(env: NodeJS.ProcessEnv, mode: ServerConfig["authMode"]): OidcConfig | undefined {
 	const issuer = env.KIT_OIDC_ISSUER?.trim();
 	const clientId = env.KIT_OIDC_CLIENT_ID?.trim();
@@ -119,21 +138,18 @@ function parseOidc(env: NodeJS.ProcessEnv, mode: ServerConfig["authMode"]): Oidc
 	if (!issuer || !clientId || !audience)
 		throw new Error("KIT_OIDC_ISSUER、KIT_OIDC_CLIENT_ID 和 KIT_OIDC_AUDIENCE 必须一起配置");
 	const url = URL.parse(issuer);
-	const local = url && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
 	if (
 		!url ||
-		(url.protocol !== "https:" && !(local && url.protocol === "http:")) ||
-		url.username ||
-		url.password ||
+		!isKeycloakBrowserUrl(url) ||
 		url.search ||
 		url.hash ||
 		url.href !== issuer ||
-		!/\/realms\/[A-Za-z0-9._-]+$/.test(url.pathname)
+		!KEYCLOAK_REALM_PATH.test(url.pathname)
 	) {
 		throw new Error("KIT_OIDC_ISSUER 必须是 Keycloak Realm 的 HTTPS issuer；本地回环地址支持 HTTP");
 	}
 	if (clientId === audience) throw new Error("KIT_OIDC_AUDIENCE 必须与 KIT_OIDC_CLIENT_ID 不同");
-	return { issuer, clientId, audience };
+	return { issuer, clientId, audience, adminUsersUrl: parseKeycloakUsersUrl(issuer, env.KIT_KEYCLOAK_USERS_URL) };
 }
 
 function parseBailianCredentials(env: NodeJS.ProcessEnv): BailianCredentials | undefined {
@@ -251,6 +267,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 		adminToken: env.ADMIN_TOKEN?.trim() || "",
 		jwtSecret: env.KIT_JWT_SECRET?.trim() || undefined,
 		authMode,
+		passwordLogin: authMode !== "oidc" || env.KIT_OIDC_PASSWORD_LOGIN?.trim() === "true",
 		...(oidc ? { oidc } : {}),
 		corsOrigins: parseCorsOrigins(env),
 		gatewayMode: mode,

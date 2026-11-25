@@ -14,8 +14,9 @@
 
 默认数据面要求登录。成员通过 `Authorization: Bearer <access_token>` 传递登录令牌，
 由 Kit 密码登录或 Keycloak 签发，URL 禁止附带令牌。
-登录、恢复、退出的 HTTP 合同见 `docs/interfaces.md`。退出、解绑或令牌到期后，已建立的成员
-SSE 发出 `error`（`code: unauthorized`、`retryable: false`）并关闭；客户端清理该身份的
+登录、恢复、退出的 HTTP 合同见 `docs/interfaces.md`。两种登录同时启用时，服务端按凭据来源认证，
+退出按令牌撤销访问。退出、企业绑定解除或令牌到期后，对应凭据建立的成员 SSE 发出
+`error`（`code: unauthorized`、`retryable: false`）并关闭。客户端清理该身份的
 状态并重新登录，不按断流恢复重连。仅关闭订阅不会向 Provider 发送 interrupt。
 如果订阅在单帧异步鉴权期间被取消，服务端丢弃该帧。
 客户端暂停读取造成背压时，服务端最多等待 250ms 写出认证错误，之后强制释放连接与

@@ -43,6 +43,7 @@ function readCursor(token: string | undefined, search: string): Cursor | undefin
 /** 成员目录与本地密码派生值；所有查询显式选择展示列，密码字段不进入视图。 */
 export function createMemberStore(db: StoreDatabase) {
 	return {
+		transaction: db.transaction,
 		async findById(memberId: string): Promise<MemberView | null> {
 			const row = (await db.get(`SELECT ${VIEW_COLUMNS} FROM kit_members WHERE member_id = ?`, memberId)) as
 				| MemberRow

@@ -98,6 +98,7 @@ function setup() {
 	};
 	return {
 		create,
+		fetchImpl,
 		storage,
 		requests,
 		revoked,
@@ -381,6 +382,57 @@ describe("本地成员认证生命周期", () => {
 		await expect(login(controller)).rejects.toThrow("无法保存登录状态");
 		expect(controller.getSnapshot().client).toBeNull();
 		expect(fixture.revoked.size).toBe(1);
+	});
+
+	it("同时支持密码和 OIDC 时恢复各自身份，浏览器存储只保留密码登录令牌", async () => {
+		const fixture = setup();
+		const enterprise = { access_token: "oidc-employee", expires_at: new Date(Date.now() + 300_000).toISOString() };
+		const oidc = {
+			restore: vi.fn<() => Promise<StoredMemberSession | null>>().mockResolvedValue(null),
+			login: vi.fn(async () => undefined),
+			refresh: vi.fn(async () => enterprise),
+			clear: vi.fn(),
+		};
+		const create = () => {
+			const controller = createMemberAuthController({
+				baseUrl: "https://backend.example/prefix",
+				mode: "oidc",
+				oidc,
+				storage: fixture.storage,
+				fetchImpl: fixture.fetchImpl,
+			});
+			controllers.push(controller);
+			return controller;
+		};
+		const first = create();
+		await first.start();
+		await login(first);
+		const passwordSession = fixture.storage.load()!;
+		expect(passwordSession.access_token).toMatch(/^kit_member_/);
+		first.dispose();
+		const restored = create();
+		await restored.start();
+		expect(restored.getSnapshot()).toMatchObject({ status: "signed-in", member: { member_id: "member_alice" } });
+		await restored.logout();
+		expect(fixture.storage.load()).toBeNull();
+		await restored.loginWithOidc();
+		expect(oidc.login).toHaveBeenCalledOnce();
+		restored.dispose();
+
+		fixture.storage.save(passwordSession);
+		oidc.restore.mockResolvedValueOnce(enterprise);
+		fixture.setOverride((url, init) => {
+			if (url.pathname.endsWith("/me") && new Headers(init.headers).get("authorization") === "Bearer oidc-employee")
+				return Promise.resolve(
+					json({ identity: { subjectId: "member_bob" }, member: member("bob"), expires_at: enterprise.expires_at }),
+				);
+		});
+		const callback = create();
+		await callback.start();
+		expect(callback.getSnapshot()).toMatchObject({ status: "signed-in", member: { member_id: "member_bob" } });
+		expect(fixture.storage.load()).toBeNull();
+		await callback.logout();
+		expect(fixture.revoked).toEqual(new Set([`Bearer ${passwordSession.access_token}`, "Bearer oidc-employee"]));
 	});
 
 	it("OIDC 续期校验限流时保留旧请求和 SSE，校验成功后续接同一成员", async () => {

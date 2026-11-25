@@ -22,7 +22,11 @@ export async function bootstrapClient(fetchImpl?: typeof fetch) {
 	const controller = createMemberAuthController({
 		baseUrl,
 		...(auth?.mode === "oidc"
-			? { mode: auth.mode, oidc: createKeycloakSession(auth.oidc, baseUrl) }
+			? {
+					mode: auth.mode,
+					oidc: createKeycloakSession(auth.oidc, baseUrl),
+					storage: auth.passwordLogin ? createMemberSessionStorage(baseUrl) : undefined,
+				}
 			: { mode: auth?.mode ?? "member", storage: createMemberSessionStorage(baseUrl) }),
 		fetchImpl,
 		createChatProvider: createExampleChatProvider,

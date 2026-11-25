@@ -57,11 +57,11 @@ export function registerMetaRoutes(app: OpenAPIHono<AppEnv>) {
 			// 空串 = 与访问者同源（反代或自定义宿主场景）；仅 KIT_PUBLIC_BASE_URL 显式覆盖
 			const services = c.get("services");
 			const origin = services.config.publicBaseUrl;
-			const { authMode, oidc } = services.config;
+			const { authMode, oidc, passwordLogin } = services.config;
 			const auth = KitAuthConfigSchema.parse({
 				mode: authMode,
-				passwordLogin: authMode !== "oidc",
-				...(oidc ? { oidc: { issuer: oidc.issuer, clientId: oidc.clientId } } : {}),
+				passwordLogin,
+				...(oidc ? { oidc: { issuer: oidc.issuer, clientId: oidc.clientId, adminUsersUrl: oidc.adminUsersUrl } } : {}),
 			});
 			const branding = await services.branding.get();
 			const uploaded = await services.branding.getLogoMeta();

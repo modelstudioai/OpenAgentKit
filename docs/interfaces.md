@@ -52,7 +52,7 @@
 | `health` | `GET /healthz` | 存活与 gateway 模式（`sdk` / `mock`） | ✅ |
 | `config.get` | `GET /api/config` | 运行时公开配置 `apiBaseUrl`、`protocolVersion`、`auth`、能力开关及 `branding: {productName, logoUrl?}`。认证字段见下文。品牌由管理端保存，上传 Logo 的 `logoUrl` 指向 `/api/branding/logo?v=<hash>`。**所有端启动必读，禁止假设同源** | ✅ |
 | `branding.logo` | `GET /api/branding/logo` | 公开读取管理端上传的 Logo 二进制；响应 Content-Type 为图片类型，CSP sandbox 隔离同源权限并禁止脚本及外部资源（允许 SVG 内联样式），设置 nosniff；hash 查询参数用于缓存破坏，长缓存 immutable；不存在返回 404；不参与身份与限流 | ✅ |
-| `auth.login` | `POST /api/kit/auth/login` | `{username,password}` → `{data:{access_token,token_type: Bearer,expires_at,member}}`。OIDC 模式返回 403；错误凭据 401、登录限流 429，禁止缓存 | ✅ |
+| `auth.login` | `POST /api/kit/auth/login` | `{username,password}` → `{data:{access_token,token_type: Bearer,expires_at,member}}`。密码登录关闭时返回 403，错误凭据返回 401，登录限流返回 429。禁止缓存 | ✅ |
 | `auth.logout` | `POST /api/kit/auth/logout` | 撤销请求携带的令牌在 Kit 的访问权并关闭对应 SSE，幂等 204。已过期令牌也可退出。Keycloak 会话继续有效 | ✅ |
 
 ## 成员认证
@@ -63,10 +63,13 @@
 
 - 独立服务默认 `KIT_AUTH_MODE=member`。macOS / Linux 的开发入口可自动启用本地 OIDC。
   体验页配置缺少 auth 时按必须登录处理。
-- `auth.mode` 为 `member` 或 `anonymous` 时，`passwordLogin: true`。启用 `oidc` 时，
-  `passwordLogin: false`，员工端使用 `auth.oidc: { issuer, clientId }` 登录。配置好 Keycloak
-  后可以在切换模式前预绑定成员，此时 `auth.oidc` 也对 Console 可见。
-- `oidc` 模式仅接受为员工端客户端和 Kit API 签发的 Keycloak access token。未绑定返回
+- `auth.mode` 为 `member` 或 `anonymous` 时，`passwordLogin: true`。`oidc` 模式下，员工端使用
+  `auth.oidc: { issuer, clientId }` 登录。`KIT_OIDC_PASSWORD_LOGIN=true` 时 `passwordLogin: true`，
+  体验页同时提供两种登录。配置好 Keycloak 后即可在 Console 预绑定成员。
+- `auth.oidc.adminUsersUrl` 是创建用户页的 Keycloak 用户管理链接。Server 默认按 issuer 生成，
+  可用 `KIT_KEYCLOAK_USERS_URL` 覆盖。兼容省略此字段的后端。
+- `oidc` 模式接受为员工端客户端和 Kit API 签发的 Keycloak access token，以及密码登录开启时
+  Kit 签发的成员令牌。企业账号未绑定返回
   `403 forbidden`（`details.reason = member_not_bound`）。公钥暂时不可用返回可重试
   `502 provider_error`。Kit 依据经过验证的 `iss` 和 `sub` 找到已有成员。
 - 用户名 trim 后忽略大小写；密码不 trim。登录未知账号与错误密码使用相同错误，错误消息、
@@ -405,7 +408,7 @@ Kit 不查询或复制库内 Credential，不提供创建库、生成密钥或�
 | --- | --- | --- | --- |
 | `admin.members.list` | `GET /api/admin/members` | 本地成员公开资料、`groups` 摘要与 `usage_summary`；`?search=&limit=&page_token=` 搜索并以不透明游标分页；先返回缓存，按需后台刷新当前页成员的全部会话；不返回密码或派生值 | ✅ |
 | `admin.members.get` | `GET /api/admin/members/:memberId` | 按稳定 ID 返回 `{data: MemberView}` 公开资料，供成员用量深链恢复；管理员与 auditor 可读，不存在返回 404，不返回密码或派生值 | ✅ |
-| `admin.members.create` | `POST /api/admin/members` | 创建成员记录，字段含 `username`、`display_name`、可选 `email`、`auth_type: local`、`password_mode: auto\|custom`。密码登录模式支持 auto 与 custom，custom 须带 `password`。OIDC 模式只接受 auto，custom 返回 400。返回 `{data:{member,initial_password?}}`，仅密码登录模式的 auto 响应含初始密码。同名返回 `409 conflict` | ✅ |
+| `admin.members.create` | `POST /api/admin/members` | 创建成员，字段含 `username`、`display_name`、可选 `email`、`auth_type: local`、`password_mode: auto\|custom` 和可选 `oidc_binding: {sub}`。custom 须带 `password`。密码登录关闭时传 custom、未配置 Keycloak 时传绑定，均返回 400。成功返回 `{data:{member,initial_password?,oidc_binding?}}`，初始密码仅在启用密码登录且选择 auto 时返回。重名或企业账号已有绑定返回 `409 conflict` | ✅ |
 | `admin.members.oidcBinding.get` | `GET /api/admin/members/:memberId/oidc-binding` | 查询当前配置的 Realm 绑定，返回 `{data:{issuer,sub,member_id,bound_at}}` 或 `{data:null}`；admin 和 auditor 可读 | ✅ |
 | `admin.members.oidcBinding.put` | `PUT /api/admin/members/:memberId/oidc-binding` | `{sub}` 绑定已有成员；同一绑定重复提交幂等，成员或 Keycloak 用户已有其他绑定返回 409；仅 admin 可写 | ✅ |
 | `admin.members.oidcBinding.delete` | `DELETE /api/admin/members/:memberId/oidc-binding` | 解绑当前 Realm，幂等 204；撤销该绑定的访问权并关闭对应 SSE；仅 admin 可写 | ✅ |
@@ -425,11 +428,12 @@ Kit 不查询或复制库内 Credential，不提供创建库、生成密钥或�
 - 自定义密码为 8–32 个非空格 ASCII 字符，须同时含大写、小写、数字和特殊字符，且不能
   包含用户名（忽略大小写）。自动生成密码遵循相同规则；密码不 trim、不落明文、不进错误详情。
 - 创建响应禁止缓存。密码登录模式的自动密码仅在创建成功页显示一次，自定义密码不回传。
-  OIDC 模式下创建成员无需设置密码，管理员完成 Keycloak 绑定后成员即可登录。密码重置、删除与停用待实现。
+  仅使用 OIDC 时，管理员完成 Keycloak 绑定后成员即可登录。密码重置、删除与停用待实现。
 - GET / POST 均要求管理端身份，`auditor` 可以查询但不能创建。`member_id` 是 Kit 成员 ID，
   登录后作为 `subjectId`，不自动迁移既有匿名会话或 Credits。
-- 绑定操作要求配置 Keycloak Realm 和已有成员，否则返回 404。绑定标识是 Realm 内的
-  大小写敏感 `sub`，须由管理员核实。换绑时先解绑，随后使用绑定后新签发的 access token。
+- 创建时提交 `oidc_binding` 会在同一事务内创建成员并保存绑定，成功后回传绑定信息。绑定失败时整笔回滚。
+  已有成员的绑定接口要求配置 Keycloak Realm 和已有成员，否则返回 404。绑定标识是
+  Realm 内大小写敏感的 `sub`，须由管理员核实。换绑时先解绑，随后使用绑定后新签发的 access token。
   绑定和解绑有审计记录并保留账号、会话、用量与限额。
 
 #### 用户组管理

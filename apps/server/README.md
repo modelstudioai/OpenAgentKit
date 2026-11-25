@@ -56,9 +56,11 @@ node apps/server/dist/bin.js
 | `BAILIAN_BASE_URL` / `BAILIAN_WORKSPACE_ID` | 空 | 二选一，用于定位 workspace |
 | `KIT_GATEWAY` | `auto` | `auto` 有凭据走 SDK、否则 mock；也可显式 `mock` / `sdk` |
 | `KIT_AUTH_MODE` | 开发入口 `oidc`，独立服务 `member` | macOS / Linux 开发时可显式选 `member` 或 `anonymous` |
+| `KIT_OIDC_PASSWORD_LOGIN` | `false` | 在 `oidc` 模式下设为 `true`，体验页同时提供 Kit 用户名密码和企业登录 |
 | `KIT_OIDC_ISSUER` | 空 | Keycloak Realm issuer，形如 `https://sso.example.com/realms/kit` |
 | `KIT_OIDC_CLIENT_ID` | 空 | Web 的公开 OIDC 客户端 ID |
 | `KIT_OIDC_AUDIENCE` | 空 | Kit API 的 access token audience，须与 Web 客户端 ID 不同 |
+| `KIT_KEYCLOAK_USERS_URL` | 按 issuer 生成 | Console 创建用户页使用的 Keycloak 用户管理页完整链接。可覆盖独立管理域名及路径 |
 | `KIT_KEYCLOAK_HOME` | 按需下载官方发行包 | 可指定已解压的 Keycloak 目录，相对路径以仓库根为基准 |
 | `KIT_KEYCLOAK_JAVA_HOME` | 优先复用兼容 Java | 可指定 Java 路径。`JAVA_HOME` 与 `PATH` 均无兼容 Java 时下载本地 Temurin 21 |
 | `KIT_KEYCLOAK_ADMIN_FILE` | `.scratch/keycloak-bootstrap-admin.json` | 本地管理员 JSON，字段为 `username` 与 `password`。已有本地实例可指向现有管理员文件 |
@@ -105,9 +107,16 @@ issuer。部署说明见 [Keycloak Docker 快速开始](https://www.keycloak.org
    ```
 
    issuer 须与 Keycloak 的 discovery 文档和令牌 `iss` 精确一致。HTTP 仅支持回环地址。
-5. 在 Kit Console 的「成员」中为已有账号选择「企业绑定」，填写 Keycloak Users
-   页中的用户 ID（默认 `sub`）。绑定完成后设置 `KIT_AUTH_MODE=oidc` 并重启 Kit，
+5. 在 Kit Console 的「创建用户」中填写 Keycloak Users 页中的用户 ID（默认 `sub`），
+   一次提交即可创建成员并绑定。已有成员可在成员列表选择「企业绑定」。绑定完成后设置 `KIT_AUTH_MODE=oidc` 并重启 Kit，
    体验页即可使用「企业登录」。换绑后需使用绑定完成后签发的令牌。
+
+创建用户页的 Keycloak 链接默认沿用 `KIT_OIDC_ISSUER` 的域名、端口和路径前缀，打开对应 Realm 的用户管理页。
+如果 Keycloak 配置了独立管理域名或管理入口，在 Kit Server 设置 `KIT_KEYCLOAK_USERS_URL` 指向完整用户管理页，例如
+`"https://sso-admin.example.com/admin/master/console/#/kit/users"`。在 `.env` 中用引号保留 `#` 后的路由。
+
+如需同时提供 Kit 成员密码和企业登录，在 `.env` 设置 `KIT_OIDC_PASSWORD_LOGIN=true` 并重启 Server。
+成员密码由 Kit Console 创建成员时设置，企业登录沿用 Keycloak 用户与成员绑定。
 
 员工退出只结束本次 Kit 登录，Keycloak SSO 会话继续有效。接入钉钉或飞书时，在 Keycloak
 配置上游身份代理并将上游账号关联到已绑定的 Realm 用户，Kit 侧继续校验同一 issuer 和 subject。
@@ -132,8 +141,8 @@ React 体验页默认使用 5173，Vue 体验页使用 5175。两端均登记 lo
 `KIT_KEYCLOAK_ADMIN_FILE`，以便启动时查询和补齐资源。设置 `KIT_AUTH_MODE=member` 或
 `anonymous` 即可使用对应的开发登录模式。接入独立部署的 Keycloak 时，填写完整 OIDC 连接参数。
 
-Realm 就绪后以 `tsx watch` 启动 Kit Server。员工先在 Keycloak 创建账号，再通过 Kit Console
-「企业绑定」关联成员。源码热重启只重启 Kit，退出开发命令会结束本次启动的 Keycloak 进程。
+Realm 就绪后以 `tsx watch` 启动 Kit Server。先在 Keycloak 创建员工账号，再在 Kit Console
+创建或编辑企业绑定。源码热重启只重启 Kit，退出开发命令会结束本次启动的 Keycloak 进程。
 
 ### 选择数据库
 

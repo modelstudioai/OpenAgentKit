@@ -1,10 +1,14 @@
 import { z } from "zod";
 
-const OidcClientConfigSchema = z.object({ issuer: z.url(), clientId: z.string().min(1) });
+const OidcClientConfigSchema = z.object({
+	issuer: z.url(),
+	clientId: z.string().min(1),
+	adminUsersUrl: z.url({ protocol: /^https?$/ }).optional(),
+});
 export type OidcClientConfig = z.infer<typeof OidcClientConfigSchema>;
 
 export const KitAuthConfigSchema = z.discriminatedUnion("mode", [
-	z.object({ mode: z.literal("oidc"), passwordLogin: z.literal(false), oidc: OidcClientConfigSchema }),
+	z.object({ mode: z.literal("oidc"), passwordLogin: z.boolean(), oidc: OidcClientConfigSchema }),
 	z.object({
 		mode: z.enum(["member", "anonymous"]),
 		passwordLogin: z.literal(true),

@@ -332,6 +332,7 @@ input.searchInput {
 	margin-top: 4px;
 	font-size: 12px;
 	color: var(--ant-color-text-secondary);
+	overflow-wrap: anywhere;
 }
 
 .fieldError {
@@ -344,31 +345,29 @@ input.searchInput {
 	color: var(--ant-color-error);
 }
 
-.optionalTag {
-	color: var(--ant-color-text-secondary);
-}
-
-.sectionLabel {
-	margin-bottom: 8px;
-}
-
-/* 静态只读字段（认证方式） */
-.staticField {
-	border: 1px solid var(--ant-color-border);
-	border-radius: 6px;
-	background: var(--kit-bg-subtle);
-	padding-block: 8px;
-	padding-inline: 12px;
-}
-
-.passwordSection {
+.authMethods {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
 }
 
+.sectionLabel {
+	font-weight: 600;
+}
+
+.authMethod {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	min-width: 0;
+	padding: 0 16px 16px;
+	border: 1px solid var(--ant-color-border);
+	border-radius: var(--kit-radius-chip);
+}
+
 .legendTitle {
-	margin-bottom: 12px;
+	margin-bottom: 8px;
+	padding-inline: 4px;
 }
 
 .autoPasswordHint {
@@ -386,6 +385,7 @@ input.searchInput {
 .monoValue {
 	margin-top: 4px;
 	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	overflow-wrap: anywhere;
 }
 
 .termValue {

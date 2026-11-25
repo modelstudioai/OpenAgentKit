@@ -78,17 +78,16 @@ export function signJwt(payload: Record<string, unknown>, secret: string, ttlSec
  */
 export async function resolveIdentity(c: Context<AppEnv>, config: ServerConfig): Promise<Identity> {
 	const auth = c.req.header("authorization");
-	if (config.authMode === "oidc") return await resolveOidcIdentity(c, auth);
+	const token = auth?.startsWith("Bearer ") ? auth.slice(7) : undefined;
+	if (config.passwordLogin && token?.startsWith(MEMBER_TOKEN_PREFIX)) {
+		const resolved = await c.get("services").memberAuth.resolve(token);
+		c.set("memberSession", resolved.session);
+		c.set("authExpiresAt", resolved.session.expires_at);
+		return resolved.view.identity;
+	}
+	if (config.authMode === "oidc") return await resolveOidcIdentity(c, token);
 	if (auth) {
-		if (!auth.startsWith("Bearer ")) throw new KitError("unauthorized", "登录状态无效或已过期，请重新登录");
-		const token = auth.slice(7);
-		if (token.startsWith(MEMBER_TOKEN_PREFIX)) {
-			const resolved = await c.get("services").memberAuth.resolve(token);
-			c.set("memberSession", resolved.session);
-			c.set("authExpiresAt", resolved.session.expires_at);
-			return resolved.view.identity;
-		}
-		const jwt = config.jwtSecret ? verifyJwtClaims(token, config.jwtSecret) : null;
+		const jwt = token && config.jwtSecret ? verifyJwtClaims(token, config.jwtSecret) : null;
 		if (jwt) {
 			c.set("authExpiresAt", jwt.expiresAt);
 			return jwt.identity;
@@ -105,11 +104,11 @@ export async function resolveIdentity(c: Context<AppEnv>, config: ServerConfig):
 	return { subjectId, displayName: "访客", tier: "anonymous" };
 }
 
-async function resolveOidcIdentity(c: Context<AppEnv>, authorization?: string): Promise<Identity> {
+async function resolveOidcIdentity(c: Context<AppEnv>, token?: string): Promise<Identity> {
 	const { oidcAuth } = c.get("services");
 	if (!oidcAuth) throw new KitError("internal", "缺少 Keycloak OIDC 配置");
-	if (!authorization?.startsWith("Bearer ")) throw new KitError("unauthorized", "请先完成企业登录");
-	const grant = await oidcAuth.resolve(authorization.slice(7));
+	if (!token) throw new KitError("unauthorized", "请先完成企业登录");
+	const grant = await oidcAuth.resolve(token);
 	c.set("oidcMember", grant);
 	return identityForMember(grant.member);
 }

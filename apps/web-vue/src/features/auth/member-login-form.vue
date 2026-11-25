@@ -6,7 +6,7 @@ import { setLocale, useTranslation } from "../../i18n/index.ts";
 const props = defineProps<{
 	pending: boolean;
 	error: string | null;
-	onLogin: (input: { username: string; password: string }) => Promise<void>;
+	onLogin?: (input: { username: string; password: string }) => Promise<void>;
 	onOidcLogin?: () => Promise<void>;
 	onRetry: () => Promise<void>;
 }>();
@@ -20,17 +20,17 @@ const password = ref("");
 
 function submit(event: Event) {
 	event.preventDefault();
-	if (props.pending) return;
-	if (props.onOidcLogin) {
-		void props.onOidcLogin().catch(() => undefined);
-		return;
-	}
+	if (props.pending || !props.onLogin) return;
 	void props
 		.onLogin({ username: username.value.trim(), password: password.value })
 		.catch(() => undefined)
 		.finally(() => {
 			password.value = "";
 		});
+}
+
+function beginSso() {
+	if (!props.pending) void props.onOidcLogin?.().catch(() => undefined);
 }
 
 function retry() {
@@ -77,7 +77,7 @@ function retry() {
 					{{ t("heading") }}
 				</h1>
 				<p class="mt-3 text-[length:var(--kit-text-label)] leading-6 text-[var(--kit-fg-muted)]">
-					{{ t(onOidcLogin ? "oidcIntro" : "intro") }}
+					{{ t(onOidcLogin ? (onLogin ? "dualIntro" : "oidcIntro") : "intro") }}
 				</p>
 			</header>
 			<ErrorState
@@ -87,7 +87,7 @@ function retry() {
 			/>
 			<fieldset :disabled="pending" class="min-w-0 space-y-5">
 				<legend class="sr-only">{{ t("legend") }}</legend>
-				<template v-if="!onOidcLogin">
+				<template v-if="onLogin">
 					<div>
 						<label for="login-username" class="text-[length:var(--kit-text-label)] font-medium">
 							{{ t("username") }}
@@ -119,6 +119,7 @@ function retry() {
 					</div>
 				</template>
 				<button
+					v-if="onLogin"
 					type="submit"
 					:aria-busy="pending"
 					class="flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--kit-radius-sm)] bg-[var(--kit-accent)] px-4 py-2.5 text-[length:var(--kit-text-base)] font-medium text-[var(--kit-accent-fg)] transition-opacity enabled:hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] disabled:cursor-not-allowed disabled:opacity-50"
@@ -128,7 +129,17 @@ function retry() {
 						aria-hidden="true"
 						class="h-1.5 w-1.5 rounded-full bg-current motion-safe:animate-pulse"
 					/>
-					{{ t(pending ? "processing" : onOidcLogin ? "oidcSubmit" : "submit") }}
+					{{ t(pending ? "processing" : onOidcLogin ? "passwordSubmit" : "submit") }}
+				</button>
+				<button
+					v-if="onOidcLogin"
+					type="button"
+					:aria-busy="pending"
+					class="flex min-h-11 w-full items-center justify-center rounded-[var(--kit-radius-sm)] px-4 py-2.5 text-[length:var(--kit-text-base)] font-medium transition-opacity enabled:hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kit-focus)] disabled:cursor-not-allowed disabled:opacity-50"
+					:class="onLogin ? 'border border-[var(--kit-border)] text-[var(--kit-fg)]' : 'bg-[var(--kit-accent)] text-[var(--kit-accent-fg)]'"
+					@click="beginSso"
+				>
+					{{ t("oidcSubmit") }}
 				</button>
 			</fieldset>
 		</form>

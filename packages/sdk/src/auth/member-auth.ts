@@ -40,7 +40,11 @@ interface MemberAuthConnection {
 }
 
 export type MemberAuthOptions = MemberAuthConnection &
-	({ mode: "member" | "anonymous"; storage: MemberSessionStorage } | { mode: "oidc"; oidc: MemberOidcSession });
+	(
+		| { mode: "member" | "anonymous"; storage: MemberSessionStorage }
+		/** 提供 storage 时同时支持 Kit 密码登录，OIDC 凭据仍由宿主保存在内存中。 */
+		| { mode: "oidc"; oidc: MemberOidcSession; storage?: MemberSessionStorage }
+	);
 
 export interface MemberAuthSnapshot {
 	status: "checking" | "signed-out" | "signed-in" | "anonymous" | "error";
@@ -107,7 +111,7 @@ function loginFailureState(error: unknown, pendingLogout: boolean): Pick<MemberA
  */
 export function createMemberAuthController(options: MemberAuthOptions) {
 	const oidc = options.mode === "oidc" ? options.oidc : undefined;
-	const storage = options.mode === "oidc" ? undefined : options.storage;
+	const storage = options.storage;
 	const fetchImpl = options.fetchImpl ?? globalThis.fetch;
 	const publicConnection = {
 		baseUrl: options.baseUrl,
@@ -161,12 +165,19 @@ export function createMemberAuthController(options: MemberAuthOptions) {
 			errorDetail: null,
 		});
 	}
-	function clearStorage() {
+	function clearPasswordStorage() {
 		try {
-			oidc?.clear();
 			storage?.save(null);
 		} catch {
 			/* 当前内存身份仍必须清除。 */
+		}
+	}
+	function clearStorage() {
+		clearPasswordStorage();
+		try {
+			oidc?.clear();
+		} catch {
+			/* 仍继续撤销已经记录的凭据。 */
 		}
 	}
 	function invalidate(owner: Epoch) {
@@ -348,6 +359,7 @@ export function createMemberAuthController(options: MemberAuthOptions) {
 		if (!(remaining > 0)) throw new KitError("unauthorized", "登录已失效，请重新登录");
 		session = value;
 		if (owner.oidc) {
+			clearPasswordStorage();
 			owner.oidc.current = value;
 			owner.oidc.memberId = member.member_id;
 			owner.oidc.tokens.set(value.access_token, value.expires_at);
@@ -392,14 +404,14 @@ export function createMemberAuthController(options: MemberAuthOptions) {
 			((!options.createClient && !stored.access_token.startsWith("kit_member_")) ||
 				!(Date.parse(stored.expires_at) > Date.now()))
 		) {
-			clearStorage();
+			clearPasswordStorage();
 			return null;
 		}
 		return stored;
 	}
 	function restoreFailed(error: unknown, owner: Epoch | null) {
 		if (disposed || (owner && epoch !== owner)) return;
-		if (oidc && error instanceof KitError && error.status === 403) {
+		if ((owner ? owner.oidc : oidc) && error instanceof KitError && error.status === 403) {
 			clearStorage();
 			detach("signed-out");
 			publish({ error: error.message, errorDetail: error });
@@ -424,13 +436,14 @@ export function createMemberAuthController(options: MemberAuthOptions) {
 		detach("checking");
 		let owner: Epoch | null = null;
 		try {
-			session = oidc ? await oidc.restore() : loadSession();
+			const oidcSession = oidc ? await oidc.restore() : null;
 			if (disposed) return;
+			session = oidcSession ?? loadSession();
 			if (!session) {
 				signedOut();
 				return;
 			}
-			owner = oidc ? bind(undefined, session) : bind(session.access_token);
+			owner = oidcSession ? bind(undefined, oidcSession) : bind(session.access_token);
 			await restoreMember(owner, session);
 		} catch (error) {
 			restoreFailed(error, owner);
@@ -494,7 +507,7 @@ export function createMemberAuthController(options: MemberAuthOptions) {
 		throw error;
 	}
 	async function login(input: MemberLoginRequest) {
-		if (oidc) throw new KitError("forbidden", "请使用企业登录");
+		if (!storage) throw new KitError("forbidden", "请使用企业登录");
 		if (disposed || busy) return;
 		busy = true;
 		if (session) pendingLogout.add(session.access_token);
@@ -517,7 +530,7 @@ export function createMemberAuthController(options: MemberAuthOptions) {
 	async function loginWithOidc() {
 		if (!oidc || disposed || busy || snapshot.status === "signed-in") return;
 		busy = true;
-		publish({ pending: true, error: null });
+		publish({ pending: true, error: null, errorDetail: null });
 		try {
 			await revokePending();
 			if (!disposed) await oidc.login();
@@ -530,6 +543,7 @@ export function createMemberAuthController(options: MemberAuthOptions) {
 	}
 	return {
 		mode: options.mode,
+		passwordLogin: Boolean(storage),
 		getSnapshot: () => snapshot,
 		subscribe: (listener: () => void) => {
 			listeners.add(listener);

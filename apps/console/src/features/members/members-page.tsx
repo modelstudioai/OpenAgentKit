@@ -1,4 +1,4 @@
-import type { AdminMemberView, MemberView } from "@openagentkit/sdk/protocol";
+import type { AdminMemberView, MemberView, OidcClientConfig } from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
 import { Button, Empty, Input, Result, Spin, Table, Tag, Typography } from "antd";
 import { useMemo, useState } from "react";
@@ -243,13 +243,14 @@ function IdentityPending({ error, role, onRetry }: { error: string | null; role?
 
 export function MembersPage({
 	onPendingChange,
-	oidcIssuer,
+	oidc,
 	passwordLogin,
 }: {
 	onPendingChange: (pending: boolean) => void;
-	oidcIssuer?: string;
+	oidc?: OidcClientConfig;
 	passwordLogin: boolean;
 }) {
+	const oidcIssuer = oidc?.issuer;
 	const [bindingMember, setBindingMember] = useState<MemberView | null>(null);
 	const { t } = useTranslation("members");
 	const { route, navigate } = useConsoleRoute();
@@ -263,6 +264,7 @@ export function MembersPage({
 			return (
 				<CreateMemberPage
 					passwordLogin={passwordLogin}
+					oidc={oidc}
 					onBack={() => navigate({ page: "members" })}
 					onPendingChange={onPendingChange}
 				/>

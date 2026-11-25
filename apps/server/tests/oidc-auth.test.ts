@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { CreateMemberResponse } from "@openagentkit/sdk/protocol";
 import { exportJWK, generateKeyPair, type JWTPayload, SignJWT } from "jose";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.ts";
@@ -9,7 +10,7 @@ import { loadConfig } from "../src/config.ts";
 import { signJwt } from "../src/services/identity.ts";
 import { openKitServices } from "../src/services/index.ts";
 
-const issuer = "https://sso.example.test/realms/kit";
+const issuer = "https://sso.example.test/auth/realms/kit";
 const password = "Local!Password2026";
 const admin = "test-admin";
 const disposals: Array<() => Promise<void>> = [];
@@ -44,7 +45,7 @@ async function fixture() {
 	});
 	vi.stubGlobal("fetch", fetchJwks);
 
-	async function open(mode: "member" | "oidc") {
+	async function open(mode: "member" | "oidc", passwordLogin = false, adminUsersUrl?: string) {
 		await services?.close();
 		services = await openKitServices(
 			loadConfig({
@@ -53,10 +54,12 @@ async function fixture() {
 				ADMIN_TOKEN: admin,
 				KIT_ADMIN_TOKENS: "test-auditor:auditor",
 				KIT_AUTH_MODE: mode,
+				KIT_OIDC_PASSWORD_LOGIN: passwordLogin ? "true" : undefined,
 				KIT_JWT_SECRET: "test-legacy-secret",
 				KIT_OIDC_ISSUER: issuer,
 				KIT_OIDC_CLIENT_ID: "kit-web",
 				KIT_OIDC_AUDIENCE: "kit-api",
+				KIT_KEYCLOAK_USERS_URL: adminUsersUrl,
 			}),
 		);
 		return createApp(services);
@@ -85,7 +88,7 @@ async function responseData<T>(response: Response) {
 	return ((await response.json()) as { data: T }).data;
 }
 
-function requestCreateMember(app: TestApp, username: string, passwordMode: "auto" | "custom") {
+function requestCreateMember(app: TestApp, username: string, passwordMode: "auto" | "custom", sub?: string) {
 	return app.request("/api/admin/members", {
 		method: "POST",
 		headers: headers(admin),
@@ -95,6 +98,7 @@ function requestCreateMember(app: TestApp, username: string, passwordMode: "auto
 			auth_type: "local",
 			password_mode: passwordMode,
 			...(passwordMode === "custom" ? { password } : {}),
+			...(sub ? { oidc_binding: { sub } } : {}),
 		}),
 	});
 }
@@ -126,6 +130,86 @@ async function readUntil(reader: ReadableStreamDefaultReader<Uint8Array>, expect
 }
 
 describe("Keycloak 员工 OIDC", () => {
+	it("同时启用两种登录时使用同一成员身份，退出按各自令牌撤销", async () => {
+		const env = await fixture();
+		const app = await env.open("oidc", true);
+		const created = await requestCreateMember(app, "alice", "custom", "kc-alice");
+		expect(created.status).toBe(201);
+		const result = await responseData<CreateMemberResponse["data"]>(created);
+		const alice = result.member.member_id;
+		expect(result.oidc_binding).toMatchObject({ issuer, sub: "kc-alice", member_id: alice });
+		expect(await responseData(await app.request(bindingPath(alice), { headers: headers(admin) }))).toEqual(
+			result.oidc_binding,
+		);
+		vi.setSystemTime(Date.now() + 2000);
+		expect(await (await app.request("/api/config")).json()).toMatchObject({
+			data: {
+				auth: {
+					mode: "oidc",
+					passwordLogin: true,
+					oidc: {
+						issuer,
+						clientId: "kit-web",
+						adminUsersUrl: "https://sso.example.test/auth/admin/master/console/#/kit/users",
+					},
+				},
+			},
+		});
+		const login = await app.request("/api/kit/auth/login", {
+			method: "POST",
+			headers: headers(),
+			body: JSON.stringify({ username: "alice", password }),
+		});
+		expect(login.status).toBe(200);
+		const { access_token: localToken } = await responseData<{ access_token: string }>(login);
+		const oidcToken = await env.accessToken("kc-alice");
+		const me = (token: string) => app.request("/api/kit/auth/me", { headers: headers(token) });
+		for (const token of [localToken, oidcToken]) {
+			const response = await me(token);
+			expect(response.status).toBe(200);
+			expect(await responseData(response)).toMatchObject({ identity: { subjectId: alice } });
+		}
+		expect((await me(signJwt({ sub: "legacy-user" }, "test-legacy-secret"))).status).toBe(401);
+		const logout = (token: string) => app.request("/api/kit/auth/logout", { method: "POST", headers: headers(token) });
+		expect((await logout(localToken)).status).toBe(204);
+		expect((await me(localToken)).status).toBe(401);
+		expect((await me(oidcToken)).status).toBe(200);
+		expect((await logout(oidcToken)).status).toBe(204);
+		expect((await me(oidcToken)).status).toBe(401);
+	});
+
+	it("公开配置使用指定的用户管理页地址，保留独立的登录 issuer", async () => {
+		const { open } = await fixture();
+		const adminUsersUrl = "https://sso-admin.example.test/keycloak/admin/kit/console/#/kit/users";
+		const app = await open("oidc", false, adminUsersUrl);
+		expect(await (await app.request("/api/config")).json()).toMatchObject({
+			data: { auth: { oidc: { issuer, adminUsersUrl } } },
+		});
+	});
+
+	it("创建时使用已绑定的 Keycloak 用户会回滚成员创建，改用其他用户可以重试", async () => {
+		const { open } = await fixture();
+		const app = await open("oidc");
+		const created = await requestCreateMember(app, "alice", "auto", "kc-alice");
+		expect(created.status).toBe(201);
+		const original = await responseData<CreateMemberResponse["data"]>(created);
+		expect(original.initial_password).toBeUndefined();
+
+		const rejected = await requestCreateMember(app, "bob", "auto", "kc-alice");
+		expect(rejected.status).toBe(409);
+		expect(await rejected.json()).toMatchObject({ error: { code: "conflict" } });
+		const list = await app.request("/api/admin/members?search=bob", { headers: headers(admin) });
+		expect(list.status).toBe(200);
+		expect(await responseData(list)).toEqual([]);
+		expect(
+			await responseData(await app.request(bindingPath(original.member.member_id), { headers: headers(admin) })),
+		).toEqual(original.oidc_binding);
+
+		const retry = await requestCreateMember(app, "bob", "auto", "kc-bob");
+		expect(retry.status).toBe(201);
+		expect(await responseData(retry)).toMatchObject({ oidc_binding: { issuer, sub: "kc-bob" } });
+	});
+
 	it("预绑定并切换至 OIDC 后，原成员的会话和限额仍按相同 ID 归属", async () => {
 		const env = await fixture();
 		const preflight = await env.open("member");

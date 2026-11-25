@@ -73,12 +73,13 @@ export interface paths {
                                 auth: {
                                     /** @enum {string} */
                                     mode: "oidc";
-                                    /** @enum {boolean} */
-                                    passwordLogin: false;
+                                    passwordLogin: boolean;
                                     oidc: {
                                         /** Format: uri */
                                         issuer: string;
                                         clientId: string;
+                                        /** Format: uri */
+                                        adminUsersUrl?: string;
                                     };
                                 } | {
                                     /** @enum {string} */
@@ -89,6 +90,8 @@ export interface paths {
                                         /** Format: uri */
                                         issuer: string;
                                         clientId: string;
+                                        /** Format: uri */
+                                        adminUsersUrl?: string;
                                     };
                                 };
                                 capabilities: {
@@ -10526,6 +10529,9 @@ export interface paths {
                         email?: string;
                         /** @enum {string} */
                         auth_type: "local";
+                        oidc_binding?: {
+                            sub: string;
+                        };
                         /** @enum {string} */
                         password_mode: "auto";
                         /** @description 自动生成模式不得传入该字段 */
@@ -10537,6 +10543,9 @@ export interface paths {
                         email?: string;
                         /** @enum {string} */
                         auth_type: "local";
+                        oidc_binding?: {
+                            sub: string;
+                        };
                         /** @enum {string} */
                         password_mode: "custom";
                         /** @description 8–32 位非空格 ASCII 字符，须包含大小写字母、数字和特殊字符；不能包含用户名（不区分大小写） */
@@ -10545,7 +10554,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description 已创建。启用密码登录且选择自动生成时返回一次初始密码 */
+                /** @description 已创建成员并保存可选的企业绑定。启用密码登录且选择自动生成时返回一次初始密码 */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -10601,11 +10610,18 @@ export interface paths {
                                     updated_at: string;
                                 };
                                 initial_password?: string;
+                                oidc_binding?: {
+                                    sub: string;
+                                    /** Format: uri */
+                                    issuer: string;
+                                    member_id: string;
+                                    bound_at: string;
+                                };
                             };
                         };
                     };
                 };
-                /** @description 成员参数无效，或企业登录模式提交了自定义密码 */
+                /** @description 成员参数无效、密码登录关闭时提交了自定义密码，或未配置 Keycloak 时提交了企业绑定 */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -10665,7 +10681,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description 用户名已存在（不区分大小写） */
+                /** @description 用户名已存在（不区分大小写），或 Keycloak 用户已有绑定 */
                 409: {
                     headers: {
                         [name: string]: unknown;

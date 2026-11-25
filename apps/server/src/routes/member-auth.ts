@@ -6,6 +6,7 @@ import {
 	MemberLoginResultSchema,
 } from "@openagentkit/sdk/protocol";
 import type { AppEnv } from "../app-env.ts";
+import { MEMBER_TOKEN_PREFIX } from "../services/member-auth.ts";
 
 const errorBody = z.object({
 	error: z.object({ code: z.string(), message: z.string(), retryable: z.boolean(), details: z.unknown().optional() }),
@@ -37,7 +38,7 @@ export function registerMemberAuthRoutes(app: OpenAPIHono<AppEnv>) {
 			},
 		}),
 		async (c) => {
-			if (c.get("services").config.authMode === "oidc") throw new KitError("forbidden", "请使用企业登录");
+			if (!c.get("services").config.passwordLogin) throw new KitError("forbidden", "请使用企业登录");
 			try {
 				return c.json({ data: await c.get("services").memberAuth.login(c.req.valid("json")) }, 200);
 			} catch (error) {
@@ -95,7 +96,7 @@ export function registerMemberAuthRoutes(app: OpenAPIHono<AppEnv>) {
 			const authorization = c.req.header("authorization");
 			const token = authorization?.startsWith("Bearer ") ? authorization.slice(7) : undefined;
 			const { config, memberAuth, oidcAuth } = c.get("services");
-			if (config.authMode === "oidc") {
+			if (config.authMode === "oidc" && !(config.passwordLogin && token?.startsWith(MEMBER_TOKEN_PREFIX))) {
 				if (!oidcAuth) throw new KitError("internal", "缺少 Keycloak OIDC 配置");
 				await oidcAuth.logout(token);
 			} else await memberAuth.logout(token);

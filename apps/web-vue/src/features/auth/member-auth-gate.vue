@@ -38,7 +38,7 @@ const loginError = computed(() => {
 		v-else
 		:pending="snapshot.pending"
 		:error="loginError"
-		:on-login="login"
+		:on-login="controller.passwordLogin ? login : undefined"
 		:on-oidc-login="controller.mode === 'oidc' ? controller.loginWithOidc : undefined"
 		:on-retry="retry"
 	/>

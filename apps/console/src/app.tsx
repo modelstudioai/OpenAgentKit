@@ -106,7 +106,7 @@ function ConsoleApp({ auth }: { auth?: KitRuntimeConfig["auth"] }) {
 			) : (
 				<MembersPage
 					onPendingChange={setNavigationLocked}
-					oidcIssuer={auth?.oidc?.issuer}
+					oidc={auth?.oidc}
 					passwordLogin={auth?.passwordLogin ?? true}
 				/>
 			)}
