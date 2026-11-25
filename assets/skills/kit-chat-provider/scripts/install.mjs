@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import {
 	componentDestPath,
+	componentSourceFiles,
 	componentTarget,
 	exampleTarget,
 	readRegistry,
@@ -69,7 +70,9 @@ function planComponents(plan, selected, project, sdkName) {
 	}
 	const target = join(project, componentTarget);
 	const entries = [...components].map((component) => registry.components[component]);
-	for (const { file } of entries) plan.set(join(target, componentDestPath(file)), readFileSync(join(source, file)));
+	for (const file of entries.flatMap(componentSourceFiles)) {
+		plan.set(join(target, componentDestPath(file)), readFileSync(join(source, file)));
+	}
 	const dependencies = {};
 	for (const name of new Set(entries.flatMap((entry) => entry.npmDependencies ?? []))) {
 		if (name === sdkName) continue;

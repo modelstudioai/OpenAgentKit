@@ -1,7 +1,14 @@
 import { readFileSync, statSync } from "node:fs";
 import { dirname, posix, relative, resolve } from "node:path";
 import ts from "typescript";
-import { componentDestPath, componentTarget, exampleTarget, readRegistry, sdkTarget } from "../kit/copy-in.mjs";
+import {
+	componentDestPath,
+	componentSourceFiles,
+	componentTarget,
+	exampleTarget,
+	readRegistry,
+	sdkTarget,
+} from "../kit/copy-in.mjs";
 import { modules } from "./api-model.mjs";
 import { filesUnder, portablePath } from "./validate.mjs";
 
@@ -64,10 +71,12 @@ function uiExports(root, directory, registry) {
 	const barrel = resolve(root, modules["chat-ui"].path);
 	const source = ts.createSourceFile(barrel, readFileSync(barrel, "utf8"), ts.ScriptTarget.Latest, true);
 	const components = new Map(
-		Object.entries(registry.components).map(([name, { file }]) => [
-			resolve(directory, file),
-			{ name, target: `${componentTarget}/${componentDestPath(file)}` },
-		]),
+		Object.entries(registry.components).flatMap(([name, entry]) =>
+			componentSourceFiles(entry).map((file) => [
+				resolve(directory, file),
+				{ name, target: `${componentTarget}/${componentDestPath(file)}` },
+			]),
+		),
 	);
 	const exports = new Map();
 	for (const statement of source.statements) {
@@ -147,7 +156,7 @@ export function buildCopyInAssets(root) {
 	const manifestPath = resolve(directory, "package.json");
 	const { dependencies } = JSON.parse(readFileSync(manifestPath, "utf8"));
 	const sdk = sdkSourceAssets(root);
-	const components = new Set(Object.values(registry.components).map(({ file }) => file));
+	const components = new Set(Object.values(registry.components).flatMap(componentSourceFiles));
 	const publicUi = uiExports(root, directory, registry);
 	return {
 		shared: [
