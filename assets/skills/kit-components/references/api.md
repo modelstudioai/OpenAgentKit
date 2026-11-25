@@ -1127,7 +1127,7 @@ export function Sender(props: SenderProps & RefAttributes<SenderRef>): ReactNode
 | `className` | 否 | `string \| undefined` |
 | `classNames` | 否 | `Partial<Record<SenderSemantic, string>> \| undefined` |
 
-<!-- source-sha256: 3aa36be6e37c7eafcd85d9fdf8061763804b2a5042c74ca94ea4a2e28ac8c3bf; doc-sha256: c7d9aee07bbd6807d7c0ab1fe9058c06cbe8860e7a5b6569d521e91eb39bff20 -->
+<!-- source-sha256: 7ccb271dd634644b959b88b5d7c1b753044cff014a9a7d2369d358c0440f43f7; doc-sha256: c7d9aee07bbd6807d7c0ab1fe9058c06cbe8860e7a5b6569d521e91eb39bff20 -->
 
 ## SenderHeader
 
@@ -1153,7 +1153,7 @@ export function SenderHeader({ title, open, onOpenChange, closable, children, cl
 | `children` | 否 | `ReactNode` |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 3aa36be6e37c7eafcd85d9fdf8061763804b2a5042c74ca94ea4a2e28ac8c3bf; doc-sha256: c7d9aee07bbd6807d7c0ab1fe9058c06cbe8860e7a5b6569d521e91eb39bff20 -->
+<!-- source-sha256: 7ccb271dd634644b959b88b5d7c1b753044cff014a9a7d2369d358c0440f43f7; doc-sha256: c7d9aee07bbd6807d7c0ab1fe9058c06cbe8860e7a5b6569d521e91eb39bff20 -->
 
 ## Sender.Header
 
@@ -1181,7 +1181,7 @@ export function SenderHeader({ title, open, onOpenChange, closable, children, cl
 | `children` | 否 | `ReactNode` |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 3aa36be6e37c7eafcd85d9fdf8061763804b2a5042c74ca94ea4a2e28ac8c3bf; doc-sha256: c7d9aee07bbd6807d7c0ab1fe9058c06cbe8860e7a5b6569d521e91eb39bff20 -->
+<!-- source-sha256: 7ccb271dd634644b959b88b5d7c1b753044cff014a9a7d2369d358c0440f43f7; doc-sha256: c7d9aee07bbd6807d7c0ab1fe9058c06cbe8860e7a5b6569d521e91eb39bff20 -->
 
 ## SessionList
 
@@ -1525,7 +1525,7 @@ export function SkillGlyph({ className }: { className?: string; }): JSX.Element;
 | --- | --- | --- |
 | `className` | 否 | `string \| undefined` |
 
-<!-- source-sha256: 3aa36be6e37c7eafcd85d9fdf8061763804b2a5042c74ca94ea4a2e28ac8c3bf; doc-sha256: f320870970c84a798596399d8c6fc4e526493f31c70f26c3b25195fbaa3d8201 -->
+<!-- source-sha256: 7ccb271dd634644b959b88b5d7c1b753044cff014a9a7d2369d358c0440f43f7; doc-sha256: f320870970c84a798596399d8c6fc4e526493f31c70f26c3b25195fbaa3d8201 -->
 
 ## 相关类型
 

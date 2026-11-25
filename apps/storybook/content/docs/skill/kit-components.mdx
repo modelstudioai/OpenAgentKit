@@ -1,17 +1,115 @@
 ---
 title: kit-components
-description: 覆盖全部公开组件的中文 Skill，包含 Props、子组件、组合示例和调用方责任
+description: 使用中文 Skill 选择 React 或 Vue 3 对话组件，组合会话列表、聊天区与 Agent 信息
 ---
 
-`kit-components` 指导 coding agent 使用 `@openagentpack/kit-chat-ui` 搭建页面。
-覆盖范围以包的公开导出为准，包含所有已实现组件、静态子组件与兼容别名，不只覆盖
-copy-in registry 的顶层条目。内部实现组件不作为独立公开 API。
+`kit-components` 指导 coding agent 用 React 或 Vue 3 搭建对话页。用户未明确指定框架时，
+先分析目标项目的页面、入口和依赖。仍无法确定时进入 Question 阶段询问。确定框架后，先按
+组件包的 `peerDependencies` 核对目标项目的版本。
 
 [下载 Skill](/skills/kit-components.tgz) ·
 [阅读 Skill](/skills/kit-components/SKILL.md) ·
-[API 参考](/skills/kit-components/references/api.md)
+[React API 参考](/skills/kit-components/references/api.md)
+
+## Vue 3 三栏布局
+
+Vue 示例用 `@openagentpack/kit-chat-ui-vue` 的 `Layout` 插槽组合会话列表、`Chat` 和 Agent 信息。
+父组件提供消息、选中的会话和发送回调。导入 Vue 组件包的 `theme.css` 并让 Tailwind v4 扫描示例与组件源码。
+
+[下载 Vue 布局示例](/skills/kit-components/examples/layout.vue) · [Vue 源码复制指南](/skills/kit-components/references/vue-copy-in.md) · [接入会话数据](/docs/skill/use-kit-chat#vue-3-会话示例)
+
+{/* skill-example: kit-components/examples/layout.vue */}
+
+```vue
+<script setup lang="ts">
+import { useIsMobile } from "@openagentkit/sdk/hooks-vue";
+import type { ChatMessage } from "@openagentkit/sdk/messages";
+import type { SessionSummary } from "@openagentkit/sdk/protocol";
+import { Chat, Layout, SessionList } from "@openagentpack/kit-chat-ui-vue";
+import { ref, watch } from "vue";
+
+defineProps<{
+	agentName: string;
+	sessions: SessionSummary[];
+	sessionId: string | null;
+	messages: ChatMessage[];
+	canSend: boolean;
+	turnRunning?: boolean;
+	sending?: boolean;
+	// 主动换会话时更新，首次发送获得会话 ID 时沿用当前值。
+	draftKey?: number | string;
+	onSend: (text: string, skills?: string[]) => Promise<void>;
+	onStop: () => void | Promise<void>;
+}>();
+
+const emit = defineEmits<{ select: [sessionId: string] }>();
+const isMobile = useIsMobile();
+const asideOpen = ref(!isMobile.value);
+watch(isMobile, (mobile) => {
+	asideOpen.value = !mobile;
+});
+
+function selectSession(session: SessionSummary, closeSidebar: () => void) {
+	emit("select", session.session_id);
+	closeSidebar();
+}
+</script>
+
+<template>
+	<div class="h-dvh" data-kit-appearance="workspace">
+		<Layout aside-label="Agent 信息" :aside-open="asideOpen" @aside-open-change="asideOpen = $event">
+			<template #header="{ menuToggle }">
+				<header class="flex shrink-0 items-center gap-3 border-b border-[var(--kit-border)] px-3 py-2">
+					<component :is="menuToggle" v-if="menuToggle" />
+					<h1 class="min-w-0 flex-1 truncate font-medium">{{ agentName }}</h1>
+					<button type="button" :aria-expanded="asideOpen" @click="asideOpen = !asideOpen">Agent 信息</button>
+				</header>
+			</template>
+			<template #sidebar="{ closeSidebar, closeButton }">
+				<aside class="flex min-h-0 w-64 shrink-0 flex-col bg-[var(--kit-bg-subtle)]">
+					<div class="flex items-center justify-between gap-2 p-3">
+						<h2>会话</h2>
+						<component :is="closeButton" v-if="closeButton" />
+					</div>
+					<SessionList
+						variant="workspace"
+						:sessions="sessions"
+						:active-id="sessionId"
+						@select="(session) => selectSession(session, closeSidebar)"
+					/>
+				</aside>
+			</template>
+			<Chat
+				:key="draftKey"
+				variant="workspace"
+				:scroll-key="sessionId"
+				:messages="messages"
+				:can-send="canSend && !sending"
+				:turn-running="turnRunning"
+				:sending="sending"
+				:on-send="onSend"
+				:on-stop="onStop"
+			/>
+			<template #aside="{ closeButton }">
+				<div class="min-h-0 flex-1 overflow-y-auto p-4">
+					<div class="flex items-center justify-between gap-2">
+						<h2 class="font-medium">Agent 信息</h2>
+						<component :is="closeButton" v-if="closeButton" />
+					</div>
+					<p class="mt-2 wrap-anywhere">{{ agentName }}</p>
+					<slot name="resources" />
+				</div>
+			</template>
+		</Layout>
+	</div>
+</template>
+```
+
+{/* /skill-example */}
 
 ## 覆盖范围
+
+React 组件以 `@openagentpack/kit-chat-ui` 的公开导出为准，包含静态子组件与兼容别名。
 
 | 分类 | 已覆盖的公开组件 |
 | --- | --- |

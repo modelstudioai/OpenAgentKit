@@ -229,7 +229,7 @@ OpenAgentKit 原生对接百炼 Managed Agent（MA）协议，围绕会话、事
 
 ```bash
 pnpm install
-pnpm start                 # 首次引导配置，随后启动 server :8787 + web :5173 + console :5174
+pnpm start                 # 首次引导配置，随后启动 server :8787 + web :5173 + web-vue :5175 + console :5174
 ```
 
 没有根 `.env` 时，启动器引导选择 Mock 或真实百炼，生成随机 `ADMIN_TOKEN`，并以仅当前用户
@@ -241,8 +241,9 @@ Workspace ID 或 Base URL。管理员令牌只写入 `.env`，登录管理端时
 根 `.env` 的非空值覆盖 shell 同名变量。填入 Workspace ID 或 Base URL 后，另一地址字段的显式空值
 也会覆盖 shell 继承值。启动日志只打印被覆盖的变量名。
 
-开发时可用 `pnpm dev` 启动上述三个应用及文档站 `:3000`，或用 `pnpm start server web` /
-`pnpm dev server web` 只启动指定目标。`pnpm setup` 可选，仅用于启用仓库 Git hooks。
+开发时可用 `pnpm dev` 启动 server、web、web-vue 与 console；文档站用 `pnpm dev storybook`
+单独启动。也可用 `pnpm start server web` / `pnpm dev server web` 只启动指定目标。
+`pnpm setup` 可选，仅用于启用仓库 Git hooks。
 
 ### 配置
 

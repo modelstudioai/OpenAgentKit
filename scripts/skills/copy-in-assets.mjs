@@ -13,6 +13,8 @@ import { modules } from "./api-model.mjs";
 import { filesUnder, portablePath } from "./validate.mjs";
 
 const uiName = modules["chat-ui"].name;
+// Vue 示例通过仓库的 Vue 源码复制指南接入。
+const vueAdapterPath = /(?:^|\/)(?:hooks-vue|providers\/kit\/vue)(?:\/|$)/;
 
 function sourceFile(file, path) {
 	return { path: `assets/kit/${path}`, content: readFileSync(file), mtimeMs: statSync(file).mtimeMs };
@@ -28,17 +30,22 @@ function sdkSourceAssets(root) {
 	const manifestPath = resolve(directory, "package.json");
 	const sdk = JSON.parse(readFileSync(manifestPath, "utf8"));
 	const source = filesUnder(sourceDirectory).filter(
-		(file) => /\.tsx?$/.test(file) && !/\.(?:test|spec)\.tsx?$/.test(file),
+		(file) =>
+			/\.tsx?$/.test(file) &&
+			!/\.(?:test|spec)\.tsx?$/.test(file) &&
+			!vueAdapterPath.test(portablePath(relative(sourceDirectory, file))),
 	);
 	const paths = new Set(source);
 	const modulePaths = new Map(Object.values(modules).map(({ name, path }) => [name, resolve(root, path)]));
 	const publicEntries = new Map(
-		Object.keys(sdk.exports).map((key) => {
-			const specifier = `${sdk.name}${key.slice(1)}`;
-			const file = modulePaths.get(specifier);
-			if (!file || !paths.has(file)) throw new Error(`SDK 公开入口 ${key} 缺少可复制的源码。`);
-			return [specifier, `${sdkTarget}/${portablePath(relative(sourceDirectory, file))}`];
-		}),
+		Object.keys(sdk.exports)
+			.filter((key) => !vueAdapterPath.test(key))
+			.map((key) => {
+				const specifier = `${sdk.name}${key.slice(1)}`;
+				const file = modulePaths.get(specifier);
+				if (!file || !paths.has(file)) throw new Error(`SDK 公开入口 ${key} 缺少可复制的源码。`);
+				return [specifier, `${sdkTarget}/${portablePath(relative(sourceDirectory, file))}`];
+			}),
 	);
 	return {
 		name: sdk.name,

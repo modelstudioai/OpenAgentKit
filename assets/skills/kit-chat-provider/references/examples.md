@@ -1,6 +1,7 @@
 # 可编译示例
 
-本页展示仓库中的示例源文件。按[复制组件和 Kit SDK](copy-in.md)用 `--example` 接入应用，脚本会生成相对导入路径。
+本页展示仓库中的示例源文件。
+TypeScript 示例可按[复制组件和 Kit SDK](copy-in.md)用 `--example` 接入，脚本会生成相对导入路径。
 
 ## backend-data.ts
 

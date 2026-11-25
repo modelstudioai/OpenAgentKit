@@ -3,10 +3,12 @@
  * 并行起本地开发进程，带前缀输出与统一退出。
  *
  * 用法：
- *   pnpm dev                        # server + web + console + storybook（默认）
+ *   pnpm dev                        # server + web + web-vue + console（默认）
  *   pnpm dev server web console     # 只起指定目标
+ *   pnpm dev server web-vue         # 只启动 Vue 版体验页及其依赖
+ *   pnpm dev storybook              # 文档站按需单独启动
  *
- * 目标：server(:8787) web(:5173) console(:5174) storybook(:3000)
+ * 目标：server(:8787) web(:5173) web-vue(:5175) console(:5174)；storybook(:3000) 需显式指定
  * 根 `.env` 会被读进子进程环境（server 自身也支持 --env-file-if-exists）。
  */
 import { spawn, spawnSync } from "node:child_process";
@@ -56,6 +58,7 @@ if (env.KIT_EVAL_WORKSPACES) {
 const ALL_TARGETS = {
 	server: { args: ["--filter", "@openagentpack/kit-server", "dev"] },
 	web: { args: ["--filter", "web", "dev"] },
+	"web-vue": { args: ["--filter", "web-vue", "dev"] },
 	console: { args: ["--filter", "console", "dev"] },
 	storybook: { args: ["--filter", "storybook", "dev"] },
 };
@@ -66,7 +69,7 @@ if (unknown.length) {
 	console.error(`未知目标：${unknown.join(", ")}（可选：${Object.keys(ALL_TARGETS).join(" ")}）`);
 	process.exit(1);
 }
-const names = requested.length ? requested : ["server", "web", "console", "storybook"];
+const names = requested.length ? requested : ["server", "web", "web-vue", "console"];
 
 // workspace 包的公开入口指向 dist；必须先按依赖图构建，再启动消费它们的进程。
 // Turbo 缓存会恢复缺失产物，也会在源码变化时重建，不能只检查 dist 是否存在。
@@ -80,11 +83,25 @@ const dependencies = spawnSync(
 if (dependencies.error) console.error(`[dev] 无法启动依赖构建：${dependencies.error.message}`);
 if (dependencies.status !== 0) process.exit(dependencies.status ?? 1);
 
+// POSIX 下每个目标单独成组：Ctrl-C 时 pnpm 的直接子进程 vite/tsx 留在原进程组，
+// 只杀 pnpm 会留下占端口的孤儿进程。Windows 不启用 detached，退回 child.kill。
+const detached = process.platform !== "win32";
+const stopChild = (child) => {
+	if (!child?.pid) return;
+	try {
+		if (detached) process.kill(-child.pid, "SIGTERM");
+		else child.kill("SIGTERM");
+	} catch {
+		// 进程已退出或组不存在：忽略重复清理。
+	}
+};
+
 const children = names.map((name) => {
 	const target = ALL_TARGETS[name];
 	const child = spawn("pnpm", target.args, {
 		cwd: root,
 		env,
+		detached,
 		stdio: ["ignore", "pipe", "pipe"],
 	});
 	const prefix = `[${name}]`;
@@ -98,7 +115,7 @@ const children = names.map((name) => {
 	pipe(child.stderr);
 	child.on("exit", (code) => {
 		console.log(`${prefix} exited(${code})`);
-		for (const other of children) other?.kill("SIGTERM");
+		for (const other of children) if (other !== child) stopChild(other);
 		process.exit(code ?? 0);
 	});
 	return child;
@@ -106,7 +123,9 @@ const children = names.map((name) => {
 
 console.log(`[dev] 已启动：${names.join(" ")}`);
 
-process.on("SIGINT", () => {
-	for (const child of children) child.kill("SIGTERM");
+const shutdown = () => {
+	for (const child of children) stopChild(child);
 	process.exit(0);
-});
+};
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);

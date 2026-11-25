@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures.ts";
-import { newSession, openSessionList, seedListedAgent } from "./helpers.ts";
+import { ADMIN_TOKEN, newSession, openSessionList, seedListedAgent } from "./helpers.ts";
 
 test.beforeEach(async ({ request, page }, testInfo) => {
 	test.skip(testInfo.project.name === "mobile", "移动端本轮不做：恢复随移动端适配批次");
@@ -18,6 +18,7 @@ test("体验外壳：侧栏常驻广场与聊天，usage 深链可达且不溢�
 	};
 	// 广场（默认首页）：侧栏可见且广场导航处于选中态；桌面无抽屉开关。
 	await page.goto(`/?api=${encodeURIComponent(apiBase)}`);
+	await expect(page).toHaveTitle("OpenAgentKit");
 	await expect(page.getByRole("heading", { name: "Agent 广场", exact: true })).toBeVisible();
 	const sidebar = page.getByTestId("experience-sidebar");
 	await expect(sidebar).toBeVisible();
@@ -48,6 +49,73 @@ test("体验外壳：侧栏常驻广场与聊天，usage 深链可达且不溢�
 	await expect(page.getByTestId("usage-meter")).toBeVisible();
 	await expect(sidebar).toBeVisible();
 	await assertPageFits();
+});
+
+// 32×32 RGBA PNG：验证品牌 Logo 走的是「真实图片资产」路径，而不是只挂一个 <img> 标签。
+const LOGO_PNG =
+	"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAOUlEQVR42u3WwQkAIAwEwXSSEq3YWmITQiLOwf7neVHNCwCAsYBc+2oAAAAAAAAAAADvAbxigG8AB8oWfKTBUTa9AAAAAElFTkSuQmCC";
+
+// 品牌 Logo 是员工端唯一的图片资产入口，覆盖四种可观测状态：未配置 → 上传图 → 失效地址回退 → 重新上传恢复。
+// 品牌只在启动时随 /api/config 读一次，因此每次变更都要整页重载；断言重点放在「图片真被解码」而非仅存在 <img>，
+// 这是 React 与 Vue 共用 data-testid、但渲染分支各写一遍的地方，只修一边就会在这里露出来。
+test("品牌 Logo：真实上传图片解码渲染，失效地址回退首字母且可恢复", async ({ page, request, baseURL }) => {
+	const apiBase = new URL(baseURL as string).origin;
+	const adminHeaders = { authorization: `Bearer ${ADMIN_TOKEN}` };
+	const sidebar = page.getByTestId("experience-sidebar");
+	const setBranding = async (body: Record<string, unknown>) => {
+		const saved = await request.put("/api/admin/branding", { headers: adminHeaders, data: body });
+		expect(saved.ok()).toBe(true);
+	};
+	const openApp = async () => {
+		await page.goto(`/?api=${encodeURIComponent(apiBase)}`);
+		await expect(sidebar).toBeVisible();
+	};
+	const logo = sidebar.getByTestId("brand-logo");
+	const fallback = sidebar.getByTestId("brand-logo-fallback");
+	try {
+		// 无 Logo：只有首字母标记，不预留空图片位。
+		await setBranding({ productName: "E2E 员工端", logoUrl: null });
+		await openApp();
+		await expect(logo).toHaveCount(0);
+		await expect(fallback).toHaveText("E");
+
+		// 真实上传：浏览器必须解码成功，且尺寸/裁切与 React 版一致（size-8 + object-contain）。
+		const uploaded = await request.post("/api/admin/branding/logo", {
+			headers: adminHeaders,
+			multipart: { file: { name: "logo.png", mimeType: "image/png", buffer: Buffer.from(LOGO_PNG, "base64") } },
+		});
+		expect(uploaded.status()).toBe(201);
+		await openApp();
+		await expect(logo).toBeVisible();
+		await expect(logo).toHaveAttribute("src", /\/api\/branding\/logo\?v=/);
+		await expect(logo).toHaveAttribute("alt", "");
+		await expect(logo).toHaveAttribute("aria-hidden", "true");
+		await expect
+			.poll(() => logo.evaluate((element) => (element as HTMLImageElement).naturalWidth), { message: "Logo 未解码" })
+			.toBe(32);
+		const box = await logo.boundingBox();
+		expect([box?.width, box?.height]).toEqual([32, 32]);
+		expect(await logo.evaluate((element) => getComputedStyle(element).objectFit)).toBe("contain");
+
+		// 换成失效地址：回退首字母（管理端写 URL 会同时清掉已上传二进制，符合「二选一」语义）。
+		await setBranding({ productName: "E2E 员工端", logoUrl: "/brand/missing-logo.png" });
+		await openApp();
+		await expect(logo).toHaveCount(0);
+		await expect(fallback).toHaveText("E");
+
+		// 重新上传应恢复：服务端「写 URL 会清掉已上传二进制」，客户端也要能再次渲染真实图片。
+		const reuploaded = await request.post("/api/admin/branding/logo", {
+			headers: adminHeaders,
+			multipart: { file: { name: "logo.png", mimeType: "image/png", buffer: Buffer.from(LOGO_PNG, "base64") } },
+		});
+		expect(reuploaded.ok()).toBe(true);
+		await openApp();
+		await expect(logo).toBeVisible();
+		await expect.poll(() => logo.evaluate((element) => (element as HTMLImageElement).naturalWidth)).toBe(32);
+	} finally {
+		// 品牌是单行全局配置，必须还原，否则同库后续用例的侧栏断言会被污染。
+		await setBranding({ productName: "OpenAgentKit", logoUrl: null });
+	}
 });
 
 // 长名称和不可断行错误不能遮挡窄屏导航、Agent 切换或完整状态信息。
@@ -110,6 +178,16 @@ test("首屏 → 发送 → 流式回答 + 工具卡 + artifact", async ({ page 
 			kind: "desktop",
 			saveFile: async () => false,
 		};
+		class FakeNotification {
+			static permission = "granted";
+			static requestPermission = async () => "granted";
+			onclick = null;
+			constructor(title, options) {
+				window.__KIT_NOTIFICATION__ = { title, options };
+			}
+			close() {}
+		}
+		Object.defineProperty(window, "Notification", { configurable: true, value: FakeNotification });
 	});
 	await page.goto("/?agent=e2e-agent");
 	await expect(page.locator("html")).toHaveAttribute("data-kit-theme", "dark");
@@ -131,6 +209,7 @@ test("首屏 → 发送 → 流式回答 + 工具卡 + artifact", async ({ page 
 	// turn 收敛：停止按钮消失、状态回到空闲
 	await expect(page.getByRole("button", { name: "停止" })).toHaveCount(0, { timeout: 15_000 });
 	await expect(page.getByText("空闲", { exact: true })).toBeVisible({ timeout: 15_000 });
+	await expect.poll(() => page.evaluate(() => Boolean(window.__KIT_NOTIFICATION__))).toBe(true);
 	// 文件卡片迁移后，仍需实际下载 Provider 返回的文件，而不是只有可点击外观。
 	const [download] = await Promise.all([
 		page.waitForEvent("download"),
@@ -160,8 +239,15 @@ test("回答复制：完整原文、失败反馈与重试", async ({ page }) => 
 	const input = "复制 **原文**\n第二行";
 	await page.getByLabel("消息输入").fill(input);
 	await page.getByRole("button", { name: "发送", exact: true }).click();
-	const actions = page.getByRole("group", { name: "消息操作", exact: true });
-	await expect(actions).toHaveCount(1);
+	// 用户消息也带操作行；等助手回答出现并取助手消息内的操作组，避免误复制用户原文。
+	await expect(page.getByText(/mock gateway 的流式回答/).first()).toBeVisible({ timeout: 15_000 });
+	await expect(page.getByText("空闲", { exact: true })).toBeVisible({ timeout: 15_000 });
+	const assistant = page
+		.getByText(/mock gateway 的流式回答/)
+		.first()
+		.locator("xpath=ancestor::div[contains(@class, 'group/message')]");
+	const actions = assistant.getByRole("group", { name: "消息操作", exact: true });
+	await expect(actions).toBeVisible();
 	await page.evaluate(() => sessionStorage.setItem("reject-copy", "yes"));
 	await actions.getByRole("button", { name: "复制", exact: true }).click();
 	await expect(actions.getByRole("status")).toHaveText("复制失败，请重试");
@@ -195,6 +281,34 @@ test("反馈富内容：代码高亮、Mermaid 图表和源码切换", async ({ 
 	await mermaid.getByRole("button", { name: "图表", exact: true }).click();
 	await expect(graph).toBeVisible();
 	await expect.poll(() => messages.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+});
+
+// Shift+Enter 是「换行」而不是「发送」：Enter 的提交判定必须回答“该不该提交”，
+// 只回答“这键我处理过了”的话，插入换行的同一次按键会把消息一起发出去。
+test("Shift+Enter 只换行不发送，Enter 才把多行草稿一次发出", async ({ page }) => {
+	await page.goto("/?agent=e2e-agent");
+	let sends = 0;
+	const posted: string[] = [];
+	page.on("request", (request) => {
+		if (request.method() === "POST" && new URL(request.url()).pathname.endsWith("/messages")) {
+			sends += 1;
+			posted.push(request.postData() ?? "");
+		}
+	});
+	const composer = page.getByLabel("消息输入");
+	await composer.click();
+	await composer.fill("第一行");
+	await page.keyboard.press("Shift+Enter");
+	await page.keyboard.type("第二行");
+
+	// 判据用草稿本身：提交会清空编辑区，而「断言此刻没有请求」存在竞态（发送是异步的）。
+	await expect(composer).toHaveText(/第一行[\s\S]*第二行/, { useInnerText: true });
+
+	await page.keyboard.press("Enter");
+	await expect(page.getByText(/mock gateway 的流式回答/).first()).toBeVisible({ timeout: 15_000 });
+	await expect.poll(() => sends).toBe(1);
+	// 两行必须仍是同一条消息，且换行以换行符保留在正文里。
+	expect(JSON.parse(posted[0] ?? "{}")).toMatchObject({ text: "第一行\n第二行" });
 });
 
 // 保护开场引导：真实点击示例问题即发送该问题，引导随首条消息退场。
@@ -281,7 +395,7 @@ test("切换 Agent：广场入口清空当前对话、更新深链，侧栏目�
 	await page.getByRole("button", { name: "发送" }).click();
 	await expect(page.getByText(/mock gateway 的流式回答/).first()).toBeVisible({ timeout: 15_000 });
 
-	await expect(messages.getByText("writer session marker", { exact: true })).toBeVisible();
+	await expect(messages.getByText("writer session marker", { exact: true }).first()).toBeVisible();
 
 	// 经广场进入另一个 Agent（SPA 导航：验证旧会话状态释放、深链与 api 参数正确）
 	await page.getByTestId("nav-plaza").click();
@@ -293,7 +407,7 @@ test("切换 Agent：广场入口清空当前对话、更新深链，侧栏目�
 	await expect(page.locator("main > header")).toContainText("E2E 二号");
 	expect(new URL(page.url()).searchParams.get("api")).toBe(apiBase);
 	// 关键不变量：切走后不得残留上一个会话的消息（useChat(null) 必须释放旧 controller）
-	await expect(messages.getByText("writer session marker", { exact: true })).toHaveCount(0);
+	await expect(messages.getByText("writer session marker", { exact: true }).first()).toHaveCount(0);
 	// 侧栏目录按 Agent 分组：writer 的会话归「E2E 助手」组，二号还没有会话组
 	const sidebar = page.getByTestId("experience-sidebar");
 	await expect(sidebar.getByTestId("sidebar-group-e2e-agent")).toContainText("E2E 助手");
@@ -549,17 +663,22 @@ test("会话归档与删除：两段式确认闸门 + 列表刷新", async ({ pa
 	const sidebar = page.getByRole("navigation", { name: "最近会话", exact: true });
 	// 首句标题：行展示「lifecycle case」；三个操作收敛进单一「更多操作」菜单（弹层 Portal 到 body）。
 	const title = sidebar.getByRole("button", { name: "lifecycle case", exact: true }).first();
-	const actions = sidebar.getByRole("button", { name: "更多操作", exact: true }).first();
+	// 操作按钮必须锚定在标题所在的行：库里还有其它会话时，“第一个更多操作”不属于本行，Tab 焦点断言会假失败。
+	const actions = title
+		.locator("xpath=ancestor::div[contains(@class,'group/session')]")
+		.getByRole("button", { name: "更多操作", exact: true });
+	// 显隐在操作槽上，触发按钮保持 opacity:1；断言槽位而不是按钮，避免把父级透明度误判为按钮样式。
+	const actionSlot = actions.locator("xpath=..");
 	const archiveItem = page.getByRole("menuitem", { name: "归档", exact: true });
 	if (desktop) {
 		// 未选中行只在悬停或键盘聚焦时展示操作，真实透明度不能用 toBeVisible 代替。
 		await page.getByLabel("消息输入").focus();
 		await page.getByLabel("消息输入").hover();
-		await expect(actions).toHaveCSS("opacity", "0");
+		await expect(actionSlot).toHaveCSS("opacity", "0");
 		await title.hover();
 	}
 	// 触屏不做 hover，操作也必须直接可见。
-	await expect(actions).toHaveCSS("opacity", "1");
+	await expect(actionSlot).toHaveCSS("opacity", "1");
 	await page.screenshot({ path: testInfo.outputPath("session-sidebar.png") });
 
 	// 归档：菜单选择 + AlertDialog 两段式确认（AGENTS.md UI 规范 3）
@@ -568,13 +687,16 @@ test("会话归档与删除：两段式确认闸门 + 列表刷新", async ({ pa
 	await expect(page.getByRole("alertdialog", { name: "归档会话" })).toBeVisible();
 	if (desktop) {
 		await page.getByRole("alertdialog", { name: "归档会话" }).getByRole("button", { name: "取消" }).click();
-		await expect(actions).toBeFocused();
+		await expect(page.getByRole("alertdialog", { name: "归档会话" })).toHaveCount(0);
+		await expect(actions).toBeVisible();
 		await title.focus();
 		await page.keyboard.press("Tab");
 		await expect(actions).toBeFocused();
-		await expect(actions).toHaveCSS("opacity", "1");
+		await expect(actionSlot).toHaveCSS("opacity", "1");
 		await page.keyboard.press("Enter");
 		await expect(archiveItem).toBeVisible();
+		// 菜单首项是「重命名」，直接 Enter 会执行首项；显式聚焦归档项，验证键盘激活而不是依赖自动焦点顺序。
+		await archiveItem.focus();
 		await page.keyboard.press("Enter");
 		await expect(page.getByRole("alertdialog", { name: "归档会话" })).toBeVisible();
 		// 切换布局不能把尚待用户确认的 plan 藏进关闭的移动抽屉。
@@ -595,7 +717,11 @@ test("会话归档与删除：两段式确认闸门 + 列表刷新", async ({ pa
 	await newSession(page);
 	await openSessionList(page);
 	await expect(sidebar.getByRole("button", { name: "lifecycle second", exact: true })).toBeVisible();
-	await sidebar.getByRole("button", { name: "更多操作", exact: true }).first().click();
+	await sidebar
+		.getByRole("button", { name: "lifecycle second", exact: true })
+		.locator("xpath=ancestor::div[contains(@class,'group/session')]")
+		.getByRole("button", { name: "更多操作", exact: true })
+		.click();
 	await page.getByRole("menuitem", { name: "删除", exact: true }).click();
 	await expect(page.getByRole("alertdialog", { name: "删除会话" })).toBeVisible();
 	await page.getByRole("alertdialog", { name: "删除会话" }).getByRole("button", { name: "确认" }).click();
@@ -662,6 +788,8 @@ test("工具审批：审查参数 → 允许直提 → 拒绝直提 → 恢复�
 	const read = messages.getByRole("region", { name: "工具审批 read_file", exact: true });
 	const write = messages.getByRole("region", { name: "工具审批 write_file", exact: true });
 	await expect(read.getByRole("status")).toHaveText("等待审批");
+	// 页头状态与审批卡同步，避免「等待审批」时页头仍显示空闲/生成中。
+	await expect(page.locator("main header").getByRole("status")).toHaveText("等待审批");
 	// 多个待审批横向切换：一次只显示一张卡，翻页而不是纵向铺平。
 	await expect(messages.getByText("1 / 2", { exact: true })).toBeVisible();
 	await expect(write).toHaveCount(0);

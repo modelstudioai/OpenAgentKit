@@ -185,6 +185,41 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 
 	app.openapi(
 		createRoute({
+			method: "get",
+			path: "/api/kit/sessions/{sessionId}/artifacts",
+			tags: ["kit"],
+			request: { params: z.object({ sessionId: z.string() }) },
+			responses: {
+				200: {
+					description: "会话产物",
+					content: {
+						"application/json": {
+							schema: data(
+								z.array(
+									z.object({
+										file_id: z.string(),
+										filename: z.string(),
+										content_type: z.string().optional(),
+										size: z.number().nonnegative().optional(),
+									}),
+								),
+							),
+						},
+					},
+				},
+				...errors,
+			},
+		}),
+		async (c) => {
+			const { sessionIndex, gateway } = c.get("services");
+			const row = await sessionIndex.getForSubject(c.req.param("sessionId"), c.get("identity").subjectId);
+			if (!row) throw new KitError("not_found", "会话不存在");
+			return c.json({ data: await gateway.listSessionFiles(row.session_id) }, 200);
+		},
+	);
+
+	app.openapi(
+		createRoute({
 			method: "patch",
 			path: "/api/kit/sessions/{sessionId}",
 			tags: ["kit"],
@@ -552,7 +587,7 @@ export function registerKitRoutes(app: OpenAPIHono<AppEnv>) {
 			},
 			responses: {
 				200: {
-					description: "本人上传的附件，或本人会话历史中已交付的文件（须携带 session_id）",
+					description: "本人上传的附件，或本人会话已交付的文件与 Agent 产物（须携带 session_id）",
 					content: { "application/octet-stream": { schema: z.string() } },
 				},
 				...errors,

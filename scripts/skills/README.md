@@ -16,7 +16,7 @@ scripts/skills/src/<name>/
   skill.md        SKILL.md 正文
   catalog.json    公开 API 到中文用途、文档与示例的映射
   references/     人工维护的行为说明
-  examples/       可编译的 TS/TSX 示例
+  examples/       可编译的 TS、TSX 和 Vue 单文件示例
 ```
 
 不要手改 `assets/skills/<name>/`。它由 `pnpm gen:skills` 生成，包含：
@@ -60,7 +60,7 @@ pnpm pack:skills      # 生成带组件和 SDK 源码的离线包
 - 新增 Skill 时在 `src/` 下提供 metadata 和正文。涉及公开 API 时补齐 catalog 与编译示例，
   按需添加参考内容。生成器按目录发现 Skill，文档站导航由 `content/docs/skill/meta.json` 维护。
 - 生成、检查和打包都会校验元数据文案、catalog 用途和备注、入口正文以及手写 Markdown 参考是否包含中文。
-  示例注释与界面文案在 TS/TSX 源文件中维护。
+  示例注释与界面文案在对应的 TS、TSX 或 Vue 源文件中维护。
 - API 签名、Props 和类型以公开 TypeScript 导出为准；中文用途与约束以 catalog 和
   references 为准，两者共同校验。
 

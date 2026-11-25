@@ -548,6 +548,29 @@ export function createSdkGateway(credentials: BailianCredentials): ProviderGatew
 			} while (pageToken);
 			return [...files.values()];
 		},
+		// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: 分页累加与协议字段映射平铺，拆开反而割裂
+		async listSessionFiles(sessionId) {
+			const files = new Map<string, { file_id: string; filename: string; content_type?: string; size?: number }>();
+			const seenPages = new Set<string>();
+			let pageToken: string | undefined;
+			do {
+				const page = await listRemoteFiles(await ctx(), {
+					limit: 100,
+					scope_id: sessionId,
+					...(pageToken ? { page: pageToken } : {}),
+				});
+				for (const info of page.data) {
+					files.set(info.id, {
+						file_id: info.id,
+						filename: info.filename || info.id,
+						...(info.mime_type ? { content_type: info.mime_type } : {}),
+						...(Number.isFinite(info.size_bytes) && info.size_bytes >= 0 ? { size: info.size_bytes } : {}),
+					});
+				}
+				pageToken = nextResourcePage(page, seenPages, "会话产物");
+			} while (pageToken);
+			return [...files.values()];
+		},
 		async getRemoteFile(fileId) {
 			try {
 				return toUploadedRemoteFile(await getFileInfo(await ctx(), fileId));

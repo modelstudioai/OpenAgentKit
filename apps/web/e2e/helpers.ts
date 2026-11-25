@@ -31,7 +31,18 @@ export async function seedListedAgent(
 		headers,
 		data: { slug, display_name: displayName, remote_agent_id: "agent_mock_assistant", description: "e2e seed" },
 	});
-	if (!created.ok() && created.status() !== 409) throw new Error(`seed create failed: ${created.status()}`);
+	if (!created.ok()) {
+		// 409 只有在「这个 slug 确实已在目录里」时才是可重入信号；展示名等其它唯一约束冲突必须当场报出来，
+		// 否则会一路走到 plan 才失败成 404「agent 不存在」，看不出真实原因。目录只有列表路由，没有按 slug 的单查。
+		if (created.status() !== 409) throw new Error(`seed create failed: ${created.status()}`);
+		const rows = (
+			(await (await request.get("/api/admin/agents", { headers })).json()) as {
+				data: { slug: string }[];
+			}
+		).data;
+		if (!rows.some((row) => row.slug === slug))
+			throw new Error(`seed create conflict: ${(await created.text()).slice(0, 200)}`);
+	}
 	// 记忆库配置独立 PUT：Agent 重入（409）或历史数据都可能没有，保证播种幂等。
 	if (memoryStores?.length) {
 		const updated = await request.put(`/api/admin/agents/${slug}`, {

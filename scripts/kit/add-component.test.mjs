@@ -7,23 +7,47 @@ import { test } from "node:test";
 import { REPO_ROOT } from "./paths.mjs";
 
 const script = join(REPO_ROOT, "scripts/kit/add-component.mjs");
-const chatUiRoot = join(REPO_ROOT, "packages/chat-ui");
+const reactFiles = ["message/index.tsx", "message-list/index.tsx", "process/sub-agent-card/index.tsx"];
 
-// 通过真实命令入口验证项目落盘结果，保护默认位置参数与显式目标目录两种调用方式。
-for (const explicitDirectory of [false, true]) {
-	test(`kit:add ${explicitDirectory ? "使用 --dir 指定项目" : "不带 --dir 使用当前项目"}`, (t) => {
+for (const { name, directory, args, source, files } of [
+	{ name: "当前项目默认使用 React", directory: false, args: ["message"], source: "chat-ui", files: reactFiles },
+	{ name: "使用 --dir 指定项目", directory: true, args: ["message"], source: "chat-ui", files: reactFiles },
+	{
+		name: "使用 --framework vue 复制 Chat 与传递依赖",
+		directory: true,
+		args: ["chat", "--framework", "vue"],
+		source: "chat-ui-vue",
+		files: [
+			"chat/index.ts",
+			"message/index.ts",
+			"actions/index.ts",
+			"process/execution-group/index.ts",
+			"process/sub-agent-card/index.ts",
+			"processing-indicator/index.ts",
+		],
+	},
+	{
+		name: "使用 --framework vue 复制附件输入与词典",
+		directory: true,
+		args: ["attachments", "--framework", "vue"],
+		source: "chat-ui-vue",
+		files: ["attachments/index.ts", "attachments/strings.ts", "kit-i18n/index.ts"],
+	},
+]) {
+	test(`kit:add ${name}`, (t) => {
 		const project = mkdtempSync(join(tmpdir(), "kit-add-"));
 		t.after(() => rmSync(project, { recursive: true, force: true }));
 		writeFileSync(join(project, "package.json"), '{"name":"kit-add-regression","private":true}');
-		const args = explicitDirectory ? ["message", "--dir", project] : ["message"];
-		const result = spawnSync(process.execPath, [script, ...args], {
-			cwd: explicitDirectory ? REPO_ROOT : project,
+		const projectArgs = directory ? ["--dir", project] : [];
+		const result = spawnSync(process.execPath, [script, ...args, ...projectArgs], {
+			cwd: directory ? REPO_ROOT : project,
 			encoding: "utf8",
 			timeout: 10_000,
 		});
 		assert.equal(result.status, 0, `${result.error?.message ?? ""}\n${result.stdout}\n${result.stderr}`);
+		const chatUiRoot = join(REPO_ROOT, "packages", source);
 		const target = join(project, "src/components/kit");
-		for (const file of ["message/index.tsx", "message-list/index.tsx", "process/sub-agent-card/index.tsx"]) {
+		for (const file of files) {
 			assert.equal(
 				readFileSync(join(target, file), "utf8"),
 				readFileSync(join(chatUiRoot, "src/components", file), "utf8"),

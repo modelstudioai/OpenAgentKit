@@ -87,7 +87,7 @@ export default {
 		metricSeconds: "执行时长（秒）",
 		today: "今日",
 		month: "本月",
-		exceededPrefix: "{{period}}{{metric}} 已达限额（",
+		exceededPrefix: "{{period}} {{metric}} 已达限额（",
 		exceededSuffix: "），{{reset}} 重置，暂不能发送新消息。",
 		rechecking: "检查中…",
 		recheck: "重新检查额度",

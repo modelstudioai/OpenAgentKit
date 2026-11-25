@@ -3,8 +3,8 @@
 ## 顶层
 
 ```
-apps/            可运行应用（server / web / console / storybook）
-packages/        可复用包（sdk / chat-ui / eval）
+apps/            可运行应用（server / web / web-vue / console / storybook）
+packages/        可复用包（sdk / chat-ui / chat-ui-vue / eval）
 assets/          生成产物（当前为 assets/skills；dist 不入库）
 docs/            权威文档（见 AGENTS.md 权威顺序）+ adr/ research/
 scripts/         仓库级脚本（start、dev、kit、skills、check-docs、check-no-inner-deps、lint-changed、build-release）
@@ -20,7 +20,7 @@ scripts/         仓库级脚本（start、dev、kit、skills、check-docs、che
 - `scripts/kit/` 承载组件复制与组件目录命令：`kit:add`、`catalog:list`。
   它不是 workspace 包，不发布 npm，也不提供独立 bin；外部可分发 CLI 的
   决策见 ADR-0022。在仓库根目录运行 `pnpm kit:add <component> --dir <project>`，
-  将组件源码复制到已有项目。
+  将 React 组件源码复制到已有项目。加上 `--framework vue` 可复制 Vue 组件及其依赖。
 
 ## AGENTS.md 的组织与维护
 
@@ -220,7 +220,7 @@ scripts/skills/
     skill.md        SKILL.md 正文
     catalog.json    API Skill 的公开接口索引
     references/     按需提供中文行为说明
-    examples/       按需提供 TS/TSX 示例，参与类型检查并同步到文档站
+    examples/       按需提供 TS、TSX 或 Vue 单文件示例，参与类型检查并同步到文档站
   generate.mjs      生成、校验与 API 模型入口
   pack.mjs          确定性离线打包
   tests/            生成、链接、打包与浏览器边界测试

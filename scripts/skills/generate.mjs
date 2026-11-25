@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, relative, resolve, sep } from "node:path";
+import { dirname, extname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertChatUiCoverage, createApiModel } from "./api-model.mjs";
 import {
@@ -105,18 +105,28 @@ function renderApi(name, entries, model, root, renderedDocs, hasCopyIn) {
 	return `${lines.join("\n").trim()}\n`;
 }
 
-function renderExamples(directory, examples) {
+const exampleExtension = /\.(?:tsx?|vue)$/;
+
+function renderExampleCode(file) {
+	return `\`\`\`${extname(file).slice(1)}\n${readFileSync(file, "utf8").trimEnd()}\n\`\`\``;
+}
+
+function renderExamples(directory, examples, hasCopyIn) {
 	return [
 		"# 可编译示例",
 		"",
-		"本页展示仓库中的示例源文件。按[复制组件和 Kit SDK](copy-in.md)用 `--example` 接入应用，脚本会生成相对导入路径。",
+		"本页展示仓库中的示例源文件。",
+		...(hasCopyIn
+			? ["TypeScript 示例可按[复制组件和 Kit SDK](copy-in.md)用 `--example` 接入，脚本会生成相对导入路径。"]
+			: []),
+		...(examples.some((file) => file.endsWith(".vue")) ? ["Vue 示例的运行与源码接入方式见 Skill 正文。"] : []),
 		"",
 		...examples.flatMap((file) => [
 			`## ${portablePath(relative(resolve(directory, "examples"), file))}`,
 			"",
 			`[源文件](../${portablePath(relative(directory, file))})`,
 			"",
-			`\`\`\`${file.endsWith(".tsx") ? "tsx" : "ts"}\n${readFileSync(file, "utf8").trimEnd()}\n\`\`\``,
+			renderExampleCode(file),
 			"",
 		]),
 	].join("\n");
@@ -135,8 +145,8 @@ export function renderDocsExamples(text, root) {
 		const [name] = path.split("/");
 		if (!names.has(name)) throw new Error(`Unknown Skill example: ${path}`);
 		const file = inside(skillSourceRoot(root, name), resolve(root, "scripts/skills/src", path));
-		if (!/\.tsx?$/.test(file)) throw new Error(`Expected a TypeScript example: ${path}`);
-		return `{/* skill-example: ${path} */}\n\n\`\`\`${file.endsWith(".tsx") ? "tsx" : "ts"}\n${readFileSync(file, "utf8").trimEnd()}\n\`\`\`\n\n{/* /skill-example */}`;
+		if (!exampleExtension.test(file)) throw new Error(`Expected a TS, TSX or Vue example: ${path}`);
+		return `{/* skill-example: ${path} */}\n\n${renderExampleCode(file)}\n\n{/* /skill-example */}`;
 	});
 }
 
@@ -193,18 +203,20 @@ function buildSkillOutputs(root, name, model, renderedDocs) {
 	const references = resolve(source, "references");
 	const examples = resolve(source, "examples");
 	const exampleFiles = existsSync(examples) ? filesUnder(examples) : [];
-	const typedExamples = exampleFiles.filter((file) => /\.tsx?$/.test(file));
-	const hasCopyIn = typedExamples.length > 0;
+	const compilableExamples = exampleFiles.filter((file) => exampleExtension.test(file));
+	const hasCopyIn = exampleFiles.some((file) => /\.tsx?$/.test(file));
 	if (name === "kit-components" || existsSync(resolve(source, "catalog.json"))) {
 		const entries = readCatalog(root, name);
 		if (name === "kit-components") assertChatUiCoverage(model.chatUiCallableNames(), entries);
 		for (const entry of entries) validateEntry(root, name, entry);
 		skillFiles.set("references/api.md", renderApi(name, entries, model, root, renderedDocs, hasCopyIn));
 	}
+	if (compilableExamples.length) {
+		skillFiles.set("references/examples.md", renderExamples(source, compilableExamples, hasCopyIn));
+	}
 	if (hasCopyIn) {
 		const copyInReference = readFileSync(new URL("./copy-in.md", import.meta.url), "utf8");
 		validateChineseMarkdown(copyInReference, "./copy-in.md");
-		skillFiles.set("references/examples.md", renderExamples(source, typedExamples));
 		skillFiles.set("references/copy-in.md", copyInReference);
 		skillFiles.set("scripts/install.mjs", readFileSync(new URL("../kit/skill-install.mjs", import.meta.url), "utf8"));
 		skillFiles.set("scripts/copy-in.mjs", readFileSync(new URL("../kit/copy-in.mjs", import.meta.url), "utf8"));
