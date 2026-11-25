@@ -1,6 +1,8 @@
 # 可编译示例
 
-本页由随附的示例源文件生成。请按应用需求调整回调和运行时配置。
+本页展示仓库中的示例源文件。
+TypeScript 示例可按[复制组件和 Kit SDK](copy-in.md)用 `--example` 接入，脚本会生成相对导入路径。
+Vue 示例的运行与源码接入方式见 Skill 正文。
 
 ## agent-resources-panel.tsx
 

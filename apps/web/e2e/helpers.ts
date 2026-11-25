@@ -71,9 +71,9 @@ export async function seedListedAgent(
  */
 export async function openSessionList(page: Page): Promise<void> {
 	if ((page.viewportSize()?.width ?? 1280) >= 768) return;
-	const drawer = page.getByRole("dialog", { name: "导航菜单", exact: true });
+	const drawer = page.getByRole("dialog", { name: /^(导航菜单|Navigation menu)$/i });
 	if (await drawer.isVisible()) return;
-	await page.getByRole("button", { name: "打开导航菜单", exact: true }).click();
+	await page.getByRole("button", { name: /^(打开导航菜单|Open navigation menu)$/i }).click();
 	await expect(drawer).toBeVisible();
 }
 

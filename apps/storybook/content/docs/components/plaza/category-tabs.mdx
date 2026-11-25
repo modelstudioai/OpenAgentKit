@@ -1,0 +1,58 @@
+---
+title: CategoryTabs 广场分类
+description: 受控的广场分类标签，支持精选、键盘切换和窄屏横向滚动
+---
+
+`CategoryTabs` 让用户在「精选」和各个 Agent 分类间切换。调用方控制当前选中项，并根据回调更新列表。
+
+```tsx
+import { CategoryTabs, type PlazaTabId } from "@openagentpack/kit-chat-ui";
+```
+
+copy-in 接入（复制后 import 改为项目内路径）
+
+```bash
+pnpm kit:add category-tabs
+```
+
+主题与渲染依赖见 [组件总览](/docs/components#主题)。
+
+## 何时使用
+
+- 在 Agent 广场用一行标签切换精选、写作、编程等分类。
+- 将分类和搜索条件一起保存在页面状态里，按选中项展示相应的 Agent 列表。 [PlazaCard 智能体卡片](/docs/components/plaza/plaza-card)
+
+## 代码演示
+
+点击分类或聚焦后按左右方向键切换，观察下方列表。按 Home 跳到首项，按 End 跳到末项。
+
+<Showcase name="category-tabs" />
+
+## 接入
+
+传入 `usePlaza().view.categories`，用 `active` 保存选中项。选择普通分类时可将分类 ID 传给 `usePlaza({ category })`。
+选择 `featured` 时省略查询的 `category`，按结果的 `featured` 列表选择卡片。 [广场与配额 Hooks](/docs/sdk/discovery-usage#广场与配额查询)
+
+标签条采用 `tablist` 和 `tab` 语义。Tab 键进入当前选中项或离开分类条。窄屏时分类条可横向滚动。
+
+## API
+
+### CategoryTabs
+
+| 属性 | 说明 | 类型 | 默认值 |
+| --- | --- | --- | --- |
+| `categories` | 必填，分类标签。组件在列表首位添加「精选」，分类标签显示 `name` | `{ id: PlazaCategory; name: string; count: number }[]` | — |
+| `active` | 必填，当前选中项 | `PlazaTabId` | — |
+| `onChange` | 必填，用户切换分类时回传新的选中项 | `(next: PlazaTabId) => void` | — |
+
+`PlazaTabId` 为 `PlazaCategory | "featured"`。`PlazaCategory` 从 `@openagentkit/sdk/protocol` 导入。
+
+## 主题变量（Design Token）
+
+| Token | 用途 | 默认主题 | 工作区主题 |
+| --- | --- | --- | --- |
+| `--kit-nav-active` | 选中标签底色 | `#eef0ff` | `#ececec` |
+| `--kit-bg-subtle` | 标签悬停底色 | `#f6f7fb` | `#f7f7f7` |
+| `--kit-focus` | 键盘焦点环 | `#4f46e5` | `#737373` |
+
+标签圆角使用 `--kit-radius-sm`。

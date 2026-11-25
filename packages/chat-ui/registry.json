@@ -83,7 +83,8 @@
     "markdown": {
       "file": "src/components/markdown/index.tsx",
       "deps": ["kit-i18n", "code-highlighter", "mermaid"],
-      "extraFiles": ["src/components/markdown/strings.ts"]
+      "extraFiles": ["src/components/markdown/strings.ts"],
+      "npmDependencies": ["react-markdown", "rehype-sanitize", "remark-gfm"]
     },
     "actions": {
       "file": "src/components/actions/index.tsx",
@@ -98,12 +99,14 @@
     "code-highlighter": {
       "file": "src/components/code-highlighter/index.tsx",
       "deps": ["kit-i18n", "actions"],
-      "extraFiles": ["src/components/code-highlighter/strings.ts"]
+      "extraFiles": ["src/components/code-highlighter/strings.ts"],
+      "npmDependencies": ["lowlight"]
     },
     "mermaid": {
       "file": "src/components/mermaid/index.tsx",
       "deps": ["kit-i18n", "actions", "code-highlighter"],
-      "extraFiles": ["src/components/mermaid/strings.ts"]
+      "extraFiles": ["src/components/mermaid/strings.ts"],
+      "npmDependencies": ["mermaid"]
     },
     "agent-header": {
       "file": "src/components/agent-header/index.tsx",

@@ -36,13 +36,16 @@
 ## React 接入
 
 React 的 `KitProvider` 为应用提供默认 KitClient Context。
+按[复制组件和 Kit SDK](references/copy-in.md)用 `--example` 接入所选示例。脚本会连同
+SDK、所需组件和随附示例一起复制，并生成相对导入路径。
 
 ### 选择接入入口
 
 - **完整会话页或工作台**可从[三栏会话页](examples/experience.tsx)开始。左侧 `SessionSidebar`、
   中间 `Chat` 和右侧 [Agent 资源面板](examples/agent-resources-panel.tsx)共享同一套 Agent 和会话选择。
-  一并复制面板和[审批列表](examples/approval-list.tsx)，提供稳定的 Client、ChatProvider 和产物操作宿主。
-  导入 `@openagentpack/kit-chat-ui/theme.css`，并把示例及组件源码纳入 Tailwind v4 的扫描范围。
+  用[三栏示例复制命令](references/copy-in.md#接入三栏会话页)一并接入面板和[审批列表](examples/approval-list.tsx)，
+  提供稳定的 Client、ChatProvider 和产物操作宿主。导入本地主题，
+  并把示例及组件源码纳入 Tailwind v4 的扫描范围。
 - **Kit Server 和自建后端**使用 `useChat({ sessionId, provider })`。标准事件后端可配置
   `createSessionEventChatProvider`，Web 应用走相同入口，见[自建后端示例](examples/custom-chat.tsx)。
 - **已有 KitClient 的应用**可继续在 `KitProvider` 内使用 `useChat(sessionId)`，
@@ -54,7 +57,7 @@ React 的 `KitProvider` 为应用提供默认 KitClient Context。
   让显式 Provider 复用相同的固定身份与取消边界，再将 `auth.chatProvider` 传给 `useChat`。
 - **已有自定义后端适配器**可直接使用 `useChat({ sessionId, provider })`，
   无需 `KitProvider`，见[自建后端示例](examples/custom-chat.tsx)。
-- **其他框架或自定义宿主**从 `@openagentkit/sdk/chat` 导入 `createChatController`，
+- **其他框架或自定义宿主**可从应用的 `src/sdk/chat/index.ts` 导入 `createChatController`，
   显式订阅及销毁，见[控制器示例](examples/controller.ts)。
 - 拿到真实会话 ID 前传入 `null`。创建和列出会话通过独立接口完成。
 - **Kit Server 的发现和用量**在 `KitProvider` 中使用 `usePlaza`、`useQuota` 和 `useQuotaRequests`，
@@ -83,8 +86,9 @@ React 的 `KitProvider` 为应用提供默认 KitClient Context。
 按 `useChat` 的公开接口接入。禁止自行添加 `setMessages`、消息编辑、重新生成或请求队列，
 也禁止自动重发失败的写请求。数据 Hook 接受显式 `client`，`useKitClient` 保留 Context 兼容入口。
 
-自定义 ChatProvider 接管对话传输。数据操作单独通过 `createKitClient({ request, operations })` 配置，
-见[三栏会话页](examples/experience.tsx)。额度增加申请属于独立业务，由用户显式触发后调用
+自定义 ChatProvider 接管对话传输。数据操作通过本地 `src/sdk/providers/kit/index.ts` 的
+`createKitClient({ request, operations })` 配置。宿主创建稳定的 Client 和 Provider 并将其传给
+[三栏会话页](examples/experience.tsx)。额度增加申请属于独立业务，由用户显式触发后调用
 `useCreateQuotaRequest().submit`，然后刷新用量及申请历史。
 
 复用 `useAttachments` 和 `useArtifactActions` 管理上传与下载。文件选择、预览窗口和保存由宿主负责。

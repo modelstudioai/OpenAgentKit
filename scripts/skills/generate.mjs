@@ -61,7 +61,7 @@ function declaration(entry) {
 	return `\`\`\`ts\n${code}\n\`\`\`\n\n${table(entry.fields)}`;
 }
 
-function renderApi(name, entries, model, root, renderedDocs) {
+function renderApi(name, entries, model, root, renderedDocs, hasCopyIn) {
 	const descriptions = entries.map(model.describe);
 	const supportingTypesHeading = "相关类型";
 	const anchors = headingSlugs(["API 参考", "目录", ...entries.map((entry) => entry.name), supportingTypesHeading]);
@@ -71,6 +71,7 @@ function renderApi(name, entries, model, root, renderedDocs) {
 		"本页由 `pnpm gen:skills` 生成。更新公开 TypeScript 声明或中文 catalog 后重新生成。",
 		"字段类型和必填性来自公开 API，行为说明依据所列文档整理。",
 		"组件表格列出 Kit 自有属性。组件按声明继承标准的 React/DOM 属性。",
+		...(hasCopyIn ? ["参考中的包名用于仓库内导入。业务项目按[复制组件和 Kit SDK](copy-in.md)改用本地源码入口。"] : []),
 		"",
 		"## 目录",
 		"",
@@ -110,11 +111,15 @@ function renderExampleCode(file) {
 	return `\`\`\`${extname(file).slice(1)}\n${readFileSync(file, "utf8").trimEnd()}\n\`\`\``;
 }
 
-function renderExamples(directory, examples) {
+function renderExamples(directory, examples, hasCopyIn) {
 	return [
 		"# 可编译示例",
 		"",
-		"本页由随附的示例源文件生成。请按应用需求调整回调和运行时配置。",
+		"本页展示仓库中的示例源文件。",
+		...(hasCopyIn
+			? ["TypeScript 示例可按[复制组件和 Kit SDK](copy-in.md)用 `--example` 接入，脚本会生成相对导入路径。"]
+			: []),
+		...(examples.some((file) => file.endsWith(".vue")) ? ["Vue 示例的运行与源码接入方式见 Skill 正文。"] : []),
 		"",
 		...examples.flatMap((file) => [
 			`## ${portablePath(relative(resolve(directory, "examples"), file))}`,
@@ -195,18 +200,26 @@ function buildSkillOutputs(root, name, model, renderedDocs) {
 
 	const skillFiles = new Map();
 	skillFiles.set("SKILL.md", renderSkill(metadata, body));
-	if (name === "kit-components" || existsSync(resolve(source, "catalog.json"))) {
-		const entries = readCatalog(root, name);
-		if (name === "kit-components") assertChatUiCoverage(model.chatUiCallableNames(), entries);
-		for (const entry of entries) validateEntry(root, name, entry);
-		skillFiles.set("references/api.md", renderApi(name, entries, model, root, renderedDocs));
-	}
 	const references = resolve(source, "references");
 	const examples = resolve(source, "examples");
 	const exampleFiles = existsSync(examples) ? filesUnder(examples) : [];
 	const compilableExamples = exampleFiles.filter((file) => exampleExtension.test(file));
+	const hasCopyIn = exampleFiles.some((file) => /\.tsx?$/.test(file));
+	if (name === "kit-components" || existsSync(resolve(source, "catalog.json"))) {
+		const entries = readCatalog(root, name);
+		if (name === "kit-components") assertChatUiCoverage(model.chatUiCallableNames(), entries);
+		for (const entry of entries) validateEntry(root, name, entry);
+		skillFiles.set("references/api.md", renderApi(name, entries, model, root, renderedDocs, hasCopyIn));
+	}
 	if (compilableExamples.length) {
-		skillFiles.set("references/examples.md", renderExamples(source, compilableExamples));
+		skillFiles.set("references/examples.md", renderExamples(source, compilableExamples, hasCopyIn));
+	}
+	if (hasCopyIn) {
+		const copyInReference = readFileSync(new URL("./copy-in.md", import.meta.url), "utf8");
+		validateChineseMarkdown(copyInReference, "./copy-in.md");
+		skillFiles.set("references/copy-in.md", copyInReference);
+		skillFiles.set("scripts/install.mjs", readFileSync(new URL("../kit/skill-install.mjs", import.meta.url), "utf8"));
+		skillFiles.set("scripts/copy-in.mjs", readFileSync(new URL("../kit/copy-in.mjs", import.meta.url), "utf8"));
 	}
 	for (const file of existsSync(references) ? filesUnder(references) : []) {
 		const text = readFileSync(file, "utf8");

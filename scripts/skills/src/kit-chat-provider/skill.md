@@ -3,13 +3,17 @@
 使用本 Skill 在已有业务后端与 Kit 对话控制器之间编写前端适配。上游仍是百炼托管 Agent。
 适配层的职责限于连接现有后端、映射响应及订阅生命周期。
 
+按[复制组件和 Kit SDK](references/copy-in.md)接入应用内的 SDK 源码。用 `--example`
+复制适配器示例时，脚本会生成指向本地 SDK 源码的相对导入。多 Agent 示例还会复制 `Chat` 及其依赖，
+使用时导入本地主题。
+
 ## 选择接入方式
 
 | 现有后端 | 实现 |
 | --- | --- |
 | 返回标准 SDK `SessionEvent` 快照和控制帧，例如 Kit Server | 配置 `createSessionEventChatProvider`，参考[标准事件接入](references/normalized-events.md) |
 | 返回标准快照，但采用其他传输方式 | 实现 `ChatProvider` 的五个方法并映射生命周期回调 |
-| 转发百炼原始 SSE | 使用 `@openagentkit/sdk/providers/bailian` 的 `createBailianChatProvider`，参考[原始 SSE 接入](references/raw-sse.md) |
+| 转发百炼原始 SSE | 使用本地 `src/sdk/providers/bailian/index.ts` 的 `createBailianChatProvider`，参考[原始 SSE 接入](references/raw-sse.md) |
 
 Web 应用与自建后端共用同一套公开配置。已有 KitClient 的应用可以继续通过 Context 接入，
 也可以使用[兼容封装](examples/kit-client-provider.ts)。
@@ -52,4 +56,4 @@ Stream 将帧数据保留为文本。Request 可解析 JSON 语法，业务 Sche
 提供 `SessionEvent` 和 `createBailianSessionEventNormalizer`。
 服务端入口提供 `listSessionThreads` 和 `listSessionThreadEvents`。
 升级依赖时，检查解析到的公开导出并运行相关合同测试和浏览器打包测试。
-真实后端和 Cloud 接入需独立验收。集成现有后端时沿用已发布的 SDK 与默认配置。
+真实后端和 Cloud 接入需独立验收。

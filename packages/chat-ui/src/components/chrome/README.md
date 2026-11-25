@@ -30,4 +30,4 @@ pnpm kit:add chrome
 
 组件依赖：[agent-header](../agent-header/README.md)、[confirm-dialog](../confirm-dialog/README.md)、[status-indicator](../status-indicator/README.md)、[thread-panel](../thread-panel/README.md)、[states](../states/README.md)。
 
-完整用法与参数见[文档站对应页面](../../../../../apps/storybook/content/docs/components/chrome.mdx)；全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。
+页面组合见[最佳实践](../../../../../apps/storybook/content/docs/components/chrome.mdx)。全部组件回归运行 `pnpm --filter @openagentpack/kit-chat-ui test`。

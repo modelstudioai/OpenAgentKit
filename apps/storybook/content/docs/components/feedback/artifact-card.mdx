@@ -1,0 +1,45 @@
+---
+title: ArtifactCard 产物卡片
+description: 展示 Agent 交付的文件，提供独立的预览与下载入口
+---
+
+`ArtifactCard` 用 [FileCard](/docs/components/feedback/file-card) 展示 Agent 交付的文件。
+调用方提供文件名和类型，并通过回调接入预览与下载。
+
+```tsx
+import { ArtifactCard } from "@openagentpack/kit-chat-ui";
+```
+
+copy-in 接入（复制后 import 改为项目内路径）：
+
+```bash
+pnpm kit:add artifact-card
+```
+
+## 何时使用
+
+- 在产物列表或详情面板中独立展示交付文件。
+- 在 `Message`、`MessageList` 或 `Chat` 中展示消息产物时，接入消息级 `onArtifactOpen(fileId, contentType?)` 和
+  `onArtifactDownload(fileId)`。
+
+## 代码演示
+
+点击交付文件名称触发预览，独立按钮触发下载。仅提供下载回调时，点击名称触发下载。
+通过演示中的回调提示可区分两种操作。
+
+<Showcase name="message-files" />
+
+## API
+
+### ArtifactCard
+
+| 属性 | 说明 | 类型 | 默认值 |
+| --- | --- | --- | --- |
+| `filename` | 必填，文件名 | `string` | — |
+| `contentType` | MIME 类型，决定图标 | `string` | — |
+| `onOpen` | 点击文件名打开预览的回调 | `() => void` | — |
+| `onDownload` | 下载回调 | `() => void` | — |
+
+## 主题变量（Design Token）
+
+卡片复用 [FileCard 的主题变量](/docs/components/feedback/file-card#主题变量design-token)。

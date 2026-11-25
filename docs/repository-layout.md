@@ -209,8 +209,9 @@ packages/<name>/
 
 ## Skill 源与生成物
 
-Skill 不是 workspace 包，也不参与应用运行时依赖。人工源与生成器在 `scripts/skills/`，
-最终目录在 `assets/skills/`；只有 `scripts/skills/src/` 允许人工编辑：
+Skill 不是 workspace 包，也不参与应用运行时依赖。人工源位于 `scripts/skills/src/`。
+共用复制说明和安装脚本分别位于 `scripts/skills/copy-in.md` 与 `scripts/kit/skill-install.mjs`。
+最终目录由生成器写入 `assets/skills/`：
 
 ```
 scripts/skills/
@@ -226,7 +227,7 @@ scripts/skills/
   tsconfig.json     示例类型检查
 
 assets/skills/
-  <skill-name>/     生成的最终 Skill，包含 SKILL.md 和按需生成的 references/、examples/
+  <skill-name>/     生成的最终 Skill，包含 SKILL.md 和按需生成的 references/、examples/、scripts/
   dist/             离线 tgz 产物（gitignore）
 ```
 
@@ -237,8 +238,12 @@ assets/skills/
 - `kit-database` 指导 Kit Server 接入 SQLite、MySQL 和 PostgreSQL，依据服务端配置与迁移合同。
 - Skill 正文、参考、元数据、示例注释与示例界面文案使用中文；Skill ID、文件名、API
   标识符和协议值沿用公开合同。
-- `pnpm gen:skills` 从 `scripts/skills/src/` 生成 `assets/skills/`、API 参考与 MDX 示例；
-  `pnpm check:skills` 只检查，`pnpm pack:skills` 生成离线包。生成区不手改。
+- `pnpm gen:skills` 从 `scripts/skills/src/` 及共享 copy-in 脚本和说明生成 `assets/skills/`、
+  API 参考与 MDX 示例；`pnpm check:skills` 只检查。生成区不手改。
+- `pnpm pack:skills` 为含 TypeScript 示例的开发 Skill 附上 UI registry、组件源码、主题、SDK 源码和可复制的示例。
+  配置类 Skill 随单独的离线包、合并包和文档站下载目录分发。
+  脚本按需复制组件及示例，生成指向 `src/sdk/` 公开入口的相对路径，交给目标应用构建。
+  源码资产只进入离线包和文档站下载目录，在各自的包内维护。
 - `pnpm typecheck:skills` 编译示例，`pnpm test:skills` 检查生成漂移、链接、
   独立离线包和浏览器依赖边界。语义说明与 API 结构分别维护并共同校验。
 - 文档站入口为 `apps/storybook/content/docs/skill/index.mdx`，保留 `/docs/skill/` URL。

@@ -7,6 +7,7 @@ import { Cards, Card } from "fumadocs-ui/components/card";
 
 Kit 的中文 Skill 指导 coding agent 选择组件、管理聊天状态、接入对话后端和配置服务端数据库。
 每个 Skill 都可以独立复制使用，涉及公开 API 的 Skill 附有接口参考和可编译示例。
+三个对话 Skill 的完整离线包还包含将组件、示例和 Kit SDK 源码复制到业务项目的脚本与资产。
 
 Skill 是写代码时读取的指南，不是运行时插件，也不会替应用创建会话或调用百炼。
 React 页面使用 `kit-chat-ui` 和 SDK 的 `/hooks`，Vue 3 页面使用 `kit-chat-ui-vue` 和 `/hooks-vue`。
@@ -39,8 +40,8 @@ React 页面使用 `kit-chat-ui` 和 SDK 的 `/hooks`，Vue 3 页面使用 `kit-
 复制完整目录即可保留每个 Skill 的元数据和随附资源。
 
 Skill 源文件位于 `scripts/skills/src/`，最终目录生成到 `assets/skills/<name>/`，离线压缩包
-由 `pnpm pack:skills` 生成到 `assets/skills/dist/`。没有安装器 CLI，也没有发布 npm 包。
-下载的 Skill 包含中文正文、API 说明、示例注释和界面文案。
+由 `pnpm pack:skills` 生成到 `assets/skills/dist/`。三个对话 Skill 离线包内的 `scripts/install.mjs`
+可将所需组件、示例和 SDK 源码复制到应用，组件和示例通过相对路径导入 `src/sdk/` 的公开入口。
 
 ## API 与示例如何保持一致
 

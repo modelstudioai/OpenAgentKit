@@ -11,10 +11,11 @@ description: 资源面板中按名归并子 Agent 派发，点击任务行打开
 import { SubAgentPanel } from "@openagentpack/kit-chat-ui";
 ```
 
-copy-in 接入（复制后 import 改为项目内路径）：
+copy-in 接入（复制后 import 改为项目内路径，组合演示使用 `Layout`）：
 
 ```bash
 pnpm kit:add sub-agent-panel
+pnpm kit:add layout
 ```
 
 交给 coding agent 接入时使用 [kit-components Skill](/docs/skill/kit-components)；主题与渲染依赖见
@@ -30,17 +31,19 @@ pnpm kit:add sub-agent-panel
 
 ## 代码演示
 
-预览使用本地线程数据；演示面板内可查看源码与接入命令。
+演示通过 `Layout.aside` 展示桌面右栏和手机覆盖层。手机视口先从页头打开「资源」。
+演示使用本地线程数据，面板内可查看源码和接入命令。
 
 ### 基本用法
 
-research 按展示名分组计数，行内区分运行中 / 已完成 / 出错；勾选清空线程后分区整体不渲染。
+展开 research 查看各次派发及运行中、已完成和出错状态。勾选「清空线程」可查看分区消失后的右栏。
 
 <Showcase name="sub-agent-panel" />
 
 ### 执行记录弹窗与历史加载
 
-点任务行打开弹窗：research 演示「加载更早消息」翻页（`options.more`），slide-maker 无可回放历史，只显示本次连接收到的消息。
+展开 research，点击任务打开弹窗并加载历史。再点「加载更早消息」可继续翻页。
+slide-maker 展示当前连接收到的消息。
 
 <Showcase name="sub-agent-panel-history" />
 
