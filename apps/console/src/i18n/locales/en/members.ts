@@ -64,6 +64,8 @@ export default {
 		capturedAt: "Captured at {{time}}",
 	},
 	deletedKept: "Deleted (usage kept)",
+	deletedTag: "Deleted",
+	agentUnlinked: "Unlinked",
 	usagePage: {
 		title: "Session usage of {{name}}",
 		loadFailed: "Failed to load member usage",
@@ -86,11 +88,16 @@ export default {
 		statActiveTime: "Execution time",
 		statSessionTime: "Session time",
 		unitSeconds: "s",
+		summaryTitle: "Usage summary",
+		metricsNoteTitle: "Metric definitions",
+		pickerEmpty: "This member has no trial sessions yet.",
+		agentFilterLabel: "Agent",
 	},
 	session: {
 		detailTitle: "Session usage details",
-		selectLabel: "Select session",
-		option: "{{title}} ({{id}})",
+		detailHint: "Click a session to view details; details follow the current filter and pagination",
+		rowInput: "In",
+		rowOutput: "Out",
 		pagerAria: "Member session pagination",
 	},
 	telemetry: {
@@ -98,14 +105,18 @@ export default {
 		loading: "Loading model/tool usage of this session…",
 		empty: "This session has no model/tool usage yet.",
 		loadingShort: "Loading…",
-		modelsTitle: "Model calls · {{total}} total calls",
-		toolsTitle: "Tool calls · {{total}} total calls",
+		deletedEmpty:
+			"Deleted sessions no longer provide model/tool details; usage figures come from snapshots collected before deletion.",
+		modelsTab: "Models",
+		toolsTab: "Tools",
+		callTimes: "{{count}} calls",
 		pagerAria: "Session usage detail pagination",
 		noModelCalls: "No model calls in this session",
 		noToolCalls: "No tool calls in this session",
 	},
 	columnsModel: {
 		modelName: "Model",
+		unattributed: "Unattributed",
 		callCount: "Calls",
 		failedCount: "Failures",
 		input: "Input",
@@ -116,6 +127,7 @@ export default {
 	columnsTool: {
 		toolName: "Tool",
 		source: "Source",
+		unknown: "Unknown",
 	},
 	create: {
 		createdTitle: "User created",

@@ -28,7 +28,12 @@ import type {
 	SessionThreadsResponse,
 	SessionUsage,
 } from "@openagentkit/sdk/protocol";
-import type { ModelUsagePage, ModelUsageRequest, ToolUsagePage, ToolUsageRequest } from "@openagentpack/sdk";
+import type {
+	UsageSummaryRequest,
+	UsageSummaryResponse,
+	UsageTrendRequest,
+	UsageTrendResponse,
+} from "@openagentpack/sdk";
 import type { YamlDraftStorage } from "./yaml-draft-document.ts";
 
 export interface GatewaySessionInfo {
@@ -220,10 +225,10 @@ export interface ProviderGateway {
 	listRemoteVaults(): Promise<RemoteVault[]>;
 	/** 仅元数据校验；不存在或已归档返回 null。 */
 	getRemoteVault(vaultId: string): Promise<RemoteVault | null>;
-	/** Provider 侧模型用量明细（app-control usage.listModelUsage）；scope 由路由层组装后传入。 */
-	listModelUsage(request: ModelUsageRequest, options?: { signal?: AbortSignal }): Promise<ModelUsagePage>;
-	/** Provider 侧工具调用明细（app-control usage.listToolUsage）；scope 由路由层组装后传入。 */
-	listToolUsage(request: ToolUsageRequest, options?: { signal?: AbortSignal }): Promise<ToolUsagePage>;
+	/** Provider 侧用量汇总（app-control usage.summary）；模型与工具明细同一次响应返回，dimension 由路由层组装。 */
+	getUsageSummary(request: UsageSummaryRequest, options?: { signal?: AbortSignal }): Promise<UsageSummaryResponse>;
+	/** Provider 侧用量分桶趋势（app-control usage.trend）；仅 workspace/agent 维度，UTC+8 时间桶，page_token 15 分钟过期。 */
+	getUsageTrend(request: UsageTrendRequest, options?: { signal?: AbortSignal }): Promise<UsageTrendResponse>;
 	/** 显式查看详情时查询密钥元数据，绝不返回密钥值。 */
 	getRemoteVaultDetail(vaultId: string): Promise<RemoteVaultDetail | null>;
 }

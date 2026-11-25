@@ -25,8 +25,8 @@ CREATE TABLE "catalog_agents" (
   "vault_ids_json" TEXT NOT NULL DEFAULT '[]',
   "agent_version" INTEGER,
   "listed_at" TEXT,
+  "deleted_at" TEXT,
   PRIMARY KEY ("id"),
-  UNIQUE ("slug"),
   CHECK (agent_version > 0)
 );
 
@@ -202,6 +202,7 @@ CREATE TABLE "kit_session_usage" (
   "capture_revision" INTEGER NOT NULL DEFAULT 0,
   "finalized_at" TEXT,
   "deleted_at" TEXT,
+  "catalog_entry_id" TEXT,
   PRIMARY KEY ("session_id")
 );
 
@@ -226,6 +227,7 @@ CREATE TABLE "kit_sessions" (
   "remote_environment_id" TEXT,
   "runtime_json" TEXT,
   "message_files_json" TEXT,
+  "catalog_entry_id" TEXT,
   PRIMARY KEY ("session_id"),
   CHECK (purpose IN ('experience', 'admin_debug')),
   CHECK (debug_source IN ('project', 'template')),
@@ -248,8 +250,8 @@ CREATE TABLE "kit_templates" (
   "created_at" TEXT NOT NULL,
   "version" INTEGER NOT NULL DEFAULT 1,
   "updated_at" TEXT NOT NULL DEFAULT '',
+  "deleted_at" TEXT,
   PRIMARY KEY ("template_id"),
-  UNIQUE ("name"),
   CHECK (version > 0)
 );
 
@@ -286,6 +288,14 @@ CREATE TABLE "kit_uploaded_files" (
 CREATE INDEX "idx_uploaded_files_subject" ON "kit_uploaded_files" ("subject_id");
 
 CREATE TABLE "kit_usage_limit_agent_days" (
+  "catalog_entry_id" TEXT NOT NULL,
+  "day" TEXT NOT NULL,
+  "tokens" INTEGER NOT NULL DEFAULT 0,
+  "active_seconds" REAL NOT NULL DEFAULT 0,
+  PRIMARY KEY ("catalog_entry_id", "day")
+);
+
+CREATE TABLE "kit_usage_limit_agent_days_legacy" (
   "agent_slug" TEXT NOT NULL,
   "day" TEXT NOT NULL,
   "tokens" INTEGER NOT NULL DEFAULT 0,
@@ -294,6 +304,16 @@ CREATE TABLE "kit_usage_limit_agent_days" (
 );
 
 CREATE TABLE "kit_usage_limit_agent_months" (
+  "catalog_entry_id" TEXT NOT NULL,
+  "month" TEXT NOT NULL,
+  "tokens" INTEGER NOT NULL DEFAULT 0,
+  "active_seconds" REAL NOT NULL DEFAULT 0,
+  "tokens_unknown" INTEGER NOT NULL DEFAULT 0,
+  "active_seconds_unknown" INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY ("catalog_entry_id", "month")
+);
+
+CREATE TABLE "kit_usage_limit_agent_months_legacy" (
   "agent_slug" TEXT NOT NULL,
   "month" TEXT NOT NULL,
   "tokens" INTEGER NOT NULL DEFAULT 0,
@@ -453,3 +473,11 @@ CREATE UNIQUE INDEX "idx_usage_turns_idempotency" ON "usage_turns" ("session_id"
 CREATE INDEX "idx_usage_turns_month_agent" ON "usage_turns" ("month", "agent_slug");
 
 CREATE INDEX "idx_usage_turns_subject_month" ON "usage_turns" ("subject_id", "month");
+
+CREATE UNIQUE INDEX "idx_catalog_agents_slug_active" ON "catalog_agents" ("slug") WHERE deleted_at IS NULL;
+
+CREATE UNIQUE INDEX "idx_kit_templates_name_active" ON "kit_templates" ("name") WHERE deleted_at IS NULL;
+
+CREATE INDEX "idx_sessions_entry" ON "kit_sessions" ("catalog_entry_id");
+
+CREATE INDEX "idx_session_usage_entry" ON "kit_session_usage" ("catalog_entry_id");

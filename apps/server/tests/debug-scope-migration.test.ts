@@ -116,6 +116,9 @@ it("升级旧模版调试索引保留完整配置，允许默认环境但仍拒�
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-default-environment-migration-"));
 	let db = historicalSqlite(dataDir, "015_template_debug_sessions");
 	try {
+		// 015 底库先整段重放版本链：会话索引按条目归属写入 catalog_entry_id，迁移前不能经 store 写入。
+		db.close();
+		db = openDatabase(dataDir);
 		const previous = createSessionIndex(createSqliteDatabase(db));
 		await previous.create({ sessionId: "employee", subjectId: "admin", agentSlug: "assistant" });
 		await previous.create({

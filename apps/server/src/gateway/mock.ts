@@ -9,12 +9,14 @@ import {
 	threadIdOf,
 } from "@openagentkit/sdk/protocol";
 import type {
-	ModelUsageItem,
-	ModelUsagePage,
-	ModelUsageRequest,
-	ToolUsageItem,
-	ToolUsagePage,
-	ToolUsageRequest,
+	UsageMetric,
+	UsageModelRow,
+	UsageSummary,
+	UsageSummaryRequest,
+	UsageSummaryResponse,
+	UsageToolRow,
+	UsageTrendRequest,
+	UsageTrendResponse,
 } from "@openagentpack/sdk";
 import { isRemoteCoordinator, projectMultiagentConfiguration } from "./agent-multiagent.ts";
 import { memoryStoreConfiguration } from "./memory-store-configuration.ts";
@@ -43,12 +45,18 @@ interface MockSession extends MockInspectableSession {
 	stopReason?: string;
 	/** 创建时绑定的远端智能体；用量遥测按它归组。 */
 	agent_id: string;
+	/** 创建时间（毫秒）；mock trend 按它分桶。 */
+	createdAt: number;
 }
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const initialRemoteAgents = [
 	{ agent_id: "agent_mock_assistant", name: "assistant", version: 1 },
 	{ agent_id: "agent_mock_designer", name: "designer", version: 3 },
+	{ agent_id: "agent_mock_writer", name: "writer", version: 1 },
+	{ agent_id: "agent_mock_analyst", name: "analyst", version: 2 },
+	{ agent_id: "agent_mock_reviewer", name: "reviewer", version: 1 },
+	{ agent_id: "agent_mock_coder", name: "coder", version: 2 },
 ];
 
 /** 回放 [start, end) 区间事件，返回新的游标。 */
@@ -88,14 +96,22 @@ function latestEvents(events: SessionEvent[]) {
 	return snapshots;
 }
 
-/** mock 演示工作空间标识，与 admin 路由 telemetryWorkspaceId 的无凭据占位一致。 */
-const MOCK_WORKSPACE_ID = "ws-mock";
-
 /** mock 遥测使用的演示模型名。 */
 const MOCK_MODEL_NAME = "qwen3.8-max";
 
 /** 账本聚合成的一次演示用量快照；token 数值与来源一致。 */
 export interface MockTelemetryUsage {
+	sessions: number;
+	input_tokens: number;
+	output_tokens: number;
+	cache_read_tokens: number;
+	cache_creation_tokens: number;
+}
+
+/** 账本小时行：UTC 小时键（created_at 前 13 位），供 mock trend 重分桶到 UTC+8 时间桶。 */
+export interface MockTelemetryHourRow {
+	agent_key: string;
+	hour: string;
 	sessions: number;
 	input_tokens: number;
 	output_tokens: number;
@@ -110,6 +126,7 @@ export interface MockTelemetryUsage {
 export interface MockTelemetrySource {
 	byAgent(): Promise<Map<string, MockTelemetryUsage>>;
 	bySession(sessionId: string): Promise<MockTelemetryUsage | null>;
+	byAgentHour(): Promise<MockTelemetryHourRow[]>;
 }
 
 /** 归一化的演示用量聚合；turns 为等效轮数（内存来源是真实轮数，账本来源按演示公式折算）。 */
@@ -138,24 +155,18 @@ function turnsOf(agg: UsageAggregate): number {
 	return agg.turns ?? Math.max(agg.sessions, Math.round(agg.input_tokens / 120));
 }
 
-/** 账本来源：按 scope 归组取注入的聚合结果；workspace 全量时把各智能体求和为一行。 */
-async function ledgerUsage(request: ModelUsageRequest | ToolUsageRequest, telemetry: MockTelemetrySource) {
-	if (request.scope.type === "session") return telemetry.bySession(request.scope.session_id);
+/** 账本来源：按 dimension 取注入的聚合结果；workspace 全量时把各智能体求和。 */
+async function ledgerUsage(request: UsageSummaryRequest, telemetry: MockTelemetrySource) {
+	if (request.dimension === "session" && request.session_id) return telemetry.bySession(request.session_id);
 	const all = await telemetry.byAgent();
-	const agentId =
-		request.scope.type === "agent"
-			? request.scope.agent_id
-			: request.scope.type === "workspace"
-				? request.scope.agent_id
-				: undefined;
-	if (agentId) return all.get(agentId) ?? null;
+	if (request.dimension === "agent" && request.agent_id) return all.get(request.agent_id) ?? null;
 	let total: UsageAggregate | null = null;
 	for (const entry of all.values()) total = total ? mergeUsage(total, entry) : entry;
 	return total;
 }
 
 /** 内存来源：telemetry 未注入时（直接构造网关的测试场景）从 mock 会话推导。 */
-function memoryUsage(request: ModelUsageRequest | ToolUsageRequest, sessions: Map<string, MockSession>) {
+function memoryUsage(request: UsageSummaryRequest, sessions: Map<string, MockSession>) {
 	let total: UsageAggregate | null = null;
 	for (const session of telemetrySessions(request, sessions)) {
 		const entry: UsageAggregate = {
@@ -172,116 +183,231 @@ function memoryUsage(request: ModelUsageRequest | ToolUsageRequest, sessions: Ma
 }
 
 async function collectUsage(
-	request: ModelUsageRequest | ToolUsageRequest,
+	request: UsageSummaryRequest,
 	sessions: Map<string, MockSession>,
 	telemetry?: MockTelemetrySource,
 ): Promise<UsageAggregate | null> {
 	return telemetry ? ledgerUsage(request, telemetry) : memoryUsage(request, sessions);
 }
 
-/** workspace/agent scope 的内存会话筛选；session scope 精确到单个会话。 */
-function telemetrySessions(
-	request: ModelUsageRequest | ToolUsageRequest,
-	sessions: Map<string, MockSession>,
-): MockSession[] {
-	const scope = request.scope;
-	if (scope.type === "session") {
-		const target = sessions.get(scope.session_id);
+/** workspace/agent 维度的内存会话筛选；session 维度精确到单个会话。 */
+function telemetrySessions(request: UsageSummaryRequest, sessions: Map<string, MockSession>): MockSession[] {
+	if (request.dimension === "session") {
+		const target = request.session_id ? sessions.get(request.session_id) : undefined;
 		return target ? [target] : [];
 	}
-	const agentId = scope.type === "agent" ? scope.agent_id : scope.type === "workspace" ? scope.agent_id : undefined;
+	const agentId = request.dimension === "agent" ? request.agent_id : undefined;
 	return [...sessions.values()].filter((session) => !agentId || session.agent_id === agentId);
 }
 
-async function mockModelUsage(
-	request: ModelUsageRequest,
-	sessions: Map<string, MockSession>,
-	telemetry?: MockTelemetrySource,
-): Promise<ModelUsagePage> {
-	const agg = await collectUsage(request, sessions, telemetry);
+function metric(value: number, unit: string): UsageMetric {
+	return { value, unit };
+}
+
+/** RFC 3339 +08:00，与上游响应的时间格式一致。 */
+function utc8Iso(ms: number): string {
+	return `${new Date(ms + 8 * 60 * 60 * 1000).toISOString().slice(0, 19)}+08:00`;
+}
+
+/** total / models / tools 三视图的演示数值；summary 与 trend 共用，形状与上游契约一致。 */
+function mockUsageBreakdown(agg: UsageAggregate | null): UsageSummary["usage"] {
 	const turns = agg ? turnsOf(agg) : 0;
-	const rows: ModelUsageItem[] =
-		agg && turns
-			? [
-					{
-						workspace_id: MOCK_WORKSPACE_ID,
-						model_name: MOCK_MODEL_NAME,
-						call_count: turns,
-						failed_count: 0,
-						tokens: {
-							input_tokens: agg.input_tokens,
-							output_tokens: agg.output_tokens,
-							cache_read_tokens: agg.cache_read_tokens,
-							cache_creation_tokens: agg.cache_creation_tokens,
-							total_tokens: agg.input_tokens + agg.output_tokens,
-							cache_hit_ratio: agg.input_tokens ? agg.cache_read_tokens / agg.input_tokens : 0,
-						},
+	const input = agg?.input_tokens ?? 0;
+	const output = agg?.output_tokens ?? 0;
+	const cacheRead = agg?.cache_read_tokens ?? 0;
+	const cacheCreation = agg?.cache_creation_tokens ?? 0;
+	const memorySearches = Math.floor(turns / 3);
+	const models: UsageModelRow[] = turns
+		? [
+				{
+					model_name: MOCK_MODEL_NAME,
+					usage: {
+						input_tokens: metric(input, "tokens"),
+						output_tokens: metric(output, "tokens"),
+						total_tokens: metric(input + output, "tokens"),
+						cache_read_tokens: metric(cacheRead, "tokens"),
+						cache_creation_tokens: metric(cacheCreation, "tokens"),
+						cache_hit_ratio: metric(input ? cacheRead / input : 0, "ratio"),
+						call_count: metric(turns, "count"),
+						failed_count: metric(0, "count"),
 					},
-				]
-			: [];
-	const filtered = rows.filter((row) => !request.model_name || row.model_name === request.model_name);
+				},
+			]
+		: [];
+	const tools: UsageToolRow[] = turns
+		? [
+				{
+					source: "builtin",
+					tool_name: "web_search",
+					usage: { call_count: metric(turns, "count"), failed_count: metric(0, "count") },
+				},
+				...(memorySearches
+					? [
+							{
+								source: "mcp",
+								tool_name: "memory_search",
+								usage: { call_count: metric(memorySearches, "count"), failed_count: metric(0, "count") },
+							},
+						]
+					: []),
+			]
+		: [];
 	return {
-		...pagedUsage(request, filtered),
-		total_call_count: filtered.reduce((sum, row) => sum + row.call_count, 0),
-		data_updated_at: Date.now(),
+		total: {
+			input_tokens: metric(input, "tokens"),
+			output_tokens: metric(output, "tokens"),
+			total_tokens: metric(input + output, "tokens"),
+			cache_read_tokens: metric(cacheRead, "tokens"),
+			cache_creation_tokens: metric(cacheCreation, "tokens"),
+			cache_hit_ratio: metric(input ? cacheRead / input : 0, "ratio"),
+			model_call_count: metric(turns, "count"),
+			tool_call_count: metric(turns + memorySearches, "count"),
+			builtin_tool_call_count: metric(turns, "count"),
+			mcp_tool_call_count: metric(memorySearches, "count"),
+			custom_tool_call_count: metric(0, "count"),
+			turns: metric(turns, "count"),
+			steps: metric(turns * 2, "count"),
+			interrupt_error_count: metric(0, "count"),
+			model_failed_count: metric(0, "count"),
+			tool_failed_count: metric(0, "count"),
+			runtime_ms: metric(turns * 2000, "ms"),
+		},
+		models,
+		tools,
 	};
 }
 
-async function mockToolUsage(
-	request: ToolUsageRequest,
+/** 演示汇总：时间窗缺省最近 7 天；session 维度上游可不返回窗口，mock 仍回填演示窗口。 */
+function mockUsageSummary(request: UsageSummaryRequest, agg: UsageAggregate | null): UsageSummary {
+	const now = Date.now();
+	return {
+		query_range: request.time_range ?? {
+			start_time: utc8Iso(now - 7 * 24 * 60 * 60 * 1000),
+			end_time: utc8Iso(now),
+		},
+		data_updated_at: mockUsageBreakdown(agg).total.turns.value ? utc8Iso(now) : null,
+		usage: mockUsageBreakdown(agg),
+	};
+}
+
+const HOUR_MS = 3_600_000;
+const DAY_MS = 24 * HOUR_MS;
+
+/** UTC+8 对齐的时间桶起点（毫秒）：先平移 8 小时按 UTC 取整，再平移回去。 */
+function bucketStart(ms: number, granularity: "hour" | "day" | "month"): number {
+	const shifted = ms + 8 * HOUR_MS;
+	if (granularity === "hour") return Math.floor(shifted / HOUR_MS) * HOUR_MS - 8 * HOUR_MS;
+	if (granularity === "day") return Math.floor(shifted / DAY_MS) * DAY_MS - 8 * HOUR_MS;
+	const date = new Date(shifted);
+	return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1) - 8 * HOUR_MS;
+}
+
+function bucketEnd(start: number, granularity: "hour" | "day" | "month"): number {
+	if (granularity === "hour") return start + HOUR_MS;
+	if (granularity === "day") return start + DAY_MS;
+	const date = new Date(start + 8 * HOUR_MS);
+	return Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1) - 8 * HOUR_MS;
+}
+
+/** 把一次用量聚合按 UTC+8 时间桶起点累计进桶。 */
+function addTrendBucket(
+	buckets: Map<number, UsageAggregate>,
+	granularity: "hour" | "day" | "month",
+	ms: number,
+	entry: UsageAggregate,
+): void {
+	const start = bucketStart(ms, granularity);
+	const current = buckets.get(start);
+	buckets.set(start, current ? mergeUsage(current, entry) : entry);
+}
+
+/** 账本来源：UTC 小时行筛选进窗口（agent 维度按 remote_agent_id 过滤）后落入时间桶。 */
+async function trendAggregatesFromTelemetry(
+	request: UsageTrendRequest,
+	telemetry: MockTelemetrySource,
+	granularity: "hour" | "day" | "month",
+): Promise<Map<number, UsageAggregate>> {
+	const startMs = Date.parse(request.time_range.start_time);
+	const endMs = Date.parse(request.time_range.end_time);
+	const buckets = new Map<number, UsageAggregate>();
+	for (const row of await telemetry.byAgentHour()) {
+		if (request.dimension === "agent" && row.agent_key !== request.agent_id) continue;
+		const ms = Date.parse(`${row.hour}:00Z`);
+		if (Number.isNaN(ms) || ms < startMs || ms >= endMs) continue;
+		addTrendBucket(buckets, granularity, ms, {
+			sessions: row.sessions,
+			input_tokens: row.input_tokens,
+			output_tokens: row.output_tokens,
+			cache_read_tokens: row.cache_read_tokens,
+			cache_creation_tokens: row.cache_creation_tokens,
+		});
+	}
+	return buckets;
+}
+
+/** 内存来源：演示会话按创建时间落桶（telemetry 未注入的直接构造网关场景）。 */
+function trendAggregatesFromSessions(
+	request: UsageTrendRequest,
+	sessions: Map<string, MockSession>,
+	granularity: "hour" | "day" | "month",
+): Map<number, UsageAggregate> {
+	const startMs = Date.parse(request.time_range.start_time);
+	const endMs = Date.parse(request.time_range.end_time);
+	const agentId = request.dimension === "agent" ? request.agent_id : undefined;
+	const buckets = new Map<number, UsageAggregate>();
+	for (const session of sessions.values()) {
+		if (agentId && session.agent_id !== agentId) continue;
+		if (session.createdAt < startMs || session.createdAt >= endMs) continue;
+		addTrendBucket(buckets, granularity, session.createdAt, {
+			sessions: 1,
+			turns: session.turns,
+			input_tokens: session.turns * 120,
+			output_tokens: session.turns * 80,
+			cache_read_tokens: session.turns * 40,
+			cache_creation_tokens: 0,
+		});
+	}
+	return buckets;
+}
+
+/** 演示趋势：聚合按 UTC+8 时间桶切片，无数据的桶省略（与上游一致）；分页字段单页返回全部。 */
+async function mockUsageTrend(
+	request: UsageTrendRequest,
 	sessions: Map<string, MockSession>,
 	telemetry?: MockTelemetrySource,
-): Promise<ToolUsagePage> {
-	const agg = await collectUsage(request, sessions, telemetry);
-	const turns = agg ? turnsOf(agg) : 0;
-	const rows: ToolUsageItem[] = [];
-	if (turns) {
-		rows.push({
-			workspace_id: MOCK_WORKSPACE_ID,
-			tool_name: "web_search",
-			source: "builtin",
-			call_count: turns,
-			failed_count: 0,
-		});
-		const memorySearches = Math.floor(turns / 3);
-		if (memorySearches)
-			rows.push({
-				workspace_id: MOCK_WORKSPACE_ID,
-				tool_name: "memory_search",
-				source: "mcp",
-				call_count: memorySearches,
-				failed_count: 0,
-			});
-	}
-	const filtered = rows.filter(
-		(row) =>
-			(!request.source || row.source === request.source) && (!request.tool_name || row.tool_name === request.tool_name),
-	);
+): Promise<UsageTrendResponse> {
+	const granularity = request.granularity ?? "day";
+	const buckets = telemetry
+		? await trendAggregatesFromTelemetry(request, telemetry, granularity)
+		: trendAggregatesFromSessions(request, sessions, granularity);
+	const points = [...buckets.entries()]
+		.sort(([a], [b]) => a - b)
+		.map(([start, agg]) => ({
+			start_time: utc8Iso(start),
+			end_time: utc8Iso(bucketEnd(start, granularity)),
+			usage: mockUsageBreakdown(agg),
+		}));
+	const turns = points.reduce((sum, point) => sum + (point.usage.total.turns.value ?? 0), 0);
 	return {
-		...pagedUsage(request, filtered),
-		total_call_count: filtered.reduce((sum, row) => sum + row.call_count, 0),
-		data_updated_at: Date.now(),
+		request_id: `mock_usage_${randomUUID()}`,
+		data: {
+			query_range: request.time_range,
+			data_updated_at: turns ? utc8Iso(Date.now()) : null,
+			granularity,
+			points,
+			has_more: false,
+			next_page_token: null,
+		},
 	};
 }
 
-function pagedUsage<T>(
-	request: { page_no?: number; page_size?: number },
-	rows: T[],
-): {
-	items: T[];
-	total: number;
-	page_no: number;
-	page_size: number;
-} {
-	const pageNo = request.page_no ?? 1;
-	const pageSize = request.page_size ?? 20;
-	const start = (pageNo - 1) * pageSize;
-	return {
-		items: rows.slice(start, start + pageSize),
-		total: rows.length,
-		page_no: pageNo,
-		page_size: pageSize,
-	};
+async function mockUsage(
+	request: UsageSummaryRequest,
+	sessions: Map<string, MockSession>,
+	telemetry?: MockTelemetrySource,
+): Promise<UsageSummaryResponse> {
+	const agg = await collectUsage(request, sessions, telemetry);
+	return { request_id: `mock_usage_${randomUUID()}`, data: mockUsageSummary(request, agg) };
 }
 
 /**
@@ -654,6 +780,7 @@ export function createMockGateway(
 				threads: [],
 				agent_id: agentId,
 				bindings: structuredClone(input),
+				createdAt: Date.now(),
 			});
 			return {
 				session_id: id,
@@ -1026,11 +1153,11 @@ export function createMockGateway(
 		async getRemoteVault(vaultId) {
 			return (await this.listRemoteVaults()).find((vault) => vault.vault_id === vaultId) ?? null;
 		},
-		async listModelUsage(request) {
-			return mockModelUsage(request, sessions, options.telemetry);
+		async getUsageSummary(request) {
+			return mockUsage(request, sessions, options.telemetry);
 		},
-		async listToolUsage(request) {
-			return mockToolUsage(request, sessions, options.telemetry);
+		async getUsageTrend(request) {
+			return mockUsageTrend(request, sessions, options.telemetry);
 		},
 		async getRemoteVaultDetail(vaultId) {
 			const vault = await this.getRemoteVault(vaultId);

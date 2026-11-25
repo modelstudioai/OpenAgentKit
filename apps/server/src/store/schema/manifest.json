@@ -147,5 +147,19 @@
     "id": "033_openagentkit_default_branding",
     "source": "version",
     "steps": true
+  },
+  {
+    "id": "034_catalog_template_soft_delete",
+    "source": "version"
+  },
+  {
+    "id": "035_soft_delete_identity_reuse",
+    "source": "version",
+    "steps": true
+  },
+  {
+    "id": "036_usage_entry_identity",
+    "source": "version",
+    "steps": true
   }
 ]

@@ -11,6 +11,7 @@ export default {
 	selectAria: "选择智能体 {{name}}（{{id}}）",
 	emptyAgents: "暂无智能体",
 	totalAgents: "共 {{total}} 个智能体",
+	boundTag: "已被「{{name}}」关联",
 	cols: {
 		name: "名称",
 		id: "ID",

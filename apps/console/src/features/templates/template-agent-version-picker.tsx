@@ -11,12 +11,13 @@ const TRIGGER_KEYS = {
 	button: "agent.versionPicker.triggerButton",
 } as const;
 
-/** 列表行内入口或详情按钮展开版本选择；查看候选不改变 Agent 或已有运行绑定。 */
+/** 列表行内入口或详情按钮展开版本选择；查看候选不改变 Agent 或已有运行绑定；disabled 时仅展示版本。 */
 export function TemplateAgentVersionPicker({
 	agentId,
 	agentName,
 	value,
 	variant = "inline",
+	disabled,
 	onDefaultVersion,
 	onChange,
 }: {
@@ -24,6 +25,7 @@ export function TemplateAgentVersionPicker({
 	agentName: string;
 	value?: number;
 	variant?: "inline" | "button";
+	disabled?: boolean;
 	onDefaultVersion: (version: number) => void;
 	onChange: (version: number) => void;
 }) {
@@ -83,6 +85,7 @@ export function TemplateAgentVersionPicker({
 					type={variant === "inline" ? "link" : "default"}
 					size="small"
 					className={styles.triggerButton}
+					disabled={disabled}
 					aria-label={t("agent.versionPicker.triggerAria", { name: agentName, id: agentId })}
 					onClick={() => {
 						setOpen(true);

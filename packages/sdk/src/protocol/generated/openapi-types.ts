@@ -301,6 +301,21 @@ export interface paths {
                     };
                 };
                 /** @description 审批或归属校验失败 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable: boolean;
+                            };
+                        };
+                    };
+                };
+                /** @description 审批或归属校验失败 */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -1187,7 +1202,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description 本人未归档体验会话关联的全部智能体 slug */
+                /** @description 本人未归档体验会话关联的未软删条目 slug */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1252,6 +1267,7 @@ export interface paths {
                     limit?: number;
                     page_token?: string;
                     include_archived?: "true" | "false";
+                    active_entry_only?: "true";
                     q?: string;
                 };
                 header?: never;
@@ -4349,7 +4365,12 @@ export interface paths {
                                                 covered_sessions: number;
                                             };
                                         };
-                                        agents: string[];
+                                        agents: {
+                                            slug: string;
+                                            catalog_entry_id?: string | null;
+                                            display_name: string | null;
+                                            deleted?: boolean;
+                                        }[];
                                         refreshed_at?: string;
                                         /** @enum {string} */
                                         refresh_status: "idle" | "refreshing" | "partial" | "failed";
@@ -4485,7 +4506,12 @@ export interface paths {
                                                 covered_sessions: number;
                                             };
                                         };
-                                        agents: string[];
+                                        agents: {
+                                            slug: string;
+                                            catalog_entry_id?: string | null;
+                                            display_name: string | null;
+                                            deleted?: boolean;
+                                        }[];
                                         refreshed_at?: string;
                                         /** @enum {string} */
                                         refresh_status: "idle" | "refreshing" | "partial" | "failed";
@@ -6026,7 +6052,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description 条目已删除（确认令牌已消费） */
+                /** @description 条目已软删并解除模版上架关联（确认令牌已消费） */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -6682,6 +6708,7 @@ export interface paths {
                                 remote_agent_id: string;
                                 /** @enum {string} */
                                 listing_status: "listed" | "unlisted";
+                                deleted?: boolean;
                                 session_count: number;
                                 deleted_session_count: number;
                                 metrics: {
@@ -7111,7 +7138,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/usage/model-usage": {
+    "/api/admin/usage/summary": {
         parameters: {
             query?: never;
             header?: never;
@@ -7125,11 +7152,6 @@ export interface paths {
                     end_time?: number | null;
                     session_id?: string;
                     agent_id?: string;
-                    page_no?: number;
-                    page_size?: number;
-                    sort_order?: "asc" | "desc";
-                    model_name?: string;
-                    sort_by?: "call_count" | "failed_count" | "input_tokens" | "output_tokens";
                 };
                 header?: never;
                 path?: never;
@@ -7137,7 +7159,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Provider 侧模型用量明细（workspace scope，workspace_ids 来自服务端配置）；默认统计最近 7 天 */
+                /** @description Provider 侧用量汇总（app-control usage.summary）：维度由参数决定——传 session_id 为 dimension:session（按会话自身窗口，不传 time_range/granularity；本地账本已标记删除的会话直接返回零值空汇总，不查询 Provider），传 agent_id 为 dimension:agent，都不传为模版口径（服务端逐模版绑定智能体——含已删模版、去重——以 agent 维度查询并合并为各模版求和，非模版智能体不计入；单个智能体查询失败不打挂整个请求，返回已成功部分的合并并在 data.coverage 标注 {complete:false, missing_agent_ids}，缺省即完整）；?start_time=&end_time=（毫秒，缺省最近 7 天）在服务端转成 UTC+8 偏移的 RFC 3339 字符串；返回 {data:{query_range,data_updated_at,usage:{total,models,tools}}}，指标统一为 {value,unit}（未知为 null、已知零值为 0，跨智能体合并时任一来源未知即未知，cache_hit_ratio 按合并后的 cache_read/input 重算）；模型/工具明细同一次响应返回，无分页、无服务端名称筛选，单次明细合计上限 10 万条；无模版绑定时返回零值汇总；管理员与 auditor 可读 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -7145,25 +7167,138 @@ export interface paths {
                     content: {
                         "application/json": {
                             data: {
-                                items: {
-                                    workspace_id: string;
-                                    model_name: string;
-                                    call_count: number;
-                                    failed_count: number;
-                                    tokens: {
-                                        input_tokens: number;
-                                        output_tokens: number;
-                                        cache_read_tokens: number;
-                                        cache_creation_tokens: number;
-                                        total_tokens: number;
-                                        cache_hit_ratio: number;
+                                query_range?: {
+                                    start_time: string;
+                                    end_time: string;
+                                };
+                                data_updated_at: string | null;
+                                usage: {
+                                    total: {
+                                        input_tokens: {
+                                            value: number | null;
+                                            unit: string;
+                                        };
+                                        output_tokens: {
+                                            value: number | null;
+                                            unit: string;
+                                        };
+                                        total_tokens: {
+                                            value: number | null;
+                                            unit: string;
+                                        };
+                                        cache_read_tokens: {
+                                            value: number | null;
+                                            unit: string;
+                                        };
+                                        cache_creation_tokens: {
+                                            value: number | null;
+                                            unit: string;
+                                        };
+                                        cache_hit_ratio: {
+                                            value: number | null;
+                                            unit: string;
+                                        };
+                                        model_call_count: {
+                                            value: number | null;
+                                            unit: string;
+                                        };
+                                        tool_call_count: {
+                                            value: number | null;
+                                            unit: string;
+                                        };
+                                        builtin_tool_call_count: {
+                                            value: number | null;
+                                            unit: string;
+                                        };
+                                        mcp_tool_call_count: {
+                                            value: number | null;
+                                            unit: string;
+                                        };
+                                        custom_tool_call_count: {
+                                            value: number | null;
+                                            unit: string;
+                                        };
+                                        turns: {
+                                            value: number | null;
+                                            unit: string;
+                                        };
+                                        steps: {
+                                            value: number | null;
+                                            unit: string;
+                                        };
+                                        interrupt_error_count: {
+                                            value: number | null;
+                                            unit: string;
+                                        };
+                                        model_failed_count: {
+                                            value: number | null;
+                                            unit: string;
+                                        };
+                                        tool_failed_count: {
+                                            value: number | null;
+                                            unit: string;
+                                        };
+                                        runtime_ms: {
+                                            value: number | null;
+                                            unit: string;
+                                        };
                                     };
-                                }[];
-                                total: number;
-                                total_call_count: number;
-                                page_no: number;
-                                page_size: number;
-                                data_updated_at: number;
+                                    models: {
+                                        model_name: string | null;
+                                        usage: {
+                                            input_tokens: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            output_tokens: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            total_tokens: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            cache_read_tokens: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            cache_creation_tokens: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            cache_hit_ratio: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            call_count: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            failed_count: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                        };
+                                    }[];
+                                    tools: {
+                                        source: string | null;
+                                        tool_name: string | null;
+                                        usage: {
+                                            call_count: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            failed_count: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                        };
+                                    }[];
+                                };
+                                coverage?: {
+                                    complete: boolean;
+                                    missing_agent_ids: string[];
+                                };
                             };
                         };
                     };
@@ -7268,7 +7403,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/usage/tool-usage": {
+    "/api/admin/usage/trend": {
         parameters: {
             query?: never;
             header?: never;
@@ -7280,14 +7415,8 @@ export interface paths {
                 query?: {
                     start_time?: number | null;
                     end_time?: number | null;
-                    session_id?: string;
                     agent_id?: string;
-                    page_no?: number;
-                    page_size?: number;
-                    sort_order?: "asc" | "desc";
-                    source?: "builtin" | "mcp" | "custom";
-                    tool_name?: string;
-                    sort_by?: "call_count" | "failed_count";
+                    granularity?: "hour" | "day" | "month";
                 };
                 header?: never;
                 path?: never;
@@ -7295,7 +7424,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Provider 侧工具调用明细（workspace scope，workspace_ids 来自服务端配置）；默认统计最近 7 天 */
+                /** @description 用量分桶趋势：传 agent_id 为 agent 维度；都不传为模版口径（服务端逐模版绑定智能体——含已删模版、去重——以 agent 维度查询并按时间桶合并为各模版求和，非模版智能体不计入，无模版绑定时返回空点；单个智能体查询失败不打挂整个请求，返回已成功部分的合并并在 data.coverage 标注 {complete:false, missing_agent_ids}，缺省即完整；服务端分页游标缺失仍整体拒绝）（Provider 侧，UTC+8 对齐，无数据的时间桶省略）；粒度由 granularity 参数决定（hour/day/month，缺省 day）；服务端聚合全部分页返回，has_more 恒为 false */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -7303,18 +7432,146 @@ export interface paths {
                     content: {
                         "application/json": {
                             data: {
-                                items: {
-                                    workspace_id: string;
-                                    tool_name: string;
-                                    source: string;
-                                    call_count: number;
-                                    failed_count: number;
+                                query_range: {
+                                    start_time: string;
+                                    end_time: string;
+                                };
+                                data_updated_at: string | null;
+                                /** @enum {string} */
+                                granularity: "hour" | "day" | "month";
+                                points: {
+                                    start_time: string;
+                                    end_time: string;
+                                    usage: {
+                                        total: {
+                                            input_tokens: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            output_tokens: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            total_tokens: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            cache_read_tokens: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            cache_creation_tokens: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            cache_hit_ratio: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            model_call_count: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            tool_call_count: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            builtin_tool_call_count: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            mcp_tool_call_count: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            custom_tool_call_count: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            turns: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            steps: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            interrupt_error_count: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            model_failed_count: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            tool_failed_count: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                            runtime_ms: {
+                                                value: number | null;
+                                                unit: string;
+                                            };
+                                        };
+                                        models: {
+                                            model_name: string | null;
+                                            usage: {
+                                                input_tokens: {
+                                                    value: number | null;
+                                                    unit: string;
+                                                };
+                                                output_tokens: {
+                                                    value: number | null;
+                                                    unit: string;
+                                                };
+                                                total_tokens: {
+                                                    value: number | null;
+                                                    unit: string;
+                                                };
+                                                cache_read_tokens: {
+                                                    value: number | null;
+                                                    unit: string;
+                                                };
+                                                cache_creation_tokens: {
+                                                    value: number | null;
+                                                    unit: string;
+                                                };
+                                                cache_hit_ratio: {
+                                                    value: number | null;
+                                                    unit: string;
+                                                };
+                                                call_count: {
+                                                    value: number | null;
+                                                    unit: string;
+                                                };
+                                                failed_count: {
+                                                    value: number | null;
+                                                    unit: string;
+                                                };
+                                            };
+                                        }[];
+                                        tools: {
+                                            source: string | null;
+                                            tool_name: string | null;
+                                            usage: {
+                                                call_count: {
+                                                    value: number | null;
+                                                    unit: string;
+                                                };
+                                                failed_count: {
+                                                    value: number | null;
+                                                    unit: string;
+                                                };
+                                            };
+                                        }[];
+                                    };
                                 }[];
-                                total: number;
-                                total_call_count: number;
-                                page_no: number;
-                                page_size: number;
-                                data_updated_at: number;
+                                has_more: boolean;
+                                next_page_token: string | null;
+                                coverage?: {
+                                    complete: boolean;
+                                    missing_agent_ids: string[];
+                                };
                             };
                         };
                     };
@@ -7396,6 +7653,21 @@ export interface paths {
                 };
                 /** @description confirmation_required（上下架等破坏性动作缺确认令牌） */
                 428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                retryable?: boolean;
+                            };
+                        };
+                    };
+                };
+                /** @description provider_error */
+                502: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -10306,7 +10578,12 @@ export interface paths {
                                             covered_sessions: number;
                                         };
                                     };
-                                    agents: string[];
+                                    agents: {
+                                        slug: string;
+                                        catalog_entry_id?: string | null;
+                                        display_name: string | null;
+                                        deleted?: boolean;
+                                    }[];
                                     refreshed_at?: string;
                                     /** @enum {string} */
                                     refresh_status: "idle" | "refreshing" | "partial" | "failed";
@@ -10482,7 +10759,12 @@ export interface paths {
                                                 covered_sessions: number;
                                             };
                                         };
-                                        agents: string[];
+                                        agents: {
+                                            slug: string;
+                                            catalog_entry_id?: string | null;
+                                            display_name: string | null;
+                                            deleted?: boolean;
+                                        }[];
                                         refreshed_at?: string;
                                         /** @enum {string} */
                                         refresh_status: "idle" | "refreshing" | "partial" | "failed";
@@ -10642,7 +10924,12 @@ export interface paths {
                                             covered_sessions: number;
                                         };
                                     };
-                                    agents: string[];
+                                    agents: {
+                                        slug: string;
+                                        catalog_entry_id?: string | null;
+                                        display_name: string | null;
+                                        deleted?: boolean;
+                                    }[];
                                     refreshed_at?: string;
                                     /** @enum {string} */
                                     refresh_status: "idle" | "refreshing" | "partial" | "failed";
@@ -10758,6 +11045,7 @@ export interface paths {
             parameters: {
                 query?: {
                     agent_slug?: string;
+                    catalog_entry_id?: string;
                     refresh?: "1";
                 };
                 header?: never;
@@ -10804,7 +11092,12 @@ export interface paths {
                                         covered_sessions: number;
                                     };
                                 };
-                                agents: string[];
+                                agents: {
+                                    slug: string;
+                                    catalog_entry_id?: string | null;
+                                    display_name: string | null;
+                                    deleted?: boolean;
+                                }[];
                                 refreshed_at?: string;
                                 /** @enum {string} */
                                 refresh_status: "idle" | "refreshing" | "partial" | "failed";
@@ -10909,6 +11202,7 @@ export interface paths {
             parameters: {
                 query?: {
                     agent_slug?: string;
+                    catalog_entry_id?: string;
                     cursor?: string;
                     limit?: number;
                 };
@@ -11905,7 +12199,12 @@ export interface paths {
                                             covered_sessions: number;
                                         };
                                     };
-                                    agents: string[];
+                                    agents: {
+                                        slug: string;
+                                        catalog_entry_id?: string | null;
+                                        display_name: string | null;
+                                        deleted?: boolean;
+                                    }[];
                                     refreshed_at?: string;
                                     /** @enum {string} */
                                     refresh_status: "idle" | "refreshing" | "partial" | "failed";
@@ -13234,7 +13533,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description 已删除模版全部版本及关联条目，既有会话和远端资源保留 */
+                /** @description 模版已标记删除（软删，确认令牌已消费）；配置、版本与用量保留 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -13593,6 +13892,7 @@ export interface paths {
                                 id: string;
                                 /** @enum {string} */
                                 status: "unlisted" | "listed";
+                                deleted?: boolean;
                                 created_at: string;
                                 updated_at: string;
                             };

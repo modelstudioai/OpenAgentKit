@@ -1,19 +1,32 @@
 import type { PresetPackPreview } from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
-import { Button, Empty, Input, Result, Table } from "antd";
+import { Button, Empty, Input, Result, Table, Tag } from "antd";
 import type { TFunction } from "i18next";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { type RemoteAgent, useRemoteAgents } from "../catalog/use-remote-agents.ts";
+import { useAgentOccupancy } from "../templates/use-agent-occupancy.ts";
 import { PresetPackSessionResources } from "./preset-pack-session-resources.tsx";
 
-function columns(t: TFunction<"presetPacks">): TableColumnsType<RemoteAgent> {
+function columns(
+	t: TFunction<"presetPacks">,
+	boundAgents: Map<string, string>,
+	excludeAgentId: string | undefined,
+): TableColumnsType<RemoteAgent> {
 	return [
 		{
 			title: t("cols.name"),
 			dataIndex: "name",
 			ellipsis: true,
-			render: (name: string, agent) => name || agent.agent_id,
+			render: (name: string, agent) => {
+				const boundTo = boundAgents.get(agent.agent_id);
+				const occupied = boundTo !== undefined && agent.agent_id !== excludeAgentId;
+				return (
+					<span>
+						{name || agent.agent_id} {occupied ? <Tag>{t("boundTag", { name: boundTo })}</Tag> : null}
+					</span>
+				);
+			},
 		},
 		{ title: t("cols.id"), dataIndex: "agent_id", ellipsis: true },
 		{
@@ -24,16 +37,19 @@ function columns(t: TFunction<"presetPacks">): TableColumnsType<RemoteAgent> {
 	];
 }
 
-/** 使用完整远端列表分页展示，不混入本地模版或未发布草稿。 */
+/** 使用完整远端列表分页展示，不混入本地模版或未发布草稿；excludeAgentId 是当前模版自身绑定，豁免占用校验。 */
 export function PresetPackSelection({
+	excludeAgentId,
 	onImport,
 	onPendingChange,
 }: {
+	excludeAgentId?: string;
 	onImport: (preset: PresetPackPreview) => void;
 	onPendingChange: (pending: boolean) => void;
 }) {
 	const { t } = useTranslation("presetPacks");
 	const agents = useRemoteAgents();
+	const boundAgents = useAgentOccupancy();
 	const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
 	const [importing, setImporting] = useState(false);
 	const [search, setSearch] = useState("");
@@ -49,6 +65,7 @@ export function PresetPackSelection({
 	const rows = (agents.data ?? []).filter((agent) =>
 		`${agent.name}\n${agent.agent_id}`.toLowerCase().includes(search.toLowerCase()),
 	);
+	const isOccupied = (agent: RemoteAgent) => boundAgents.has(agent.agent_id) && agent.agent_id !== excludeAgentId;
 	return (
 		<section aria-label={t("selectionAria")} className="space-y-4">
 			<section aria-label={t("agentsAria")} className="space-y-4">
@@ -79,10 +96,10 @@ export function PresetPackSelection({
 							onChange: (keys) => setSelectedAgentId(keys[0] === undefined ? null : String(keys[0])),
 							getCheckboxProps: (agent) => ({
 								"aria-label": t("selectAria", { name: agent.name || agent.agent_id, id: agent.agent_id }),
-								disabled: importing,
+								disabled: importing || isOccupied(agent),
 							}),
 						}}
-						columns={columns(t)}
+						columns={columns(t, boundAgents, excludeAgentId)}
 						dataSource={rows}
 						loading={agents.loading || !agents.data}
 						scroll={{ x: "max-content" }}

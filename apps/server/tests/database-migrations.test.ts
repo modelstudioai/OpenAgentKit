@@ -24,16 +24,26 @@ import { sqliteHistory } from "../src/store/sqlite-history.ts";
 import { mysqlSchema } from "./fixtures/before-shared-mysql.ts";
 import { postgresSchema } from "./fixtures/before-shared-postgres.ts";
 
-const original = readFileSync(new URL("../src/store/schema/definition.sql", import.meta.url), "utf8");
+// 合成变更注入到两份底稿：基线链（buildArtifacts 断言）从历史基线编译，apply 链从现行定义末端编译。
+// 历史基线结构 == 033 版本快照（033 为纯数据迁移）；现行共享定义 == 已登记版本链末端。
+const baselineSql = readFileSync(
+	new URL("../src/store/schema/versions/033_openagentkit_default_branding.sql", import.meta.url),
+	"utf8",
+);
+const currentSql = readFileSync(new URL("../src/store/schema/definition.sql", import.meta.url), "utf8");
 const label = "O'Brien \\ data";
-const added =
-	original.replace(
+const inject = (sql: string) =>
+	sql.replace(
 		'CREATE TABLE "kit_members" (\n',
 		`CREATE TABLE "kit_members" (\n  "remark" TEXT,\n  "label" VARCHAR(32) NOT NULL DEFAULT '${label.replaceAll("'", "''")}',\n`,
 	) +
 	'\nCREATE INDEX "idx_members_remark" ON "kit_members" ("remark");\n' +
 	'CREATE TABLE "kit_migration_notes" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "note" TEXT);\n';
-const renamed = added.replace('"remark" TEXT', '"note" TEXT').replace('("remark")', '("note")');
+const rename = (sql: string) => sql.replace('"remark" TEXT', '"note" TEXT').replace('("remark")', '("note")');
+const added = inject(baselineSql);
+const renamed = rename(added);
+const currentAdded = inject(currentSql);
+const currentRenamed = rename(currentAdded);
 const renameSql = "ALTER TABLE kit_members RENAME COLUMN remark TO note";
 const backfillSql = "UPDATE kit_members SET note = 'legacy' WHERE note IS NULL";
 const explicit = {
@@ -48,9 +58,9 @@ const versions = [
 ];
 
 function withUpgrades(program: MigrationProgram, dialect: "sqlite" | ExternalDialect): MigrationProgram {
-	const before = readDefinition(original);
-	const middle = readDefinition(added);
-	const final = readDefinition(renamed);
+	const before = readDefinition(currentSql);
+	const middle = readDefinition(currentAdded);
+	const final = readDefinition(currentRenamed);
 	return {
 		...program,
 		upgrades: [
@@ -295,6 +305,15 @@ async function seedHistoricalData(fixture: Awaited<ReturnType<typeof openExterna
 	await db.execute("INSERT INTO kit_resource_draft_documents (draft_id,yaml) VALUES ('old_draft','draft bytes')");
 	await db.execute(`INSERT INTO kit_members (member_id,username,display_name,auth_type,status,password_hash,created_at,updated_at)
 		VALUES ('member_fixture','member_fixture','成员','local','active','fixture','2026-10-20','2026-10-20')`);
+	await db.execute(`INSERT INTO catalog_agents (id,slug,display_name,remote_agent_id,created_at,updated_at) VALUES
+		('entry_new','assistant','新助手','agent_new','2026-10-24','2026-10-24'),
+		('entry_stable','stable','稳定助手','agent_stable','2026-10-19','2026-10-19')`);
+	await db.execute(`INSERT INTO kit_sessions (session_id,subject_id,agent_slug,created_at)
+		VALUES ('session_stable','member_fixture','stable','2026-10-21')`);
+	await db.execute(`INSERT INTO kit_usage_limit_agent_months (agent_slug,month,tokens,tokens_unknown) VALUES
+		('assistant','2026-10',50,1),('stable','2026-10',11,0)`);
+	await db.execute(`INSERT INTO kit_usage_limit_agent_days (agent_slug,day,tokens) VALUES
+		('assistant','2026-10-24',50),('stable','2026-10-21',11)`);
 }
 
 for (const [dialect, url, program] of [
@@ -323,9 +342,24 @@ for (const [dialect, url, program] of [
 				expect(await fixture.db.rows("SELECT product_name FROM kit_branding WHERE id = 1")).toEqual([
 					{ product_name: "OpenAgentKit" },
 				]);
-				expect(await fixture.db.rows("SELECT purpose,agent_slug FROM kit_sessions")).toEqual([
-					{ purpose: "experience", agent_slug: "assistant" },
+				expect(
+					await fixture.db.rows("SELECT purpose,agent_slug,catalog_entry_id FROM kit_sessions ORDER BY session_id"),
+				).toEqual([
+					{ purpose: "experience", agent_slug: "assistant", catalog_entry_id: null },
+					{ purpose: "experience", agent_slug: "stable", catalog_entry_id: "entry_stable" },
 				]);
+				expect(await fixture.db.rows("SELECT catalog_entry_id,tokens FROM kit_usage_limit_agent_months")).toEqual([
+					{ catalog_entry_id: "entry_stable", tokens: 11 },
+				]);
+				expect(await fixture.db.rows("SELECT catalog_entry_id,tokens FROM kit_usage_limit_agent_days")).toEqual([
+					{ catalog_entry_id: "entry_stable", tokens: 11 },
+				]);
+				expect(
+					await fixture.db.rows(
+						"SELECT tokens,tokens_unknown FROM kit_usage_limit_agent_months_legacy WHERE agent_slug = ?",
+						"assistant",
+					),
+				).toEqual([{ tokens: 50, tokens_unknown: 1 }]);
 				expect(await fixture.db.rows("SELECT file_id,subject_id FROM kit_uploaded_files")).toEqual([
 					{ file_id: "old_attachment", subject_id: "member_fixture" },
 				]);
@@ -366,7 +400,7 @@ for (const [dialect, url, program] of [
 				try {
 					expect(await db.all("SELECT id FROM _kit_migrations ORDER BY id")).toEqual([
 						{ id },
-						{ id: "033_openagentkit_default_branding" },
+						...program.upgrades.map(({ id: upgradeId }) => ({ id: upgradeId })),
 						{ id: "kit_history_adopted" },
 					]);
 					expect(await db.get("SELECT monthly_credits FROM quota_policy WHERE id = 1")).toMatchObject({

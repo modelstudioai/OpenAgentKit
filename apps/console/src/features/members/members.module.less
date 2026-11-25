@@ -1,5 +1,5 @@
-// 「成员管理」聚合样式（CSS Modules / Less）：成员列表、会话用量、创建成员、
-// 指标卡、采集状态与深链路由共用本文件。颜色一律消费 --kit-* / --ant-* 变量，
+// 「成员管理」聚合样式（CSS Modules / Less）：成员列表、会话用量（汇总/限额/明细三段式）、
+// 创建成员、指标卡、采集状态与深链路由共用本文件。颜色一律消费 --kit-* / --ant-* 变量，
 // 不写死色值；断点与 Tailwind 同口径（sm 640px / md 768px / xl 1280px）。
 
 /* ============ 通用（列表页 / 会话用量页 / 创建页共用） ============ */
@@ -152,99 +152,266 @@ input.searchInput {
 	color: var(--ant-color-text-secondary);
 }
 
-/* ============ 会话用量页（member-usage-page） ============ */
+/* ============ 会话用量页（member-usage-page）：汇总 / 限额 / 明细三段式 ============ */
 
-/* Agent 筛选字段（自绘骨架） */
-.agentFilterLabel {
-	display: block;
-	width: 224px;
-	font-size: 14px;
+/* 页面纵排节奏：InnerLayout 页头、汇总、限额卡、明细区之间统一 16px 间距 */
+.pageRoot {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	min-width: 0;
 }
 
-.agentFilterSelect {
-	margin-top: 4px;
-	width: 100%;
-}
-
-/* 汇总行 */
-.summaryRow {
+/* 区块标题行：标题 + 行内筛选 + 右侧状态元信息 */
+.blockHead {
 	display: flex;
 	flex-wrap: wrap;
+	align-items: center;
 	gap: 12px;
-	font-size: 14px;
+	/* 标题行与下方内容（统计卡/明细分栏）的间距 */
+	margin-bottom: 12px;
+}
+
+.blockTitle {
+	margin: 0;
+	font-size: 16px;
+	font-weight: 600;
+}
+
+.headSpacer {
+	flex: 1 1 0%;
+}
+
+.headMeta {
+	font-size: 12px;
+	color: var(--ant-color-text-secondary);
+	font-variant-numeric: tabular-nums;
+}
+
+/* 汇总区块与明细区块之间的细分隔（明细区块上边线） */
+.sectionBlock {
+	border-top: 1px solid var(--ant-color-border-secondary);
+	padding-top: 16px;
+}
+
+/* Agent 筛选内嵌在汇总标题行：行内标签 + 固定宽选择器，压掉 Form.Item 纵排的下边距 */
+.agentFilter {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
 	color: var(--ant-color-text-secondary);
 }
 
+.agentFilterControl {
+	width: 200px;
+
+	:global(.ant-form-item) {
+		margin-bottom: 0;
+	}
+}
+
+/* 刷新采集警示 */
 .summaryNote {
 	font-size: 14px;
 	color: var(--ant-color-text-secondary);
 }
 
-.metricsNote {
+/* 统计卡栅格（汇总与选中会话共用） */
+.metricsGrid {
+	display: grid;
+	gap: 12px;
+	grid-template-columns: 1fr;
+}
+
+/* 汇总卡脚注：口径说明弹层入口 */
+.metricsFoot {
+	margin: 0;
 	font-size: 12px;
 	color: var(--ant-color-text-secondary);
 }
 
-/* 会话明细区 */
+/* 指标标签后的口径提示图标 */
+.metricInfo {
+	margin-inline-start: 4px;
+	color: var(--ant-color-text-tertiary);
+	cursor: help;
+}
+
+/* 部分覆盖警示 hint */
+.partialHint {
+	color: var(--ant-color-warning);
+}
+
+/* 会话主从分栏：左列表即导航，右详情；桌面（≥1280）左右等高、列表内部滚动 */
+.splitGrid {
+	display: grid;
+	gap: 24px;
+	grid-template-columns: 1fr;
+	align-items: start;
+}
+
+.listCol {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	min-width: 0;
+}
+
+.listScroll {
+	position: relative;
+	min-height: 240px;
+}
+
+/* 移动/平板：列表限高自身滚动；桌面（≥1280）改绝对定位撑满右栏驱动的高度 */
+.sessionList {
+	overflow-y: auto;
+	max-height: 480px;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	list-style: none;
+	margin: 0;
+	padding: 6px;
+	border: 1px solid var(--ant-color-border);
+	border-radius: var(--kit-radius);
+	background: #fff;
+	scrollbar-width: thin;
+	scrollbar-color: var(--ant-color-border) transparent;
+}
+
+.sessionRowBtn {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+	padding: 10px 12px;
+	border: none;
+	border-radius: 8px;
+	background: none;
+	text-align: left;
+	cursor: pointer;
+	transition: background var(--kit-duration-base) var(--kit-ease-out);
+}
+
+.sessionRowBtn:hover {
+	background: var(--ant-color-fill-tertiary);
+}
+
+.sessionRowBtn[aria-current="true"] {
+	background: var(--ant-color-primary-bg);
+}
+
+.sessionRowBtn[aria-current="true"] .sTitle {
+	color: var(--ant-color-primary);
+}
+
+/* 采集状态点 */
+.sDot {
+	flex: none;
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: var(--ant-color-text-quaternary);
+}
+
+.dotOk {
+	background: var(--ant-color-success);
+}
+
+.dotPartial {
+	background: var(--ant-color-warning);
+}
+
+.dotFailed {
+	background: var(--ant-color-error);
+}
+
+.dotNeutral {
+	background: var(--ant-color-text-quaternary);
+}
+
+.sMain {
+	min-width: 0;
+	flex: 1 1 0%;
+}
+
+.sTitleLine {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+}
+
+.sTitle {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 13px;
+	font-weight: 500;
+}
+
+.sSub {
+	/* inline 元素不生效 overflow/ellipsis，必须块级才能截断长 agent ID */
+	display: block;
+	margin-top: 2px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 12px;
+	color: var(--ant-color-text-secondary);
+}
+
+.sNums {
+	flex: none;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 2px;
+	font-size: 12px;
+	color: var(--ant-color-text-secondary);
+	font-variant-numeric: tabular-nums;
+}
+
+.sNums b {
+	font-weight: 600;
+	color: var(--ant-color-text);
+}
+
+/* 列表分页行 */
+.listPager {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	font-size: 12px;
+	color: var(--ant-color-text-secondary);
+}
+
+/* 右侧选中会话详情 */
 .detailStack {
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
-}
-
-.detailHeader {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: space-between;
-	gap: 12px;
-}
-
-.detailTitle {
-	font-size: 13px;
-	font-weight: 600;
-}
-
-.detailControls {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 12px;
-}
-
-.sessionPicker {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	font-size: 13px;
-	font-weight: 600;
-}
-
-.sessionSelect {
-	width: 384px;
-}
-
-.sessionPager {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	font-size: 13px;
-}
-
-/* 选中会话概览 */
-.cardsStack {
-	display: flex;
-	flex-direction: column;
-	gap: 12px;
-}
-
-.sessionHead {
 	min-width: 0;
 }
 
-.sessionTitle {
+.sdHead {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+}
+
+.sdTitle {
+	margin: 0;
+	font-size: 16px;
 	font-weight: 600;
-	font-size: var(--kit-text-body);
+}
+
+.sdCode {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: 11px;
 }
 
 .sessionMeta {
@@ -254,21 +421,12 @@ input.searchInput {
 	color: var(--kit-fg-muted);
 }
 
-.cardGrid {
-	display: grid;
-	gap: 12px;
-	grid-template-columns: 1fr;
-}
-
-.statCardSpan3 {
-	grid-column: span 3 / span 3;
-}
-
-.statPair {
-	display: flex;
-	flex-wrap: wrap;
-	column-gap: 32px;
-	row-gap: 12px;
+/* Tab 标签内的调用次数 */
+.tabCount {
+	margin-inline-start: 6px;
+	font-size: 12px;
+	color: var(--ant-color-text-secondary);
+	font-variant-numeric: tabular-nums;
 }
 
 /* 模型/工具遥测区：加载提示悬浮右上角，不参与布局 */
@@ -286,12 +444,6 @@ input.searchInput {
 	font-weight: 400;
 	font-size: 12px;
 	color: var(--kit-fg-muted);
-}
-
-.telemetryTitle {
-	margin-bottom: 8px;
-	font-weight: 500;
-	font-size: 12px;
 }
 
 .telemetryEmpty {
@@ -425,7 +577,7 @@ input.searchInput {
 	border-width: 0;
 }
 
-/* ============ 采集状态与指标卡 ============ */
+/* ============ 采集状态（成员列表列内） ============ */
 
 /* 用量采集状态：单行结构（状态 + 时间同行，配合表格 td 的 60 行高） */
 .statusRoot {
@@ -439,35 +591,6 @@ input.searchInput {
 .statusTime {
 	font-size: 12px;
 	white-space: nowrap;
-}
-
-.metricsGrid {
-	display: grid;
-	gap: 12px;
-	grid-template-columns: 1fr;
-}
-
-.metricCard {
-	border: 1px solid var(--ant-color-border);
-	border-radius: 6px;
-	background: var(--kit-bg-subtle);
-	padding: 12px;
-}
-
-.metricLabel {
-	color: var(--ant-color-text-secondary);
-}
-
-.metricValue {
-	margin-top: 8px;
-	font-size: 18px;
-	font-weight: 600;
-}
-
-.metricHint {
-	margin-top: 4px;
-	font-size: 12px;
-	color: var(--ant-color-text-secondary);
 }
 
 /* ============ 深链路由页（member-usage-route） ============ */
@@ -486,21 +609,36 @@ input.searchInput {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 
-	.cardGrid {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-	}
-
 	.metricsGrid {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 }
 
 @media (min-width: 1280px) {
-	.cardGrid {
-		grid-template-columns: repeat(6, minmax(0, 1fr));
-	}
-
 	.metricsGrid {
 		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+
+	/* 桌面分栏：高度由右栏（详情）驱动，左列表绝对定位撑满并内部滚动 */
+	.splitGrid {
+		grid-template-columns: 320px minmax(0, 1fr);
+		align-items: stretch;
+	}
+
+	.listScroll {
+		flex: 1 1 0%;
+	}
+
+	.sessionList {
+		position: absolute;
+		inset: 0;
+		max-height: none;
+	}
+}
+
+/* 列表行悬停/选中过渡在减少动效偏好下降级 */
+@media (prefers-reduced-motion: reduce) {
+	.sessionRowBtn {
+		transition: none;
 	}
 }

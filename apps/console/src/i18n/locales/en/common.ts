@@ -12,6 +12,14 @@ export default {
 		cacheWrite: "Cache write tokens",
 		activeSeconds: "Execution time (s)",
 		durationSeconds: "Session time (s)",
+		notes: {
+			inputTokens: "Total input-side tokens. Whether cache tokens are included in input tokens is decided by the provider; they are not summed here.",
+			outputTokens: "Total output-side tokens.",
+			cacheRead: "Tokens read from cache hits.",
+			cacheWrite: "Tokens written when creating cache.",
+			activeSeconds: "Total model execution time; only execution time is counted.",
+			durationSeconds: "Total session lifetime.",
+		},
 	},
 	collection: {
 		pending: "Pending",

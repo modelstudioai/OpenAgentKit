@@ -11,10 +11,12 @@ export function StatCell({
 	hint,
 	missingText,
 }: {
-	label: string;
+	/** 标签可携带行内节点（如口径说明的 info 图标）。 */
+	label: ReactNode;
 	value: number | null;
 	unit?: string;
-	hint?: string;
+	/** 说明文案可为节点（如部分覆盖的警示色提示）。 */
+	hint?: ReactNode;
 	/** 缺失占位文案；已采集但 Provider 未返回的指标可用「未返回」与「待获取」区分。 */
 	missingText?: string;
 }) {

@@ -1,19 +1,17 @@
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import type {
-	ModelUsageItem,
-	ModelUsagePage,
 	TemplateSessionUsage,
 	TemplateUsageRow,
-	ToolUsageItem,
-	ToolUsagePage,
+	UsageModelRow,
+	UsageSummary,
+	UsageToolRow,
 } from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
-import { Button, DatePicker, Empty, Result, Select, Table } from "antd";
-import dayjs from "dayjs";
 import type { TFunction } from "i18next";
+import { Button, DatePicker, Empty, Popover, Result, Select, Table, Tag } from "antd";
+import dayjs from "dayjs";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { ToolUsageQuery } from "../../lib/admin/index.ts";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
 import { getAdminClient } from "../../lib/api.ts";
 import { StatCard, StatCell } from "../../lib/stat-card.tsx";
@@ -25,8 +23,26 @@ import { TemplateUsageLimits } from "./usage-limit-panels.tsx";
 
 const PAGE_SIZE = 20;
 
+const { RangePicker } = DatePicker;
+
+/** useAdminQuery 的派生加载态：请求进行中，或尚未拿到数据且没有错误（初次加载与刷新间隙）。 */
+function isQueryPending(query: { loading: boolean; data: unknown; error: string | null }) {
+	return query.loading || (!query.data && !query.error);
+}
+
 function captureTime(value: string | undefined, fallback: string) {
 	return value ? new Date(value).toLocaleString("zh-CN", { hour12: false }) : fallback;
+}
+
+/** 「全部」口径部分成功提示：coverage 仅在部分模版绑定智能体查询失败时出现。 */
+function CoverageNote({ coverage }: { coverage: UsageSummary["coverage"] }) {
+	const { t } = useTranslation("usage");
+	if (!coverage || coverage.complete) return null;
+	return (
+		<p role="status" className={styles.metaText}>
+			{t("templatePanel.coverageNote", { agents: coverage.missing_agent_ids.join("、") })}
+		</p>
+	);
 }
 
 function refreshedAt(row: TemplateUsageRow, fallback: string) {
@@ -39,12 +55,15 @@ function TemplateUsageCards({
 	onSelect,
 	onLimits,
 	aggregateCount,
+	providerTotal,
 }: {
 	row: TemplateUsageRow;
 	onSelect?: (row: TemplateUsageRow) => void;
 	onLimits?: (row: TemplateUsageRow) => void;
 	/** 「全部」视角传入模版总数；此时身份行不展示智能体与上架状态。 */
 	aggregateCount?: number;
+	/** Provider 侧轮数/步骤汇总（统计时间内，按选中模版智能体过滤或全部模版口径求和）；缺省表示尚未加载。 */
+	providerTotal?: UsageSummary["usage"]["total"];
 }) {
 	const { t } = useTranslation("usage");
 	const { t: tc } = useTranslation();
@@ -57,11 +76,14 @@ function TemplateUsageCards({
 		<div className={styles.cardStack}>
 			<div className={styles.identityRow}>
 				<div className={styles.identityMeta}>
-					<h3 className={styles.sectionTitle}>{row.name}</h3>
+					<h3 className={styles.sectionTitle}>
+						{row.name}
+						{row.deleted ? <Tag>{t("templatePanel.deletedTag")}</Tag> : null}
+					</h3>
 					<p className={styles.identitySub}>
 						{aggregateCount === undefined ? (
 							<>
-								{t("templatePanel.agent", { name: row.remote_agent_name ?? "" })} ·{" "}
+								{t("templatePanel.agent", { name: row.remote_agent_name })} ·{" "}
 								<span className={row.listing_status === "listed" ? styles.statusOn : undefined}>
 									{row.listing_status === "listed" ? t("templatePanel.listed") : t("templatePanel.unlisted")}
 								</span>{" "}
@@ -70,9 +92,7 @@ function TemplateUsageCards({
 						) : (
 							t("templatePanel.aggregateCount", { count: aggregateCount })
 						)}
-						{t("templatePanel.lastCollected", {
-							time: refreshedAt(row, t("templatePanel.neverCollected")),
-						})}
+						{t("templatePanel.lastCollected", { time: refreshedAt(row, t("templatePanel.neverCollected")) })}
 					</p>
 				</div>
 				{onSelect && onLimits ? (
@@ -96,34 +116,6 @@ function TemplateUsageCards({
 					/>
 				</StatCard>
 				<StatCard tone="subtle" className={styles.statCardSpan2}>
-					<div className={styles.statPair}>
-						<StatCell
-							label={tc("metrics.inputTokens")}
-							value={row.metrics.input_tokens.value}
-							hint={hintOf("input_tokens")}
-						/>
-						<StatCell
-							label={tc("metrics.outputTokens")}
-							value={row.metrics.output_tokens.value}
-							hint={hintOf("output_tokens")}
-						/>
-					</div>
-				</StatCard>
-				<StatCard tone="tint" className={styles.statCardSpan2}>
-					<div className={styles.statPair}>
-						<StatCell
-							label={tc("metrics.cacheRead")}
-							value={row.metrics.cache_read_input_tokens.value}
-							hint={hintOf("cache_read_input_tokens")}
-						/>
-						<StatCell
-							label={tc("metrics.cacheWrite")}
-							value={row.metrics.cache_creation_input_tokens.value}
-							hint={hintOf("cache_creation_input_tokens")}
-						/>
-					</div>
-				</StatCard>
-				<StatCard tone="subtle" className={styles.statCardSpan3}>
 					<StatCell
 						label={t("templatePanel.statActive")}
 						value={row.metrics.active_seconds.value}
@@ -131,7 +123,7 @@ function TemplateUsageCards({
 						hint={hintOf("active_seconds")}
 					/>
 				</StatCard>
-				<StatCard tone="tint" className={styles.statCardSpan3}>
+				<StatCard tone="tint" className={styles.statCardSpan2}>
 					<StatCell
 						label={t("templatePanel.statSession")}
 						value={row.metrics.duration_seconds.value}
@@ -139,16 +131,34 @@ function TemplateUsageCards({
 						hint={hintOf("duration_seconds")}
 					/>
 				</StatCard>
+				<StatCard tone="subtle" className={styles.statCardSpan2}>
+					<StatCell
+						label={t("templatePanel.statTurns")}
+						value={providerTotal ? providerTotal.turns.value : null}
+						unit={t("templatePanel.unitTurns")}
+						hint={t("templatePanel.providerHint")}
+						missingText={providerTotal ? tc("collection.notReturned") : tc("collection.pending")}
+					/>
+				</StatCard>
+				<StatCard tone="tint" className={styles.statCardSpan2}>
+					<StatCell
+						label={t("templatePanel.statSteps")}
+						value={providerTotal ? providerTotal.steps.value : null}
+						unit={t("templatePanel.unitSteps")}
+						hint={t("templatePanel.providerHint")}
+						missingText={providerTotal ? tc("collection.notReturned") : tc("collection.pending")}
+					/>
+				</StatCard>
 			</dl>
 		</div>
 	);
 }
 
-function metricText(session: TemplateSessionUsage, key: (typeof usageMetrics)[number][0], t: TFunction<"common">) {
+function metricText(session: TemplateSessionUsage, key: (typeof usageMetrics)[number][0], tc: TFunction<"common">) {
 	const metrics = { ...session.usage, ...session.stats };
 	return (
 		metrics[key]?.toLocaleString("zh-CN", { maximumFractionDigits: 2 }) ??
-		(session.captured_at ? t("collection.notReturned") : t("collection.pending"))
+		(session.captured_at ? tc("collection.notReturned") : tc("collection.pending"))
 	);
 }
 
@@ -256,7 +266,7 @@ export function TemplateUsageDetail({
 			signal,
 		),
 	);
-	const loading = list.loading || (!list.data && !list.error);
+	const loading = isQueryPending(list);
 	const rows = list.data?.data ?? [];
 	const hasNext = Boolean(list.data?.next_cursor);
 	return (
@@ -268,6 +278,7 @@ export function TemplateUsageDetail({
 				<div>
 					<h2 id="template-usage-detail-heading" className={styles.detailTitle}>
 						{t("templatePanel.title", { name: template.name })}
+						{template.deleted ? <Tag>{t("templatePanel.deletedTag")}</Tag> : null}
 					</h2>
 					<p className={styles.detailSub}>{t("templatePanel.detailSub")}</p>
 				</div>
@@ -288,11 +299,7 @@ export function TemplateUsageDetail({
 						deleted: template.deleted_session_count,
 					})}
 				</span>
-				<span>
-					{t("templatePanel.lastCollectedAt", {
-						time: captureTime(template.refreshed_at, t("templatePanel.notCaptured")),
-					})}
-				</span>
+				<span>{t("templatePanel.lastCollectedAt", { time: captureTime(template.refreshed_at, t("templatePanel.notCaptured")) })}</span>
 			</div>
 			<UsageMetrics summary={template} />
 			<p className={styles.metaText}>{t("templatePanel.metricsNote")}</p>
@@ -342,9 +349,34 @@ export function TemplateUsageDetail({
 	);
 }
 
+/** 面板顶部统计时间选择器：分钟精度本地时间区间，选定完整区间后才提交变更。 */
+function StatRangePicker({
+	value,
+	onChange,
+}: {
+	value: { start: string; end: string };
+	onChange: (next: { start: string; end: string }) => void;
+}) {
+	const { t } = useTranslation("usage");
+	return (
+		<RangePicker
+			aria-label={t("templatePanel.statRangeAria")}
+			showTime={{ format: "HH:mm" }}
+			format="YYYY-MM-DD HH:mm"
+			allowClear={false}
+			value={[dayjs(value.start), dayjs(value.end)]}
+			onChange={(values) => {
+				const [start, end] = values ?? [];
+				if (start && end) onChange({ start: start.format("YYYY-MM-DDTHH:mm"), end: end.format("YYYY-MM-DDTHH:mm") });
+			}}
+		/>
+	);
+}
+
 /** 模版用量主面板：rows 为单个选中模版时逐模版展示，为全量模版行（「全部」视角）时聚合求和；查询状态与明细导航均由用量页持有。 */
 export function TemplateUsagePanel({
 	rows,
+	allTemplates,
 	loading,
 	error,
 	onRetry,
@@ -352,6 +384,7 @@ export function TemplateUsagePanel({
 	onLimits,
 }: {
 	rows: TemplateUsageRow[];
+	allTemplates: boolean;
 	loading: boolean;
 	error: string | null;
 	onRetry: () => void;
@@ -359,13 +392,39 @@ export function TemplateUsagePanel({
 	onLimits: (row: TemplateUsageRow) => void;
 }) {
 	const { t } = useTranslation("usage");
-	const aggregate = rows.length > 1 ? aggregateTemplateRows(rows, t("templatePanel.allTemplates")) : null;
+	const client = useMemo(getAdminClient, []);
+	const aggregate = rows.length > 1 ? aggregateTemplateRows(rows) : null;
 	const selected = aggregate ? null : (rows[0] ?? null);
+	const agentId = allTemplates ? undefined : selected?.remote_agent_id;
+	/** 面板顶部统计时间（分钟精度）：统一驱动轮数/步骤卡、趋势卡与模型/工具明细。 */
+	const [statRange, setStatRange] = useState(() => ({
+		start: toLocalMinuteInput(Date.now() - 7 * 24 * 60 * 60 * 1000),
+		end: toLocalMinuteInput(Date.now()),
+	}));
+	const telemetry = useAdminQuery(
+		`usage:telemetry:${scopeKeyOf(selected?.template_id, agentId)}:${statRange.start}:${statRange.end}`,
+		(signal) => client.usage.summary(telemetryQuery(statRange, agentId), signal),
+	);
+	const summary = telemetry.data;
+	const telemetryLoading = isQueryPending(telemetry);
 	return (
 		<div className={styles.panelStack}>
-			<p className={styles.metaText} style={{ marginTop: "10px" }}>
-				{t("templatePanel.panelNote")}
-			</p>
+			<div className={styles.rangeRow}>
+				<Popover
+					content={<span className={styles.preLine}>{t("templatePanel.panelScopeNote")}</span>}
+					title={t("templatePanel.scopeNoteTitle")}
+					trigger="click"
+				>
+					<button type="button" className={styles.popLink}>
+						{t("templatePanel.scopeNoteTitle")}
+					</button>
+				</Popover>
+				<div className={styles.pickerInline}>
+					<span className={styles.inlineLabel}>{t("templatePanel.statRangeAria")}</span>
+					<StatRangePicker value={statRange} onChange={setStatRange} />
+				</div>
+			</div>
+			<CoverageNote coverage={summary?.coverage} />
 			{loading ? (
 				<p role="status" className={styles.loadingNote}>
 					{t("templatePanel.loadingRows")}
@@ -385,22 +444,38 @@ export function TemplateUsagePanel({
 			{!loading && !error && !rows.length ? (
 				<Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("templatePanel.emptyTemplates")} />
 			) : null}
-			{!loading && !error && aggregate ? <TemplateUsageCards row={aggregate} aggregateCount={rows.length} /> : null}
+			{!loading && !error && aggregate ? (
+				<TemplateUsageCards row={aggregate} aggregateCount={rows.length} providerTotal={summary?.usage.total} />
+			) : null}
 			{!loading && !error && selected ? (
-				<TemplateUsageCards row={selected} onSelect={onSelect} onLimits={onLimits} />
+				<TemplateUsageCards
+					row={selected}
+					onSelect={onSelect}
+					onLimits={onLimits}
+					providerTotal={summary?.usage.total}
+				/>
 			) : null}
 			{!loading && !error && (aggregate || selected) ? (
-				<TemplateUsageTrendCard templateId={selected?.template_id} />
+				<TemplateUsageTrendCard
+					agentId={agentId}
+					range={{ start: minuteInputMs(statRange.start), end: minuteInputMs(statRange.end) }}
+				/>
 			) : null}
 			<ModelUsageSection
 				templateId={selected?.template_id}
-				agentId={selected?.remote_agent_id}
+				agentId={agentId}
 				templateName={selected?.name}
+				summary={summary}
+				loading={telemetryLoading}
+				error={telemetry.error}
 			/>
 			<ToolUsageSection
 				templateId={selected?.template_id}
-				agentId={selected?.remote_agent_id}
+				agentId={agentId}
 				templateName={selected?.name}
+				summary={summary}
+				loading={telemetryLoading}
+				error={telemetry.error}
 			/>
 		</div>
 	);
@@ -408,12 +483,12 @@ export function TemplateUsagePanel({
 
 const TELEMETRY_PAGE_SIZE = 20;
 
-function usageNumber(value: number) {
-	return value.toLocaleString("zh-CN", { maximumFractionDigits: 2 });
+function usageNumber(value: number | null) {
+	return value === null ? "—" : value.toLocaleString("zh-CN", { maximumFractionDigits: 2 });
 }
 
-function hitRatioText(value: number) {
-	return `${(value * 100).toFixed(1)}%`;
+function hitRatioText(value: number | null) {
+	return value === null ? "—" : `${(value * 100).toFixed(1)}%`;
 }
 
 /** datetime-local 值（YYYY-MM-DDTHH:mm，本地时区）↔ 毫秒时间戳。 */
@@ -434,12 +509,14 @@ function telemetryQuery(filters: { start: string; end: string }, agentId: string
 	};
 }
 
-/** 明细区作用域说明：选中模版时按其绑定智能体过滤；「全部」视角不过滤，展示工作空间全量调用。 */
+/** 明细区作用域说明：选中模版时按其绑定智能体过滤；「全部」视角为各模版绑定智能体求和（模版口径）。 */
 function TelemetryScopeNote({ templateName }: { templateName?: string }) {
 	const { t } = useTranslation("usage");
 	return (
 		<p className={styles.metaText}>
-			{templateName ? t("templatePanel.scopeSelected", { name: templateName }) : t("templatePanel.scopeAll")}
+			{templateName
+				? t("templatePanel.scopeSelected", { name: templateName })
+				: t("templatePanel.scopeAll")}
 		</p>
 	);
 }
@@ -515,111 +592,106 @@ function TelemetryPagination({
 	);
 }
 
-function modelTelemetryColumns(t: TFunction<"usage">): TableColumnsType<ModelUsageItem> {
+function modelTelemetryColumns(t: TFunction<"usage">): TableColumnsType<UsageModelRow> {
 	return [
-		{ title: t("templatePanel.cols.modelName"), dataIndex: "model_name" },
 		{
-			title: t("templatePanel.cols.workspace"),
-			dataIndex: "workspace_id",
-			render: (value: string) => <span className={styles.workspaceText}>{value}</span>,
+			title: t("templatePanel.cols.modelName"),
+			dataIndex: "model_name",
+			render: (value: string | null) => <span className={styles.workspaceText}>{value ?? t("templatePanel.unattributed")}</span>,
 		},
-		{
-			title: t("templatePanel.cols.calls"),
-			dataIndex: "call_count",
-			align: "right",
-			render: (value: number) => usageNumber(value),
-		},
-		{
-			title: t("templatePanel.cols.failures"),
-			dataIndex: "failed_count",
-			align: "right",
-			render: (value: number) => usageNumber(value),
-		},
+		{ title: t("templatePanel.cols.calls"), align: "right", render: (_, row) => usageNumber(row.usage.call_count.value) },
+		{ title: t("templatePanel.cols.failures"), align: "right", render: (_, row) => usageNumber(row.usage.failed_count.value) },
 		{
 			title: t("templatePanel.cols.input"),
 			align: "right",
-			render: (_, row) => <span className={styles.tabularNum}>{usageNumber(row.tokens.input_tokens)}</span>,
+			render: (_, row) => <span className={styles.tabularNum}>{usageNumber(row.usage.input_tokens.value)}</span>,
 		},
 		{
 			title: t("templatePanel.cols.output"),
 			align: "right",
-			render: (_, row) => <span className={styles.tabularNum}>{usageNumber(row.tokens.output_tokens)}</span>,
+			render: (_, row) => <span className={styles.tabularNum}>{usageNumber(row.usage.output_tokens.value)}</span>,
 		},
 		{
 			title: t("templatePanel.cols.cacheRead"),
 			align: "right",
-			render: (_, row) => <span className={styles.tabularNum}>{usageNumber(row.tokens.cache_read_tokens)}</span>,
+			render: (_, row) => <span className={styles.tabularNum}>{usageNumber(row.usage.cache_read_tokens.value)}</span>,
 		},
 		{
 			title: t("templatePanel.cols.cacheCreation"),
 			align: "right",
-			render: (_, row) => <span className={styles.tabularNum}>{usageNumber(row.tokens.cache_creation_tokens)}</span>,
+			render: (_, row) => <span className={styles.tabularNum}>{usageNumber(row.usage.cache_creation_tokens.value)}</span>,
 		},
 		{
 			title: t("templatePanel.cols.hitRatio"),
 			align: "right",
-			render: (_, row) => <span className={styles.tabularNum}>{hitRatioText(row.tokens.cache_hit_ratio)}</span>,
+			render: (_, row) => <span className={styles.tabularNum}>{hitRatioText(row.usage.cache_hit_ratio.value)}</span>,
 		},
 	];
 }
 
-function toolTelemetryColumns(t: TFunction<"usage">): TableColumnsType<ToolUsageItem> {
+function toolTelemetryColumns(t: TFunction<"usage">): TableColumnsType<UsageToolRow> {
 	return [
-		{ title: t("templatePanel.cols.toolName"), dataIndex: "tool_name" },
+		{
+			title: t("templatePanel.cols.toolName"),
+			dataIndex: "tool_name",
+			render: (value: string | null) => value ?? t("templatePanel.unknown"),
+		},
 		{
 			title: t("templatePanel.cols.source"),
 			dataIndex: "source",
-			render: (value: string) => (sourceLabels[value] ? t(sourceLabels[value]!) : value),
+			render: (value: string | null) => sourceText(value, t),
 		},
-		{
-			title: t("templatePanel.cols.workspace"),
-			dataIndex: "workspace_id",
-			render: (value: string) => <span className={styles.workspaceText}>{value}</span>,
-		},
-		{
-			title: t("templatePanel.cols.calls"),
-			dataIndex: "call_count",
-			align: "right",
-			render: (value: number) => usageNumber(value),
-		},
-		{
-			title: t("templatePanel.cols.failures"),
-			dataIndex: "failed_count",
-			align: "right",
-			render: (value: number) => usageNumber(value),
-		},
+		{ title: t("templatePanel.cols.calls"), align: "right", render: (_, row) => usageNumber(row.usage.call_count.value) },
+		{ title: t("templatePanel.cols.failures"), align: "right", render: (_, row) => usageNumber(row.usage.failed_count.value) },
 	];
 }
 
-const sourceLabels: Record<
-	string,
-	"templatePanel.tool.builtin" | "templatePanel.tool.mcp" | "templatePanel.tool.custom"
-> = {
-	builtin: "templatePanel.tool.builtin",
-	mcp: "templatePanel.tool.mcp",
-	custom: "templatePanel.tool.custom",
-};
+/** 来源列与分源行内数字共用的来源文案：已知来源走字典，未知来源原样展示。 */
+function sourceText(value: string | null | undefined, t: TFunction<"usage">) {
+	if (value === "builtin") return t("templatePanel.tool.builtin");
+	if (value === "mcp") return t("templatePanel.tool.mcp");
+	if (value === "custom") return t("templatePanel.tool.custom");
+	return value ?? t("templatePanel.unknown");
+}
+
+/** 明细区头部行内失败数字：0 次时整段省略。 */
+function failedSuffix(failed: number | null, t: TFunction<"usage">) {
+	return failed ? t("templatePanel.failedSuffix", { count: usageNumber(failed) }) : "";
+}
+
+/** 工具分源行内数字（调用数口径，与来源列一致）：0 值的源省略，全为 0 时整段省略。 */
+function toolSourceSuffix(total: UsageSummary["usage"]["total"], t: TFunction<"usage">) {
+	const parts = (["builtin", "mcp", "custom"] as const)
+		.map((source) => ({ label: sourceText(source, t), count: total[`${source}_tool_call_count`].value ?? 0 }))
+		.filter((part) => part.count > 0)
+		.map((part) => `${part.label} ${usageNumber(part.count)}`);
+	return parts.length ? `（${parts.join(" · ")}）` : "";
+}
 
 function ModelUsageSection({
+	summary,
+	loading,
+	error,
 	templateId,
 	agentId,
 	templateName,
 }: {
+	/** 面板顶部统计时间内的 Provider 汇总（total + 模型/工具明细），由面板统一查询。 */
+	summary?: UsageSummary;
+	loading: boolean;
+	error: string | null;
 	templateId?: string;
 	agentId?: string;
 	templateName?: string;
 }) {
 	const { t } = useTranslation("usage");
-	const client = useMemo(getAdminClient, []);
-	/** 日期与模型变更即触发查询（page_no 归 1）；scope 记录所属模版作用域，跨模版切换时由下方 effect 归位。 */
+	/** 模型与分页为本地筛选；切换选中模版（含进入/离开「全部」）即归位，统计时间由面板统一控制。 */
 	const [filters, setFilters] = useState(() => ({
 		scope: scopeKeyOf(templateId, agentId),
-		start: toLocalMinuteInput(Date.now() - 7 * 24 * 60 * 60 * 1000),
-		end: toLocalMinuteInput(Date.now()),
 		model_name: "",
 		page_no: 1,
 	}));
-	/** 切换选中模版（含进入/离开「全部」）即归位分页与模型筛选，保留时间区间。 */
+	/** 切换选中模版（含进入/离开「全部」）即归位分页与模型筛选。 */
 	useEffect(() => {
 		const scope = scopeKeyOf(templateId, agentId);
 		setFilters((current) =>
@@ -628,83 +700,42 @@ function ModelUsageSection({
 				: { ...current, scope, page_no: 1, model_name: "" },
 		);
 	}, [templateId, agentId]);
-	/** 模型名下拉选项：按当前模版绑定智能体与时间区间拉一页全量（不带模型筛选）去重聚合；模型种类超过 100 时选项可能不全。 */
-	const optionsQuery = useAdminQuery(
-		`usage:model-options:${scopeKeyOf(templateId, agentId)}:${filters.start}:${filters.end}`,
-		(signal) => client.usage.modelUsage({ ...telemetryQuery(filters, agentId), page_no: 1, page_size: 100 }, signal),
-	);
-	const modelOptions = [...new Set((optionsQuery.data?.items ?? []).map((row) => row.model_name))];
-	const list = useAdminQuery(
-		`usage:model-usage:${scopeKeyOf(templateId, agentId)}:${JSON.stringify(filters)}`,
-		(signal) =>
-			client.usage.modelUsage(
-				{
-					...telemetryQuery(filters, agentId),
-					...(filters.model_name ? { model_name: filters.model_name } : {}),
-					page_no: filters.page_no,
-					page_size: TELEMETRY_PAGE_SIZE,
-				},
-				signal,
-			),
-	);
-	const page: ModelUsagePage | undefined = list.data;
-	const rows: ModelUsageItem[] = page?.items ?? [];
-	const hasNext = page ? filters.page_no * TELEMETRY_PAGE_SIZE < page.total : false;
-	const loading = list.loading || (!list.data && !list.error);
+	const allModels = summary?.usage.models ?? [];
+	const modelOptions = [
+		...new Set(allModels.map((row) => row.model_name).filter((name): name is string => Boolean(name))),
+	];
+	const filtered = filters.model_name ? allModels.filter((row) => row.model_name === filters.model_name) : allModels;
+	const rows = filtered.slice((filters.page_no - 1) * TELEMETRY_PAGE_SIZE, filters.page_no * TELEMETRY_PAGE_SIZE);
+	const hasNext = filters.page_no * TELEMETRY_PAGE_SIZE < filtered.length;
 	return (
 		<section aria-labelledby="model-usage-heading" className={styles.telemetrySection}>
 			<div className={styles.sectionHeader}>
 				<h3 id="model-usage-heading" className={styles.sectionTitle}>
 					{t("templatePanel.model.title")}
 				</h3>
-				{page ? (
+				{summary ? (
 					<span className={styles.metaText}>
-						{t("templatePanel.model.totalCalls", {
-							calls: usageNumber(page.total_call_count),
-							rows: usageNumber(page.total),
-						})}
+						{t("templatePanel.model.totalCalls", { calls: usageNumber(summary.usage.total.model_call_count.value) })}
+						{failedSuffix(summary.usage.total.model_failed_count.value, t)}
+						{t("templatePanel.model.totalRows", { rows: usageNumber(filtered.length) })}
 					</span>
 				) : null}
 			</div>
 			<TelemetryScopeNote templateName={templateName} />
 			<div className={styles.filterRow}>
-				<DatePicker
-					aria-label={t("templatePanel.filterStartAria")}
-					showTime={{ format: "HH:mm" }}
-					format="YYYY-MM-DD HH:mm"
-					className={styles.datePicker}
-					value={dayjs(filters.start)}
-					onChange={(value) => {
-						if (value) setFilters({ ...filters, start: value.format("YYYY-MM-DDTHH:mm"), page_no: 1 });
-					}}
-				/>
-				<span className={styles.metaText}>{t("templatePanel.to")}</span>
-				<DatePicker
-					aria-label={t("templatePanel.filterEndAria")}
-					showTime={{ format: "HH:mm" }}
-					format="YYYY-MM-DD HH:mm"
-					className={styles.datePicker}
-					value={dayjs(filters.end)}
-					onChange={(value) => {
-						if (value) setFilters({ ...filters, end: value.format("YYYY-MM-DDTHH:mm"), page_no: 1 });
-					}}
-				/>
 				<Select
 					aria-label={t("templatePanel.model.filterAria")}
 					className={styles.selectName}
 					value={filters.model_name}
 					onChange={(value) => setFilters({ ...filters, model_name: value, page_no: 1 })}
-					options={[
-						{ value: "", label: t("templatePanel.model.allModels") },
-						...modelOptions.map((name) => ({ value: name, label: name })),
-					]}
+					options={[{ value: "", label: t("templatePanel.model.allModels") }, ...modelOptions.map((name) => ({ value: name, label: name }))]}
 				/>
 			</div>
-			{list.error ? (
+			{error ? (
 				<TelemetryUnavailable />
 			) : (
 				<Table
-					rowKey={(row) => `${row.workspace_id}/${row.model_name}`}
+					rowKey={(row) => row.model_name ?? "unknown"}
 					size="small"
 					loading={loading}
 					columns={modelTelemetryColumns(t)}
@@ -716,7 +747,7 @@ function ModelUsageSection({
 					}}
 				/>
 			)}
-			{page && (page.total > TELEMETRY_PAGE_SIZE || filters.page_no > 1) ? (
+			{filtered.length > TELEMETRY_PAGE_SIZE || filters.page_no > 1 ? (
 				<TelemetryPagination
 					pageNo={filters.page_no}
 					hasNext={hasNext}
@@ -729,26 +760,29 @@ function ModelUsageSection({
 }
 
 function ToolUsageSection({
+	summary,
+	loading,
+	error,
 	templateId,
 	agentId,
 	templateName,
 }: {
+	summary?: UsageSummary;
+	loading: boolean;
+	error: string | null;
 	templateId?: string;
 	agentId?: string;
 	templateName?: string;
 }) {
 	const { t } = useTranslation("usage");
-	const client = useMemo(getAdminClient, []);
-	/** 日期、来源与工具变更即触发查询（page_no 归 1）；scope 记录所属模版作用域，跨模版切换时由下方 effect 归位。 */
+	/** 来源/工具与分页为本地筛选；切换选中模版（含进入/离开「全部」）即归位，统计时间由面板统一控制。 */
 	const [filters, setFilters] = useState(() => ({
 		scope: scopeKeyOf(templateId, agentId),
-		start: toLocalMinuteInput(Date.now() - 7 * 24 * 60 * 60 * 1000),
-		end: toLocalMinuteInput(Date.now()),
 		source: "",
 		tool_name: "",
 		page_no: 1,
 	}));
-	/** 切换选中模版（含进入/离开「全部」）即归位分页与来源/工具筛选，保留时间区间。 */
+	/** 切换选中模版（含进入/离开「全部」）即归位分页与来源/工具筛选。 */
 	useEffect(() => {
 		const scope = scopeKeyOf(templateId, agentId);
 		setFilters((current) =>
@@ -757,77 +791,31 @@ function ToolUsageSection({
 				: { ...current, scope, page_no: 1, source: "", tool_name: "" },
 		);
 	}, [templateId, agentId]);
-	/** 工具名下拉选项：按当前模版绑定智能体、时间区间与来源拉一页全量去重聚合；工具种类超过 100 时选项可能不全。 */
-	const optionsQuery = useAdminQuery(
-		`usage:tool-options:${scopeKeyOf(templateId, agentId)}:${filters.start}:${filters.end}:${filters.source}`,
-		(signal) =>
-			client.usage.toolUsage(
-				{
-					...telemetryQuery(filters, agentId),
-					...(filters.source ? { source: filters.source as ToolUsageQuery["source"] } : {}),
-					page_no: 1,
-					page_size: 100,
-				},
-				signal,
-			),
-	);
-	const toolOptions = [...new Set((optionsQuery.data?.items ?? []).map((row) => row.tool_name))];
-	const list = useAdminQuery(
-		`usage:tool-usage:${scopeKeyOf(templateId, agentId)}:${JSON.stringify(filters)}`,
-		(signal) =>
-			client.usage.toolUsage(
-				{
-					...telemetryQuery(filters, agentId),
-					...(filters.source ? { source: filters.source as ToolUsageQuery["source"] } : {}),
-					...(filters.tool_name ? { tool_name: filters.tool_name } : {}),
-					page_no: filters.page_no,
-					page_size: TELEMETRY_PAGE_SIZE,
-				},
-				signal,
-			),
-	);
-	const page: ToolUsagePage | undefined = list.data;
-	const rows: ToolUsageItem[] = page?.items ?? [];
-	const hasNext = page ? filters.page_no * TELEMETRY_PAGE_SIZE < page.total : false;
-	const loading = list.loading || (!list.data && !list.error);
+	const allTools = summary?.usage.tools ?? [];
+	const bySource = filters.source ? allTools.filter((row) => row.source === filters.source) : allTools;
+	const toolOptions = [
+		...new Set(bySource.map((row) => row.tool_name).filter((name): name is string => Boolean(name))),
+	];
+	const filtered = filters.tool_name ? bySource.filter((row) => row.tool_name === filters.tool_name) : bySource;
+	const rows = filtered.slice((filters.page_no - 1) * TELEMETRY_PAGE_SIZE, filters.page_no * TELEMETRY_PAGE_SIZE);
+	const hasNext = filters.page_no * TELEMETRY_PAGE_SIZE < filtered.length;
 	return (
 		<section aria-labelledby="tool-usage-heading" className={styles.telemetrySection}>
 			<div className={styles.sectionHeader}>
 				<h3 id="tool-usage-heading" className={styles.sectionTitle}>
 					{t("templatePanel.tool.title")}
 				</h3>
-				{page ? (
+				{summary ? (
 					<span className={styles.metaText}>
-						{t("templatePanel.tool.totalCalls", {
-							calls: usageNumber(page.total_call_count),
-							rows: usageNumber(page.total),
-						})}
+						{t("templatePanel.tool.totalCalls", { calls: usageNumber(summary.usage.total.tool_call_count.value) })}
+						{toolSourceSuffix(summary.usage.total, t)}
+						{failedSuffix(summary.usage.total.tool_failed_count.value, t)}
+						{t("templatePanel.tool.totalRows", { rows: usageNumber(filtered.length) })}
 					</span>
 				) : null}
 			</div>
 			<TelemetryScopeNote templateName={templateName} />
 			<div className={styles.filterRow}>
-				<DatePicker
-					aria-label={t("templatePanel.filterStartAria")}
-					showTime={{ format: "HH:mm" }}
-					format="YYYY-MM-DD HH:mm"
-					className={styles.datePicker}
-					value={dayjs(filters.start)}
-					onChange={(value) => {
-						if (value) setFilters({ ...filters, start: value.format("YYYY-MM-DDTHH:mm"), page_no: 1 });
-					}}
-				/>
-				<span className={styles.metaText}>{t("templatePanel.to")}</span>
-				<DatePicker
-					aria-label={t("templatePanel.filterEndAria")}
-					showTime={{ format: "HH:mm" }}
-					format="YYYY-MM-DD HH:mm"
-					className={styles.datePicker}
-					value={dayjs(filters.end)}
-					onChange={(value) => {
-						if (value) setFilters({ ...filters, end: value.format("YYYY-MM-DDTHH:mm"), page_no: 1 });
-					}}
-				/>
 				<Select
 					aria-label={t("templatePanel.tool.sourceAria")}
 					className={styles.selectSource}
@@ -845,17 +833,14 @@ function ToolUsageSection({
 					className={styles.selectName}
 					value={filters.tool_name}
 					onChange={(value) => setFilters({ ...filters, tool_name: value, page_no: 1 })}
-					options={[
-						{ value: "", label: t("templatePanel.tool.allTools") },
-						...toolOptions.map((name) => ({ value: name, label: name })),
-					]}
+					options={[{ value: "", label: t("templatePanel.tool.allTools") }, ...toolOptions.map((name) => ({ value: name, label: name }))]}
 				/>
 			</div>
-			{list.error ? (
+			{error ? (
 				<TelemetryUnavailable />
 			) : (
 				<Table
-					rowKey={(row) => `${row.workspace_id}/${row.source}/${row.tool_name}`}
+					rowKey={(row) => `${row.source ?? "unknown"}/${row.tool_name ?? "unknown"}`}
 					size="small"
 					loading={loading}
 					columns={toolTelemetryColumns(t)}
@@ -867,7 +852,7 @@ function ToolUsageSection({
 					}}
 				/>
 			)}
-			{page && (page.total > TELEMETRY_PAGE_SIZE || filters.page_no > 1) ? (
+			{filtered.length > TELEMETRY_PAGE_SIZE || filters.page_no > 1 ? (
 				<TelemetryPagination
 					pageNo={filters.page_no}
 					hasNext={hasNext}

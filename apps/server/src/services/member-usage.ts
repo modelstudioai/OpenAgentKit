@@ -111,7 +111,7 @@ export function createMemberUsageService({
 		async refresh(memberId: string, force = false) {
 			await (await startRefresh(memberId, force))?.promise;
 		},
-		/** 按模版聚合全部成员的体验会话用量；登记新会话并按成员调度后台补采，返回当前缓存；search 过滤模版名/智能体名/模版 ID。 */
+		/** 按模版聚合全部成员的体验会话用量；登记新会话并按成员调度后台补采，返回当前缓存。 */
 		async summaryByTemplate(options: { search?: string } = {}): Promise<TemplateUsageRow[]> {
 			for (const memberId of await store.syncAll()) await schedule(memberId);
 			return await store.summaryByTemplate(options.search ?? "");
@@ -119,7 +119,7 @@ export function createMemberUsageService({
 		async summary(memberId: string, options: MemberUsageQuery = {}) {
 			await prepare(memberId);
 			await schedule(memberId, options.refresh === "1");
-			return await store.summary(memberId, options.agent_slug, jobs.get(memberId)?.startedAt);
+			return await store.summary(memberId, options, jobs.get(memberId)?.startedAt);
 		},
 		async list(memberId: string, options: MemberSessionsQuery) {
 			await prepare(memberId);
@@ -133,6 +133,9 @@ export function createMemberUsageService({
 		isMemberSession: store.isMemberSession,
 		async hasFinalSnapshot(sessionId: string) {
 			return Boolean((await store.get(sessionId))?.finalized_at);
+		},
+		async isDeletedSession(sessionId: string) {
+			return Boolean((await store.get(sessionId))?.deleted_at);
 		},
 		async captureFinal(sessionId: string, detail: GatewaySessionInfo) {
 			const local = await sessionIndex.get(sessionId);

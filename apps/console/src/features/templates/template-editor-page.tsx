@@ -148,6 +148,7 @@ function TemplateEditorForm({
 						<TemplatePresetPicker
 							disabled={busy || resourceDraft.loading || Boolean(resourceDraft.error)}
 							hasConfiguration={hasResourceConfiguration}
+							excludeAgentId={initialTemplate?.remote_agent_id}
 							onPendingChange={setPresetReplacing}
 							onImport={(preset) => onImportPreset(preset, { name, category, presentation })}
 						/>

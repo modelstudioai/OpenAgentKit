@@ -1,7 +1,7 @@
 import type { MemberView, TemplateUsageRow } from "@openagentkit/sdk/protocol";
 import type { TableColumnsType } from "antd";
-import { Button, Empty, Input, Result, Segmented, Spin, Table } from "antd";
 import type { TFunction } from "i18next";
+import { Button, Empty, Input, Result, Segmented, Spin, Table, Tag } from "antd";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAdminQuery } from "../../lib/admin/use-admin-query.ts";
@@ -21,7 +21,7 @@ type UsageTab = "members" | "templates";
 function usageColumns(
 	onSelect: (member: MemberView) => void,
 	onLimits: ((member: MemberView) => void) | undefined,
-	t: TFunction<["usage", "common"]>,
+	t: TFunction<"usage">,
 	tc: TFunction<"common">,
 ) {
 	return [
@@ -253,16 +253,24 @@ function TemplatePicker({
 	const { t } = useTranslation("usage");
 	const rows = templatesList.data ?? [];
 	return (
-		<div className={styles.pickerWrap}>
+		<div className={styles.pickerControl}>
 			<RemoteResourcePicker
 				value={value}
 				onChange={onChange}
 				label={t("sessionPage.selectTemplate")}
+				hideLabel
 				resource={t("sessionPage.resourceTemplate")}
 				placeholder={t("sessionPage.all")}
 				defaultOption={{ id: "", name: t("sessionPage.all") }}
+				/* 候选与下方统计卡同源，展开重拉会连带整页刷新。 */
+				refreshOnOpen={false}
 				remote={{
-					data: rows.map((row) => ({ id: row.template_id, name: row.name, detail: row.remote_agent_name })),
+					data: rows.map((row) => ({
+						id: row.template_id,
+						name: row.name,
+						tag: row.deleted ? <Tag>{t("sessionPage.deletedTag")}</Tag> : undefined,
+						detail: row.remote_agent_name,
+					})),
 					loading: templatesList.loading || (!templatesList.data && !templatesList.error),
 					error: templatesList.error,
 					refresh: templatesList.refresh,
@@ -302,9 +310,10 @@ function TemplateDetailView({
 	);
 }
 
-/** 控件行：按当前视角给成员搜索框或模版选择器，右侧统一刷新按钮。 */
+/** 控件行：视角切换 + 按视角的筛选（模版选择器或成员搜索），右侧统一刷新按钮。 */
 function UsageControls({
 	tab,
+	onTabChange,
 	members,
 	memberSearch,
 	onMemberSearch,
@@ -314,6 +323,7 @@ function UsageControls({
 	onTemplateSelect,
 }: {
 	tab: UsageTab;
+	onTabChange: (tab: UsageTab) => void;
 	members: ReturnType<typeof useMembers>;
 	memberSearch: string;
 	onMemberSearch: (value: string) => void;
@@ -325,12 +335,25 @@ function UsageControls({
 	const { t } = useTranslation("usage");
 	return (
 		<div className={styles.controlsRow}>
+			<Segmented
+				aria-label={t("sessionPage.viewAria")}
+				value={tab}
+				onChange={(value) => onTabChange(value as UsageTab)}
+				options={[
+					{ label: t("sessionPage.tabTemplates"), value: "templates" },
+					{ label: t("sessionPage.tabMembers"), value: "members" },
+				]}
+			/>
 			{tab === "members" ? (
 				<MembersSearchForm value={memberSearch} onChange={onMemberSearch} onSubmit={onMemberSearchSubmit} />
 			) : (
-				<TemplatePicker value={selectedTemplateId} onChange={onTemplateSelect} templatesList={templatesList} />
+				<div className={styles.pickerInline}>
+					<span className={styles.inlineLabel}>{t("sessionPage.selectTemplate")}</span>
+					<TemplatePicker value={selectedTemplateId} onChange={onTemplateSelect} templatesList={templatesList} />
+				</div>
 			)}
 			<Button
+				className={styles.controlsRefresh}
 				loading={tab === "members" ? members.loading : templatesList.loading}
 				onClick={() => (tab === "members" ? members.reload() : void templatesList.refresh())}
 			>
@@ -343,7 +366,8 @@ function UsageControls({
 /** 限额引导区：成员视角展示全局默认月度限额；模版没有全局默认限额，指路逐模版设置入口。 */
 function UsageLimitsArea({ tab, access }: { tab: UsageTab; access: ReturnType<typeof useUsageLimitAccess> }) {
 	const { t } = useTranslation("usage");
-	if (tab === "templates") return <p className={styles.mutedNote}>{t("sessionPage.templateLimitsHint")}</p>;
+	if (tab === "templates")
+		return <p className={styles.mutedNote}>{t("sessionPage.templateLimitsHint")}</p>;
 	return <DefaultUsageLimits client={access.client} canWrite={access.canWrite} />;
 }
 
@@ -384,7 +408,9 @@ export function SessionUsagePage() {
 					{t("sessionPage.title")}
 				</h2>
 				<p className={styles.pageSub}>
-					{tab === "templates" ? t("sessionPage.subTemplates") : t("sessionPage.subMembers")}
+					{tab === "templates"
+						? t("sessionPage.subTemplates")
+						: t("sessionPage.subMembers")}
 				</p>
 			</header>
 			{access.identity.error && (
@@ -406,6 +432,7 @@ export function SessionUsagePage() {
 			<UsageLimitsArea tab={tab} access={access} />
 			<UsageControls
 				tab={tab}
+				onTabChange={setTab}
 				members={members}
 				memberSearch={memberSearch}
 				onMemberSearch={setMemberSearch}
@@ -414,19 +441,10 @@ export function SessionUsagePage() {
 				selectedTemplateId={selectedTemplateId}
 				onTemplateSelect={setSelectedTemplateId}
 			/>
-			<Segmented
-				aria-label={t("sessionPage.viewAria")}
-				className={styles.viewToggle}
-				value={tab}
-				onChange={(value) => setTab(value as UsageTab)}
-				options={[
-					{ label: t("sessionPage.tabTemplates"), value: "templates" },
-					{ label: t("sessionPage.tabMembers"), value: "members" },
-				]}
-			/>
 			{tab === "templates" ? (
 				<TemplateUsagePanel
 					rows={selectedTemplate ? [selectedTemplate] : templateRows}
+					allTemplates={!selectedTemplate}
 					loading={templatesList.loading || (!templatesList.data && !templatesList.error)}
 					error={templatesList.error}
 					onRetry={() => {

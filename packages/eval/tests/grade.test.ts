@@ -140,6 +140,7 @@ describe("parseArtifacts", () => {
 });
 
 describe("buildBenchmark", () => {
+	// 用例内动态加载 run.ts（重模块图），turbo 全量并行时首次转换会超出默认 5s，显式放宽超时。
 	it("无基线 delta=null；有基线算净增量", async () => {
 		const { buildBenchmark } = await import("../src/run.ts");
 		const o = (score: number, turns: number, ms: number) => ({
@@ -158,7 +159,7 @@ describe("buildBenchmark", () => {
 		const withBase = buildBenchmark([o(1, 2, 2000)], [o(0.5, 1, 1000)]);
 		expect(withBase.run_summary.delta?.pass_rate).toBe(0.5);
 		expect(withBase.run_summary.without_skill?.pass_rate.mean).toBe(0.5);
-	});
+	}, 15000);
 });
 
 describe("aggregateReps", () => {

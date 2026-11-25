@@ -12,6 +12,14 @@ export default {
 		cacheWrite: "缓存写入 Token",
 		activeSeconds: "执行时长（秒）",
 		durationSeconds: "会话时长（秒）",
+		notes: {
+			inputTokens: "输入侧 Token 合计。缓存 Token 与输入 Token 的包含关系由 Provider 决定，此处不相加。",
+			outputTokens: "输出侧 Token 合计。",
+			cacheRead: "缓存命中读取的 Token。",
+			cacheWrite: "创建缓存写入的 Token。",
+			activeSeconds: "模型执行时间合计，只统计执行时间。",
+			durationSeconds: "会话存活时间合计。",
+		},
 	},
 	collection: {
 		pending: "待获取",

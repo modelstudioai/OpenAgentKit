@@ -3,7 +3,14 @@ import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { MemberLoginResult, PlanResponse, ResourceDraftView, TemplateView } from "@openagentkit/sdk/protocol";
+import type {
+	CatalogAgentView,
+	MemberLoginResult,
+	MemberUsageSummary,
+	PlanResponse,
+	ResourceDraftView,
+	TemplateView,
+} from "@openagentkit/sdk/protocol";
 import { expect, it, vi } from "vitest";
 import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
@@ -77,7 +84,7 @@ async function exerciseBackend(backend?: { driver: "mysql" | "postgres"; url?: s
 		const path = `/api/admin/templates/${template.template_id}`;
 		const listingInput = { display_name: input.name };
 		const plan = await data<PlanResponse>(await request(`${path}/listing/plan`, admin, "POST", listingInput), 200);
-		const agent = await data<{ slug: string }>(
+		const agent = await data<CatalogAgentView>(
 			await request(`${path}/listing`, admin, "POST", {
 				...listingInput,
 				plan_id: plan.plan_id,
@@ -132,7 +139,19 @@ async function exerciseBackend(backend?: { driver: "mysql" | "postgres"; url?: s
 			{ timeout: 4_000 },
 		);
 		await services.memberUsage.refresh(charge.subjectId, true);
-		expect((await services.memberUsage.summary(charge.subjectId)).session_count).toBe(1);
+		const memberList = await request(`/api/admin/members?search=${encodeURIComponent(username)}`, admin);
+		expect(memberList.status, await memberList.clone().text()).toBe(200);
+		expect(await memberList.json()).toMatchObject({
+			data: [
+				{
+					member_id: charge.subjectId,
+					usage_summary: {
+						session_count: 1,
+						agents: [{ slug: agent.slug, catalog_entry_id: agent.id, display_name: listingInput.display_name }],
+					},
+				},
+			],
+		});
 		expect(await services.memberUsage.summaryByTemplate({ search: template.template_id })).toMatchObject([
 			{ template_id: template.template_id, listing_status: "listed", session_count: 1 },
 		]);
@@ -181,9 +200,6 @@ async function exerciseBackend(backend?: { driver: "mysql" | "postgres"; url?: s
 		expect(await data(await request("/api/kit/sessions", member.access_token), 200)).toMatchObject([
 			{ session_id: sessionId },
 		]);
-		expect((await request("/api/kit/auth/logout", member.access_token, "POST")).status).toBe(204);
-		expect((await request("/api/kit/auth/me", member.access_token)).status).toBe(401);
-
 		// 两位数修订号仍按完整版本校验，相邻旧版本不能覆盖新内容。
 		const drafts = createResourceDraftStore(db);
 		const nextDraft = await drafts.create(`draft_${suffix}`, admin);
@@ -204,6 +220,7 @@ async function exerciseBackend(backend?: { driver: "mysql" | "postgres"; url?: s
 
 		// 缺失计量基线时，两张月账的未知标记随事务写入，撤销本次准入时一起恢复。
 		const limits = createUsageLimitStore(db);
+		const entryId = (await services.catalog.getBySlug(agent.slug))!.id;
 		const now = "2040-01-01T00:00:00.000Z";
 		const month = now.slice(0, 7);
 		await limits.prepare(charge.subjectId, now);
@@ -222,7 +239,7 @@ async function exerciseBackend(backend?: { driver: "mysql" | "postgres"; url?: s
 				tokens_unknown: expected,
 				active_seconds_unknown: expected,
 			});
-			expect(await limits.agentTotals(agent.slug, month)).toMatchObject({
+			expect(await limits.agentTotals(entryId, month)).toMatchObject({
 				tokens_unknown: expected,
 				active_seconds_unknown: expected,
 			});
@@ -230,6 +247,46 @@ async function exerciseBackend(backend?: { driver: "mysql" | "postgres"; url?: s
 		await expectUnknownFlags(1);
 		await undo();
 		await expectUnknownFlags(0);
+
+		const entryPath = `/api/admin/agents/${agent.slug}`;
+		const deletionPlan = await data<PlanResponse>(
+			await request(`${entryPath}/plan`, admin, "POST", { action: "delete" }),
+			200,
+		);
+		await data(
+			await request(entryPath, admin, "DELETE", {
+				plan_id: deletionPlan.plan_id,
+				confirm_token: deletionPlan.confirm_token,
+			}),
+			200,
+		);
+		expect(await services.catalog.get(agent.id)).toMatchObject({ deleted: true });
+		expect((await services.templates.get(template.template_id)).listing).toBeUndefined();
+		const relist = await data<PlanResponse>(await request(`${path}/listing/plan`, admin, "POST", listingInput), 200);
+		const replacement = await data<CatalogAgentView>(
+			await request(`${path}/listing`, admin, "POST", {
+				...listingInput,
+				plan_id: relist.plan_id,
+				confirm_token: relist.confirm_token,
+			}),
+			200,
+		);
+		expect(replacement.slug).toBe(agent.slug);
+		expect(await data(await request("/api/kit/session-agents", member.access_token), 200)).toEqual([]);
+		const { session_id: newSessionId } = await data<{ session_id: string }>(
+			await request("/api/kit/sessions", member.access_token, "POST", { agent_slug: replacement.slug }),
+			201,
+		);
+		const activeSessions = `/api/kit/sessions?agent_slug=${replacement.slug}&active_entry_only=true`;
+		expect(await data(await request(activeSessions, member.access_token), 200)).toMatchObject([
+			{ session_id: newSessionId },
+		]);
+		const memberUsage = `/api/admin/members/${charge.subjectId}/usage?catalog_entry_id=${agent.id}`;
+		const oldUsage = await data<MemberUsageSummary>(await request(memberUsage, admin), 200);
+		expect(oldUsage.session_count).toBe(1);
+		expect(oldUsage.agents.map((row) => row.catalog_entry_id).sort()).toEqual([agent.id, replacement.id].sort());
+		expect((await request("/api/kit/auth/logout", member.access_token, "POST")).status).toBe(204);
+		expect((await request("/api/kit/auth/me", member.access_token)).status).toBe(401);
 	} finally {
 		await services?.close();
 		await rm(dataDir, { recursive: true, force: true });

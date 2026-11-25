@@ -10,6 +10,7 @@ export default {
 	selectAria: "Select agent {{name}} ({{id}})",
 	emptyAgents: "No agents yet",
 	totalAgents: "{{total}} agents",
+	boundTag: 'Bound to "{{name}}"',
 	cols: {
 		name: "Name",
 		id: "ID",
