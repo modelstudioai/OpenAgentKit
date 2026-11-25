@@ -2,12 +2,20 @@
 import type { MemberAuthController } from "@openagentkit/sdk/auth";
 import { useMemberAuth } from "@openagentkit/sdk/auth/hooks-vue";
 import { EmptyState, ErrorState } from "@openagentpack/kit-chat-ui-vue";
-import { useTranslation } from "../../i18n/index.ts";
+import { computed } from "vue";
+import { useLocale, useTranslation } from "../../i18n/index.ts";
+import { resolveServerErrorMessage } from "../../i18n/server-error.ts";
 import MemberLoginForm from "./member-login-form.vue";
 
 const props = defineProps<{ controller: MemberAuthController }>();
 const { t } = useTranslation("auth");
 const { snapshot, login, logout, retry } = useMemberAuth(() => props.controller);
+const locale = useLocale();
+const loginError = computed(() => {
+	// 翻译读取 i18next 当前语言，订阅切换以更新已显示的错误。
+	void locale.value;
+	return resolveServerErrorMessage(snapshot.value.errorDetail) ?? snapshot.value.error;
+});
 </script>
 
 <template>
@@ -29,7 +37,7 @@ const { snapshot, login, logout, retry } = useMemberAuth(() => props.controller)
 	<MemberLoginForm
 		v-else
 		:pending="snapshot.pending"
-		:error="snapshot.error"
+		:error="loginError"
 		:on-login="login"
 		:on-retry="retry"
 	/>
