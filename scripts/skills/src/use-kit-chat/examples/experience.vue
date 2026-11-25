@@ -55,7 +55,10 @@ function handleSelection(event: Event) {
 	selectSession((event.currentTarget as HTMLSelectElement).value || null);
 }
 
-watch(() => props.agentSlug, () => selectSession(null));
+watch(
+	() => props.agentSlug,
+	() => selectSession(null),
+);
 
 async function sendMessage(text: string, skills?: string[]) {
 	stopError.value = null;
