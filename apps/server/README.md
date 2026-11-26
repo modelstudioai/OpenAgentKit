@@ -1,7 +1,7 @@
 # apps/server — Kit Server
 
-OpenAgentKit 的服务端：用 Hono 包装百炼 Managed Agent，向体验页提供数据面 API，
-向管理端提供控制面 API。运行时使用 Node.js 24 或更新版本，支持内置 SQLite、外部 MySQL 和 PostgreSQL。
+OpenAgentKit 服务端使用 NestJS 12.6.0 与 Express Adapter，向体验页提供数据面 API，
+向管理端提供控制面 API。运行时使用 Node.js 24.11.0 或更新版本，支持内置 SQLite、外部 MySQL 和 PostgreSQL。
 
 本文件面向人类读者；修改代码前请先读 [AGENTS.md](./AGENTS.md) 中的不变量和闸门。
 
@@ -44,6 +44,11 @@ node apps/server/dist/bin.js
 ```
 
 `pnpm dev` 会从仓库根 `.env` 读取配置；单独用 `pnpm --filter ... dev` 时也会加载根 `.env`。
+
+嵌入其他 Node 进程时，可从 `@openagentpack/kit-server` 或其 `/app` 子入口导入
+`createApp(config)`，等待应用初始化后由宿主调用 `app.listen()` 和 `app.close()`。
+独立 CLI 收到 SIGINT 或 SIGTERM 时，依次停止 HTTP 与流连接、清理会话订阅、关闭数据库。
+需要回滚框架时，使用上一版 Hono 发布包和当前数据库。
 
 ## 常用配置
 
@@ -172,19 +177,25 @@ KIT_DATABASE_URL=postgresql://kit_user:password@127.0.0.1:5432/kit
 
 ### 维护表结构
 
-修改 [共享表结构](src/store/schema/definition.sql)。例如给 `kit_members` 加一个可空的 `remark TEXT`，
-在该表的声明里加上这一列，并从仓库根目录运行：
+当前表结构统一在[实体目录](src/entity/tables/)维护。表名、列属性、主键、索引、外键和检查约束以 TypeORM 装饰器声明。例如给成员表增加可空的备注字段，只需在 `KitMembersEntity` 添加以下属性。
+
+```ts
+@Column("text", { nullable: true })
+declare remark: string | null;
+```
+
+新增表时，在 `src/entity/tables/index.ts` 登记实体类。从仓库根目录运行以下命令登记迁移并验证映射。
 
 ```bash
 pnpm --filter @openagentpack/kit-server db:generate --name add_member_remark
 pnpm --filter @openagentpack/kit-server db:check
 ```
 
-开发时主动运行 `db:generate` 登记版本并查看三库 SQL。提交共享定义、更新后的迁移清单、
-版本快照和显式步骤。`db:check` 校验这些来源及其可生成的迁移。
+开发时主动运行 `db:generate` 登记版本并查看三库 SQL。提交改动的实体、更新后的迁移清单、生成的版本快照和需要的显式步骤。`db:check` 校验这些来源、实体类及其可生成的迁移。
 
-`schema/generated/` 是本地生成目录。构建、开发启动、类型检查、测试和 OpenAPI 生成都会先按已登记的
-版本渲染产物。也可以单独运行 `pnpm --filter @openagentpack/kit-server db:render` 查看 SQL。
+`schema/generated/` 是本地生成目录。构建、开发启动、类型检查、测试和 OpenAPI 生成会先运行 `db:render`
+校验实体类并渲染迁移。也可以单独运行 `pnpm --filter @openagentpack/kit-server db:render` 查看 SQL。
+可用 `pnpm --filter @openagentpack/kit-server db:entities` 只读核对实体声明和方言映射。
 构建后的 `dist/schema/` 提供三库迁移 SQL 和结构快照。部署启动时，服务自动执行所选库待处理的
 迁移，并登记结果。
 
@@ -196,23 +207,35 @@ MySQL 的每个 DDL 步骤只写一条原子语句。SQLite 需要重建被外�
 
 三库按 [迁移清单](src/store/schema/manifest.json) 的条目顺序执行。原有 36 条在
 [history/](src/store/schema/history) 中逐条保存。生成命令会将新版本追加到同一份清单，并在
-[versions/](src/store/schema/versions) 保存版本快照和显式步骤。新库从 `001_init` 回放历史，
-已有库从各自的迁移记录接续。
+[versions/](src/store/schema/versions) 保存版本快照和显式步骤。全新空库按当前实体一次建表、写入初始数据，并登记已覆盖的版本。
+已有库根据已完成的迁移 ID 逐版升级，数据回填或转换使用对应的历史步骤。产品初始数据变更时，同时更新空库的初始记录和旧库的数据迁移。
+
+每张业务表在 `src/entity/tables/` 中有一个手写的 `@Entity` 类，列类型、可空性、主键和默认值写在对应属性的 TypeORM 装饰器上。JSON 文本列保留字符串属性。迁移完成后，Store 从这些装饰器构建当前连接的 `EntitySchema`，按目标库绑定物理类型、排序规则等差异。SQLite 复用 `node:sqlite` 连接，MySQL 和 PostgreSQL 复用已有池。
+业务 Service 通过 Store 提供的 TypeORM EntityManager 访问实体。分页、统计和带条件的更新使用 QueryBuilder，同一事务内的操作共用连接。
+TypeORM 的 `synchronize` 和 `migrationsRun` 均关闭。
 
 ## 代码结构
 
 ```text
-src/app.ts          Hono 应用与中间件装配
+src/app.ts          Nest 应用工厂
 src/bin.ts          进程入口
 src/config.ts       环境变量解析与校验
-src/routes/         数据面与控制面 HTTP 路由
-src/services/       业务编排、plan/确认、审计、采集与删除
+src/controller/     管理端、员工端及公开端点，按业务组织路由 Schema 与响应映射
+src/http/           共享请求管线、路由装饰器、SSE 传输与 OpenAPI 生成
+src/service/admin/  管理端用例，如目录管理、成员管理与资源发布
+src/service/staff/  员工端用例，如已上架智能体查询与本人会话操作
+src/service/shared/ 跨用例共用的业务类和规则，如附件挂载、会话状态推导、限额与确认闸门
+src/entity/         一表一类的实体定义与三库 TypeORM 映射
+src/store/          三库连接、SQL 执行、实体查询、事务与迁移
 src/gateway/        Provider 适配与脱敏投影
-src/store/          共享 Store 与 SQLite / MySQL / PostgreSQL 适配
-src/identity/       成员与管理员身份
+src/module/         Nest 与 Express 应用、Controller 注册、配置与服务依赖装配
+src/utils/          注入令牌、密码与签名、UTC 日期、事件缓存、限流和指标
 tests/              路由、Gateway 合同、服务与恢复场景
-openapi.json        由路由声明生成，供文档站同步
+openapi.json        由 Controller 元数据与 Zod Schema 生成，供文档站同步
 ```
+
+业务调用从 Controller 进入 Service。Service 通过实体读写数据，在业务操作中划定事务。会话索引、审计、模版版本和额度计量等共用能力位于 `service/shared/`。
+Nest 使用 `@Inject(StoreDatabase)` 提供同一数据库实例，远端访问经 Gateway。
 
 ## 验证
 

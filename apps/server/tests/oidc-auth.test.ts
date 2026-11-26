@@ -5,10 +5,10 @@ import { join } from "node:path";
 import type { CreateMemberResponse } from "@openagentkit/sdk/protocol";
 import { exportJWK, generateKeyPair, type JWTPayload, SignJWT } from "jose";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createApp } from "../src/app.ts";
+import { createApp, type KitServices } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
-import { signJwt } from "../src/services/identity.ts";
-import { openKitServices } from "../src/services/index.ts";
+import { KIT_SERVICES } from "../src/utils/injection-tokens.ts";
+import { signJwt } from "../src/utils/jwt.ts";
 
 const issuer = "https://sso.example.test/auth/realms/kit";
 const password = "Local!Password2026";
@@ -32,9 +32,10 @@ function headers(token?: string) {
 async function fixture() {
 	vi.useFakeTimers({ toFake: ["Date"] });
 	const dir = mkdtempSync(join(tmpdir(), "kit-oidc-auth-"));
-	let services: Awaited<ReturnType<typeof openKitServices>> | undefined;
+	let app: Awaited<ReturnType<typeof createApp>> | undefined;
+	const httpFetch = globalThis.fetch;
 	disposals.push(async () => {
-		await services?.close();
+		await app?.close();
 		rmSync(dir, { recursive: true, force: true });
 	});
 	const { privateKey, publicKey } = await generateKeyPair("RS256", { extractable: true });
@@ -46,8 +47,8 @@ async function fixture() {
 	vi.stubGlobal("fetch", fetchJwks);
 
 	async function open(mode: "member" | "oidc", passwordLogin = false, overrides: NodeJS.ProcessEnv = {}) {
-		await services?.close();
-		services = await openKitServices(
+		await app?.close();
+		app = await createApp(
 			loadConfig({
 				KIT_GATEWAY: "mock",
 				KIT_DATA_DIR: dir,
@@ -62,7 +63,9 @@ async function fixture() {
 				...overrides,
 			}),
 		);
-		return createApp(services);
+		await app.listen(0, "127.0.0.1");
+		const origin = await app.getUrl();
+		return { request: (path: string, init?: RequestInit) => httpFetch(new URL(path, origin), init) };
 	}
 	function accessToken(sub: string, overrides: JWTPayload = {}) {
 		const issued = Math.floor(Date.now() / 1000);
@@ -80,10 +83,10 @@ async function fixture() {
 			.setProtectedHeader({ alg: "RS256", kid: jwk.kid })
 			.sign(privateKey);
 	}
-	return { open, accessToken, services: () => services!, fetchJwks };
+	return { open, accessToken, services: () => app!.get<KitServices>(KIT_SERVICES), fetchJwks };
 }
 
-type TestApp = ReturnType<typeof createApp>;
+type TestApp = Awaited<ReturnType<Awaited<ReturnType<typeof fixture>>["open"]>>;
 async function responseData<T>(response: Response) {
 	return ((await response.json()) as { data: T }).data;
 }
@@ -187,6 +190,7 @@ describe("Keycloak 员工 OIDC", () => {
 		const app = await env.open("oidc", false, { KIT_KEYCLOAK_ENABLED: "false" });
 		const config = await responseData<{ auth: unknown }>(await app.request("/api/config"));
 		expect(config.auth).toEqual({ mode: "member", passwordLogin: true });
+		expect((await app.request(bindingPath(memberId), { headers: headers(admin) })).status).toBe(404);
 
 		const oidcToken = await env.accessToken("kc-alice");
 		expect((await app.request("/api/kit/auth/me", { headers: headers(oidcToken) })).status).toBe(401);

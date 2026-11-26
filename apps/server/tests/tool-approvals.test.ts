@@ -3,10 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ToolApprovalsResponse } from "@openagentkit/sdk/protocol";
 import { describe, expect, it, vi } from "vitest";
-import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
-import { createKitServices } from "../src/services/index.ts";
 import { openDatabase } from "../src/store/db.ts";
+import { createTestApp as createApp } from "./helpers/http.ts";
+import { createKitServices } from "./helpers/services.ts";
 
 const headers = { "content-type": "application/json", "x-kit-protocol-version": "3.0.0", cookie: "kit_subject=owner" };
 async function setup(text = "approval") {

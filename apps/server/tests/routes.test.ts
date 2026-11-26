@@ -3,10 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { CatalogAgentView, PlanResponse } from "@openagentkit/sdk/protocol";
 import { describe, expect, it, vi } from "vitest";
-import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
-import { createKitServices } from "../src/services/index.ts";
 import { openDatabase } from "../src/store/db.ts";
+import { createTestApp as createApp } from "./helpers/http.ts";
+import { createKitServices } from "./helpers/services.ts";
 
 function makeApp() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-test-"));
@@ -694,6 +694,14 @@ describe("会话生命周期与文件（B1/B2）", () => {
 		});
 		const planBody = (await plan.json()) as { data: { plan_id: string; confirm_token: string; destructive: boolean } };
 		expect(planBody.data.destructive).toBe(true);
+
+		const { sessionId: otherSession } = await seedAndCreate(app);
+		const wrongTarget = await app.request(`/api/kit/sessions/${otherSession}/archive`, {
+			method: "POST",
+			headers: { ...json, cookie },
+			body: JSON.stringify({ plan_id: planBody.data.plan_id, confirm_token: planBody.data.confirm_token }),
+		});
+		expect(wrongTarget.status).toBe(428);
 
 		const archived = await app.request(`/api/kit/sessions/${sessionId}/archive`, {
 			method: "POST",

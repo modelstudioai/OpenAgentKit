@@ -22,8 +22,12 @@ export const sqliteHistory = manifest
 	.map(({ id, source }) => {
 		if (!/^\d{3}_[a-z0-9_]+$/.test(id)) throw new Error("无效的 SQLite 历史迁移 ID");
 		if (source === "sql") {
-			const sql = readFileSync(new URL(`./schema/history/${id}.sql`, import.meta.url), "utf8");
-			return { id, sql };
+			return {
+				id,
+				get sql() {
+					return readFileSync(new URL(`./schema/history/${id}.sql`, import.meta.url), "utf8");
+				},
+			};
 		}
 		const run = runs[id];
 		if (source === "run" && run) return { id, run };

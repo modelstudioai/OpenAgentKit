@@ -11,7 +11,7 @@
 | SDK 数据层 | `pnpm --filter @openagentkit/sdk test` | SSE 帧编解码、快照归并、`event_id` 去重、重连与 `after` 续传、工具审批、确认令牌 |
 | chat-ui | `pnpm --filter @openagentpack/kit-chat-ui test` | 消息渲染、执行过程、附件与快捷指令、审批交互、空态与禁用态 |
 | chat-ui-vue | `pnpm --filter @openagentpack/kit-chat-ui-vue test` | 与 React 版对称的组件行为；L2 合同（testid / role / aria） |
-| server | `pnpm --filter @openagentpack/kit-server test` | 路由与权限、身份归属、确认闸门、事件不落库、OpenAPI 一致性 |
+| server | `pnpm --filter @openagentpack/kit-server test` | 实际 HTTP 监听、权限与身份、确认闸门、事件不落库、OpenAPI 一致性 |
 | gateway 合同 | 同上（`tests/fixtures/`） | Provider HTTP/SSE 映射；Mock 与 SdkGateway 跑同一套契约 |
 | Console | `pnpm --filter console test` | 管理客户端、导航、草稿所有权、资源表单与恢复 |
 | Web | `pnpm --filter web test` | 配置、身份隔离、宿主适配及页面纯逻辑 |
@@ -113,12 +113,12 @@ KIT_LIVE=1 pnpm --filter @openagentpack/kit-server exec tsx tests/live/smoke.ts
 | Skill 源 / 生成器 / 公开示例 | 检查或重新生成产物，编译示例，选择生成、链接、打包或浏览器边界回归 |
 | 架构、依赖配置或交付链路 | 检查依赖方向、工作区与任务图，按影响运行完整门禁或相应构建 |
 
-表结构改动运行 `db:check`，核对共享定义、迁移清单和逐条保存的历史，并验证三库产物可生成。
+表结构改动运行 `db:check`，核对从实体派生的结构、版本快照、迁移清单和逐条保存的历史，并验证三库产物可生成。
 直接运行下面的 Vitest 用例前，用 `db:render` 准备本地生成文件。服务端的 `test` 入口包含这一步。
-迁移用例 `apps/server/tests/database-migrations.test.ts` 覆盖空库回放、带数据的历史升级、旧外部库
+迁移用例 `apps/server/tests/database-migrations.test.ts` 覆盖空库直接建表、带数据的历史升级、旧外部库
 接续和 DDL 中途恢复。外部库用例用测试账号创建和清理独立的临时数据库。
-存储改动使用 `apps/server/tests/database-backends.test.ts` 验证登录、模版事务、会话索引、
-重复扣减、Logo 和资源发布。默认运行 SQLite。将 `KIT_TEST_MYSQL_URL` 和 `KIT_TEST_POSTGRES_URL`
+存储改动使用 `apps/server/tests/database-backends.test.ts` 验证登录、实体读写与跨业务 Service 的事务回滚、
+模版事务、会话索引、重复扣减、Logo 和资源发布。默认运行 SQLite。将 `KIT_TEST_MYSQL_URL` 和 `KIT_TEST_POSTGRES_URL`
 分别指向专用 MySQL 8.4 和 PostgreSQL 测试库，可对同一流程运行三种后端。测试使用 Mock Provider，
 会在指定数据库写入和保留测试记录。
 

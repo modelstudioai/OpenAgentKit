@@ -1,4 +1,4 @@
-# apps/server — Hono 服务端
+# apps/server — NestJS 服务端
 
 适用于本目录。先读[根规则](../../AGENTS.md)、[架构](../../docs/architecture.md)、
 [接口](../../docs/interfaces.md)与[协议](../../docs/protocol.md)。
@@ -7,15 +7,25 @@
 
 | 目录 | 职责 |
 | --- | --- |
-| `src/routes/` | Hono 路由、共享 Schema、OpenAPI 与 HTTP 边界 |
-| `src/services/` | 身份、业务编排、计划确认、共享流、批次与恢复 |
+| `src/controller/` | `admin/` 管理端、`staff/` 员工端、`meta.ts` 公开端点 |
+| `src/http/` | 共享请求管线、路由装饰器、SSE 传输与 OpenAPI 生成 |
+| `src/service/` | `admin/` 管理端用例、`staff/` 员工端用例、`shared/` 共用的业务服务类和状态类 |
+| `src/entity/` | `tables/` 下手写的 TypeORM 装饰器实体和三库映射 |
+| `src/store/` | 三库连接、SQL 执行、实体查询、事务与迁移 |
 | `src/gateway/` | SDK / Mock 适配、Provider 分页、规范化与安全投影 |
-| `src/store/` | SQLite / MySQL / PostgreSQL 连接与迁移、目录/索引、数值快照和临时执行账本 |
+| `src/module/` | Nest 应用与 Controller 注册、配置、连接及依赖装配 |
+| `src/utils/` | 注入令牌、密码与签名、UTC 日期、事件缓存、限流和指标 |
 | `tests/` / `tests/live/` | 服务端与 Provider 合同 / 显式启用的 Cloud 验证 |
 
 ## 不变量
 
-1. 路由和业务服务经 gateway 访问 Provider，不直接 import 上游 SDK 或复制其事件转换。
+1. 管理端 `/api/admin/*` 和员工端 `/api/kit/*` 的 Controller 分目录注册。
+   健康检查、公开配置和 Logo 读取由 `controller/meta.ts` 提供。
+   Controller 按业务域注入所需的 Service，Service 以类的实例方法实现业务逻辑并经 Gateway 访问 Provider。
+   同域 Controller 共享业务实例。Service 实例方法负责简单实体读写、Gateway 调用与多步业务编排。
+   `service/` 文件的运行时导出均为类，会话订阅与发布批次的状态由各自的实例管理。
+   单一用例的业务校验、计算和映射写在所属 Service 的实例方法中。多个业务域复用的规则由 `service/shared/` 中对应的 Service 提供。依赖装配与工厂位于模块层，Service 构造器初始化依赖和实例状态。
+   上游 SDK 底层调用和事件转换归 Gateway。
    现存 REST 窄入口的原因与范围以架构、接口及研究证据为准，不自行扩展旁路。
 2. Provider 凭据只在服务端解析并显式传入 SDK；Vault 明文仅存所属批次的内存。
    不写全局环境变量、YAML、SDK state、回执、响应、日志或错误。
@@ -47,10 +57,24 @@
     上下架和模版删除保留确认闸门，不能改变既有 Session 或删除远端引用资源。
 12. 上传路由不得使用 OpenAPI 无法渲染的文件 Schema；共享 DTO 取自 SDK `/protocol`。
     新增 op、Schema 或路由时同步登记和生成，不手改生成物。
-13. 数据库驱动归 `src/store/`，由 `server-database-drivers-in-store` 检查。业务 Store 共用
-    异步读写和事务接口，跨 Store 事务须共用连接。三库共用结构定义和迁移顺序，各库分别记账。
+13. 数据库驱动归 `src/store/`，由 `server-database-drivers-in-store` 检查。Nest 应用装配时
+    为 Service 提供同一个 `StoreDatabase`，业务事务内的读写共用连接。
+    Service 使用 `@Inject(StoreDatabase)` 取得实体读写接口，使用 `@Inject(类名)` 获取共用的 Service 实例，配置、Gateway 和事件缓冲按对应令牌注入。
+    实体是三库当前结构的唯一来源，各库分别登记已覆盖的迁移。
+    `server-typeorm-in-persistence` 允许 `service/`、`entity/` 和 `store/` 使用 TypeORM。每张业务表对应一个手写的
+    `@Entity` 类，列装饰器声明与数据库列同名的属性。Store 在当前连接执行实体查询，TypeORM 的自动同步和迁移关闭。
     [迁移清单](src/store/schema/manifest.json) 决定完整顺序。已交付的迁移保留原 ID、内容和顺序，
     新变更由生成命令追加到清单。
+14. Controller 调用 Service。Service 的实例方法承担业务校验、实体读写与事务。多个用例共用的能力放在 `service/shared/`。Provider 访问走 Service → Gateway。
+    Controller 使用 `http/` 的传输组件，`module/` 将已注册的 Controller 清单传入 OpenAPI 生成器。
+    `server-http-no-controller` 检查 HTTP 和 Controller 之间的依赖方向。
+    两端的 Controller 与 Service 只引用本端及共享 Service，分别由 `server-admin-no-staff-service` 和
+    `server-staff-no-admin-service` 检查。`server-shared-no-role-service` 约束共享 Service 独立于两端用例。
+    `server-business-rules-in-services` 阻止生产代码重新依赖顶层 `src/domain/`。
+    `server-http-no-infrastructure` 限制 HTTP 层直接访问基础设施。`server-service-persistence-api` 将 Service 的持久化依赖限制为实体表、StoreDatabase 和查询表达式，
+    `server-core-no-http`、`server-persistence-no-service` 和
+    `server-gateway-no-business`、`server-utils-no-business` 检查反向依赖。Nest 使用应用级实例管理订阅、确认和限流，
+    批次服务由资源发布服务管理。关停先释放 HTTP 和流，再关闭数据库。
 
 ## 修改步骤
 
@@ -60,22 +84,23 @@
 接入员工 OIDC 时，按 [kit-keycloak](../../assets/skills/kit-keycloak/SKILL.md) 配置 Realm、客户端与成员绑定，并验证实际登录。
 
 1. 在 `docs/interfaces.md` 核对或登记 op，确认身份、Schema、错误与恢复语义。
-2. 路由只负责边界；服务组织业务，gateway 处理 Provider 合同，store 处理事务与迁移。
+2. 路由映射 HTTP 合同，Service 组织用例并通过实体读写数据库，Store 提供连接、事务接口与迁移，Gateway 处理 Provider 合同。
 3. 改后端接口运行 `pnpm gen:openapi`，检查服务端 spec 与 SDK 生成类型。
 4. 在拥有风险的层补最少合同测试；Provider HTTP/SSE 映射放 gateway fixture，
    上层不重复映射。确认闸门必须验证无有效 token 拒绝与有效 token 通过。
 5. 改流或恢复时同步协议，覆盖静默断流、历史/实时交叉、游标续传或未知结果路径；
    live 结果不能由 Mock 代替。
-6. 改表先编辑 [共享表结构](src/store/schema/definition.sql)。改名、改类型、删除和回填按同一
+6. 改表时编辑对应的[实体类](src/entity/tables/)，新增表时在实体清单中登记。改名、改类型、删除和回填按同一
    版本补充显式步骤。以成员表新增备注为例，从仓库根目录运行下列命令。审核生成的三库迁移，
-   提交共享定义、更新后的迁移清单、版本快照和显式步骤。
+   提交实体修改、更新后的迁移清单、生成的版本快照和需要的显式步骤。
 
    ```bash
    pnpm --filter @openagentpack/kit-server db:generate --name add_member_remark
    pnpm --filter @openagentpack/kit-server db:check
    ```
 
-   服务端各开发和构建入口先运行 `db:render`，按已登记的版本写入 Git 忽略的 `schema/generated/`。
+   服务端各开发和构建入口先运行 `db:render`，校验实体类并将迁移产物写入 Git 忽略的
+   `schema/generated/`。`db:entities` 只读校验实体声明和派生的表结构。
 
 ## 验收
 

@@ -4,11 +4,11 @@ import { join } from "node:path";
 import { RemoteVaultDetailSchema } from "@openagentkit/sdk/protocol";
 import { setDefaultFetch } from "@openagentpack/sdk";
 import { afterEach, expect, it, vi } from "vitest";
-import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
 import { createSdkGateway } from "../src/gateway/sdk.ts";
-import { createKitServices } from "../src/services/index.ts";
 import { openDatabase } from "../src/store/db.ts";
+import { createTestApp as createApp } from "./helpers/http.ts";
+import { createKitServices } from "./helpers/services.ts";
 
 const gateway = () =>
 	createSdkGateway({ apiKey: "test-provider-key", baseUrl: "https://provider.example.test/api/v1/agentstudio" });

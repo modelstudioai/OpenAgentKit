@@ -2,10 +2,10 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
-import { createKitServices } from "../src/services/index.ts";
 import { openDatabase } from "../src/store/db.ts";
+import { createTestApp as createApp } from "./helpers/http.ts";
+import { createKitServices } from "./helpers/services.ts";
 
 const json = { "content-type": "application/json", "x-kit-protocol-version": "3.0.0" };
 

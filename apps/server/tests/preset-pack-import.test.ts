@@ -3,12 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PresetPackPreviewSchema, type PresetPacksPage, PresetPackViewSchema } from "@openagentkit/sdk/protocol";
 import { afterEach, expect, it, vi } from "vitest";
-import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
-import { createKitServices } from "../src/services/index.ts";
 import { openDatabase } from "../src/store/db.ts";
-import { createPresetPackStore } from "../src/store/preset-packs.ts";
-import { createSqliteDatabase } from "../src/store/sqlite.ts";
+import { createTestApp as createApp } from "./helpers/http.ts";
+import { createKitServices } from "./helpers/services.ts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => {
@@ -60,17 +58,18 @@ it("已保存预设包支持搜索和分页，返回安全摘要且不依赖 Pro
 	const created = await save(input);
 	expect(created.status).toBe(201);
 	const preset = PresetPackViewSchema.parse(((await created.json()) as { data: unknown }).data);
-	const store = createPresetPackStore(createSqliteDatabase(db));
-	const saved = [
-		preset,
-		...(await Promise.all(
-			Array.from({ length: 12 }, (_, index) => store.create({ ...preset, remote_agent_name: `资料%_${index + 1}` })),
-		)),
-	];
+	const providerRead = vi.spyOn(gateway, "listRemoteAgents");
+	const saved = [preset];
+	for (let index = 1; index <= 12; index++) {
+		providerRead.mockResolvedValueOnce([{ agent_id: input.remote_agent_id, name: `资料%_${index}`, version: 1 }]);
+		const response = await save(input);
+		expect(response.status).toBe(201);
+		saved.push(PresetPackViewSchema.parse(((await response.json()) as { data: unknown }).data));
+	}
 	const ordered = [...saved].sort(
 		(a, b) => b.created_at.localeCompare(a.created_at) || b.preset_pack_id.localeCompare(a.preset_pack_id),
 	);
-	const providerRead = vi.spyOn(gateway, "listRemoteAgents").mockRejectedValue(new Error("offline"));
+	providerRead.mockClear().mockRejectedValue(new Error("offline"));
 	const read = async (query: string) => {
 		const response = await app.request(`/api/admin/preset-packs${query}`, {
 			headers: { authorization: "Bearer preset-auditor" },

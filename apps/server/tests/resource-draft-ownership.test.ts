@@ -3,10 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { RESOURCE_DRAFT_KEY_HEADER, type ResourceDraftView } from "@openagentkit/sdk/protocol";
 import { expect, it } from "vitest";
-import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
-import { createKitServices } from "../src/services/index.ts";
 import { openDatabase } from "../src/store/db.ts";
+import { createTestApp as createApp } from "./helpers/http.ts";
+import { createKitServices } from "./helpers/services.ts";
 
 const firstKey = "1cdbca71-447b-4ba8-b559-5fc1f7877a1a";
 const otherKey = "4e9c73aa-2fe0-4b35-a6c7-c86e1c220095";

@@ -6,18 +6,21 @@ import { setDefaultFetch } from "@openagentpack/sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createSdkGateway } from "../src/gateway/sdk.ts";
 import type { GatewaySessionInfo } from "../src/gateway/types.ts";
-import { createEventBufferRegistry } from "../src/services/event-buffer.ts";
-import { createToolApprovals } from "../src/services/tool-approvals.ts";
-import { createUsageLimitService } from "../src/services/usage-limits.ts";
-import { createAuditLog } from "../src/store/audit.ts";
-import { createCatalogStore } from "../src/store/catalog.ts";
+import { AuditService } from "../src/service/shared/audit.ts";
+import { CatalogService } from "../src/service/shared/catalog.ts";
+import { MemberDirectoryService } from "../src/service/shared/member-directory.ts";
+import { SessionHistoryService } from "../src/service/shared/session/session-history.ts";
+import { SessionIndexService } from "../src/service/shared/session/session-index.ts";
+import { SessionRuntimeService } from "../src/service/shared/session/session-runtime.ts";
+import { ToolApprovalService } from "../src/service/shared/session/tool-approvals.ts";
+import { TemplateCatalogService } from "../src/service/shared/templates.ts";
+import { SessionUsageSnapshotService } from "../src/service/shared/usage/session-usage-snapshot.ts";
+import { UsageAccountingService } from "../src/service/shared/usage/usage-accounting.ts";
+import { UsageLimitService } from "../src/service/shared/usage/usage-limits.ts";
 import { openDatabase } from "../src/store/db.ts";
-import { createMemberStore } from "../src/store/members.ts";
-import { createSessionUsageStore } from "../src/store/session-usage.ts";
-import { createSessionIndex } from "../src/store/sessions.ts";
 import { createSqliteDatabase } from "../src/store/sqlite.ts";
-import { createTemplateStore } from "../src/store/templates.ts";
-import { createUsageLimitStore } from "../src/store/usage-limits.ts";
+import { createEventBufferRegistry } from "../src/utils/event-buffer.ts";
+import { seedUsageMember } from "./helpers/usage-member.ts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => {
@@ -27,10 +30,10 @@ afterEach(() => {
 
 /** 模版条目 fixture：catalog slug 与 setup 的会话 agentSlug 同名，限额外部数据最少。 */
 async function listing(db: ReturnType<typeof openDatabase>) {
-	const catalog = createCatalogStore(createSqliteDatabase(db));
-	const templates = createTemplateStore(createSqliteDatabase(db));
+	const catalog = new CatalogService(createSqliteDatabase(db));
+	const templates = new TemplateCatalogService(createSqliteDatabase(db));
 	await catalog.create({ slug: "agent", display_name: "模版条目", remote_agent_id: "remote-x" });
-	const created = await templates.create({
+	const created = await templates.createInitialVersion({
 		name: "客服模版",
 		remote_agent_id: "remote-x",
 		remote_agent_name: "xktest",
@@ -44,7 +47,7 @@ async function listing(db: ReturnType<typeof openDatabase>) {
 		vault_ids: [],
 		category: "general",
 	});
-	await templates.saveListing(created.template_id, async () => (await catalog.getBySlug("agent"))!);
+	await templates.linkCatalog(created.template_id, (await catalog.getBySlug("agent"))!.id);
 	return created.template_id;
 }
 
@@ -53,10 +56,11 @@ async function setup() {
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
 	const db = openDatabase(dataDir);
 	cleanup.push(() => db.close());
-	const members = createMemberStore(createSqliteDatabase(db));
-	const index = createSessionIndex(createSqliteDatabase(db));
+	const members = new MemberDirectoryService(createSqliteDatabase(db));
+	const index = new SessionIndexService(createSqliteDatabase(db));
 	let now = new Date("2026-10-31T20:00:00.000Z");
-	await members.create(
+	await seedUsageMember(
+		db,
 		{
 			member_id: "member",
 			username: "member",
@@ -106,17 +110,21 @@ async function setup() {
 		return Response.json({ data: [{ id: eventId }] });
 	});
 	setDefaultFetch(post);
-	const store = createUsageLimitStore(createSqliteDatabase(db));
+	const store = new UsageAccountingService(createSqliteDatabase(db));
 	const make = () =>
-		createUsageLimitService({
+		new UsageLimitService(
 			store,
 			members,
-			sessionIndex: index,
-			snapshots: createSessionUsageStore(createSqliteDatabase(db)),
+			index,
+			new SessionUsageSnapshotService(createSqliteDatabase(db)),
 			gateway,
-			audit: createAuditLog(createSqliteDatabase(db)),
-			now: () => now,
-		});
+			new SessionHistoryService(gateway),
+			new AuditService(createSqliteDatabase(db)),
+			createEventBufferRegistry(),
+			{ usageLimitTiming: { now: () => now } },
+			createSqliteDatabase(db),
+			new SessionRuntimeService(),
+		);
 	const service = make();
 	return {
 		service,
@@ -128,7 +136,6 @@ async function setup() {
 		details,
 		events,
 		post,
-		members,
 		index,
 		respond: (value: typeof response) => {
 			response = value;
@@ -281,7 +288,8 @@ describe("明确拒绝与未知发送结果的恢复边界（合成 HTTP，不�
 			"admin",
 		);
 		const now = new Date().toISOString();
-		await f.members.create(
+		await seedUsageMember(
+			f.db,
 			{
 				member_id: "member_b",
 				username: "member_b",
@@ -324,9 +332,9 @@ describe("明确拒绝与未知发送结果的恢复边界（合成 HTTP，不�
 		expect(await f.store.agentTotals("agent", "2026-10")).toMatchObject({ tokens: 100, tokens_unknown: 0 });
 		const reopened = openDatabase(f.dataDir);
 		cleanup.push(() => reopened.close());
-		expect((await createUsageLimitStore(createSqliteDatabase(reopened)).agentTotals("agent", "2026-10")).tokens).toBe(
-			100,
-		);
+		expect(
+			(await new UsageAccountingService(createSqliteDatabase(reopened)).agentTotals("agent", "2026-10")).tokens,
+		).toBe(100);
 		await f.store.observe("sb", { input_tokens: 60, output_tokens: 40 }, now);
 		expect((await f.store.agentTotals("agent", "2026-10")).tokens).toBe(100);
 	});
@@ -354,8 +362,11 @@ describe("明确拒绝与未知发送结果的恢复边界（合成 HTTP，不�
 				},
 			},
 		]);
-		const approvals = createToolApprovals(f.gateway, createEventBufferRegistry(), (id, decision, send) =>
-			f.service.runApproval(id, decision, send),
+		const approvals = new ToolApprovalService(
+			f.gateway,
+			new SessionHistoryService(f.gateway),
+			createEventBufferRegistry(),
+			(id, decision, send) => f.service.runApproval(id, decision, send),
 		);
 		const decision = { batch_id: "batch", call_id: "call", result: "allow" as const };
 		await expect(approvals.respond("s", decision)).rejects.toMatchObject({ details: { request_rejected: true } });

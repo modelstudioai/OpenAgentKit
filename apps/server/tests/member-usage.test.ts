@@ -10,16 +10,15 @@ import type {
 } from "@openagentkit/sdk/protocol";
 import type { ModelUsagePage, ModelUsageRequest, ToolUsagePage } from "@openagentpack/sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
 import type { GatewaySessionInfo } from "../src/gateway/types.ts";
-import { createKitServices } from "../src/services/index.ts";
-import { createMemberUsageService } from "../src/services/member-usage.ts";
+import { TemplateCatalogService } from "../src/service/shared/templates.ts";
+import { SessionUsageSnapshotService } from "../src/service/shared/usage/session-usage-snapshot.ts";
 import { openDatabase } from "../src/store/db.ts";
-import { createMemberStore } from "../src/store/members.ts";
-import { createSessionUsageStore } from "../src/store/session-usage.ts";
 import { createSqliteDatabase } from "../src/store/sqlite.ts";
-import { createTemplateStore } from "../src/store/templates.ts";
+import { createTestApp as createApp } from "./helpers/http.ts";
+import { createKitServices } from "./helpers/services.ts";
+import { seedUsageMember } from "./helpers/usage-member.ts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => {
@@ -40,10 +39,10 @@ function setup(env: Record<string, string | undefined> = {}) {
 		...env,
 	});
 	const services = createKitServices(config, db);
-	const members = createMemberStore(createSqliteDatabase(db));
-	const usageStore = createSessionUsageStore(createSqliteDatabase(db));
+	const usageStore = new SessionUsageSnapshotService(createSqliteDatabase(db));
 	async function member(id: string) {
-		return await members.create(
+		return await seedUsageMember(
+			db,
 			{
 				member_id: id,
 				username: id,
@@ -59,7 +58,7 @@ function setup(env: Record<string, string | undefined> = {}) {
 	async function session(id: string, memberId: string, agentSlug = "agent-a") {
 		await services.sessionIndex.create({ sessionId: id, subjectId: memberId, agentSlug });
 	}
-	return { db, services, app: createApp(services), usageStore, members, member, session, dataDir };
+	return { db, services, app: createApp(services), usageStore, member, session, dataDir };
 }
 function detail(id: string, input = 10): GatewaySessionInfo {
 	return {
@@ -148,7 +147,8 @@ describe("成员累计会话用量", () => {
 	});
 
 	it("请求超时释放采集槽位，迟到结果不能写入；TTL内新增会话仍触发采集", async () => {
-		const { services, member, session, usageStore, members } = setup();
+		const { services, member, session } = setup();
+		const usage = services.memberUsage;
 		await member("member_a");
 		for (let i = 0; i < 8; i++) await session(`s${i}`, "member_a");
 		let late: ((value: GatewaySessionInfo) => void) | undefined;
@@ -159,14 +159,15 @@ describe("成员累计会话用量", () => {
 				});
 			return detail(id);
 		});
-		const usage = createMemberUsageService({
-			store: usageStore,
-			members,
-			gateway: services.gateway,
-			sessionIndex: services.sessionIndex,
-			detailTimeoutMs: 5,
-		});
-		await usage.refresh("member_a", true);
+		vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+		try {
+			const refresh = usage.refresh("member_a", true);
+			await vi.waitFor(() => expect(late).toBeDefined());
+			await vi.runAllTimersAsync();
+			await refresh;
+		} finally {
+			vi.useRealTimers();
+		}
 		expect(await usage.summary("member_a")).toMatchObject({
 			refresh_status: "partial",
 			completed_sessions: 8,
@@ -243,18 +244,17 @@ describe("成员累计会话用量", () => {
 		expect(await usageStore.save("deleted", { input_tokens: 1 }, "running", oldDeletedRevision)).toBe(false);
 		expect(await usageStore.save("retry", { input_tokens: 1 }, "running", oldRetryRevision)).toBe(false);
 		expect(await services.sessionIndex.get("deleted")).toBeNull();
-		expect(await usageStore.summary("member_a")).toMatchObject({
+		expect(await services.memberUsage.summary("member_a")).toMatchObject({
 			session_count: 2,
 			deleted_session_count: 1,
 			metrics: { input_tokens: { value: 70, covered_sessions: 2 } },
 		});
 		const reopened = openDatabase(dataDir);
 		cleanup.push(() => reopened.close());
-		const recovered = createSessionUsageStore(createSqliteDatabase(reopened));
-		expect((await recovered.summary("member_a")).metrics.input_tokens.value).toBe(70);
-		expect(
-			(await recovered.list("member_a", { limit: 20 })).data.find((row) => row.session_id === "deleted")?.deleted_at,
-		).toBeTruthy();
+		const recovered = new SessionUsageSnapshotService(createSqliteDatabase(reopened));
+		expect((await recovered.get("deleted"))?.input_tokens).toBe(30);
+		expect((await recovered.get("retry"))?.input_tokens).toBe(40);
+		expect((await recovered.get("deleted"))?.deleted_at).toBeTruthy();
 	});
 
 	it("读取同步不让本地过期running覆盖采集后的idle或已封存状态", async () => {
@@ -283,10 +283,15 @@ describe("成员累计会话用量", () => {
 		db.exec(
 			"CREATE TRIGGER reject_snapshot BEFORE UPDATE ON kit_session_usage BEGIN SELECT RAISE(ABORT, 'test write failure'); END;",
 		);
-		await expect(services.memberUsage.captureFinal("s", detail("s"))).rejects.toThrow("test write failure");
+		await expect(services.memberUsage.captureFinal("s", detail("s"))).rejects.toMatchObject({
+			code: "ERR_SQLITE_ERROR",
+		});
 		expect(await services.memberUsage.hasFinalSnapshot("s")).toBe(false);
 		expect(await services.sessionIndex.get("s")).not.toBeNull();
 		await expect(services.memberUsage.markDeleted("s")).rejects.toThrow("先成功保存");
+		db.exec("DROP TRIGGER reject_snapshot");
+		await services.memberUsage.captureFinal("s", detail("s"));
+		expect(await services.memberUsage.hasFinalSnapshot("s")).toBe(true);
 	});
 
 	it("管理端列表和详情合同，auditor可读，非管理员拒绝，游标绑定成员与Agent", async () => {
@@ -339,8 +344,8 @@ describe("成员累计会话用量", () => {
 		});
 		await services.catalog.setStatus("template-tpl", "listed");
 		await services.catalog.create({ slug: "legacy-dup", display_name: "旧条目", remote_agent_id: "agent_x" });
-		const templateStore = createTemplateStore(createSqliteDatabase(db));
-		const created = await templateStore.create({
+		const templateStore = new TemplateCatalogService(createSqliteDatabase(db));
+		const created = await templateStore.createInitialVersion({
 			name: "客服模版",
 			remote_agent_id: "agent_x",
 			remote_agent_name: "xktest",
@@ -354,11 +359,8 @@ describe("成员累计会话用量", () => {
 			vault_ids: [],
 			category: "general",
 		});
-		await templateStore.saveListing(
-			created.template_id,
-			async () => (await services.catalog.getBySlug("template-tpl"))!,
-		);
-		await templateStore.create({
+		await templateStore.linkCatalog(created.template_id, (await services.catalog.getBySlug("template-tpl"))!.id);
+		await templateStore.createInitialVersion({
 			name: "空闲模版",
 			remote_agent_id: "agent_idle",
 			remote_agent_name: "idle",
@@ -440,8 +442,8 @@ describe("成员累计会话用量", () => {
 			display_name: "模版上架条目",
 			remote_agent_id: "agent_x",
 		});
-		const templateStore = createTemplateStore(createSqliteDatabase(db));
-		const created = await templateStore.create({
+		const templateStore = new TemplateCatalogService(createSqliteDatabase(db));
+		const created = await templateStore.createInitialVersion({
 			name: "客服模版",
 			remote_agent_id: "agent_x",
 			remote_agent_name: "xktest",
@@ -455,10 +457,7 @@ describe("成员累计会话用量", () => {
 			vault_ids: [],
 			category: "general",
 		});
-		await templateStore.saveListing(
-			created.template_id,
-			async () => (await services.catalog.getBySlug("template-tpl"))!,
-		);
+		await templateStore.linkCatalog(created.template_id, (await services.catalog.getBySlug("template-tpl"))!.id);
 		await session("s1", "member_a", "legacy-dup");
 		await session("s2", "member_b", "template-tpl");
 		await session("s3", "member_a", "template-tpl");
@@ -500,8 +499,8 @@ describe("成员累计会话用量", () => {
 	it("模版限额路由：auditor 可读不可写，未设置返回不限量，模版不存在 404", async () => {
 		const { services, db, app } = setup();
 		await services.catalog.create({ slug: "tpl-l", display_name: "限额条目", remote_agent_id: "agent_z" });
-		const templates = createTemplateStore(createSqliteDatabase(db));
-		const created = await templates.create({
+		const templates = new TemplateCatalogService(createSqliteDatabase(db));
+		const created = await templates.createInitialVersion({
 			name: "限额模版",
 			remote_agent_id: "agent_z",
 			remote_agent_name: "zagent",
@@ -515,7 +514,7 @@ describe("成员累计会话用量", () => {
 			vault_ids: [],
 			category: "general",
 		});
-		await templates.saveListing(created.template_id, async () => (await services.catalog.getBySlug("tpl-l"))!);
+		await templates.linkCatalog(created.template_id, (await services.catalog.getBySlug("tpl-l"))!.id);
 		const path = `/api/admin/usage/templates/${created.template_id}/usage-limit`;
 		const initial = await app.request(path, { headers: auditor });
 		expect(initial.status).toBe(200);
@@ -545,8 +544,8 @@ describe("成员累计会话用量", () => {
 		const { services, db, app, member } = setup();
 		await member("member_a");
 		await services.catalog.create({ slug: "trend-tpl", display_name: "趋势条目", remote_agent_id: "agent_t" });
-		const templates = createTemplateStore(createSqliteDatabase(db));
-		const created = await templates.create({
+		const templates = new TemplateCatalogService(createSqliteDatabase(db));
+		const created = await templates.createInitialVersion({
 			name: "趋势模版",
 			remote_agent_id: "agent_t",
 			remote_agent_name: "tagent",
@@ -560,7 +559,7 @@ describe("成员累计会话用量", () => {
 			vault_ids: [],
 			category: "general",
 		});
-		await templates.saveListing(created.template_id, async () => (await services.catalog.getBySlug("trend-tpl"))!);
+		await templates.linkCatalog(created.template_id, (await services.catalog.getBySlug("trend-tpl"))!.id);
 		const usageDay = new Date().toISOString().slice(0, 10);
 		db.prepare(
 			"INSERT INTO kit_usage_limit_agent_days (agent_slug, day, tokens, active_seconds) VALUES (?, ?, ?, ?)",

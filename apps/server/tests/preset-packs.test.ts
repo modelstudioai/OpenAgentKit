@@ -1,13 +1,12 @@
-import "@hono/zod-openapi";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PresetPackAgentResourcesSchema } from "@openagentkit/sdk/protocol";
 import { afterEach, expect, it } from "vitest";
-import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
-import { createKitServices } from "../src/services/index.ts";
 import { openDatabase } from "../src/store/db.ts";
+import { createTestApp as createApp } from "./helpers/http.ts";
+import { createKitServices } from "./helpers/services.ts";
 
 const cleanup: (() => Promise<void>)[] = [];
 afterEach(async () => {

@@ -8,10 +8,11 @@ import {
 	type TemplateView,
 } from "@openagentkit/sdk/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
-import { createKitServices } from "../src/services/index.ts";
 import { openDatabase } from "../src/store/db.ts";
+import { historicalSqlite } from "./helpers/historical-sqlite.ts";
+import { createTestApp as createApp } from "./helpers/http.ts";
+import { createKitServices } from "./helpers/services.ts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => {
@@ -22,9 +23,10 @@ afterEach(() => {
 const selected = { remote_agent_id: "agent_mock_assistant", remote_environment_id: "env_mock_analysis" };
 const headers = { authorization: "Bearer template-admin", "content-type": "application/json" };
 
-function setup() {
+function setup(initialise?: (dataDir: string) => void) {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-template-versions-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
+	initialise?.(dataDir);
 	const config = loadConfig({
 		KIT_GATEWAY: "mock",
 		KIT_AUTH_MODE: "anonymous",
@@ -325,37 +327,58 @@ describe("模版版本", () => {
 
 	// 从真实018之前的列形状升级，已有模版和来源关联仍有效，V1快照只补一次。
 	it("旧模版迁移为V1，保留完整配置和现有上架关联", async () => {
-		const { save, publish, db, reopen } = setup();
-		const template = await save({ description: "迁移前配置", vault_ids: ["vlt_mock_1"] });
-		const catalog = await publish(template);
-		db.prepare("UPDATE kit_templates SET config_json=json_remove(config_json,'$.category') WHERE template_id=?").run(
-			template.template_id,
-		);
-		const original = db
-			.prepare("SELECT config_json,created_at FROM kit_templates WHERE template_id=?")
-			.get(template.template_id);
-		db.exec(`DROP TABLE kit_template_versions;
-			ALTER TABLE kit_templates DROP COLUMN version;
-			ALTER TABLE kit_templates DROP COLUMN updated_at;
-			DELETE FROM _kit_migrations WHERE id='018_template_versions';`);
-		db.close();
-		const upgraded = reopen();
-		expect(await upgraded.services.templates.get(template.template_id)).toMatchObject({
-			version: 1,
-			category: "general",
-			updated_at: template.created_at,
+		const templateId = "template_legacy";
+		const catalogId = "catalog_legacy";
+		const createdAt = "2026-10-20T09:00:00.000Z";
+		const config = {
+			...selected,
+			name: "旧模版",
+			remote_agent_name: "旧助手",
 			description: "迁移前配置",
 			vault_ids: ["vlt_mock_1"],
-			listing: { catalog_id: catalog.id, status: "listed" },
+		};
+		const original = { config_json: JSON.stringify(config), created_at: createdAt };
+		const upgraded = setup((dataDir) => {
+			const legacy = historicalSqlite(dataDir, "017_template_listings");
+			try {
+				legacy
+					.prepare(
+						"INSERT INTO kit_templates (template_id, name, remote_agent_id, remote_agent_name, config_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+					)
+					.run(
+						templateId,
+						config.name,
+						config.remote_agent_id,
+						config.remote_agent_name,
+						original.config_json,
+						createdAt,
+					);
+				legacy
+					.prepare(
+						"INSERT INTO catalog_agents (id, slug, display_name, remote_agent_id, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+					)
+					.run(catalogId, "legacy-template", config.name, config.remote_agent_id, "listed", createdAt, createdAt);
+				legacy
+					.prepare("INSERT INTO kit_template_listings (template_id, catalog_id) VALUES (?, ?)")
+					.run(templateId, catalogId);
+			} finally {
+				legacy.close();
+			}
 		});
-		expect(upgraded.history(template.template_id)).toMatchObject([{ version: 1, ...original }]);
+		expect(await upgraded.services.templates.get(templateId)).toMatchObject({
+			version: 1,
+			category: "general",
+			updated_at: createdAt,
+			description: "迁移前配置",
+			vault_ids: ["vlt_mock_1"],
+			listing: { catalog_id: catalogId, status: "listed" },
+		});
+		expect(upgraded.history(templateId)).toMatchObject([{ version: 1, ...original }]);
 		expect((await upgraded.services.templates.list({ limit: 20 })).data[0]?.category).toBe("general");
-		expect((await upgraded.services.templates.versions(template.template_id, { limit: 20 })).data[0]?.category).toBe(
-			"general",
-		);
-		expect((await upgraded.services.templates.version(template.template_id, 1)).category).toBe("general");
-		expect(upgraded.history(template.template_id)[0]?.config).not.toHaveProperty("category");
-		expect(reopen().history(template.template_id)).toEqual(upgraded.history(template.template_id));
+		expect((await upgraded.services.templates.versions(templateId, { limit: 20 })).data[0]?.category).toBe("general");
+		expect((await upgraded.services.templates.version(templateId, 1)).category).toBe("general");
+		expect(upgraded.history(templateId)[0]?.config).not.toHaveProperty("category");
+		expect(upgraded.reopen().history(templateId)).toEqual(upgraded.history(templateId));
 	});
 
 	// 并发编辑必须拒绝旧基线，不能丢失胜出者的配置或产生空洞版本。

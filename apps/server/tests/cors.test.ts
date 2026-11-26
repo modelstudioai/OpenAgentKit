@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createOriginMatcher, DEFAULT_CORS_ORIGINS } from "../src/services/cors.ts";
+import { createOriginMatcher, DEFAULT_CORS_ORIGINS } from "../src/http/cors.ts";
 
 /**
  * 保护的不变量：壳（桌面/移动）用 127.0.0.1 + 随机端口加载体验页，必须能跨源访问 server；

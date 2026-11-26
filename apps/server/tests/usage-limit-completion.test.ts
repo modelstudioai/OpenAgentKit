@@ -5,10 +5,9 @@ import { type SessionEvent, type SseFrame, sessionStatusOf } from "@openagentkit
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../src/config.ts";
 import type { GatewaySessionInfo } from "../src/gateway/types.ts";
-import { createKitServices } from "../src/services/index.ts";
 import { openDatabase } from "../src/store/db.ts";
-import { createMemberStore } from "../src/store/members.ts";
-import { createSqliteDatabase } from "../src/store/sqlite.ts";
+import { createKitServices } from "./helpers/services.ts";
+import { seedUsageMember } from "./helpers/usage-member.ts";
 
 const cleanups: (() => void | Promise<void>)[] = [];
 afterEach(async () => {
@@ -44,7 +43,8 @@ async function setup(reuseAcrossTurns = false) {
 	cleanups.push(() => db.close());
 	const services = createKitServices(loadConfig({ KIT_GATEWAY: "mock", KIT_DATA_DIR: directory }), db);
 	const now = new Date().toISOString();
-	await createMemberStore(createSqliteDatabase(db)).create(
+	await seedUsageMember(
+		db,
 		{
 			member_id: "member",
 			username: "member",

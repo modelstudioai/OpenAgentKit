@@ -4,11 +4,11 @@
 
 | 形态 | 产物 | 运行时 | 说明 |
 | --- | --- | --- | --- |
-| `apps/server` | Node ESM | Node ≥ 24 | Hono 应用工厂 `createKitServer()`，数据面 + 控制面 |
+| `apps/server` | Node ESM | Node ≥ 24.11.0 | NestJS 与 Express，异步 `createApp(config)` 提供数据面和控制面 |
 | `apps/web` | 纯静态 CSR | 浏览器 | 体验页，支持 Web / H5 |
 | `apps/web-vue` | 纯静态 CSR | 浏览器 | 体验页 Vue 3 平行实现；先做参考实现，暂不进发布产物 |
 | `apps/console` | 纯静态 CSR | 浏览器 | 管理端 |
-| `apps/storybook` | Next.js 静态导出（`out/`） | 构建使用 Node ≥24；部署为静态托管 | Fumadocs 文档站与组件预览 |
+| `apps/storybook` | Next.js 静态导出（`out/`） | 构建使用仓库 Node 版本，部署为静态托管 | Fumadocs 文档站与组件预览 |
 
 体验页采用 CSR，构建产物可独立静态部署。
 
@@ -328,32 +328,50 @@ server 仅使用 SDK 公开导出，浏览器仍只消费安全的 session-event
 
 ```
 apps/server/src/
-  app.ts            createKitServer(options) → Hono app（组合中间件与路由）
-  index.ts          CLI 入口：读 env → 建 app → @hono/node-server 起服务
+  app.ts            createApp(config) 初始化 Nest 应用，由调用方监听
+  bin.ts            CLI 读取配置、监听端口、处理 SIGINT / SIGTERM
   config.ts         env 解析与校验（失败即退出，不带默认凭据跑）
-  gateway/          ProviderGateway 抽象 + sdk.ts（真实）+ mock.ts（演示与测试）
-                    + bailian-rest.ts（建会话挂附件的窄口子，见其文件头与 docs/research/）
-                    + sdk-context.ts（ProjectRuntimeContext 装配，live 脚本共用）
-  services/         identity（成员 / OIDC / anonymous / jwt / admin 多令牌+角色）/ sessions / session-streams /
-                    event-buffer / tool-approvals /
-                    attachments（挂载路径解析）/ confirm-gate / rate-limit / metrics /
-                    catalog / templates（本地模版资源复核、保存与上架确认）/ project / operations / members（本地账号创建与密码派生）/
-                    member-usage（累计采集）/ session-deletion + session-mutations（删除协调与写入保护）
-  store/            异步数据库接口、SQLite / MySQL / PostgreSQL 适配、共享结构与迁移生成、DAO（catalog / templates / members / sessions / quota / operations / audit /
-                    session-usage 数值快照 / session-deletions 阶段）
-  routes/           kit/*（数据面）admin/*（控制面）config / healthz
+  controller/
+    admin/          管理端控制面（/api/admin/*）
+    staff/          员工端数据面（/api/kit/*）
+    meta.ts         健康检查、公开配置与 Logo 接口
+  http/             共享请求管线、路由装饰器、SSE 和 OpenAPI 3.1
+  service/
+    admin/          管理端的目录管理、成员管理、资源发布与调试等用例
+    staff/          员工端的已上架智能体查询与本人会话操作
+    shared/         共享会话运行时、本地及 Keycloak OIDC 认证、用量与确认等业务类
+  entity/           一表一类的实体定义与三库 TypeORM 映射
+  store/            异步数据库接口、SQLite / MySQL / PostgreSQL 驱动、共享结构与迁移生成
+  gateway/          ProviderGateway 的真实 SDK 与 Mock 实现；bailian-rest.ts 承载附件挂载窄入口
+  module/           Nest 应用与 Controller 注册、数据库初始化与应用级实例管理
+  utils/            注入令牌、密码与签名、UTC 日期、事件缓存、限流和指标
 ```
+
+Controller 调用 Service。Service 直接读写业务实体，跨域复用的业务逻辑由 `service/shared/` 下的 Service 提供。Provider 访问经 Service → Gateway。
+管理端和员工端由 `module/http-controllers.ts` 中各自的 HTTP 模块注册。Controller 按域注入 Service。
+员工端会话目录、线程、审批和 SSE 入口共享 `KitSessionService`，管理端调试线程由 `DebugService` 处理。
+业务校验、计算和数据映射由对应 Service 的实例方法实现。成员额度准入由 `UsageLimitService` 判定，普通会话操作和事件流共用 `SessionRuntimeService` 推导会话状态。
+目录资源校验由 `CatalogResourceService` 查询 Provider，会话历史和审批快照由 `SessionHistoryService` 查询。认证请求解析和 SSE 传输位于 `http/`。
+例如会话归档由 `KitSessionService` 调用共享 `ConfirmGate` 消费一次性令牌，签名和校验由 `utils/confirm-token.ts` 提供。
+`AdminCatalogService` 管理目录条目，`StaffCatalogService` 提供已上架智能体的列表和详情，并为本人会话搜索匹配智能体名称。
+Nest 按业务域注册 Service，构造器以 `@Inject(类名)` 取得共享业务服务和 StoreDatabase。配置、Gateway 接口及事件缓冲等运行时值使用各自的注入令牌。管理端和员工端共用同一应用中的会话运行时、限额和确认闸门实例。
+每个发布批次的 `DraftRuntime` 持有动作表、在途请求和关闭状态，各子路由共用这一实例。
+`@KitRoute` 使用同一份 Zod 合同注册 Nest 路由、校验请求并生成 OpenAPI。
+在线文档与离线生成使用相同的 Controller 清单。
+HTTP 边界接收退出信号后取消流式请求，HTTP 停止监听后释放共享上游订阅并关闭数据库。
+依赖规则在 [Server AGENTS.md](../apps/server/AGENTS.md) 列出，统一由 `pnpm check:architecture` 执行。
+[ADR-0033](adr/0033-nestjs-server.md)
 
 关键不变量：
 
-1. **路由不直接调用 SDK**，一律经 `ProviderGateway`。这样 mock 与真实 provider 走同一条
-   路径，也让上游 API 变化只影响一个文件。SDK 的形状事实（list 返回 `{data}`、会话只认
+1. **Provider 访问经 Service 和 Gateway**。Mock 与真实 SDK 实现共享 Gateway 合同。
+   SDK 的形状事实（list 返回 `{data}`、会话只认
    声明键、建会话必须带 environment、apply 需走 backend 感知的 sync 等）记录在
    `docs/research/sdk-session-runtime.md`，改 gateway 前必读。
 2. **事件不落库**。Kit 数据库存 catalog、已保存模版配置目录与不可变配置版本、成员目录、session 本地索引、成员累计用量数值快照、
    删除阶段、月度限额数值增量与请求幂等索引、兼容 Credits 账本、operation 与审计。快照只含归属与运营字段，不含事件、消息正文或
    附件字节。成员密码仅存随机盐与 scrypt 派生值，不保存明文；Provider 凭据不落库。
-3. **凭据不出服务端**：`CredentialResolver` 只在 gateway 内部使用；错误与日志脱敏。
+3. **凭据不出服务端**。`config.ts` 解析的 Provider 凭据经模块显式传入 Gateway，错误与日志脱敏。
 4. **破坏性动作两段式**：`plan` 发一次性 `confirmationToken`，执行请求必须回传
    （字段名是 snake_case：`plan_id` / `confirm_token`）；上下架同样走这条闸门。
 5. **管控面角色分离**：`auditor` 只读，写方法在中间件层统一拒绝（不逐路由加判断，避免漏）。
@@ -365,14 +383,17 @@ apps/server/src/
 
 ### 数据库接入
 
-`loadConfig` 解析 `KIT_DB_DRIVER`，启动时经 `store/connect.ts` 打开数据库并应用对应迁移。
-新库从 `001_init` 按既有顺序回放历史，再执行生成的后续版本。三库的 SQL 从共享定义和同一
-迁移顺序生成，各库独立登记执行结果。MySQL 在迁移锁下保存步骤进度并核对 DDL 执行结果。
-连接层在交给服务装配前恢复中断操作与发布批次，并应用默认 Credits 策略。
+`loadConfig` 解析 `KIT_DB_DRIVER`，启动时经 `store/connect.ts` 打开数据库。
+`entity/tables/` 的装饰器定义当前结构。每个类对应一张表，属性和类装饰器记录字段、主键、索引、外键和检查约束。
+构建从实体派生 SQLite、MySQL、PostgreSQL 的物理结构。空库直接建立当前结构并写入初始数据和版本记录。
+已有库按已完成的版本执行后续迁移。MySQL 在迁移锁下保存步骤进度并核对 DDL 执行结果。
+结构就绪后，Store 用同一物理连接或连接池初始化 TypeORM DataSource。
+随后 `module/infrastructure.ts` 调用 `StartupService` 标记中断操作和待核对的发布批次，并应用默认 Credits 策略。
 默认 SQLite 从 `KIT_DATA_DIR/kit.sqlite` 打开。MySQL 8.4 和 PostgreSQL 从 `KIT_DATABASE_URL` 连接已创建的数据库。
-Store 共用 `database.ts` 的异步读写与事务接口，事务内跨 Store 调用绑定同一连接。
+应用装配将同一 `StoreDatabase` 注入各个 Service。附件归属、成员登录凭据和预设包由各自的 Service 通过 EntityManager 读写。
+模版更新、目录关联和额度结算由对应的业务 Service 协调。事务内各个 Service 使用同一连接，任一步骤抛错时一起回滚。
 SQLite 的读写排队保护单连接事务。MySQL 和 PostgreSQL 使用连接池并沿用单实例写入顺序。
-`server-database-drivers-in-store` 将数据库驱动限制在服务端 Store 层。
+`server-database-drivers-in-store` 限制数据库驱动的归属，`server-typeorm-in-persistence` 限制 TypeORM 导入。
 
 ### 员工 OIDC 登录
 
@@ -412,10 +433,10 @@ API 无取消信号，因此不能保证超时底层 HTTP 立即结束。按游�
 
 ### 成员月度限额
 
-`services/usage-limits.ts` 在既有订阅就绪、工具审批与删除保护之后、Gateway 消息发送或
-允许工具执行之前检查真实本地成员的月度状态。`store/usage-limits.ts` 保存默认/个人配置、
+`service/shared/usage/usage-limits.ts` 在既有订阅就绪、工具审批与删除保护之后、Gateway 消息发送或
+允许工具执行之前检查真实本地成员的月度状态。限额服务维护默认和个人配置，共享计量服务 `service/shared/usage/usage-accounting.ts` 保存
 首次计量时间、逐会话累计基线、执行受理月、每月增量及请求指纹/结果 ID，不保存事件正文。
-`services/quota.ts` 对本地成员仅记录 Turn 运营索引；匿名和外部 JWT 保留兼容 Credits 行为。
+`service/shared/usage/quota.ts` 对本地成员仅记录 Turn 运营索引，匿名和外部 JWT 保留兼容 Credits 行为。
 
 读状态与发送共享成员级串行锁，读取最新 Provider 数值后再判定；已删除会话使用封存快照。
 启用指标无法确认时拒绝新消费。有限额的成员在上一轮尚未结束时不能并发开始下一轮；确认

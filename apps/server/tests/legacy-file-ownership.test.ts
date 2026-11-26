@@ -4,11 +4,10 @@ import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { createMockGateway } from "../src/gateway/mock.ts";
-import { createFileService } from "../src/services/files.ts";
+import { SessionIndexService } from "../src/service/shared/session/session-index.ts";
 import { openDatabase } from "../src/store/db.ts";
-import { createFileStore } from "../src/store/files.ts";
-import { createSessionIndex } from "../src/store/sessions.ts";
 import { createSqliteDatabase } from "../src/store/sqlite.ts";
+import { createFileService } from "./helpers/file-service.ts";
 import { historicalSqlite } from "./helpers/historical-sqlite.ts";
 
 const cleanup: (() => void)[] = [];
@@ -64,20 +63,16 @@ describe("历史附件归属升级", () => {
 				.get("session_before_upgrade", owner),
 		).not.toBeNull();
 		const db = legacy.reopen();
-		const files = createFileService({
-			gateway,
-			store: createFileStore(createSqliteDatabase(db)),
-			sessionIndex: createSessionIndex(createSqliteDatabase(db)),
-		});
+		const files = createFileService(db, gateway);
 		expect(new TextDecoder().decode((await files.download(owner, file.file_id)).body)).toBe("old contents");
 		await files.requireUploads(owner, [file]);
 		await expect(files.requireUploads(other, [file])).rejects.toThrow("文件不存在");
 		await expect(files.download(other, file.file_id, "session_before_upgrade")).rejects.toMatchObject({ status: 404 });
 		// 重开不重复迁移；删掉会话索引也不会丢掉已恢复的上传归属。
-		await createSessionIndex(createSqliteDatabase(db)).remove("session_before_upgrade");
-		await createSessionIndex(createSqliteDatabase(db)).remove("session_same_owner");
+		await new SessionIndexService(createSqliteDatabase(db)).remove("session_before_upgrade");
+		await new SessionIndexService(createSqliteDatabase(db)).remove("session_same_owner");
 		const reopened = legacy.reopen();
-		expect(await createFileStore(createSqliteDatabase(reopened)).isUploadedBy(file.file_id, owner)).toBe(true);
+		await createFileService(reopened, gateway).requireUploads(owner, [file]);
 		expect(reopened.prepare("SELECT COUNT(*) AS count FROM kit_uploaded_files").get()?.count).toBe(1);
 	});
 
@@ -102,11 +97,7 @@ describe("历史附件归属升级", () => {
 			legacy.db.prepare("UPDATE kit_sessions SET files_json = ? WHERE session_id = ?").run(value, `malformed_${i}`);
 		}
 		const db = legacy.reopen();
-		const files = createFileService({
-			gateway,
-			store: createFileStore(createSqliteDatabase(db)),
-			sessionIndex: createSessionIndex(createSqliteDatabase(db)),
-		});
+		const files = createFileService(db, gateway);
 		for (const subjectId of [owner, other]) {
 			await expect(files.requireUploads(subjectId, [ambiguous])).rejects.toThrow("文件不存在");
 			await expect(files.download(subjectId, ambiguous.file_id)).rejects.toMatchObject({ status: 404 });

@@ -587,11 +587,11 @@ Credits 政策、审批、override 或加油包操作。本地成员使用新月
 
 | 接口 | 定义位置 | 消费方 |
 | --- | --- | --- |
-| `ProviderGateway` | `apps/server/src/gateway/types.ts` | `SdkGateway` / `MockGateway` / services |
-| `CredentialResolver` | `apps/server/src/identity/credentials.ts` | gateway 构造 |
-| `IdentityProvider` | `apps/server/src/identity/types.ts` | server 身份中间件；仅 server 使用 |
-| `StoreDatabase` | `apps/server/src/store/database.ts` | 服务端 Store 共用，SQLite、MySQL 和 PostgreSQL 适配负责连接及迁移 |
-| `EventBuffer` | `apps/server/src/services/event-buffer.ts` | 内存实现；预留 Redis adapter |
+| `ProviderGateway` | `apps/server/src/gateway/types.ts` | Service、`SdkGateway` 与 `MockGateway` |
+| `BailianCredentials` | `apps/server/src/config.ts` | Nest 依赖装配、Gateway 构造 |
+| `IdentityProvider` | `apps/server/src/utils/identity-types.ts` | 服务端身份合同 |
+| `StoreDatabase` | `apps/server/src/store/database.ts` | 为各业务 Service 提供绑定当前事务的 TypeORM EntityManager，三库适配负责连接、建库及迁移 |
+| `EventBuffer` | `apps/server/src/utils/event-buffer.ts` | 内存实现，预留 Redis adapter |
 | `KitClient` | `packages/sdk/src/providers/kit/client.ts` | SDK 各功能 `/hooks` hooks、仓库脚本、测试 |
 | `ClientOperations` | `packages/sdk/src/providers/kit/client.ts` | 显式 Client 的可选请求映射；复用 Request/BackendOperation 与现有 DTO，缺失能力不回退固定路由 |
 | 组件调用流程 | `packages/sdk/src/sessions/`、`files/`、`chat/composer.ts`、`usage/` | Web、各功能 React hooks 与外部前端；目录、附件、首次发送、详情、产物和额度恢复，不新增 server op |

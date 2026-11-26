@@ -1,15 +1,13 @@
-import "@hono/zod-openapi";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { RemoteSkillReference } from "@openagentkit/sdk/protocol";
 import { afterEach, expect, it, vi } from "vitest";
-import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
-import { createMockRemoteSkillGateway } from "../src/gateway/mock-remote-skills.ts";
-import { createKitServices } from "../src/services/index.ts";
-import { validateRemoteSkillReferences } from "../src/services/remote-skills.ts";
 import { openDatabase } from "../src/store/db.ts";
+import { createTestApp as createApp } from "./helpers/http.ts";
+import { createKitServices } from "./helpers/services.ts";
+import { fixture } from "./helpers/yaml-draft.ts";
 
 const cleanup: (() => Promise<void>)[] = [];
 afterEach(async () => {
@@ -17,28 +15,35 @@ afterEach(async () => {
 	vi.restoreAllMocks();
 });
 
-it("保存校验空选择零调用、相同版本去重；来源不符/失效/不存在拒绝", async () => {
-	const gateway = createMockRemoteSkillGateway();
-	const spy = vi.spyOn(gateway, "getRemoteSkillVersion");
-	await validateRemoteSkillReferences(gateway, []);
-	expect(spy).not.toHaveBeenCalled();
+it("保存批次前复核精确 Skill 版本；空选择、重复或无效版本均不查询 Provider", async () => {
+	const t = await fixture();
+	const draft = await t.create();
+	const spy = vi.spyOn(t.services.gateway, "getRemoteSkillVersion");
+	const submit = async (name: string, skills: RemoteSkillReference[]) =>
+		t.request(`${t.base(draft)}/agents`, "POST", {
+			base_revision: await t.revision(draft),
+			name,
+			model: "auto",
+			skills,
+		});
+
+	expect((await submit("empty-skills", [])).status).toBe(201);
 	const reference: RemoteSkillReference = { type: "official", skill_id: "skill_mock_research", version: "1.0" };
-	await validateRemoteSkillReferences(gateway, [reference, reference]);
-	expect(spy).toHaveBeenCalledTimes(1);
-	await expect(validateRemoteSkillReferences(gateway, [{ ...reference, type: "custom" }])).rejects.toMatchObject({
-		code: "invalid_request",
-	});
-	await expect(
-		validateRemoteSkillReferences(gateway, [{ type: "custom", skill_id: "skill_mock_checking", version: "1.0" }]),
-	).rejects.toMatchObject({ code: "invalid_request" });
-	await expect(validateRemoteSkillReferences(gateway, [{ ...reference, version: "missing" }])).rejects.toMatchObject({
-		code: "not_found",
-	});
-	spy.mockClear();
-	await expect(validateRemoteSkillReferences(gateway, [{ ...reference, version: "latest" }])).rejects.toMatchObject({
-		code: "invalid_request",
-	});
+	expect((await submit("duplicate", [reference, reference])).status).toBe(400);
+	expect((await submit("latest", [{ ...reference, version: "latest" }])).status).toBe(400);
 	expect(spy).not.toHaveBeenCalled();
+
+	expect((await submit("valid", [reference])).status).toBe(201);
+	expect(spy).toHaveBeenCalledWith(reference.skill_id, reference.version);
+	expect(spy).toHaveBeenCalledTimes(1);
+	for (const [name, skill, code] of [
+		["mismatch", { ...reference, type: "custom" }, "invalid_request"],
+		["unavailable", { type: "custom", skill_id: "skill_mock_checking", version: "1.0" }, "invalid_request"],
+		["missing", { ...reference, version: "missing" }, "not_found"],
+	] as const) {
+		const response = await submit(name, [skill]);
+		expect(await response.json()).toMatchObject({ error: { code } });
+	}
 });
 
 it("管理员和auditor可读既有候选，未认证和非法来源不可访问，不增加远端资源或写入审计", async () => {

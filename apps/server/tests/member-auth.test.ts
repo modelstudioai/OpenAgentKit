@@ -4,12 +4,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { MemberAuthView, MemberLoginResult } from "@openagentkit/sdk/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
-import { signJwt } from "../src/services/identity.ts";
-import { createKitServices } from "../src/services/index.ts";
-import { MEMBER_SESSION_TTL_MS } from "../src/services/member-auth.ts";
+import { streamSession } from "../src/http/session-stream.ts";
 import { openDatabase } from "../src/store/db.ts";
+import { MEMBER_SESSION_TTL_MS } from "../src/utils/identity-types.ts";
+import { signJwt } from "../src/utils/jwt.ts";
+import { createTestApp as createApp } from "./helpers/http.ts";
+import { createKitServices } from "./helpers/services.ts";
 
 const dispose: (() => void | Promise<void>)[] = [];
 afterEach(async () => {
@@ -75,6 +76,50 @@ async function readUntil(reader: ReadableStreamDefaultReader<Uint8Array>, marker
 }
 
 describe("本地成员认证", () => {
+	it("JSON 后缀媒体类型可以登录，格式损坏时响应和日志都不会包含请求内容", async () => {
+		const { app } = await makeApp();
+		await seedMember(app);
+		const vendorHeaders = { "content-type": "application/vnd.kit+json; charset=utf-8" };
+		const loginResponse = await app.request("/api/kit/auth/login", {
+			method: "POST",
+			headers: vendorHeaders,
+			body: JSON.stringify({ username: "alice", password }),
+		});
+		expect(loginResponse.status).toBe(200);
+		const sensitive = "private-marker";
+		const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+		try {
+			const response = await app.request("/api/kit/auth/login", {
+				method: "POST",
+				headers: json,
+				body: sensitive,
+			});
+			expect(response.status).toBe(400);
+			const body = await response.text();
+			expect(JSON.parse(body)).toMatchObject({ error: { code: "invalid_request", message: "JSON 请求体格式无效" } });
+			expect(body).not.toContain(sensitive);
+			expect(JSON.stringify(logged.mock.calls)).not.toContain(sensitive);
+		} finally {
+			logged.mockRestore();
+		}
+	});
+
+	it("SSE 首段尚未读取就断开时释放认证绑定且不会订阅上游", async () => {
+		const close = vi.fn();
+		const started = vi.fn();
+		const connection = new AbortController();
+		const grant = { signal: new AbortController().signal, assertActive: () => {}, close };
+		const response = streamSession(connection.signal, grant, async function* () {
+			started();
+			yield { type: "ping", data: { t: 1 } };
+		});
+		const cancelled = response.body!.cancel();
+		connection.abort();
+		await cancelled;
+		await vi.waitFor(() => expect(close).toHaveBeenCalledOnce());
+		expect(started).not.toHaveBeenCalled();
+	});
+
 	it("默认要求登录；管理员创建后可登录、刷新恢复并保持跨设备会话归属；退出仅撤销当前凭据", async () => {
 		const { app, services, db, config, dataDir } = await makeApp();
 		expect(config.authMode).toBe("member");
@@ -339,7 +384,7 @@ describe("本地成员认证", () => {
 		await seedMember(app);
 		const signedIn = await login(app);
 		const sessionId = await createSession(app, signedIn.access_token);
-		const bind = services.memberAuth.bindStream;
+		const bind = services.memberAuth.bindStream.bind(services.memberAuth);
 		const released = vi.fn();
 		vi.spyOn(services.memberAuth, "bindStream").mockImplementation(async (record) => {
 			const binding = await bind(record);

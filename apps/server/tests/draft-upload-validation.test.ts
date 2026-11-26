@@ -1,4 +1,3 @@
-import "@hono/zod-openapi";
 import JSZip from "jszip";
 import { expect, it } from "vitest";
 import { prepareProjectSkillUpload } from "../src/gateway/project-skill-sources.ts";

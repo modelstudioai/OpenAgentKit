@@ -6,6 +6,9 @@ import { createConnection, type RowDataPacket } from "mysql2/promise";
 import { Client, types } from "pg";
 import { expect, it } from "vitest";
 import { loadConfig } from "../src/config.ts";
+import { renderEntityDefinition } from "../src/entity/definition.ts";
+import { createEntitySchemas, validateEntityDefinitions } from "../src/entity/schema.ts";
+import { entityClasses } from "../src/entity/tables/index.ts";
 import type { SqlValue } from "../src/store/database.ts";
 import { migrateSqliteSchema } from "../src/store/db.ts";
 import { connectMysql } from "../src/store/mysql.ts";
@@ -24,7 +27,10 @@ import { sqliteHistory } from "../src/store/sqlite-history.ts";
 import { mysqlSchema } from "./fixtures/before-shared-mysql.ts";
 import { postgresSchema } from "./fixtures/before-shared-postgres.ts";
 
-const original = readFileSync(new URL("../src/store/schema/definition.sql", import.meta.url), "utf8");
+const original = readFileSync(
+	new URL("../src/store/schema/versions/034_oidc_member_auth.sql", import.meta.url),
+	"utf8",
+);
 const label = "O'Brien \\ data";
 const added =
 	original.replace(
@@ -43,8 +49,8 @@ const explicit = {
 	],
 };
 const versions = [
-	{ id: "034_add_member_remark", sql: added },
-	{ id: "035_rename_remark", sql: renamed, explicit },
+	{ id: "035_add_member_remark", sql: added },
+	{ id: "036_rename_remark", sql: renamed, explicit },
 ];
 
 function withUpgrades(program: MigrationProgram, dialect: "sqlite" | ExternalDialect): MigrationProgram {
@@ -66,23 +72,115 @@ it("共享定义生成三库新增列、索引及显式迁移，未生成变更�
 	expect(() => buildArtifacts([], added)).toThrow(/未生成/);
 	expect(() => buildArtifacts(versions.slice(0, 1), renamed)).toThrow(/未生成/);
 	expect(() => buildArtifacts([{ id: "033_remove", sql: renamed }], renamed)).not.toThrow();
-	expect(() => compileChange("035_rename", readDefinition(added), readDefinition(renamed))).toThrow(/显式/);
-	const artifacts = buildArtifacts(versions, renamed);
+	expect(() => compileChange("036_rename", readDefinition(added), readDefinition(renamed))).toThrow(/显式/);
+	const migrations = buildArtifacts(versions, renamed);
 	for (const dialect of ["sqlite", "mysql", "postgres"]) {
-		const migrations = artifacts.get(`generated/migrations.${dialect}.sql`);
-		expect(migrations).toContain("-- 034_add_member_remark");
-		expect(migrations).toMatch(/ADD COLUMN ["\x60]remark/);
-		expect(migrations).toContain("idx_members_remark");
-		expect(migrations).toMatch(/CREATE TABLE ["\x60]kit_migration_notes/);
-		expect(migrations).toContain(renameSql);
-		expect(migrations).toContain(backfillSql);
+		const sql = migrations.get(`generated/migrations.${dialect}.sql`);
+		expect(sql).toContain("-- 035_add_member_remark");
+		expect(sql).toMatch(/ADD COLUMN ["\x60]remark/);
+		expect(sql).toContain("idx_members_remark");
+		expect(sql).toMatch(/CREATE TABLE ["\x60]kit_migration_notes/);
+		expect(sql).toContain(renameSql);
+		expect(sql).toContain(backfillSql);
 	}
+});
+
+it("实体生成的 SQL 快照可以回读，并能检出字段约束漂移", () => {
+	const snapshot = readDefinition(renderEntityDefinition());
+	expect(() => validateEntityDefinitions(snapshot)).not.toThrow();
+	const email = snapshot.find(({ name }) => name === "kit_members")!.columns.find(({ name }) => name === "email")!;
+	email.nullable = !email.nullable;
+	expect(() => validateEntityDefinitions(snapshot)).toThrow(/kit_members\.email/);
+});
+
+it("三库实体沿用当前结构、组合主键、自增和二进制类型", () => {
+	for (const [program, binaryType, usernameCollation, draftEngine] of [
+		[sqliteProgram, "blob", "NOCASE", "directory"],
+		[mysqlProgram, "longblob", "ascii_general_ci", "yaml"],
+		[postgresProgram, "bytea", undefined, "yaml"],
+	] as const) {
+		const schemas = createEntitySchemas(program.current).map((entity) => entity.options);
+		const tableNames = program.current.map(({ name }) => name);
+		expect(schemas.map(({ tableName }) => tableName)).toEqual(tableNames);
+		expect(Object.keys(entityClasses)).toEqual(tableNames);
+		expect(new Set(schemas.map(({ target }) => target)).size).toBe(tableNames.length);
+		for (const [index, table] of program.current.entries()) {
+			const entity = schemas[index]!;
+			expect(entity.target).toBe(entityClasses[table.name as keyof typeof entityClasses]);
+			expect(entity.synchronize).toBe(false);
+			expect(Object.keys(entity.columns)).toEqual(table.columns.map(({ name }) => name));
+			expect(
+				Object.keys(entity.columns)
+					.filter((name) => entity.columns[name]?.primary)
+					.sort(),
+			).toEqual([...table.primary].sort());
+		}
+		expect(schemas.find(({ tableName }) => tableName === "kit_audit")?.columns.id?.generated).toBe("increment");
+		expect(schemas.find(({ tableName }) => tableName === "kit_branding_logo")?.columns.bytes?.type).toBe(binaryType);
+		const members = schemas.find(({ tableName }) => tableName === "kit_members")!.columns;
+		expect(members.email?.nullable).toBe(true);
+		expect(members.username?.unique).toBe(true);
+		expect(members.username?.collation).toBe(usernameCollation);
+		const drafts = schemas.find(({ tableName }) => tableName === "kit_resource_drafts")!.columns;
+		expect(drafts.engine?.default).toBe(draftEngine);
+		if (program === mysqlProgram) {
+			expect(drafts.active_owner).toMatchObject({
+				generatedType: "STORED",
+				asExpression: "CASE WHEN status != 'published' OR cleanup_pending = 1 THEN owner END",
+			});
+		} else {
+			expect(drafts.active_owner).toBeUndefined();
+		}
+	}
+	// 三个连接的方言配置也不能污染下一次启动时读取的原始类元数据。
+	expect(() => validateEntityDefinitions(sqliteProgram.current)).not.toThrow();
 });
 
 it("MySQL 和 PostgreSQL 的迁移产物沿用完整清单顺序", () => {
 	const ids = manifest.map(({ id }) => id);
 	for (const program of [mysqlProgram, postgresProgram]) {
 		expect([...program.history, ...program.upgrades].map(({ id }) => id)).toEqual(ids);
+	}
+});
+
+it("没有迁移记录的非空 SQLite 不进入实体建库流程", () => {
+	const db = new DatabaseSync(":memory:");
+	try {
+		db.exec("CREATE TABLE unrelated (id INTEGER); INSERT INTO unrelated VALUES (9)");
+		expect(() => migrateSqliteSchema(db)).toThrow(/已有表但缺少 Kit 迁移记录/);
+		expect(db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all()).toEqual([{ name: "unrelated" }]);
+		expect(db.prepare("SELECT id FROM unrelated").get()).toEqual({ id: 9 });
+	} finally {
+		db.close();
+	}
+});
+
+it("SQLite 空库直接按实体建表，与历史升级的业务初始数据、版本基线一致", () => {
+	const fresh = new DatabaseSync(":memory:");
+	const legacy = new DatabaseSync(":memory:");
+	try {
+		const first = sqliteHistory[0]!;
+		legacy.exec("CREATE TABLE _kit_migrations (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL)");
+		legacy.exec(first.sql!);
+		legacy.prepare("INSERT INTO _kit_migrations VALUES (?, ?)").run(first.id, "2026-10-20");
+		migrateSqliteSchema(legacy);
+		// 旧版的数据迁移只能在升级旧库时运行。
+		migrateSqliteSchema(fresh, {
+			...sqliteProgram,
+			upgrades: sqliteProgram.upgrades.map((version) => ({
+				...version,
+				steps: [{ data: ["INSERT INTO obsolete_table VALUES (1)"] }],
+			})),
+		});
+		for (const table of sqliteProgram.current) {
+			const sql = `SELECT * FROM "${table.name}"`;
+			expect(fresh.prepare(sql).all()).toEqual(legacy.prepare(sql).all());
+		}
+		const ids = "SELECT id FROM _kit_migrations ORDER BY id";
+		expect(fresh.prepare(ids).all()).toEqual(legacy.prepare(ids).all());
+	} finally {
+		fresh.close();
+		legacy.close();
 	}
 });
 
@@ -306,7 +404,16 @@ for (const [dialect, url, program] of [
 		async () => {
 			const fixture = await openExternal(dialect, url!);
 			try {
-				await fixture.run(historyThrough(program, "001_init"));
+				// 从旧发布包真实执行过的首个版本起步，随后由当前版本逐步升级。
+				const first = program.history[0]!;
+				for (const step of first.steps) {
+					if (!("sql" in step)) throw new Error("初始迁移应当只包含 DDL");
+					await fixture.db.execute(step.sql);
+				}
+				await fixture.db.execute(
+					"CREATE TABLE _kit_migrations (id VARCHAR(100) PRIMARY KEY, applied_at VARCHAR(32) NOT NULL)",
+				);
+				await fixture.db.execute("INSERT INTO _kit_migrations VALUES (?, ?)", first.id, "2026-10-20");
 				const names = await externalTableNames(fixture.db, dialect);
 				expect(names.filter((name) => !name.startsWith("_")).sort()).toEqual([
 					"catalog_agents",
@@ -365,15 +472,17 @@ for (const [dialect, url, program] of [
 				const db = await fixture.connect();
 				try {
 					const expectedIds = [id, "kit_history_adopted", ...program.upgrades.map((upgrade) => upgrade.id)].sort();
-					expect(await db.all("SELECT id FROM _kit_migrations ORDER BY id")).toEqual(expectedIds.map((id) => ({ id })));
-					expect(await db.get("SELECT monthly_credits FROM quota_policy WHERE id = 1")).toMatchObject({
+					expect(await fixture.db.rows("SELECT id FROM _kit_migrations ORDER BY id")).toEqual(
+						expectedIds.map((id) => ({ id })),
+					);
+					expect((await fixture.db.rows("SELECT monthly_credits FROM quota_policy WHERE id = 1"))[0]).toMatchObject({
 						monthly_credits: 321,
 					});
-					expect(await db.get("SELECT product_name FROM kit_branding WHERE id = 1")).toEqual({
+					expect((await fixture.db.rows("SELECT product_name FROM kit_branding WHERE id = 1"))[0]).toEqual({
 						product_name: "OpenAgentPack Kit",
 					});
-					expect(await db.all("SELECT draft_id FROM kit_retired_directory_drafts")).toEqual([]);
-					await db.run("ALTER TABLE kit_members ADD COLUMN untracked TEXT");
+					expect(await fixture.db.rows("SELECT draft_id FROM kit_retired_directory_drafts")).toEqual([]);
+					await fixture.db.execute("ALTER TABLE kit_members ADD COLUMN untracked TEXT");
 				} finally {
 					await db.close();
 				}
@@ -386,7 +495,7 @@ for (const [dialect, url, program] of [
 	);
 
 	it.skipIf(!url)(
-		`${dialect} 首条 DDL 后中断时可安全重启`,
+		`${dialect} 实体建库在首条 DDL 后中断时可安全重启`,
 		async () => {
 			const fixture = await openExternal(dialect, url!);
 			try {
@@ -397,17 +506,21 @@ for (const [dialect, url, program] of [
 						if (/^CREATE TABLE [\x60"]catalog_agents[\x60"] /i.test(sql)) throw new Error("injected interruption");
 					},
 				};
-				await expect(fixture.run(program, failed)).rejects.toThrow(/001_init 第 1 步失败/);
+				await expect(fixture.run(program, failed)).rejects.toThrow(/kit_entity_bootstrap_\d+ 第 1 步失败/);
 				const names = await externalTableNames(fixture.db, dialect);
 				expect(names.includes("catalog_agents")).toBe(dialect === "mysql");
-				const db = await fixture.connect();
-				try {
-					expect(await db.all("SELECT id FROM _kit_migrations")).toHaveLength(
-						sqliteHistory.length + program.upgrades.length,
-					);
-				} finally {
-					await db.close();
+				const upgraded = withUpgrades(program, dialect);
+				if (dialect === "mysql") {
+					await fixture.db.execute("CREATE VIEW unrelated_view AS SELECT 1 AS id");
+					await expect(fixture.run(upgraded)).rejects.toThrow(/实体建库进度之外/);
+					await fixture.db.execute("DROP VIEW unrelated_view");
 				}
+				await fixture.run(upgraded);
+				expect(await fixture.db.rows("SELECT note FROM kit_migration_notes")).toEqual([]);
+				expect(await fixture.db.rows("SELECT id FROM _kit_migrations")).toHaveLength(
+					sqliteHistory.length + upgraded.upgrades.length,
+				);
+				expect(await fixture.db.rows("SELECT monthly_credits FROM quota_policy")).toEqual([{ monthly_credits: 200 }]);
 			} finally {
 				await fixture.close();
 			}
@@ -446,9 +559,9 @@ it.skipIf(!mysqlUrl)(
 			).rejects.toThrow(/034_oidc_member_auth 第 1 步失败/);
 			const db = await fixture.connect();
 			try {
-				expect(await db.all("SELECT id FROM _kit_migrations WHERE id = ?", id)).toEqual([{ id }]);
-				expect(await db.all("SELECT id FROM _kit_migration_progress")).toEqual([]);
-				expect(await db.all("SELECT subject_key FROM kit_oidc_member_bindings")).toEqual([]);
+				expect(await fixture.db.rows("SELECT id FROM _kit_migrations WHERE id = ?", id)).toEqual([{ id }]);
+				expect(await fixture.db.rows("SELECT id FROM _kit_migration_progress")).toEqual([]);
+				expect(await fixture.db.rows("SELECT subject_key FROM kit_oidc_member_bindings")).toEqual([]);
 			} finally {
 				await db.close();
 			}

@@ -95,8 +95,8 @@ Object.defineProperty(process, "version", { value: ${JSON.stringify(`v${nodeVers
 	};
 }
 
-test("冷启动先完成依赖构建，再启动默认四个服务", (t) => {
-	const result = runDev(t);
+test("Node 24.11.0 冷启动先完成依赖构建，再启动默认四个服务", (t) => {
+	const result = runDev(t, [], { nodeVersion: "24.11.0" });
 	assert.equal(result.status, 0, result.stderr);
 	assert.deepEqual(
 		result.trace.slice(0, 2).map((entry) => entry.stage),
@@ -129,11 +129,16 @@ test("指定 server 和 web 时，只启动所选应用", (t) => {
 	);
 });
 
-test("Node 23 在启动构建和服务前返回可执行提示", (t) => {
-	const result = runDev(t, [], { nodeVersion: "23.11.1" });
-	assert.equal(result.status, 1);
-	assert.match(result.stderr, /需要 Node\.js >=24，当前为 v23\.11\.1/);
-	assert.deepEqual(result.trace, []);
+test("低于 Node 24.11.0 的版本在创建配置或启动构建前提示升级", (t) => {
+	for (const entry of ["dev", "start"]) {
+		for (const nodeVersion of ["23.11.1", "24.10.0"]) {
+			const result = runDev(t, [], { entry, nodeVersion });
+			assert.equal(result.status, 1);
+			assert.ok(result.stderr.includes(`需要 Node.js >=24.11.0，当前为 v${nodeVersion}`), result.stderr);
+			assert.deepEqual(result.trace, []);
+			assert.equal(result.envContent, null);
+		}
+	}
 });
 
 test("pnpm start 复用已有配置，并通过真实 dev 入口构建后启动三个应用", (t) => {

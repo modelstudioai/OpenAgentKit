@@ -38,7 +38,8 @@
 | `ping` | `{ t }` | 每 15s 保活；客户端 45s 无有效帧视为静默断流 |
 | `operation` | `{ operation_id, phase, progress, message? }` | 控制面 Operation 进度 |
 
-`reset/ready/done/error/ping/operation` 不是业务事件，不进入消息归并。
+`reset/ready/done/error/ping/operation` 是传输控制帧，独立于消息归并。
+连接初始可发送 SSE 注释 `: connected` 来刷新响应头。解析器忽略注释，客户端仍以 `ready` 帧判断会话就绪。
 首次订阅从 `ready` 开始，游标失效时发送 `reset → ready`，有效游标先补发实时变更再发 `ready`。
 空实时日志的起始游标为该连接世代的 `epoch:0`。首次和复位后 Client 在收到 `ready` 后
 通过各自的 `/events` 分页读取历史，同时缓冲实时事件，合并后一次性发布并开放发送。

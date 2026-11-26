@@ -1,7 +1,7 @@
 import type { SessionEvent } from "@openagentkit/sdk/protocol";
 import { describe, expect, it } from "vitest";
-import { createEventBufferRegistry } from "../src/services/event-buffer.ts";
-import { createLiveEventJournal } from "../src/services/live-event-journal.ts";
+import { createEventBufferRegistry } from "../src/utils/event-buffer.ts";
+import { createLiveEventJournal } from "../src/utils/live-event-journal.ts";
 
 const ev = (id: string): SessionEvent => ({ event_id: id, type: "message", content: [{ type: "text", text: id }] });
 

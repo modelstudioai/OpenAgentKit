@@ -3,12 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AdminIdentityView, DebugSessionDetail, SessionThreadsResponse } from "@openagentkit/sdk/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
-import { createKitServices } from "../src/services/index.ts";
+import { SessionIndexService } from "../src/service/shared/session/session-index.ts";
 import { openDatabase } from "../src/store/db.ts";
-import { createSessionIndex } from "../src/store/sessions.ts";
 import { createSqliteDatabase } from "../src/store/sqlite.ts";
+import { createTestApp as createApp } from "./helpers/http.ts";
+import { createKitServices } from "./helpers/services.ts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => {
@@ -70,7 +70,7 @@ describe("模版远端资源调试", () => {
 		).toBeNull();
 		const reopened = openDatabase(dataDir);
 		cleanup.push(() => reopened.close());
-		const persisted = await createSessionIndex(createSqliteDatabase(reopened)).getDebugForSubject(
+		const persisted = await new SessionIndexService(createSqliteDatabase(reopened)).getDebugForSubject(
 			session.session_id,
 			await adminSubject(app),
 		);
@@ -122,7 +122,7 @@ describe("模版远端资源调试", () => {
 		const reopened = openDatabase(dataDir);
 		cleanup.push(() => reopened.close());
 		expect(
-			await createSessionIndex(createSqliteDatabase(reopened)).getDebugForSubject(session.session_id, subject),
+			await new SessionIndexService(createSqliteDatabase(reopened)).getDebugForSubject(session.session_id, subject),
 		).toMatchObject({
 			summary: { source: "template", ...selected },
 			runtime: { memory_stores: memories, vault_ids: ["vlt_mock_1", "vlt_mock_2"] },

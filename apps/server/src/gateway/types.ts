@@ -220,9 +220,9 @@ export interface ProviderGateway {
 	listRemoteVaults(): Promise<RemoteVault[]>;
 	/** 仅元数据校验；不存在或已归档返回 null。 */
 	getRemoteVault(vaultId: string): Promise<RemoteVault | null>;
-	/** Provider 侧模型用量明细（app-control usage.listModelUsage）；scope 由路由层组装后传入。 */
+	/** Provider 侧模型用量明细（app-control usage.listModelUsage），scope 由管理服务组装。 */
 	listModelUsage(request: ModelUsageRequest, options?: { signal?: AbortSignal }): Promise<ModelUsagePage>;
-	/** Provider 侧工具调用明细（app-control usage.listToolUsage）；scope 由路由层组装后传入。 */
+	/** Provider 侧工具调用明细（app-control usage.listToolUsage），scope 由管理服务组装。 */
 	listToolUsage(request: ToolUsageRequest, options?: { signal?: AbortSignal }): Promise<ToolUsagePage>;
 	/** 显式查看详情时查询密钥元数据，绝不返回密钥值。 */
 	getRemoteVaultDetail(vaultId: string): Promise<RemoteVaultDetail | null>;

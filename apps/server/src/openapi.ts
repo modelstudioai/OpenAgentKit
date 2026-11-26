@@ -1,23 +1,22 @@
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createApp } from "./app.ts";
-import { loadConfig } from "./config.ts";
-import { openKitServices } from "./services/index.ts";
+import { isDeepStrictEqual } from "node:util";
+import { generateOpenApi } from "./http/openapi.ts";
+import { routeControllers } from "./module/http-controllers.ts";
 
-const config = loadConfig({
-	...process.env,
-	KIT_GATEWAY: "mock",
-	KIT_DB_DRIVER: "sqlite",
-	KIT_DATA_DIR: join(process.cwd(), ".data-openapi"),
-});
-const services = await openKitServices(config);
-try {
-	const response = await createApp(services).request("/openapi.json");
-	const document = await response.json();
-	writeFileSync(join(process.cwd(), "openapi.json"), `${JSON.stringify(document, null, 2)}\n`);
-	console.warn(
-		`openapi.json written (${Object.keys((document as { paths: Record<string, unknown> }).paths ?? {}).length} paths)`,
-	);
-} finally {
-	await services.close();
+function readDocument(path: string): unknown {
+	try {
+		return JSON.parse(readFileSync(path, "utf8"));
+	} catch (error) {
+		if (error instanceof SyntaxError || (error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+		throw error;
+	}
 }
+
+const path = join(process.cwd(), "openapi.json");
+const document = generateOpenApi(routeControllers);
+// 同一合同保留既有键顺序，避免路由装配顺序影响生成物。
+if (!isDeepStrictEqual(readDocument(path), document)) {
+	writeFileSync(path, `${JSON.stringify(document, null, 2)}\n`);
+}
+console.warn(`openapi.json verified (${Object.keys(document.paths).length} paths)`);

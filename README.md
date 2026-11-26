@@ -142,7 +142,7 @@ Kit 部署在团队自己的环境中，提供应用界面、身份与运营管�
 | 契约 | `@openagentkit/sdk/protocol` | SDK 子入口：同构事件、SSE 帧、错误模型与 API schema |
 | SDK | `@openagentkit/sdk` 的功能入口 | 按功能提供请求、Provider、聊天、会话、文件、认证和用量；React 通过各功能 `/hooks` 可选接入，Kit Context 在 `/providers/kit/react`，通用屏幕判断在 `/hooks`；管理业务归 Console |
 | UI 组件 | `@openagentpack/kit-chat-ui` | copy-in Chat 产品 UI（Radix + Tailwind v4） |
-| 服务端 | `@openagentpack/kit-server` | Hono 应用工厂：数据面 `/api/kit/*`、控制面 `/api/admin/*` |
+| 服务端 | `@openagentpack/kit-server` | NestJS 应用工厂，提供数据面 `/api/kit/*` 和控制面 `/api/admin/*` |
 
 组件复制与组件目录命令位于 `scripts/kit/`，在仓库根目录通过
 `pnpm kit:add <component> --dir <project>`、`pnpm catalog:list` 调用。
@@ -225,7 +225,7 @@ OpenAgentKit 原生对接百炼 Managed Agent（MA）协议，围绕会话、事
 
 ## 快速开始
 
-环境要求：Node.js ≥ 24，pnpm 9.15.9。
+开发与运行需要 Node.js ≥ 24.11.0 和 pnpm 9.15.9。
 
 ```bash
 pnpm install

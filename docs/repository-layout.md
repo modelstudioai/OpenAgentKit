@@ -57,6 +57,17 @@ packages/<name>/
 - 一个文件一个主要职责；生产源码 > 800 行、测试 > 1000 行时按变化原因拆分。
 - 测试与被测源码同目录（`foo.ts` ↔ `foo.test.ts`）；需要 fixture 或多模块协同时放
   `tests/`，fixture 放 `tests/fixtures/`（入库前必须脱敏，见 `apps/server/AGENTS.md`）。
+- Server 的 `src/controller/` 提供 HTTP 接口，`src/service/` 组织用例并读写实体，跨域共用的业务类归 `service/shared/`。
+  Controller 按入口分为 `admin/` 和 `staff/`，按业务域注入对应的 Service 类。
+  管理端 Controller 的文件名使用 `admin-` 前缀，类名使用 `Admin` 前缀。`controller/meta.ts` 提供公开端点。
+  `src/http/` 承载共享请求管线、路由装饰器、SSE 和 OpenAPI 生成。
+  管理端用例放在 `service/admin/`，员工端用例放在 `service/staff/`，目录内按业务域组织。
+  `service/shared/` 放共用的业务服务类和状态类，例如会话运行时、用量结算与确认闸门。
+  `src/service/` 下的文件仅以类作为运行时导出。用例专属的校验、计算和映射写成所属 Service 的私有实例方法；跨业务域共用的规则由 `service/shared/` 中对应的类提供。
+  `src/entity/tables/` 存放手写的 TypeORM 装饰器实体，每张业务表一个类。`src/entity/` 从装饰器派生当前结构，并将实体映射到所选数据库。
+  数据库适配和迁移放在 `src/store/`，Provider 适配放在 `src/gateway/`。
+  Nest 应用、Controller 注册和依赖装配放在 `src/module/`。
+  注入令牌、签名、UTC 日期和事件缓存等内部技术组件放在 `src/utils/`。
 - Chat UI 的独立组件放 `packages/chat-ui/src/components/<component>/`，执行过程组件放
   `components/process/<component>/`；每个目录包含 `index.tsx`（纯逻辑或聚合入口用 `index.ts`）、
   中文 `README.md` 和已有单测。复合组件的静态子组件与私有辅助逻辑随主组件维护；
@@ -115,9 +126,9 @@ packages/<name>/
   `features/catalog/use-remote-agents.ts` 查询完整远端 Agent，浏览器内每页展示 10 条；不读取本地模版或创建资源。
   `preset-pack-session-resources.tsx` 按类型分组展示单选 Agent 的运行时资源，`preset-pack-resource-groups.ts`
   负责同类型按资源 ID 跨会话去重及挂载信息合并；页面不展示会话。DTO 位于 protocol `preset-packs.ts`，
-  server `routes/preset-packs.ts` 提供只读入口，`gateway/sdk-preset-pack-resources.ts` 承载 SDK 分页与限并发读取，
+  server `controller/admin/admin-preset-packs.ts` 提供预览、保存和查询入口，`gateway/sdk-preset-pack-resources.ts` 承载 SDK 分页与限并发读取，
   `gateway/preset-pack-resources.ts` 统一引用白名单投影与去重；Mock 投影独立于已有的大型模拟消息生成器。
-  `services/preset-packs.ts` 只读核验当前选择，`store/preset-packs.ts` 仅兼容旧版保存目录；
+  `service/admin/catalog/preset-packs.ts` 核验当前选择，在预览时只读，并通过实体访问已保存的预设包；
   `create-template-page.tsx` 初始展示导入或从零创建的方式选择，选择后挂载既有编辑器，并保留已导入的内存草稿；`template-draft.ts` 负责回填映射。
   `template-preset-picker.tsx` 在创建页抽屉中使用 `PresetPackSelection` 的远端列表和资源多选，并处理替换确认；不提供独立导入页面。
   `template-agent-runtime-resources.tsx` 负责基础配置选中远端 Agent 后的检测提示及资源选择抽屉，
@@ -130,22 +141,22 @@ packages/<name>/
   同目录测试覆盖完整预览、摘要降级、原库不可用及取消读取。
   `preset-pack-resource-selection.ts` 统一环境单选替换及其他类型多选上限，复用创建页数量常量；同目录测试保护替换、取消、去重及数量边界。
   `template-draft.ts` 的关联映射保护已有资源编辑、按 ID 补充及合并约束；对应业务不变量测试位于 `template-draft.test.ts`。
-- console `features/operations/operations-page.tsx` 展示操作审计；server `routes/audit.ts` 与
-  `store/audit.ts` 提供分页查询，合同为 protocol `api.ts` 中的 `AuditLogView` / `AuditLogsPage`。
+- console `features/operations/operations-page.tsx` 展示操作审计；server `controller/admin/admin-audit.ts` 经
+  `service/shared/audit.ts` 提供分页查询，合同为 protocol `api.ts` 中的 `AuditLogView` / `AuditLogsPage`。
   智能体操作审计和浏览器验收分别放 `apps/server/tests/audit.test.ts` 与 `apps/web/e2e/operation-logs.spec.ts`。
-- `protocol/groups.ts` 放本地用户组与管理端成员摘要合同；server `routes/groups.ts`、
-  `services/groups.ts`、`store/groups.ts` 分别负责 HTTP、确认/审计和本地关系事务。
+- `protocol/groups.ts` 放本地用户组与管理端成员摘要合同；server `controller/admin/admin-groups.ts`、
+  `service/admin/member/groups.ts` 分别负责 HTTP 接口和组关系维护。组服务校验确认、写入审计，并在事务内更新成员关系。
   console 已移除用户组界面，成员入口在 `features/members/`；旧用户组路径由
   `features/navigation/console-route.ts` 归一到成员列表，界面回归放 `apps/web/e2e/member-groups-removal.spec.ts`。
-- `protocol/resource-drafts.ts` 定义一次性资源批次及最小回执；server 的 `store/resource-drafts.ts`、
-  `services/resource-drafts.ts`、`routes/resource-drafts.ts` 管理所有权、发布恢复及生命周期，
-  `services/draft-resources.ts` 管理批次内资源，`gateway/resource-draft-yaml-files.ts` 管理数据库成功证明与上传清理。
+- `protocol/resource-drafts.ts` 定义一次性资源批次及最小回执；server 的
+  `service/admin/resource-draft/resource-drafts.ts`、`controller/admin/admin-resource-drafts.ts` 管理所有权、发布恢复及生命周期，
+  `service/admin/resource-draft/draft-resources.ts` 管理批次内资源，`gateway/resource-draft-yaml-files.ts` 管理数据库成功证明与上传清理。
   `gateway/yaml-draft-*` 分别负责声明、独立上传、SDK state 与发布，`mock-yaml-draft.ts` 负责模拟远端写入。console 的
   `template-resource-draft.tsx` / `use-template-draft-project.ts` 供资源创建和发布流程共用批次。
   `template-resource-draft-owner.ts` 管理页面对批次的所有权、退出/迟到创建清理及跨标签页互斥；
   发布结果未知的批次仍交由原发布恢复流程处理。
-- `protocol/templates.ts` 放已保存模版合同；server 的 `routes/templates.ts`、`services/templates.ts`、
-  `store/templates.ts` 分别处理接口、资源复核/审计与配置目录持久化。console `features/templates/`
+- `protocol/templates.ts` 放已保存模版合同；server 的 `controller/admin/admin-templates.ts`、`service/admin/catalog/templates.ts`、
+  `service/shared/templates.ts` 分别处理接口、资源复核与审计、共用的版本及目录关联。console `features/templates/`
   包含新建/编辑两步向导、保存与列表/详情，浏览器流程由 `apps/web/e2e/template-*.spec.ts` 保护。
   `template-configuration-fields.ts` 统一创建预览与管理列表的基础配置展示合同；`template-list-configuration.tsx`
   负责当前页配置去重读取、名称补齐、失败重试与表格字段，复用既有客户端和查询 hooks，不新增列表 Provider 聚合接口。
@@ -156,7 +167,7 @@ packages/<name>/
   `template-publish-resources.ts` 组织待发布资源清单与中文类型/操作，普通 noop 不展示，危险项保留；
   `use-template-publish.ts` 在资源无变更且计划复核通过时直接继续保存，有变更时审阅清单并显式确认发布；
   `use-template-resource-resolution.ts` 在发布成功或确认无需资源变更后读取完整绑定，原子更新全部候选及草稿，失败后只读重试；
-  `protocol/project-resource-bindings.ts` 定义完整绑定列表与严格解析合同，`routes/draft-resource-bindings.ts` 与
+  `protocol/project-resource-bindings.ts` 定义完整绑定列表与严格解析合同，`controller/admin/admin-draft-resource-bindings.ts` 与
   `gateway/yaml-draft-publish.ts` 经独立批次资源服务精确读取 SDK state 的 ID/Agent 版本，不访问凭据。
   `template-agent-list.tsx` 默认选取远端 Agent 列表中的具体版本；`template-agent-version-picker.tsx`
   经 console 管理端 client 与查询 hook 按需读取历史版本，缺失默认版本时自动查询并取最大正整数；
@@ -192,7 +203,7 @@ packages/<name>/
   每项成功立即移除页面密钥输入，部分失败重试不重复创建已成功项；未修改复用原库，修改后新建副本，原库不变；
   `template-vault-detail-drawer.tsx` 提供 `useTemplateVaultDetail`：配置页导入后加载可编辑基线，候选列表通过只读抽屉按需查看；
   读取远端详情或待发布声明，只展示密钥名称、变量名和生效域名；
-  `gateway/sdk-vaults.ts` 通过 SDK 公开 runtime 查询并投影密钥元数据，`routes/admin-vaults.ts` 提供管理端详情路由；
+  `gateway/sdk-vaults.ts` 通过 SDK 公开 runtime 查询并投影密钥元数据，`controller/admin/admin-vaults.ts` 提供管理端详情路由；
   `template-vault-credentials.tsx` 管理待添加密钥列表，`template-vault-credential-dialog.tsx` 提供名称、变量值和生效域名的嵌套编辑弹窗；
   `gateway/yaml-draft-document.ts` 将显式 MA 配置传给 SDK，Vault 随机引用只在本批内存 Map 解析，不写全局环境；
   `template-agent-form.tsx` 收集 Agent 配置，`template-agent-model-picker.tsx` 复用表单下拉选择模型，
@@ -200,12 +211,12 @@ packages/<name>/
   在「我的 Skill」中合并本地共享声明与云端自定义 Skill，保留各自引用形状和失败恢复；
   `template-skill-upload-dialog.tsx` 先选择单个 Skill 文件并展示卡片，确认后复用项目上传队列保存共享 Skill，
   将返回的共享声明交给能力选择区自动合并已选引用，再刷新父表单 revision，不创建远端资源；
-  `routes/remote-skills.ts`、`services/remote-skills.ts` 与 `gateway/sdk-remote-skills.ts` 通过公开 SDK 读取云端 Skill 安全摘要，
-  保存前复核固定版本，不读取 Skill 正文或触发远端写操作；`routes/draft-agents.ts` 经独立批次资源服务
+  `controller/admin/admin-remote-skills.ts`、`service/admin/provider-admin.ts` 与 `gateway/sdk-remote-skills.ts` 通过公开 SDK 读取云端 Skill 安全摘要，
+  `DraftResourceService` 在保存前复核 Skill 来源和固定版本，不读取 Skill 正文或触发远端写操作；`controller/admin/admin-draft-agents.ts` 经独立批次资源服务
   将新批次分派到 `yaml-draft-gateway.ts`；YAML 批次通过独立的 draft-resources service 和 yaml-draft-gateway 处理声明、确认和发布。
 - console 已移除旧 `features/project/` 工作台页面，仍使用的文件与 Skill 暂存队列放在
-  `features/templates/use-project-uploads.ts`；server 的 YAML gateway 适配 SDK 公开对象接口，`services/draft-resources.ts` 管确认/审计/并发，
-  `services/debug.ts` 与 `routes/debug.ts` 管调试用途和主体归属。
+  `features/templates/use-project-uploads.ts`；server 的 YAML gateway 适配 SDK 公开对象接口，`service/admin/resource-draft/draft-resources.ts` 管确认/审计/并发，
+  `service/admin/debug.ts` 与 `controller/admin/admin-debug.ts` 管调试用途和主体归属。
 
 ## Skill 源与生成物
 
@@ -262,7 +273,8 @@ assets/skills/
 - JDK 11 与 Node SDK 的跨进程验收 PoC 位于 [apps/server/tests/java-sdk-poc/](../apps/server/tests/java-sdk-poc/README.md)，
   通过独立 Maven 工程和验收脚本显式运行。工具链、构建产物与实测证据放在 `.scratch/java-sdk-poc/`。
 - 体验页品牌由 console 的 `features/branding/` 经管理端品牌接口维护；server 的
-  `store/branding.ts` 保存名称、Logo 配置与上传文件，`routes/branding.ts` 负责权限及公开图片响应隔离。
+  `service/shared/branding.ts` 保存名称、Logo 配置与上传文件，并负责公开投影和审计，
+  `controller/admin/admin-branding.ts` 提供管理端修改入口，`controller/meta.ts` 提供公开图片响应。
   Web 的 `lib/branding.ts` 按运行时 API base 拼接上传地址并保留路径前缀。
 - `features/chat/experience-sender.tsx` 组合 Sender 与 Suggestion 的技能选择；资源面板保留在
   `features/chat/aside-panel.tsx`。SDK 的 `agents/hooks/use-agent-resources.ts` 从同一次详情请求
@@ -278,39 +290,37 @@ apps/web|console/
 
 管理端页面按 `docs/interfaces.md` 的控制面 op 分组，一个 op 家族一个 feature 目录。
 
-本地成员管理在 `apps/console/src/features/members/`；对应 server 的 `routes/members.ts`、
-`services/members.ts` 与 `store/members.ts`。密码派生只在服务端实现，API DTO 在
+本地成员管理在 `apps/console/src/features/members/`；对应 server 的 `controller/admin/admin-members.ts`、
+`service/admin/member/members.ts` 与 `service/shared/member-directory.ts`。密码派生只在服务端实现，API DTO 在
 `@openagentkit/sdk/protocol`，不引入 UI 组件库依赖。
 
 成员用量 DTO 在 `packages/sdk/src/protocol/session-usage.ts`；Gateway 的 `session-usage.ts`
-只做 Provider 详情白名单映射。server 的 `services/member-usage.ts` 调度全量分批采集，
-`store/session-usage.ts` 保存与汇总累计快照；`services/session-deletion.ts` 与
-`session-mutations.ts` 协调删除前停止、采集与并发写入，`store/session-deletions.ts` 保存
-删除阶段。新增 API 仍属于 `routes/members.ts`，管理端详情位于原 `features/members/`。
-Provider HTTP 合同测试放 server/tests，跨 store/service 的归属、分页、删除恢复回归同层
+只做 Provider 详情白名单映射。server 的 `service/shared/member-usage.ts` 调度全量分批采集，
+`service/shared/usage/session-usage-snapshot.ts` 保存累计快照；`service/shared/session/session-deletion.ts` 与
+`session-mutations.ts` 协调删除前停止、采集与并发写入，由会话删除服务保存删除阶段。新增 API 仍属于 `controller/admin/admin-members.ts`，管理端详情位于原 `features/members/`。
+Provider HTTP 合同测试放 server/tests，跨 Service 的归属、分页、删除恢复回归同层
 验证；UI 测试不重复原始字段映射。
 
 成员管理客户端与无框架用量 Controller 位于 `apps/console/src/lib/admin/`；
 console `src/lib/admin/use-member-usage.ts` 只订阅 Controller 并管理生命周期。
 
-月度限额 DTO 在 `packages/sdk/src/protocol/usage-limits.ts`；server 的 `routes/usage-limits.ts`、
-`services/usage-limits.ts`、`store/usage-limits.ts` 分别负责接口、发送检查与数值增量持久化。
+月度限额 DTO 在 `packages/sdk/src/protocol/usage-limits.ts`。Server 的
+`controller/admin/admin-usage-limits.ts` 提供管理接口，`controller/staff/usage-limits.ts` 提供员工查询。
+`service/shared/usage/usage-limits.ts` 负责发送检查，`service/shared/usage/usage-accounting.ts` 负责数值增量持久化。
 管理端入口位于 `apps/console/src/features/usage/`，体验端额度与恢复提示位于
 `apps/web/src/features/usage/`；双方经 SDK client / React adapters 访问同一合同。
 
-成员认证在 server 的 `routes/member-auth.ts`、`services/member-auth.ts` 和
-`store/member-sessions.ts`；`services/passwords.ts` 负责密码派生与验证，
-`services/auth-stream.ts` 负责已建立 SSE 的撤销 / 到期。文件归属在
-`services/files.ts`、`store/files.ts`，不保存文件字节或事件正文。
-Keycloak 验签与授权在 `services/oidc-auth.ts`，映射和撤销记录在 `store/oidc-auth.ts`，
-Console 的绑定入口归属成员管理，对应 `routes/member-oidc-bindings.ts`。
+成员认证在 server 的 `controller/staff/member-auth.ts` 和 `service/shared/member-auth.ts`。登录会话由 Service 读写；`utils/passwords.ts` 负责密码派生与验证，
+`http/auth-stream.ts` 负责已建立 SSE 的撤销 / 到期。文件归属在
+`service/shared/session/files.ts` 通过实体记录和校验，文件字节保存在 Provider。
+Keycloak 验签、成员绑定、令牌撤销和关联流的关闭由 `service/shared/oidc-auth.ts` 管理。
 SDK 的 `auth/member-auth.ts` 管理身份 Client、认证状态和令牌续期后的 SSE 恢复，
 `auth/hooks/` 的 `useMemberAuth` 绑定生命周期。Web 的 `features/auth/` 负责表单、
 浏览器存储及页面闸门，`keycloak-session.ts` 负责授权跳转、回调和内存令牌。
 
 体验页两级会话目录合同在 `packages/sdk/src/protocol/session-directory.ts`；server 的
-`routes/session-directory.ts` 与 `store/session-directory.ts` 负责身份内的智能体枚举和索引分页，
-`services/sessions.ts` 保留状态对账。SDK 的 `sessions/load-directory.ts` 编排逐组翻页、
+`controller/staff/session-directory.ts` 提供本人会话入口，`service/staff/kit-sessions.ts` 处理目录搜索与归属，
+`service/shared/session/session-index.ts` 执行索引分页，`service/shared/session/sessions.ts` 负责状态对账。SDK 的 `sessions/load-directory.ts` 编排逐组翻页、
 取消与排序；web 侧栏不使用完整读取，SDK `sessions/session-directory.ts` 枚举智能体并管理分组缓存。
 `sessions/session-pages.ts` 统一管理各组及全局最近的十条分页、取消、去重与失败重试，
 `sessions/hooks/` 负责订阅与生命周期；`features/layout/session-sidebar.tsx` 把分组展开懒加载、

@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
+import { initialRows, initialTableSteps } from "./bootstrap.ts";
 import { type ExternalDialect, externalTableNames, type MigrationConnection, readExternalTable } from "./catalog.ts";
 import {
+	comparable,
 	type DdlStep,
 	type Migration,
 	type MigrationProgram,
@@ -25,10 +27,13 @@ interface Progress {
 	fingerprint: string;
 }
 
+type PendingVersion = Migration & { coveredVersions?: string[] };
+
 type MysqlTransaction = (work: () => Promise<void>) => Promise<void>;
 
 const progressTable = "_kit_migration_progress";
 const migrationTable = "_kit_migrations";
+const bootstrapPrefix = "kit_entity_bootstrap_";
 const legacyIds = { mysql: "001_initial_mysql_schema", postgres: "001_initial_postgres_schema" };
 const oidcTextKeysFingerprint = "bf9eb32864267c249db7ef954829ded485e42a9532af3fee04b95de4ac45a9b4";
 
@@ -116,43 +121,96 @@ function knownSchema(versions: Migration[], applied: Set<string>, baseline: Sche
 	return [...tables.values()];
 }
 
+async function legacyVersions(
+	db: MigrationConnection,
+	dialect: ExternalDialect,
+	program: MigrationProgram,
+	applied: Set<string>,
+	progress?: Progress,
+) {
+	const oldId = legacyIds[dialect];
+	const adoption = program.adoption;
+	if (!adoption || !program.legacy) throw new MigrationError("缺少外部库历史接入定义");
+	const versions = [adoption, ...program.upgrades];
+	const pending = nextVersions(versions, applied, oldId);
+	if (!applied.has(adoption.id)) {
+		await checkSchema(db, dialect, program.legacy, "既有初始版本");
+	} else if (pending.length && !progress) {
+		await validateCurrent(db, dialect, knownSchema(versions, applied, program.legacy));
+	}
+	return pending;
+}
+
+async function targetObjects(db: MigrationConnection, dialect: ExternalDialect) {
+	const sql =
+		dialect === "mysql"
+			? "SELECT table_name AS name FROM information_schema.tables WHERE table_schema = DATABASE()"
+			: "SELECT relname AS name FROM pg_class WHERE relnamespace = current_schema()::regnamespace AND relkind IN ('r','p','v','m','f','S')";
+	const names = (await db.rows<{ name: string }>(sql)).map((row) => row.name);
+	if (names.length && !names.includes(migrationTable))
+		throw new MigrationError("目标库已有表但缺少 Kit 迁移记录，请核对数据库配置");
+	return names;
+}
+
+/** 进度 ID 锚定当时的版本前缀。换版本重启时先按旧快照完成建库，再升级到新实体。 */
+function initialVersions(
+	dialect: ExternalDialect,
+	program: MigrationProgram,
+	versions: Migration[],
+	names: string[],
+	progress?: Progress,
+): PendingVersion[] {
+	const count = progress ? Number(progress.id.slice(bootstrapPrefix.length)) : versions.length;
+	if (!Number.isSafeInteger(count) || count <= 0 || count > versions.length)
+		throw new MigrationError("待恢复的实体建库版本不在当前迁移清单中");
+	const coveredVersions = versions.slice(0, count).map(({ id }) => id);
+	const schema = count === versions.length ? program.current : knownSchema(versions, new Set(coveredVersions));
+	const ddl = initialTableSteps(schema, dialect);
+	const allowed = new Set([progressTable, migrationTable]);
+	if (progress) {
+		const end = progress.step_index + Number(Boolean(progress.inflight));
+		for (const step of ddl.slice(0, end)) for (const change of step.changes) allowed.add(change.name);
+	}
+	const extra = names.find((name) => !allowed.has(name));
+	if (extra) throw new MigrationError("目标库已有实体建库进度之外的表，请核对数据库配置");
+	return [
+		{
+			id: `${bootstrapPrefix}${count}`,
+			steps: [...ddl, { data: initialRows }],
+			coveredVersions,
+		},
+		...versions.slice(count),
+	];
+}
+
 async function registry(
 	db: MigrationConnection,
 	dialect: ExternalDialect,
 	program: MigrationProgram,
+	names: string[],
 	progress?: Progress,
-) {
+): Promise<PendingVersion[]> {
 	const records = await db.rows<{ id: string }>(`SELECT id FROM ${migrationTable}`);
 	const applied = new Set(records.map(({ id }) => id));
 	const oldId = legacyIds[dialect];
 	if (applied.has(oldId)) {
-		const adoption = program.adoption;
-		if (!adoption || !program.legacy) throw new MigrationError("缺少外部库历史接入定义");
-		const versions = [adoption, ...program.upgrades];
-		const pending = nextVersions(versions, applied, oldId);
-		if (!applied.has(adoption.id)) {
-			await checkSchema(db, dialect, program.legacy, "既有初始版本");
-		} else if (pending.length && !progress) {
-			await validateCurrent(db, dialect, knownSchema(versions, applied, program.legacy));
-		}
-		return pending;
+		return legacyVersions(db, dialect, program, applied, progress);
 	}
 	const versions = [...program.history, ...program.upgrades];
 	const pending = nextVersions(versions, applied);
-	if (progress) return pending;
-	if (!applied.size) {
-		const names = await externalTableNames(db, dialect);
-		if (names.some((name) => ![progressTable, migrationTable].includes(name))) {
-			throw new MigrationError("目标库已有表但缺少 Kit 迁移记录，请核对数据库配置");
-		}
-	} else if (pending.length) {
+	if (progress && !progress.id.startsWith(bootstrapPrefix)) return pending;
+	if (!applied.size) return initialVersions(dialect, program, versions, names, progress);
+	if (pending.length && !progress) {
 		await validateCurrent(db, dialect, knownSchema(versions, applied));
 	}
 	return pending;
 }
 
-async function record(db: MigrationConnection, id: string) {
-	await db.execute(`INSERT INTO ${migrationTable} (id, applied_at) VALUES (?, ?)`, id, new Date().toISOString());
+async function record(db: MigrationConnection, version: PendingVersion) {
+	const now = new Date().toISOString();
+	for (const id of version.coveredVersions ?? [version.id]) {
+		await db.execute(`INSERT INTO ${migrationTable} (id, applied_at) VALUES (?, ?)`, id, now);
+	}
 }
 
 async function validateCurrent(db: MigrationConnection, dialect: ExternalDialect, expected: Schema) {
@@ -176,8 +234,9 @@ async function alreadyAdoptedStep(
 
 /** 调用方已在持有事务级迁移锁的连接上开启事务。 */
 export async function migratePostgresSchema(db: MigrationConnection, program: MigrationProgram) {
+	const names = await targetObjects(db, "postgres");
 	await db.execute(`CREATE TABLE IF NOT EXISTS ${migrationTable} (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL)`);
-	const pending = await registry(db, "postgres", program);
+	const pending = await registry(db, "postgres", program, names);
 	for (const version of pending) {
 		for (const [index, step] of version.steps.entries()) {
 			try {
@@ -192,7 +251,7 @@ export async function migratePostgresSchema(db: MigrationConnection, program: Mi
 				stepError(error, version.id, index);
 			}
 		}
-		await record(db, version.id);
+		await record(db, version);
 	}
 	await validateCurrent(db, "postgres", program.current);
 }
@@ -212,8 +271,15 @@ async function advance(db: MigrationConnection, index: number, inflight = false)
 	await db.execute(`UPDATE ${progressTable} SET step_index = ?, inflight = ? WHERE slot = 1`, index, Number(inflight));
 }
 
-async function prepareMysqlProgress(db: MigrationConnection, version: Migration, saved?: Progress) {
-	const fingerprint = createHash("sha256").update(JSON.stringify(version.steps)).digest("hex");
+async function prepareMysqlProgress(db: MigrationConnection, version: PendingVersion, saved?: Progress) {
+	// 实体快照与历史迁移可能以不同顺序记录等价的约束。指纹核对相同的建表步骤、字段、种子和版本。
+	const payload = version.coveredVersions
+		? [
+				version.coveredVersions,
+				version.steps.map((step) => ("sql" in step ? step.changes.map((c) => [c.name, comparable(c.after!)]) : step)),
+			]
+		: version.steps;
+	const fingerprint = createHash("sha256").update(JSON.stringify(payload)).digest("hex");
 	if (saved) {
 		const first = version.steps[0];
 		// 旧版 034 的 TEXT 键无法建表。确认该步尚未落库后登记修正的指纹，再沿用 DDL 恢复。
@@ -240,7 +306,7 @@ async function prepareMysqlProgress(db: MigrationConnection, version: Migration,
 
 async function applyMysqlVersion(
 	db: MigrationConnection,
-	version: Migration,
+	version: PendingVersion,
 	transaction: MysqlTransaction,
 	saved?: Progress,
 ) {
@@ -266,7 +332,7 @@ async function applyMysqlVersion(
 		}
 	}
 	await transaction(async () => {
-		await record(db, version.id);
+		await record(db, version);
 		await db.execute(`DELETE FROM ${progressTable} WHERE slot = 1`);
 	});
 }
@@ -277,11 +343,12 @@ export async function migrateMysqlSchema(
 	program: MigrationProgram,
 	transaction: MysqlTransaction,
 ) {
+	const names = await targetObjects(db, "mysql");
 	await db.execute(`CREATE TABLE IF NOT EXISTS ${migrationTable} (
 		id VARCHAR(100) PRIMARY KEY, applied_at VARCHAR(32) NOT NULL
 	) ${mysqlTableOptions}`);
 	const progress = await mysqlProgress(db);
-	const pending = await registry(db, "mysql", program, progress);
+	const pending = await registry(db, "mysql", program, names, progress);
 	if (progress && pending[0]?.id !== progress.id) {
 		throw new MigrationError(`MySQL 存在不匹配的待恢复版本：${progress.id}`);
 	}

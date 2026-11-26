@@ -3,12 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CatalogAgentViewSchema } from "@openagentkit/sdk/protocol";
 import { afterEach, describe, expect, it } from "vitest";
-import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
-import { createKitServices } from "../src/services/index.ts";
+import { SessionIndexService } from "../src/service/shared/session/session-index.ts";
 import { openDatabase } from "../src/store/db.ts";
-import { createSessionIndex } from "../src/store/sessions.ts";
 import { createSqliteDatabase } from "../src/store/sqlite.ts";
+import { createTestApp as createApp } from "./helpers/http.ts";
+import { createKitServices } from "./helpers/services.ts";
 
 const close: (() => void)[] = [];
 afterEach(() => {
@@ -42,7 +42,7 @@ const T = {
 describe("会话索引列表", () => {
 	it("先查本人完整智能体目录，再按组分页；归档在截取前排除，游标绑定身份和筛选", async () => {
 		const db = setupDb();
-		const index = createSessionIndex(createSqliteDatabase(db));
+		const index = new SessionIndexService(createSqliteDatabase(db));
 		for (let i = 0; i < 205; i++) {
 			await index.create({ sessionId: `a-${String(i).padStart(3, "0")}`, subjectId: "owner", agentSlug: "assistant" });
 			stamp(db, `a-${String(i).padStart(3, "0")}`, "2026-01-01T00:00:00.000Z", null);
@@ -88,7 +88,7 @@ describe("会话索引列表", () => {
 
 	it("按最近活动排序：last_event_at 优先，缺失时回落 created_at", async () => {
 		const db = setupDb();
-		const index = createSessionIndex(createSqliteDatabase(db));
+		const index = new SessionIndexService(createSqliteDatabase(db));
 		// 打乱创建顺序，证明结果只由活动时间决定
 		for (const id of ["s3", "s1", "s4", "s2"])
 			await index.create({ sessionId: id, subjectId: "user-1", agentSlug: "assistant" });
@@ -98,7 +98,7 @@ describe("会话索引列表", () => {
 
 	it("点开回看不改排序：状态回落不推进 last_event_at，发消息才推进", async () => {
 		const db = setupDb();
-		const index = createSessionIndex(createSqliteDatabase(db));
+		const index = new SessionIndexService(createSqliteDatabase(db));
 		await index.create({ sessionId: "s1", subjectId: "user-1", agentSlug: "assistant" });
 		await index.create({ sessionId: "s2", subjectId: "user-1", agentSlug: "assistant" });
 		stamp(db, "s1", "2026-01-01T00:00:00.000Z", "2026-03-01T00:00:00.000Z");
@@ -114,7 +114,7 @@ describe("会话索引列表", () => {
 
 	it("agent 过滤分支同样按最近活动排序", async () => {
 		const db = setupDb();
-		const index = createSessionIndex(createSqliteDatabase(db));
+		const index = new SessionIndexService(createSqliteDatabase(db));
 		await index.create({ sessionId: "w-old", subjectId: "user-1", agentSlug: "writer" });
 		await index.create({ sessionId: "a-new", subjectId: "user-1", agentSlug: "assistant" });
 		await index.create({ sessionId: "w-new", subjectId: "user-1", agentSlug: "writer" });
@@ -129,7 +129,7 @@ describe("会话索引列表", () => {
 
 	it("关键词在分页前检索标题与智能体，游标绑定关键词", async () => {
 		const db = setupDb();
-		const index = createSessionIndex(createSqliteDatabase(db));
+		const index = new SessionIndexService(createSqliteDatabase(db));
 		await index.create({ sessionId: "s1", subjectId: "owner", agentSlug: "assistant", title: "年度复盘" });
 		await index.create({ sessionId: "s2", subjectId: "owner", agentSlug: "writer", title: "周报" });
 		await index.create({ sessionId: "s3", subjectId: "owner", agentSlug: "assistant", title: "年度归档" });
@@ -173,7 +173,7 @@ describe("会话索引列表", () => {
 
 	it("缺省单页 50 条并保留最近活动的头部；显式 limit 生效", async () => {
 		const db = setupDb();
-		const index = createSessionIndex(createSqliteDatabase(db));
+		const index = new SessionIndexService(createSqliteDatabase(db));
 		for (let i = 0; i < 55; i += 1) {
 			const id = `s-${String(i).padStart(2, "0")}`;
 			await index.create({ sessionId: id, subjectId: "user-1", agentSlug: "assistant" });

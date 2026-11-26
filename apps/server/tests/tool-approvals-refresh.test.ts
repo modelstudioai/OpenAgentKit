@@ -1,8 +1,9 @@
 import { deriveApprovalState, type SessionEvent } from "@openagentkit/sdk/protocol";
 import { describe, expect, it, vi } from "vitest";
 import { createMockGateway } from "../src/gateway/mock.ts";
-import { createEventBufferRegistry } from "../src/services/event-buffer.ts";
-import { createToolApprovals } from "../src/services/tool-approvals.ts";
+import { SessionHistoryService } from "../src/service/shared/session/session-history.ts";
+import { ToolApprovalService } from "../src/service/shared/session/tool-approvals.ts";
+import { createEventBufferRegistry } from "../src/utils/event-buffer.ts";
 
 function latch<T>() {
 	let resolve!: (value: T) => void;
@@ -57,7 +58,13 @@ function setup() {
 		return { events: history, next_page_token: null };
 	});
 	gateway.respondToolApproval = vi.fn(async () => ({ event_ids: ["response"] }));
-	return { gateway, buffers, reading, finish, approvals: createToolApprovals(gateway, buffers) };
+	return {
+		gateway,
+		buffers,
+		reading,
+		finish,
+		approvals: new ToolApprovalService(gateway, new SessionHistoryService(gateway), buffers),
+	};
 }
 
 describe("审批刷新与实时快照交叉", () => {
@@ -68,7 +75,7 @@ describe("审批刷新与实时快照交叉", () => {
 		buffers.append("s", status("current", "early"));
 		gateway.listEvents = async () => ({ events: buffers.get("s")!.events, next_page_token: null });
 		gateway.respondToolApproval = vi.fn(async () => ({ event_ids: ["accepted"] }));
-		const approvals = createToolApprovals(gateway, buffers);
+		const approvals = new ToolApprovalService(gateway, new SessionHistoryService(gateway), buffers);
 		expect(await approvals.list("s")).toMatchObject({ requires_action: true, batch_id: "current" });
 		await expect(approvals.respond("s", { batch_id: "current", call_id: "call", result: "allow" })).resolves.toEqual({
 			event_ids: ["accepted"],
@@ -83,7 +90,7 @@ describe("审批刷新与实时快照交叉", () => {
 		buffers.seed("s", before);
 		gateway.listEvents = async () => ({ events: [...before, status(null, "new-running")], next_page_token: null });
 		gateway.respondToolApproval = vi.fn(async () => ({ event_ids: ["unexpected"] }));
-		const approvals = createToolApprovals(gateway, buffers);
+		const approvals = new ToolApprovalService(gateway, new SessionHistoryService(gateway), buffers);
 		expect(await approvals.list("s")).toMatchObject({ requires_action: false, requests: [] });
 		await expect(approvals.respond("s", { batch_id: "old", call_id: "call", result: "allow" })).rejects.toMatchObject({
 			code: "conflict",
@@ -101,7 +108,7 @@ describe("审批刷新与实时快照交叉", () => {
 			next_page_token: null,
 		});
 		gateway.respondToolApproval = vi.fn(async () => ({ event_ids: ["accepted"] }));
-		const approvals = createToolApprovals(gateway, buffers);
+		const approvals = new ToolApprovalService(gateway, new SessionHistoryService(gateway), buffers);
 		expect(await approvals.list("s")).toMatchObject({ requires_action: true, batch_id: "new" });
 		await expect(approvals.respond("s", { batch_id: "new", call_id: "call", result: "deny" })).resolves.toEqual({
 			event_ids: ["accepted"],
@@ -123,7 +130,7 @@ describe("审批刷新与实时快照交叉", () => {
 			next_page_token: null,
 		});
 		gateway.respondToolApproval = vi.fn(async () => ({ event_ids: ["unexpected"] }));
-		const approvals = createToolApprovals(gateway, buffers);
+		const approvals = new ToolApprovalService(gateway, new SessionHistoryService(gateway), buffers);
 		await expect(approvals.list("s")).rejects.toMatchObject({ code: "provider_error", retryable: false });
 		await expect(approvals.respond("s", { batch_id: "old", call_id: "call", result: "allow" })).rejects.toMatchObject({
 			code: "provider_error",

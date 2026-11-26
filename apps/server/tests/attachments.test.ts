@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_MOUNT_PREFIX, resolveMounts } from "../src/services/attachments.ts";
+import { DEFAULT_MOUNT_PREFIX, resolveMounts } from "../src/utils/attachments.ts";
 
 describe("附件挂载路径解析", () => {
 	it("省略 mount_path 时用默认目录 + 安全文件名", () => {

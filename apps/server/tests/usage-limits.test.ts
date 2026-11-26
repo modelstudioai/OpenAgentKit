@@ -5,16 +5,20 @@ import type { SessionEvent, UsageLimitConfig } from "@openagentkit/sdk/protocol"
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createMockGateway } from "../src/gateway/mock.ts";
 import type { GatewaySessionInfo } from "../src/gateway/types.ts";
-import { createUsageLimitService } from "../src/services/usage-limits.ts";
-import { createAuditLog } from "../src/store/audit.ts";
-import { createCatalogStore } from "../src/store/catalog.ts";
+import { AuditService } from "../src/service/shared/audit.ts";
+import { CatalogService } from "../src/service/shared/catalog.ts";
+import { MemberDirectoryService } from "../src/service/shared/member-directory.ts";
+import { SessionHistoryService } from "../src/service/shared/session/session-history.ts";
+import { SessionIndexService } from "../src/service/shared/session/session-index.ts";
+import { SessionRuntimeService } from "../src/service/shared/session/session-runtime.ts";
+import { TemplateCatalogService } from "../src/service/shared/templates.ts";
+import { SessionUsageSnapshotService } from "../src/service/shared/usage/session-usage-snapshot.ts";
+import { UsageAccountingService } from "../src/service/shared/usage/usage-accounting.ts";
+import { UsageLimitService } from "../src/service/shared/usage/usage-limits.ts";
 import { openDatabase } from "../src/store/db.ts";
-import { createMemberStore } from "../src/store/members.ts";
-import { createSessionUsageStore } from "../src/store/session-usage.ts";
-import { createSessionIndex } from "../src/store/sessions.ts";
 import { createSqliteDatabase } from "../src/store/sqlite.ts";
-import { createTemplateStore } from "../src/store/templates.ts";
-import { createUsageLimitStore } from "../src/store/usage-limits.ts";
+import { createEventBufferRegistry } from "../src/utils/event-buffer.ts";
+import { seedUsageMember } from "./helpers/usage-member.ts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => {
@@ -28,10 +32,10 @@ const unlimited: UsageLimitConfig = {
 };
 /** 模版条目 fixture：catalog slug 与 setup 的会话 agentSlug 同名，限额外部数据最少。 */
 async function listing(db: ReturnType<typeof openDatabase>) {
-	const catalog = createCatalogStore(createSqliteDatabase(db));
-	const templates = createTemplateStore(createSqliteDatabase(db));
+	const catalog = new CatalogService(createSqliteDatabase(db));
+	const templates = new TemplateCatalogService(createSqliteDatabase(db));
 	await catalog.create({ slug: "agent", display_name: "模版条目", remote_agent_id: "remote-x" });
-	const created = await templates.create({
+	const created = await templates.createInitialVersion({
 		name: "客服模版",
 		remote_agent_id: "remote-x",
 		remote_agent_name: "xktest",
@@ -45,7 +49,7 @@ async function listing(db: ReturnType<typeof openDatabase>) {
 		vault_ids: [],
 		category: "general",
 	});
-	await templates.saveListing(created.template_id, async () => (await catalog.getBySlug("agent"))!);
+	await templates.linkCatalog(created.template_id, (await catalog.getBySlug("agent"))!.id);
 	return created.template_id;
 }
 function detail(id: string, input = 0, output = 0, seconds = 0): GatewaySessionInfo {
@@ -61,10 +65,9 @@ async function setup() {
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
 	const db = openDatabase(dataDir);
 	cleanup.push(() => db.close());
-	const members = createMemberStore(createSqliteDatabase(db));
-	const index = createSessionIndex(createSqliteDatabase(db));
-	const snapshots = createSessionUsageStore(createSqliteDatabase(db));
-	const store = createUsageLimitStore(createSqliteDatabase(db));
+	const index = new SessionIndexService(createSqliteDatabase(db));
+	const snapshots = new SessionUsageSnapshotService(createSqliteDatabase(db));
+	const store = new UsageAccountingService(createSqliteDatabase(db));
 	const gateway = createMockGateway();
 	const details = new Map<string, GatewaySessionInfo>();
 	const events = new Map<string, SessionEvent[]>();
@@ -76,7 +79,8 @@ async function setup() {
 		next_page_token: null,
 	}));
 	async function member(id = "member_a") {
-		await members.create(
+		await seedUsageMember(
+			db,
 			{
 				member_id: id,
 				username: id,
@@ -119,23 +123,25 @@ async function setup() {
 		});
 	}
 	const make = (database = db, timeoutMs = 50) =>
-		createUsageLimitService({
-			store: createUsageLimitStore(createSqliteDatabase(database)),
-			members: createMemberStore(createSqliteDatabase(database)),
-			sessionIndex: createSessionIndex(createSqliteDatabase(database)),
-			snapshots: createSessionUsageStore(createSqliteDatabase(database)),
+		new UsageLimitService(
+			new UsageAccountingService(createSqliteDatabase(database)),
+			new MemberDirectoryService(createSqliteDatabase(database)),
+			new SessionIndexService(createSqliteDatabase(database)),
+			new SessionUsageSnapshotService(createSqliteDatabase(database)),
 			gateway,
-			audit: createAuditLog(createSqliteDatabase(database)),
-			now: () => current,
-			timeoutMs,
-		});
+			new SessionHistoryService(gateway),
+			new AuditService(createSqliteDatabase(database)),
+			createEventBufferRegistry(),
+			{ usageLimitTiming: { now: () => current, timeoutMs } },
+			createSqliteDatabase(database),
+			new SessionRuntimeService(),
+		);
 	await member();
 	await session();
 	const service = make();
 	return {
 		db,
 		dataDir,
-		members,
 		index,
 		snapshots,
 		store,

@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
+import { initialRows, initialTableSteps } from "./schema/bootstrap.ts";
 import { program } from "./schema/generated/sqlite.ts";
 import { type Migration, type MigrationProgram, type Step, type Table, tableDifference } from "./schema/model.ts";
 import { readSqliteTable } from "./schema/sqlite-model.ts";
@@ -75,8 +76,34 @@ function applyNewVersions(db: DatabaseSync, versions: Migration[], applied: Set<
 	}
 }
 
+/** 持有写锁后再检查是否为空，避免两个首次启动的进程重复建表或登记基线。 */
+function initializeEmpty(db: DatabaseSync, selected: MigrationProgram) {
+	db.exec("BEGIN IMMEDIATE");
+	try {
+		db.exec("CREATE TABLE IF NOT EXISTS _kit_migrations (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL)");
+		if (!db.prepare("SELECT 1 FROM _kit_migrations LIMIT 1").get()) {
+			const existing = db
+				.prepare(
+					"SELECT 1 FROM sqlite_schema WHERE type IN ('table', 'view') AND name NOT GLOB 'sqlite_*' AND name <> '_kit_migrations' LIMIT 1",
+				)
+				.get();
+			if (existing) throw new Error("目标库已有表但缺少 Kit 迁移记录，请核对数据库配置");
+			for (const step of initialTableSteps(selected.current, "sqlite")) db.exec(step.sql);
+			for (const sql of initialRows) db.exec(sql);
+			const insert = db.prepare("INSERT INTO _kit_migrations (id, applied_at) VALUES (?, ?)");
+			const now = new Date().toISOString();
+			for (const { id } of [...sqliteHistory, ...selected.upgrades]) insert.run(id, now);
+		}
+		db.exec("COMMIT");
+	} catch (error) {
+		db.exec("ROLLBACK");
+		throw error;
+	}
+}
+
 export function migrateSqliteSchema(db: DatabaseSync, selected: MigrationProgram = program) {
-	db.exec("CREATE TABLE IF NOT EXISTS _kit_migrations (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL)");
+	const hasRegistry = db.prepare("SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = '_kit_migrations'").get();
+	if (!hasRegistry || !db.prepare("SELECT 1 FROM _kit_migrations LIMIT 1").get()) initializeEmpty(db, selected);
 	const applied = new Set(
 		db
 			.prepare("SELECT id FROM _kit_migrations")

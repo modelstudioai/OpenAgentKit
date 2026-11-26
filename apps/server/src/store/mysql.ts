@@ -1,9 +1,12 @@
 import { createHash } from "node:crypto";
-import { createPool, type Pool, type PoolConnection, type ResultSetHeader, type RowDataPacket } from "mysql2/promise";
+import { createPool, type ExecuteValues, type PoolConnection, type QueryOptions } from "mysql2";
+import type { Pool, RowDataPacket } from "mysql2/promise";
 import type { DatabaseConfig } from "../config.ts";
-import { createStoreDatabase, type SqlValue } from "./database.ts";
+import { createStoreDatabase } from "./connection.ts";
+import type { SqlValue } from "./database.ts";
 import { program } from "./schema/generated/mysql.ts";
 import { MigrationError, migrateMysqlSchema } from "./schema/runner.ts";
+import { createEntityDataSource } from "./typeorm.ts";
 
 function errorCode(error: unknown) {
 	if (typeof error !== "object" || error === null || !("code" in error)) return undefined;
@@ -21,36 +24,12 @@ async function mysqlCall<T>(work: () => Promise<T>): Promise<T> {
 	}
 }
 
-function executor(connection: Pool | PoolConnection) {
-	function valuesFor(values: SqlValue[]) {
-		return values.map((value) => (value instanceof Uint8Array ? Buffer.from(value) : value));
-	}
-	function all(sql: string, ...values: SqlValue[]) {
-		return mysqlCall(async () => {
-			const [rows] = await connection.execute<RowDataPacket[]>(sql, valuesFor(values));
-			return rows;
-		});
-	}
-	return {
-		all,
-		async get(sql: string, ...values: SqlValue[]) {
-			return (await all(sql, ...values))[0];
-		},
-		run(sql: string, ...values: SqlValue[]) {
-			return mysqlCall(async () => {
-				const [result] = await connection.execute<ResultSetHeader>(sql, valuesFor(values));
-				return { changes: result.affectedRows };
-			});
-		},
-	};
-}
-
 async function migrate(pool: Pool, name: string) {
 	const lock = `kit-schema:${createHash("sha256").update(name).digest("hex").slice(0, 48)}`;
 	await mysqlCall(async () => {
 		const connection = await pool.getConnection();
 		try {
-			const [rows] = await connection.query<RowDataPacket[]>("SELECT GET_LOCK(?, 15) AS acquired", [lock]);
+			const [rows] = await connection.execute<RowDataPacket[]>("SELECT GET_LOCK(?, 15) AS acquired", [lock]);
 			if (rows[0]?.acquired !== 1) throw Object.assign(new Error(), { code: "KIT_MYSQL_SCHEMA_LOCK" });
 			try {
 				await migrateMysqlSchema(
@@ -77,7 +56,7 @@ async function migrate(pool: Pool, name: string) {
 					},
 				);
 			} finally {
-				await connection.query("SELECT RELEASE_LOCK(?)", [lock]).catch(() => connection.destroy());
+				await connection.execute("SELECT RELEASE_LOCK(?)", [lock]).catch(() => connection.destroy());
 			}
 		} finally {
 			connection.release();
@@ -85,9 +64,30 @@ async function migrate(pool: Pool, name: string) {
 	});
 }
 
+// TypeORM 的 MySQL QueryRunner 使用 mysql2.query() 的文本协议。带参数的普通查询和流式查询
+// 都改用 execute() 的服务端绑定，保留连接的 sql_mode 及事务控制语句的原有行为。
+function entityConnection(connection: PoolConnection) {
+	const client = connection.promise();
+	return {
+		promise: () => ({
+			query(sql: string | QueryOptions, parameters?: ExecuteValues[]) {
+				const options = typeof sql === "string" ? { sql } : sql;
+				return parameters?.length ? client.execute(options, parameters) : client.query(options);
+			},
+		}),
+		query(sql: string, parameters?: ExecuteValues[]) {
+			return parameters?.length ? connection.execute(sql, parameters) : connection.query(sql);
+		},
+		listeners: connection.listeners.bind(connection),
+		on: connection.on.bind(connection),
+		release: () => connection.release(),
+		destroy: () => connection.destroy(),
+	};
+}
+
 export async function connectMysql(config: Extract<DatabaseConfig, { driver: "mysql" }>) {
 	const verifiedTls = { rejectUnauthorized: true, verifyIdentity: true };
-	const pool = createPool({
+	const driverPool = createPool({
 		host: config.host,
 		port: config.port,
 		user: config.user,
@@ -99,29 +99,33 @@ export async function connectMysql(config: Extract<DatabaseConfig, { driver: "my
 		supportBigNumbers: true,
 		flags: ["FOUND_ROWS"],
 	});
+	const pool = driverPool.promise();
+	// 迁移与 TypeORM 的实体管理器复用同一个 mysql2 连接池。
+	const source = createEntityDataSource(program.current, {
+		type: "mysql",
+		database: config.name,
+		driver: {
+			createPool: () => ({
+				end: driverPool.end.bind(driverPool),
+				getConnection(done: (error: Error | null, connection?: ReturnType<typeof entityConnection>) => void) {
+					driverPool.getConnection((error, connection) => {
+						if (error) done(error);
+						else done(null, entityConnection(connection));
+					});
+				},
+			}),
+		},
+	});
 	try {
 		await migrate(pool, config.name);
+		await mysqlCall(() => source.initialize());
 	} catch (error) {
 		await pool.end().catch(() => undefined);
 		throw error;
 	}
 	return createStoreDatabase("mysql", {
-		executor: executor(pool),
-		async transaction(work) {
-			const connection = await mysqlCall(() => pool.getConnection());
-			try {
-				await mysqlCall(() => connection.beginTransaction());
-				const result = await work(executor(connection));
-				await mysqlCall(() => connection.commit());
-				return result;
-			} catch (error) {
-				await connection.rollback().catch(() => connection.destroy());
-				throw error;
-			} finally {
-				connection.release();
-			}
-		},
-		isDuplicateKey: (error) => errorCode(error) === "ER_DUP_ENTRY",
-		close: () => mysqlCall(() => pool.end()),
+		entitySource: () => source,
+		discardConnection: (connection: ReturnType<typeof entityConnection>) => connection.destroy(),
+		close: () => mysqlCall(() => source.destroy()),
 	});
 }

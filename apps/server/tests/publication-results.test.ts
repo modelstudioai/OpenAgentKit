@@ -64,8 +64,8 @@ it("Vault 已创建但凭据失败时持久保留已知 ID，不将未完成资�
 	});
 	expect(JSON.stringify(operation)).not.toContain("private credential response");
 	expect(JSON.stringify(operation)).not.toContain("private fixture credential");
-	expect(JSON.parse((await t.store.document(draft.draft_id))!.sdk_state_json).resources).toEqual([]);
-	expect((await t.store.document(draft.draft_id))?.proof_json).toBeNull();
+	expect(JSON.parse((await t.document(draft.draft_id))!.sdk_state_json).resources).toEqual([]);
+	expect((await t.document(draft.draft_id))?.proof_json).toBeNull();
 	t.restart();
 	expect((await t.services.operations.get(operation.operation_id))?.publication).toEqual(operation.publication);
 	expect(await t.value(`/api/admin/resource-drafts/${draft.draft_id}`)).toMatchObject({
@@ -90,11 +90,9 @@ it("SDK 成功后 StateBackend 最终保存失败仍保留逐资源结果；报�
 	const draft = await t.create();
 	await t.agent(draft);
 	const confirmation = await t.plan(draft);
-	const save = t.store.writeState.bind(t.store);
 	let saves = 0;
-	vi.spyOn(t.store, "writeState").mockImplementation(async (id, value) => {
-		if (value.includes("agent_known") && ++saves > 1) throw new Error("private storage error");
-		await save(id, value);
+	t.onStateWrite((state) => {
+		if (state.includes("agent_known") && ++saves > 1) throw new Error("private storage error");
 	});
 	const operation = await t.wait((await t.publish(draft, confirmation)).operation_id);
 	expect(operation).toMatchObject({
@@ -107,7 +105,7 @@ it("SDK 成功后 StateBackend 最终保存失败仍保留逐资源结果；报�
 		error_details: { code: "publication.state_persist_failed", phase: "persist_state", mutation_started: true },
 	});
 	expect(JSON.stringify(operation)).not.toContain("private storage error");
-	expect((await t.store.document(draft.draft_id))?.proof_json).toBeNull();
+	expect((await t.document(draft.draft_id))?.proof_json).toBeNull();
 	const persisted = operation.publication;
 	t.restart();
 	expect((await t.services.operations.get(operation.operation_id))?.publication).toEqual(persisted);

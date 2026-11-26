@@ -18,8 +18,9 @@ import { fileURLToPath } from "node:url";
 import { parseEnv } from "node:util";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-if (Number(process.versions.node.split(".")[0]) < 24) {
-	console.error(`[dev] 需要 Node.js >=24，当前为 ${process.version}。请切换到 Node.js 24 后重试。`);
+const [nodeMajor, nodeMinor] = process.versions.node.split(".").map(Number);
+if (nodeMajor < 24 || (nodeMajor === 24 && nodeMinor < 11)) {
+	console.error(`[dev] 需要 Node.js >=24.11.0，当前为 ${process.version}。请升级 Node.js 后重试。`);
 	process.exit(1);
 }
 

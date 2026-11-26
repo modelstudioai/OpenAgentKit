@@ -22,7 +22,7 @@
 
 | 目录 | 职责 |
 | --- | --- |
-| `apps/server` | Hono 服务端、Provider gateway、身份、确认与本地索引 |
+| `apps/server` | NestJS 服务端、Provider gateway、身份、确认与本地索引 |
 | `apps/web` | Web / H5 体验页，静态 CSR |
 | `apps/web-vue` | Web / H5 体验页的 Vue 3 平行实现，先做参考实现，暂不进发布产物 |
 | `apps/console` | 管理端，控制面客户端及业务 hooks |
@@ -35,7 +35,7 @@
 | `scripts/kit` | 组件复制与组件目录脚本 |
 | `docs` / `.scratch` | 权威文档与研究 / 被忽略的临时探针、日志、截图 |
 
-- Node.js 要求以根 `engines` 为准（当前 ≥24）；pnpm 版本以根 `packageManager` 为准。
+- Node.js 要求以根 `engines` 为准（当前 ≥24.11.0），pnpm 版本以根 `packageManager` 为准。
 - 开始修改前检查分支、远端、暂存区和工作区，保留其他并行工作的改动。
 - 完整 SDK 公开入口以 `packages/sdk/package.json` 为准；目录映射见目录规则。
 - 工作区只包含 `apps/*` 与 `packages/*`；目录与命令是否可用以当前清单为准，

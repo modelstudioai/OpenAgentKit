@@ -3,6 +3,8 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, w
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
+import { readEntityDefinition, renderEntityDefinition } from "../../entity/definition.ts";
+import { validateEntityDefinitions } from "../../entity/schema.ts";
 import { sqliteHistory } from "../sqlite-history.ts";
 import { compileChange, dialects, type ExplicitMigration, parseExplicit, readDefinition } from "./changes.ts";
 import { compileHistory } from "./history.ts";
@@ -12,8 +14,8 @@ import { createTableSteps, forDialect, orderedNewTables, sameSchema } from "./re
 
 const root = fileURLToPath(new URL("./", import.meta.url));
 const initialVersion = 33;
-const generatedHeader = "由 db:generate 生成，修改结构请编辑共享定义。";
-const definitionPath = "definition.sql";
+const generatedHeader = "由 db:generate 生成，修改表结构请编辑实体类。";
+const entityDirectory = "../../entity/tables";
 
 interface Version {
 	id: string;
@@ -167,7 +169,7 @@ export function buildArtifacts(versions: Version[], source: string) {
 		previous = current;
 	}
 	const defined = readDefinition(source);
-	if (!sameSchema(previous, defined)) throw new Error("共享表结构有未生成的变更，请运行 db:generate --name <变更名>");
+	if (!sameSchema(previous, defined)) throw new Error("实体表结构有未生成的变更，请运行 db:generate --name <变更名>");
 	const outputs = new Map<string, string>();
 	for (const dialect of dialects) {
 		const current = forDialect(defined, dialect);
@@ -219,7 +221,7 @@ function planNext(versions: Version[], source: string, name: string, explicit?: 
 		// 写生成文件中途失败时，重跑同名命令即可补齐。
 		return undefined;
 	}
-	if (!changed && !explicit) throw new Error("共享定义没有新变更");
+	if (!changed && !explicit) throw new Error("实体没有新的结构变更");
 	const id = `${String(initialVersion + versions.length).padStart(3, "0")}_${name}`;
 	return { id, sql: source, ...(explicit ? { explicit } : {}) };
 }
@@ -231,24 +233,44 @@ function writeOutputs(outputs: Map<string, string>) {
 	}
 }
 
-function run() {
+function checkEntities(schema: Schema) {
+	validateEntityDefinitions(schema);
+	const directory = join(root, entityDirectory);
+	const expected = new Set(schema.map(({ name }) => `${name.replaceAll("_", "-")}.entity.ts`));
+	const actual = new Set(readdirSync(directory).filter((name) => name.endsWith(".entity.ts")));
+	for (const file of expected) {
+		if (!actual.has(file)) throw new Error(`实体目录缺少对应表的文件：${file}`);
+	}
+	for (const file of actual) {
+		if (!expected.has(file)) throw new Error(`实体目录存在未在实体清单登记的文件：${file}`);
+	}
+}
+
+function readCommand() {
 	const {
-		values: { check, render, name, steps },
+		values: { check, render, entities: entitiesOnly, name, steps },
 	} = parseArgs({
 		options: {
 			check: { type: "boolean" },
 			render: { type: "boolean" },
+			entities: { type: "boolean" },
 			name: { type: "string" },
 			steps: { type: "string" },
 		},
 	});
-	if (check && render) throw new Error("--check 和 --render 只能选择一个");
-	if ((check || render) && (name !== undefined || steps !== undefined))
-		throw new Error("--check 和 --render 不接收变更参数");
-	if (!check && !render && !name) throw new Error("请提供 --name <变更名>");
+	const modes = [check, render, entitiesOnly].filter(Boolean).length;
+	if (modes > 1) throw new Error("--check、--render 和 --entities 只能选择一个");
+	if (modes && (name !== undefined || steps !== undefined)) throw new Error("当前模式不接收变更参数");
+	if (!modes && !name) throw new Error("请提供 --name <变更名>");
+	return { check, entitiesOnly, name, steps };
+}
 
+function run() {
+	const { check, entitiesOnly, name, steps } = readCommand();
 	verifyHistory();
-	const source = read(definitionPath);
+	const source = renderEntityDefinition(readEntityDefinition());
+	checkEntities(readDefinition(source));
+	if (entitiesOnly) return;
 	const versions = readVersions();
 	const explicit = steps
 		? parseExplicit(JSON.parse(readFileSync(resolve(process.env.INIT_CWD ?? process.cwd(), steps), "utf8")))
@@ -256,10 +278,10 @@ function run() {
 	const next = name ? planNext(versions, source, name, explicit) : undefined;
 	const planned = next ? [...versions, next] : versions;
 	checkVersionFiles(planned);
-	const outputs = buildArtifacts(planned, source);
+	const migrations = buildArtifacts(planned, source);
 	if (check) return;
 	if (next) appendVersion(next);
-	writeOutputs(outputs);
+	writeOutputs(migrations);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

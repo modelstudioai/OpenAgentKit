@@ -3,12 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { KitError } from "@openagentkit/sdk/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
-import { createKitServices } from "../src/services/index.ts";
-import { createCatalogStore } from "../src/store/catalog.ts";
+import { CatalogService } from "../src/service/shared/catalog.ts";
 import { openDatabase } from "../src/store/db.ts";
 import { createSqliteDatabase } from "../src/store/sqlite.ts";
+import { createTestApp as createApp } from "./helpers/http.ts";
+import { createKitServices } from "./helpers/services.ts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => {
@@ -61,7 +61,7 @@ describe("上架目录的密钥库白名单", () => {
 		expect((await update({ description: "保留密钥库" })).status).toBe(200);
 		const reopened = openDatabase(dataDir);
 		cleanup.push(() => reopened.close());
-		expect((await createCatalogStore(createSqliteDatabase(reopened)).getBySlug("vault-agent"))?.vault_ids).toEqual(
+		expect((await new CatalogService(createSqliteDatabase(reopened)).getBySlug("vault-agent"))?.vault_ids).toEqual(
 			selected,
 		);
 		expect((await update({ vault_ids: [] })).status).toBe(200);

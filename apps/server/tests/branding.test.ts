@@ -1,13 +1,13 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
 import { BrandingViewSchema, KitRuntimeConfigSchema } from "@openagentkit/sdk/protocol";
 import { afterEach, describe, expect, it } from "vitest";
-import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
-import { createKitServices } from "../src/services/index.ts";
-import { migrateSqliteSchema, openDatabase } from "../src/store/db.ts";
+import { openDatabase } from "../src/store/db.ts";
+import { historicalSqlite } from "./helpers/historical-sqlite.ts";
+import { createTestApp as createApp } from "./helpers/http.ts";
+import { createKitServices } from "./helpers/services.ts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => {
@@ -90,10 +90,8 @@ describe("员工端品牌配置", () => {
 	])("升级旧库时正确处理$scenario", ({ updatedBy, logoUrl, expectedName }) => {
 		const dataDir = mkdtempSync(join(tmpdir(), "kit-branding-upgrade-"));
 		cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
-		const previous = new DatabaseSync(join(dataDir, "kit.sqlite"));
+		const previous = historicalSqlite(dataDir, "030_branding_logo");
 		try {
-			// 从旧版迁移建立数据库，再用当前程序打开以执行增量升级。
-			migrateSqliteSchema(previous, { history: [], upgrades: [], current: [] });
 			previous
 				.prepare("UPDATE kit_branding SET product_name = ?, logo_url = ?, updated_by = ? WHERE id = 1")
 				.run("OpenAgentPack Kit", logoUrl, updatedBy);

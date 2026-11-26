@@ -1,6 +1,7 @@
 # ADR-0020：取消独立 protocol 包，契约进入 SDK `/protocol`
 
-> 当前协议子入口为 `@openagentkit/sdk/protocol`。下文记录合并时使用的包名。
+> 当前协议子入口为 `@openagentkit/sdk/protocol`。按 [ADR-0033](./0033-nestjs-server.md) 分层后，
+> 确认令牌签名与身份定义位于 Server 的 `src/utils/confirm-token.ts` 和 `src/utils/identity-types.ts`。
 
 ## 背景
 

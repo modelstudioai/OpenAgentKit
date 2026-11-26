@@ -1,8 +1,10 @@
 import { Pool, type PoolClient, types } from "pg";
 import type { DatabaseConfig } from "../config.ts";
-import { createStoreDatabase, type SqlValue } from "./database.ts";
+import { createStoreDatabase } from "./connection.ts";
+import type { SqlValue } from "./database.ts";
 import { program } from "./schema/generated/postgres.ts";
 import { MigrationError, migratePostgresSchema } from "./schema/runner.ts";
+import { createEntityDataSource } from "./typeorm.ts";
 
 // Store 的 ? 由驱动绑定。保留字符串、引用标识符和注释中的问号。
 function bindParameters(sql: string) {
@@ -28,23 +30,6 @@ async function postgresCall<T>(work: () => Promise<T>): Promise<T> {
 		const code = typeof rawCode === "string" && /^[A-Z0-9_]+$/.test(rawCode) ? rawCode : undefined;
 		throw Object.assign(new Error(code ? `PostgreSQL 操作失败（${code}）` : "PostgreSQL 操作失败"), { code });
 	}
-}
-
-function executor(connection: Pool | PoolClient) {
-	function query(sql: string, values: SqlValue[]) {
-		return postgresCall(() => connection.query(bindParameters(sql), values));
-	}
-	return {
-		async all(sql: string, ...values: SqlValue[]) {
-			return (await query(sql, values)).rows;
-		},
-		async get(sql: string, ...values: SqlValue[]) {
-			return (await query(sql, values)).rows[0];
-		},
-		async run(sql: string, ...values: SqlValue[]) {
-			return { changes: (await query(sql, values)).rowCount ?? 0 };
-		},
-	};
 }
 
 async function transaction<T>(pool: Pool, work: (client: PoolClient) => Promise<T>): Promise<T> {
@@ -100,15 +85,31 @@ export async function connectPostgres(config: Extract<DatabaseConfig, { driver: 
 		},
 	});
 	pool.on("error", () => console.warn("[kit-server] PostgreSQL 空闲连接已断开"));
+	const source = createEntityDataSource(program.current, {
+		type: "postgres",
+		database: config.name,
+		driver: {
+			Pool: function ExistingPool() {
+				return pool;
+			},
+		},
+		installExtensions: false,
+		// 原生池已安装脱敏错误处理器。
+		poolErrorHandler: () => undefined,
+	});
 	try {
 		await transaction(pool, (client) => postgresCall(() => migrate(client)));
+		await postgresCall(() => source.initialize());
 	} catch (error) {
 		await pool.end().catch(() => undefined);
 		throw error;
 	}
 	return createStoreDatabase("postgres", {
-		executor: executor(pool),
-		transaction: (work) => transaction(pool, (client) => work(executor(client))),
-		close: () => postgresCall(() => pool.end()),
+		entitySource: () => source,
+		discardConnection(client: PoolClient) {
+			// 借出期间 TypeORM 监听 pg 的 error 事件，使用 release(error) 淘汰连接。
+			client.emit("error", new Error("数据库事务回滚失败"));
+		},
+		close: () => postgresCall(() => source.destroy()),
 	});
 }

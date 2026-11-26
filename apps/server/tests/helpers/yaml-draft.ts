@@ -4,13 +4,13 @@ import { join } from "node:path";
 import type { ResourceDraftView } from "@openagentkit/sdk/protocol";
 import { setDefaultFetch } from "@openagentpack/sdk";
 import { afterEach, expect, vi } from "vitest";
-import { createApp } from "../../src/app.ts";
 import { loadConfig } from "../../src/config.ts";
-import { createKitServices } from "../../src/services/index.ts";
-import { createResourceDraftService } from "../../src/services/resource-drafts.ts";
+import { KitResourceDraftDocumentsEntity } from "../../src/entity/tables/kit-resource-draft-documents.entity.ts";
+import { KitResourceDraftsEntity } from "../../src/entity/tables/kit-resource-drafts.entity.ts";
 import { openDatabase } from "../../src/store/db.ts";
-import { createResourceDraftStore } from "../../src/store/resource-drafts.ts";
 import { createSqliteDatabase } from "../../src/store/sqlite.ts";
+import { createTestApp as createApp } from "./http.ts";
+import { createKitServices } from "./services.ts";
 
 const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => {
@@ -37,21 +37,35 @@ export async function fixture(mode: "sdk" | "mock" = "mock", mainName = "main") 
 	});
 	let db = openDatabase(root);
 	let services = createKitServices(config, db);
-	let store = createResourceDraftStore(createSqliteDatabase(db));
-	function install() {
-		store = createResourceDraftStore(createSqliteDatabase(db));
-		services.resourceDrafts = createResourceDraftService({
-			config,
-			store,
-			gateway: services.gateway,
-			gate: services.gate,
-			runner: services.runner,
-			audit: services.audit,
-			operations: services.operations,
-		});
-		return createApp(services);
+	let app = createApp(services);
+	function document(id: string) {
+		return createSqliteDatabase(db).read(
+			async (manager) => (await manager.findOneBy(KitResourceDraftDocumentsEntity, { draft_id: id })) ?? undefined,
+		);
 	}
-	let app = install();
+	function record(id: string) {
+		return createSqliteDatabase(db).read((manager) => manager.findOneBy(KitResourceDraftsEntity, { draft_id: id }));
+	}
+	// 直接构造旧声明与 SDK 检查点，用于验证重开和历史数据的处理。
+	function seedState(id: string, state: string) {
+		db.prepare("UPDATE kit_resource_draft_documents SET sdk_state_json = ? WHERE draft_id = ?").run(state, id);
+	}
+	function seedYaml(id: string, revision: string, yaml: string) {
+		const result = db
+			.prepare(
+				"UPDATE kit_resource_draft_documents SET yaml = ?, revision = revision + 1 WHERE draft_id = ? AND revision = ?",
+			)
+			.run(yaml, id, revision);
+		expect(result.changes).toBe(1);
+	}
+	function onStateWrite(visit: (state: string) => void) {
+		db.function("inspect_sdk_state", (state) => {
+			visit(String(state));
+			return null;
+		});
+		db.exec(`CREATE TEMP TRIGGER inspect_state BEFORE UPDATE OF sdk_state_json ON kit_resource_draft_documents
+			BEGIN SELECT inspect_sdk_state(NEW.sdk_state_json); END`);
+	}
 	cleanups.push(async () => {
 		if (db.isOpen) db.close();
 		await rm(root, { recursive: true, force: true });
@@ -114,9 +128,11 @@ export async function fixture(mode: "sdk" | "mock" = "mock", mainName = "main") 
 		get services() {
 			return services;
 		},
-		get store() {
-			return store;
-		},
+		document,
+		record,
+		seedState,
+		seedYaml,
+		onStateWrite,
 		get db() {
 			return db;
 		},
@@ -124,7 +140,7 @@ export async function fixture(mode: "sdk" | "mock" = "mock", mainName = "main") 
 			db.close();
 			db = openDatabase(root);
 			services = createKitServices(config, db);
-			app = install();
+			app = createApp(services);
 		},
 	};
 }

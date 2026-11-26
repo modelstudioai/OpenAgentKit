@@ -1,9 +1,21 @@
 import type { SessionEvent, SseFrame } from "@openagentkit/sdk/protocol";
 import { describe, expect, it, vi } from "vitest";
 import { createMockGateway } from "../src/gateway/mock.ts";
-import { createEventBufferRegistry } from "../src/services/event-buffer.ts";
-import { createSessionStreams, readSessionHistory } from "../src/services/session-streams.ts";
-import { statusMarker } from "../src/services/usage-limit-completion.ts";
+import { SessionHistoryService } from "../src/service/shared/session/session-history.ts";
+import { SessionRuntimeService } from "../src/service/shared/session/session-runtime.ts";
+import { SessionStreams, type SessionStreamsOptions } from "../src/service/shared/session/session-streams.ts";
+import { createEventBufferRegistry, type EventBufferRegistry } from "../src/utils/event-buffer.ts";
+
+const runtime = new SessionRuntimeService();
+
+function createStreams(
+	gateway: ReturnType<typeof createMockGateway>,
+	buffers: EventBufferRegistry,
+	pingIntervalMs: number,
+	options?: SessionStreamsOptions,
+) {
+	return new SessionStreams(gateway, new SessionHistoryService(gateway), buffers, runtime, pingIntervalMs, options);
+}
 
 const event = (id: string, text: string, completed = false): SessionEvent => ({
 	event_id: id,
@@ -38,7 +50,7 @@ describe("持久 Session 订阅", () => {
 			options?.onReady?.();
 			await new Promise<void>((resolve) => options?.signal?.addEventListener("abort", () => resolve(), { once: true }));
 		};
-		const streams = createSessionStreams(gateway, createEventBufferRegistry(), 1000);
+		const streams = createStreams(gateway, createEventBufferRegistry(), 1000);
 		const iterator = streams.frames(session.session_id, {});
 		expect((await iterator.next()).value).toMatchObject({
 			type: "ready",
@@ -63,7 +75,7 @@ describe("持久 Session 订阅", () => {
 			}
 		});
 		const buffers = createEventBufferRegistry();
-		const streams = createSessionStreams(gateway, buffers, 1000);
+		const streams = createStreams(gateway, buffers, 1000);
 		const a = streams.frames(session.session_id, {});
 		const b = streams.frames(session.session_id, {});
 		const first = untilReady(a);
@@ -102,7 +114,7 @@ describe("持久 Session 订阅", () => {
 			await new Promise<void>((resolve) => options?.signal?.addEventListener("abort", () => resolve(), { once: true }));
 		};
 		const buffers = createEventBufferRegistry();
-		const streams = createSessionStreams(gateway, buffers, 1000);
+		const streams = createStreams(gateway, buffers, 1000);
 		const iterator = streams.frames(session.session_id, {});
 		expect((await untilReady(iterator)).map(({ type }) => type)).toEqual(["ready"]);
 		expect(gateway.listEvents).not.toHaveBeenCalled();
@@ -146,7 +158,7 @@ describe("持久 Session 订阅", () => {
 					options?.signal?.addEventListener("abort", () => resolve(), { once: true }),
 				);
 		};
-		const streams = createSessionStreams(gateway, createEventBufferRegistry(), 1000);
+		const streams = createStreams(gateway, createEventBufferRegistry(), 1000);
 		const iterator = streams.frames(id, {});
 		try {
 			const ready = (await untilReady(iterator)).at(-1);
@@ -193,7 +205,7 @@ describe("持久 Session 订阅", () => {
 		};
 		const buffers = createEventBufferRegistry();
 		const statuses: string[] = [];
-		const streams = createSessionStreams(gateway, buffers, 1000, {
+		const streams = createStreams(gateway, buffers, 1000, {
 			onStatus: (_sessionId, value) => statuses.push(value),
 		});
 		const iterator = streams.frames(session.session_id, {});
@@ -231,14 +243,14 @@ describe("持久 Session 订阅", () => {
 		};
 		const buffers = createEventBufferRegistry();
 		const onStatus = vi.fn();
-		const streams = createSessionStreams(gateway, buffers, 1000, { onStatus });
+		const streams = createStreams(gateway, buffers, 1000, { onStatus });
 		const iterator = streams.frames(session.session_id, {});
 		await untilReady(iterator);
 		await streams.use(session.session_id, async () => undefined);
 		const buffer = buffers.ensure(session.session_id);
 		streams.acceptTurn(session.session_id, {
 			eventIds: ["cm-detached"],
-			previousStatus: statusMarker(buffer.latestStatus, buffer),
+			previousStatus: runtime.statusMarker(buffer.latestStatus, buffer),
 			clientMessageId: "cm-detached",
 			knownUserIds: new Set(),
 			after: buffer.events.length,
@@ -262,7 +274,7 @@ describe("持久 Session 订阅", () => {
 			options?.onReady?.();
 			yield event("a", "partial");
 		};
-		const streams = createSessionStreams(gateway, createEventBufferRegistry(), 10);
+		const streams = createStreams(gateway, createEventBufferRegistry(), 10);
 		const frames: SseFrame[] = [];
 		for await (const frame of streams.frames(session.session_id, {})) frames.push(frame);
 		expect(frames.some((frame) => frame.type === "error" && frame.data.retryable)).toBe(true);
@@ -291,7 +303,7 @@ describe("持久 Session 订阅", () => {
 			read.release();
 			await new Promise<void>((resolve) => options?.signal?.addEventListener("abort", () => resolve(), { once: true }));
 		};
-		const streams = createSessionStreams(gateway, createEventBufferRegistry(), 1000);
+		const streams = createStreams(gateway, createEventBufferRegistry(), 1000);
 		const iterator = streams.frames(session.session_id, {});
 		const first = iterator.next();
 		const send = vi.fn(async () => true);
@@ -318,7 +330,7 @@ describe("持久 Session 订阅", () => {
 			await new Promise<void>((resolve) => options?.signal?.addEventListener("abort", () => resolve(), { once: true }));
 		};
 		const buffers = createEventBufferRegistry();
-		const streams = createSessionStreams(gateway, buffers, 1000);
+		const streams = createStreams(gateway, buffers, 1000);
 		const iterator = streams.frames(session.session_id, {});
 		await untilReady(iterator);
 		const send = vi.fn(async () => buffers.get(session.session_id)?.events);
@@ -343,7 +355,7 @@ describe("持久 Session 订阅", () => {
 				),
 			);
 		};
-		const streams = createSessionStreams(gateway, createEventBufferRegistry(), 10);
+		const streams = createStreams(gateway, createEventBufferRegistry(), 10);
 		const controller = new AbortController();
 		const next = streams.frames(session.session_id, { signal: controller.signal }).next();
 		await new Promise((resolve) => setTimeout(resolve, 0));
@@ -365,7 +377,7 @@ describe("持久 Session 订阅", () => {
 		};
 		const buffers = createEventBufferRegistry();
 		const abort = new AbortController();
-		const iterator = createSessionStreams(gateway, buffers, 1000).frames(session.session_id, { signal: abort.signal });
+		const iterator = createStreams(gateway, buffers, 1000).frames(session.session_id, { signal: abort.signal });
 		const first = iterator.next();
 		await reading.promise;
 		abort.abort();
@@ -379,7 +391,9 @@ describe("持久 Session 订阅", () => {
 	it("重复分页游标拒绝回放，不能无界循环", async () => {
 		const gateway = createMockGateway();
 		gateway.listEvents = vi.fn(async () => ({ events: [], next_page_token: "same" }));
-		await expect(readSessionHistory(gateway, "s")).rejects.toMatchObject({ code: "provider_error" });
+		await expect(new SessionHistoryService(gateway).readSessionHistory("s")).rejects.toMatchObject({
+			code: "provider_error",
+		});
 		expect(gateway.listEvents).toHaveBeenCalledTimes(2);
 	});
 });
@@ -394,7 +408,7 @@ describe("恢复与资源边界", () => {
 			await terminate.promise;
 			yield { event_id: "end", type: "session_status", metadata: { status: "terminated" } };
 		};
-		const streams = createSessionStreams(gateway, createEventBufferRegistry(), 1000);
+		const streams = createStreams(gateway, createEventBufferRegistry(), 1000);
 		const iterator = streams.frames(session.session_id, {});
 		await untilReady(iterator);
 		terminate.release();
@@ -418,7 +432,7 @@ describe("恢复与资源边界", () => {
 				},
 			});
 			const frames: SseFrame[] = [];
-			for await (const frame of createSessionStreams(gateway, createEventBufferRegistry(), 1000).frames(
+			for await (const frame of createStreams(gateway, createEventBufferRegistry(), 1000).frames(
 				session.session_id,
 				{},
 			))
@@ -443,7 +457,7 @@ describe("恢复与资源边界", () => {
 			await new Promise<void>((resolve) => options?.signal?.addEventListener("abort", () => resolve(), { once: true }));
 		};
 		const buffers = createEventBufferRegistry();
-		const streams = createSessionStreams(gateway, buffers, 1000);
+		const streams = createStreams(gateway, buffers, 1000);
 		const keeper = streams.frames(session.session_id, {});
 		const ready = (await untilReady(keeper)).at(-1);
 		if (ready?.type !== "ready" || !ready.data.cursor) throw new Error("缺少就绪游标");
@@ -469,7 +483,7 @@ describe("恢复与资源边界", () => {
 			yield event("huge", "a".repeat(8 * 1024 * 1024));
 			await new Promise<void>((resolve) => options?.signal?.addEventListener("abort", () => resolve(), { once: true }));
 		};
-		const iterator = createSessionStreams(gateway, buffers, 1000).frames(session.session_id, {});
+		const iterator = createStreams(gateway, buffers, 1000).frames(session.session_id, {});
 		await untilReady(iterator);
 		emit.release();
 		expect((await iterator.next()).value).toMatchObject({ type: "error", data: { retryable: true } });
@@ -482,7 +496,7 @@ describe("索引状态回调", () => {
 		const gateway = createMockGateway();
 		const session = await gateway.createSession({ agentId: "a" });
 		const onStatus = vi.fn();
-		const streams = createSessionStreams(gateway, createEventBufferRegistry(), 1000, { onStatus });
+		const streams = createStreams(gateway, createEventBufferRegistry(), 1000, { onStatus });
 		const iterator = streams.frames(session.session_id, {});
 		await untilReady(iterator);
 		await gateway.sendMessage(session.session_id, { text: "你好" });
@@ -498,7 +512,7 @@ describe("索引状态回调", () => {
 	it("Provider 明确会话不存在时把滞留索引回正为 idle", async () => {
 		const gateway = createMockGateway();
 		const onStatus = vi.fn();
-		const streams = createSessionStreams(gateway, createEventBufferRegistry(), 1000, { onStatus });
+		const streams = createStreams(gateway, createEventBufferRegistry(), 1000, { onStatus });
 		const frames: SseFrame[] = [];
 		for await (const frame of streams.frames("missing-session", {})) frames.push(frame);
 		expect(frames[0]).toMatchObject({ type: "error", data: { code: "not_found" } });
@@ -509,7 +523,7 @@ describe("索引状态回调", () => {
 		const gateway = createMockGateway();
 		const session = await gateway.createSession({ agentId: "a" });
 		const onStatus = vi.fn();
-		const streams = createSessionStreams(gateway, createEventBufferRegistry(), 1000, { onStatus });
+		const streams = createStreams(gateway, createEventBufferRegistry(), 1000, { onStatus });
 		const iterator = streams.frames(session.session_id, {});
 		await untilReady(iterator);
 		await gateway.sendMessage(session.session_id, { text: "需要审批的操作" });
@@ -525,7 +539,7 @@ describe("索引状态回调", () => {
 			expect((await gateway.getSession(session.session_id))?.status).toBe("idle");
 		});
 		const onStatus = vi.fn();
-		const streams = createSessionStreams(gateway, createEventBufferRegistry(), 1000, { onStatus });
+		const streams = createStreams(gateway, createEventBufferRegistry(), 1000, { onStatus });
 		const iterator = streams.frames(session.session_id, {});
 		await untilReady(iterator);
 		await streams.use(session.session_id, async () => undefined);
@@ -544,7 +558,7 @@ describe("索引状态回调", () => {
 			yield { event_id: "end", type: "session_status", metadata: { status: "terminated" } };
 		};
 		const onStatus = vi.fn();
-		const streams = createSessionStreams(gateway, createEventBufferRegistry(), 1000, { onStatus });
+		const streams = createStreams(gateway, createEventBufferRegistry(), 1000, { onStatus });
 		const iterator = streams.frames(session.session_id, {});
 		await untilReady(iterator);
 		terminate.release();

@@ -2,12 +2,12 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it, vi } from "vitest";
-import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
-import { createKitServices } from "../src/services/index.ts";
-import { createCatalogStore } from "../src/store/catalog.ts";
+import { CatalogService } from "../src/service/shared/catalog.ts";
 import { openDatabase } from "../src/store/db.ts";
 import { createSqliteDatabase } from "../src/store/sqlite.ts";
+import { createTestApp as createApp } from "./helpers/http.ts";
+import { createKitServices } from "./helpers/services.ts";
 
 const json = { "content-type": "application/json", "x-kit-protocol-version": "3.0.0" };
 const admin = { ...json, authorization: "Bearer admin-token" };
@@ -35,7 +35,7 @@ it("目录环境持久化并用于后续体验会话；省略保留，null 清�
 			}),
 		});
 		expect(created.status).toBe(201);
-		expect((await createCatalogStore(createSqliteDatabase(db)).getBySlug("env-agent"))?.remote_environment_id).toBe(
+		expect((await new CatalogService(createSqliteDatabase(db)).getBySlug("env-agent"))?.remote_environment_id).toBe(
 			"env_mock_analysis",
 		);
 		const update = (body: Record<string, unknown>) =>
@@ -61,7 +61,7 @@ it("目录环境持久化并用于后续体验会话；省略保留，null 清�
 		});
 		expect((await update({ remote_environment_id: null })).status).toBe(200);
 		expect(
-			(await createCatalogStore(createSqliteDatabase(db)).getBySlug("env-agent"))?.remote_environment_id,
+			(await new CatalogService(createSqliteDatabase(db)).getBySlug("env-agent"))?.remote_environment_id,
 		).toBeNull();
 		expect((await start()).status).toBe(201);
 		expect(createSession).toHaveBeenLastCalledWith({ agentId: "agent_mock_assistant" });
@@ -76,7 +76,7 @@ it("已有目录迁移后保持默认环境及空资源配置，再次打开不�
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-catalog-environment-migration-"));
 	let db = openDatabase(dataDir);
 	try {
-		await createCatalogStore(createSqliteDatabase(db)).create({
+		await new CatalogService(createSqliteDatabase(db)).create({
 			slug: "existing",
 			display_name: "历史条目",
 			remote_agent_id: "agent-existing",
@@ -92,7 +92,7 @@ it("已有目录迁移后保持默认环境及空资源配置，再次打开不�
 		db.prepare("DELETE FROM _kit_migrations WHERE id = ?").run("013_catalog_vaults");
 		db.close();
 		db = openDatabase(dataDir);
-		const catalog = createCatalogStore(createSqliteDatabase(db));
+		const catalog = new CatalogService(createSqliteDatabase(db));
 		expect(await catalog.getBySlug("existing")).toMatchObject({
 			display_name: "历史条目",
 			remote_environment_id: null,
@@ -106,14 +106,14 @@ it("已有目录迁移后保持默认环境及空资源配置，再次打开不�
 		await catalog.updateBySlug("existing", { remote_environment_id: "env-persisted", files, memory_stores, vault_ids });
 		db.close();
 		db = openDatabase(dataDir);
-		expect((await createCatalogStore(createSqliteDatabase(db)).getBySlug("existing"))?.remote_environment_id).toBe(
+		expect((await new CatalogService(createSqliteDatabase(db)).getBySlug("existing"))?.remote_environment_id).toBe(
 			"env-persisted",
 		);
-		expect((await createCatalogStore(createSqliteDatabase(db)).getBySlug("existing"))?.files).toEqual(files);
-		expect((await createCatalogStore(createSqliteDatabase(db)).getBySlug("existing"))?.memory_stores).toEqual(
+		expect((await new CatalogService(createSqliteDatabase(db)).getBySlug("existing"))?.files).toEqual(files);
+		expect((await new CatalogService(createSqliteDatabase(db)).getBySlug("existing"))?.memory_stores).toEqual(
 			memory_stores,
 		);
-		expect((await createCatalogStore(createSqliteDatabase(db)).getBySlug("existing"))?.vault_ids).toEqual(vault_ids);
+		expect((await new CatalogService(createSqliteDatabase(db)).getBySlug("existing"))?.vault_ids).toEqual(vault_ids);
 	} finally {
 		db.close();
 		rmSync(dataDir, { recursive: true, force: true });

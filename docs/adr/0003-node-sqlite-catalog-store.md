@@ -1,5 +1,12 @@
 # ADR-0003：catalog 用 SQLite（`node:sqlite`）+ store 接口抽象
 
+状态更新（实体作为当前表结构的权威来源）。手写的 TypeORM 实体声明列、主键、索引、外键和约束。
+构建从实体派生三库结构。创建空库时直接建立该结构、写入产品初始行并登记已覆盖的迁移版本。
+已有库沿用版本化升级，包括数据回填、DDL 恢复和既有外部库的版本接续。此方式取代下文对新库回放历史的约定。
+后续实体修改使用 `db:generate` 生成可审查的版本快照。业务 Service 直接使用 Store 提供的事务内 TypeORM EntityManager 或 QueryBuilder。
+SQLite 继续使用 Node 内置驱动，MySQL 和 PostgreSQL 复用原有连接池，TypeORM 自动同步和自动迁移关闭。
+TypeORM 1.1.3 对应的 Node 24 下限为 24.11.0。
+
 状态更新（2026-11-19）。三库共用表结构定义、历史版本 ID 和执行顺序。新库从 `001_init`
 开始回放全部历史。SQLite 继续使用原有迁移。MySQL 和 PostgreSQL 用方言生成的 DDL 及显式
 数据步骤重放历史。已初始化的外部库通过旧版本标识和结构校验接续。

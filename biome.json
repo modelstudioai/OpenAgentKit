@@ -68,6 +68,14 @@
   },
   "overrides": [
     {
+      "includes": ["apps/server/src/**"],
+      "javascript": {
+        "parser": {
+          "unsafeParameterDecoratorsEnabled": true
+        }
+      }
+    },
+    {
       "includes": ["**/*.vue"],
       "linter": {
         "rules": {

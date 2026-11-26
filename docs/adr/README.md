@@ -37,3 +37,4 @@
 | [0030](./0030-chat-ui-npm-package.md) | chat-ui 以 npm 整包发布：单包公共 npm、零 SDK runtime 依赖，copy-in 并存 |
 | [0031](./0031-one-way-capability-parity.md) | 业务侧能力单向对齐开源侧：业务侧功能集 ⊆ 开源侧功能集 |
 | [0032](./0032-keycloak-member-oidc.md) | 员工 OIDC 信任 Keycloak access token，并显式绑定已有成员 |
+| [0033](./0033-nestjs-server.md) | Kit Server 采用 NestJS 与 Express，沿用 HTTP、SSE、OpenAPI 和数据库合同 |

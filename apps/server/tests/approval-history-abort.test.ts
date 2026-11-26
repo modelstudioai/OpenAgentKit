@@ -1,12 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { createMockGateway } from "../src/gateway/mock.ts";
 import type { ProviderGateway } from "../src/gateway/types.ts";
-import { readApprovalState } from "../src/services/approval-history.ts";
-import { createEventBufferRegistry } from "../src/services/event-buffer.ts";
+import { SessionHistoryService } from "../src/service/shared/session/session-history.ts";
+import { createEventBufferRegistry } from "../src/utils/event-buffer.ts";
 
 describe("审批查询取消释放", () => {
 	it("历史请求忽略signal时，取消立即释放已注册监听；迟到分页响应不继续查询", async () => {
 		const gateway = createMockGateway();
+		const history = new SessionHistoryService(gateway);
 		const buffers = createEventBufferRegistry();
 		const controller = new AbortController();
 		let resolvePage!: (page: Awaited<ReturnType<ProviderGateway["listEvents"]>>) => void;
@@ -16,7 +17,7 @@ describe("审批查询取消释放", () => {
 					resolvePage = resolve;
 				}),
 		);
-		const reading = readApprovalState(gateway, buffers, "session", controller.signal);
+		const reading = history.readApprovalSnapshot("session", buffers, controller.signal);
 		// 先证明取消路径确实已注册监听并发起历史查询。
 		expect(buffers.get("session")?.listeners.size).toBe(1);
 		expect(list).toHaveBeenCalledWith("session", { limit: 100, signal: controller.signal });
@@ -38,16 +39,17 @@ describe("审批查询取消释放", () => {
 
 	it("已取消的查询不访问Provider；正常完成仍释放监听", async () => {
 		const gateway = createMockGateway();
+		const history = new SessionHistoryService(gateway);
 		const buffers = createEventBufferRegistry();
 		const controller = new AbortController();
 		const list = vi.spyOn(gateway, "listEvents").mockResolvedValue({ events: [], next_page_token: null });
 		controller.abort();
-		await expect(readApprovalState(gateway, buffers, "session", controller.signal)).rejects.toMatchObject({
+		await expect(history.readApprovalSnapshot("session", buffers, controller.signal)).rejects.toMatchObject({
 			name: "AbortError",
 		});
 		expect(list).not.toHaveBeenCalled();
-		const result = await readApprovalState(gateway, buffers, "session");
-		expect(result.requires_action).toBe(false);
+		const result = await history.readApprovalSnapshot("session", buffers);
+		expect(result.approvals.requires_action).toBe(false);
 		expect(buffers.get("session")?.listeners.size).toBe(0);
 	});
 });

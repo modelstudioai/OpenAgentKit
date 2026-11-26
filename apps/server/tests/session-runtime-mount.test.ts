@@ -2,12 +2,11 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
-import { DEFAULT_MOUNT_PREFIX } from "../src/services/attachments.ts";
-import { createKitServices } from "../src/services/index.ts";
-import { createSessionService } from "../src/services/sessions.ts";
 import { openDatabase } from "../src/store/db.ts";
+import { DEFAULT_MOUNT_PREFIX } from "../src/utils/attachments.ts";
+import { createTestApp as createApp } from "./helpers/http.ts";
+import { createKitServices } from "./helpers/services.ts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => {
@@ -23,17 +22,16 @@ const headersFor = (subjectId: string) => ({ cookie: `kit_subject=${subjectId}` 
 async function makeServices() {
 	const directory = mkdtempSync(join(tmpdir(), "kit-runtime-mount-"));
 	cleanup.push(() => rmSync(directory, { recursive: true, force: true }));
-	const config = loadConfig({ KIT_GATEWAY: "mock", KIT_DATA_DIR: directory, ADMIN_TOKEN: "test-admin" });
+	const config = loadConfig({
+		KIT_GATEWAY: "mock",
+		KIT_DATA_DIR: directory,
+		ADMIN_TOKEN: "test-admin",
+		KIT_FILE_SCAN_TIMEOUT_MS: "200",
+	});
 	const db = openDatabase(directory);
 	cleanup.push(() => db.close());
 	const services = createKitServices(config, db);
-	const sessions = createSessionService({
-		gateway: services.gateway,
-		buffers: services.buffers,
-		sessionIndex: services.sessionIndex,
-		fileScanTimeoutMs: 200,
-	});
-	return { services, sessions };
+	return { services, sessions: services.sessions };
 }
 
 async function makeApp() {

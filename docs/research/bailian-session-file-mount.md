@@ -90,7 +90,7 @@ kit 的 catalog 存的是**远端 agent id**，因此数据面建会话不能用
 对 kit 的影响（实施时约束）：
 
 1. 「附件只能在创建会话时挂载」与「Provider 没有中途挂载 API」的既有断言（docs/protocol.md
-   「附件与文件挂载」、apps/server AGENTS.md 不变量 7、`src/routes/kit.ts` 的 messages 400 拒绝）
+   「附件与文件挂载」、当时的 apps/server AGENTS.md 不变量 7，以及早期会话消息路由的 400 拒绝）
    **已过时**，随实现修订；实施后「已有会话 + 暂存附件」可走运行时挂载，不再强制新建会话；
 2. SDK 侧已落地公开 API：上游仓库 OpenAgentPack 分支 `feat/session-runtime-resource-mount`
    （基于 `feat/sdk-sse-adaptation` @ 66f892f）新增

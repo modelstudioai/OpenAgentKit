@@ -2,9 +2,12 @@
   "name": "@openagentpack/kit-server",
   "version": "1.0.0",
   "private": true,
-  "description": "OpenAgentKit 服务端：数据面 /api/kit/* 与控制面 /api/admin/*（Hono + SQLite / MySQL / PostgreSQL）",
+  "description": "OpenAgentKit 服务端：数据面 /api/kit/* 与控制面 /api/admin/*（NestJS + Express + SQLite / MySQL / PostgreSQL）",
   "license": "Apache-2.0",
   "type": "module",
+  "engines": {
+    "node": ">=24.11.0"
+  },
   "main": "./dist/app.js",
   "types": "./dist/app.d.ts",
   "bin": {
@@ -38,22 +41,28 @@
     "db:generate": "node --import tsx src/store/schema/generate.ts",
     "db:check": "node --import tsx src/store/schema/generate.ts --check",
     "db:render": "node --import tsx src/store/schema/generate.ts --render",
+    "db:entities": "node --import tsx src/store/schema/generate.ts --entities",
     "gen:openapi": "pnpm db:render && tsx src/openapi.ts",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@hono/node-server": "^2.1.4",
-    "@hono/zod-openapi": "^1.6.3",
+    "@asteasolutions/zod-to-openapi": "9.1.0",
+    "@nestjs/common": "12.6.0",
+    "@nestjs/core": "12.6.0",
+    "@nestjs/platform-express": "12.6.0",
+    "@nestjs/swagger": "12.1.2",
+    "@openagentkit/sdk": "workspace:*",
+    "@openagentpack/kit-eval": "workspace:*",
     "@openagentpack/sdk": "0.10.0",
-    "hono": "^4.13.13",
     "jose": "6.2.18",
     "jszip": "3.10.2",
     "mysql2": "^3.24.6",
     "pg": "^8.23.1",
-    "zod": "^4.1.12",
-    "@openagentpack/kit-eval": "workspace:*",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "typeorm": "1.1.3",
     "yaml": "^2.9.1",
-    "@openagentkit/sdk": "workspace:*"
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",
