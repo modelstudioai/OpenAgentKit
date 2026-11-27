@@ -59,10 +59,10 @@ pnpm --filter storybook prebuild
 不以旧 CI 子树、历史包名或固定页数作为验收条件。
 
 Mock 端到端首次选择 Mock。已有 `.env` 时先确认 `KIT_GATEWAY=mock`。
-涉及成员密码登录的回归将 `KIT_AUTH_MODE` 显式设为 `member`。
+涉及成员密码登录的回归将 `KIT_AUTH_MODE` 显式设为 `member`。开发全栈使用 `pnpm start:dev`。
 
 ```bash
-pnpm start
+pnpm start:dev
 ```
 
 Playwright：

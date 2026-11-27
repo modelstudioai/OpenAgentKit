@@ -4,13 +4,13 @@ Kit Web 通过 Keycloak 的授权码与 PKCE S256 登录。Kit Server 校验该 
 access token，并用 `(iss, sub)` 找到对应的 `member_id`。
 
 先核对当前仓库的 `.env.example`、`apps/server/README.md` 和实际运行的 Kit 服务。
-本地开发从仓库根目录的 `.env` 读取配置，部署时可由服务进程环境注入相同变量。
-复用已有 `.env`，按所选接入方式调整认证相关项。凭据通过本地配置或部署环境注入，
-示例和交付记录使用占位符。
+本地开发读取仓库根目录的 `.env.development`，生产启动读取 `.env.production`。
+部署时可由服务进程环境注入相同变量。已有配置按所选接入方式调整认证相关项。
+凭据通过本地配置或部署环境注入，示例和交付记录使用占位符。
 
 ## 启用或关闭 Keycloak
 
-`KIT_KEYCLOAK_ENABLED` 默认为 `true`。需要关闭时，在仓库根目录的 `.env` 中设置
+`KIT_KEYCLOAK_ENABLED` 默认为 `true`。需要关闭时，在 `.env.development` 中设置
 以下值，保存后重新运行启动命令。
 
 ```dotenv
@@ -91,8 +91,8 @@ KIT_KEYCLOAK_HOME=vendor/keycloak
    ```
 
 3. 用已绑定的测试账号从体验页完成「企业登录」。确认 `GET /api/kit/auth/me` 返回的
-   `data.member.member_id` 是预期成员。Kit Console 使用 `ADMIN_TOKEN`，没有根 `.env`
-   时可由 `pnpm start` 引导生成。
+   `data.member.member_id` 是预期成员。Kit Console 使用 `ADMIN_TOKEN`，没有 `.env.development`
+   时可由 `pnpm start:dev` 引导生成。
 
 ## 排查启动或登录失败
 

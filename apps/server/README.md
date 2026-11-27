@@ -33,17 +33,26 @@ pnpm install
 pnpm dev server
 ```
 
-需要生成随机 Kit 管理员令牌或接入真实百炼时，可以用 `pnpm start server` 引导创建根 `.env`。
-已有 `.env` 会原样复用。`pnpm start` 同时启动 Server、体验页与管理端。
+需要生成随机 Kit 管理员令牌或接入真实百炼时，可以用 `pnpm start:dev server` 引导创建 `.env.development`。
+已有 `.env.development` 或旧 `.env` 会原样复用。`pnpm start:dev` 同时启动 Server、体验页与管理端。
 
-只跑已构建的服务端：
+从仓库根目录启动已构建的服务端：
+
+```bash
+pnpm start
+```
+
+`pnpm start` 读取已有的 `.env.production`。文件不存在时退出，不从旧 `.env` 复制，也不进入开发引导。也可以先构建再直接运行：
 
 ```bash
 pnpm --filter @openagentpack/kit-server build
 node apps/server/dist/bin.js
 ```
 
-`pnpm dev` 会从仓库根 `.env` 读取配置；单独用 `pnpm --filter ... dev` 时也会加载根 `.env`。
+`pnpm dev`、`pnpm start:dev` 与单独的 `pnpm --filter ... dev` 都读取仓库根 `.env.development`。
+`pnpm dev` 和 filter 开发脚本在 `KIT_ENV` 不是 development 时退出。`pnpm start:dev` 由 cross-env 写成 development。
+`pnpm start`、`node apps/server/dist/bin.js` 与 `pnpm --filter @openagentpack/kit-server start` 读取 `.env.production`。
+旧 `.env` 只在开发命令发现模式文件缺失时复制一次。`pnpm start` 不复制。
 
 ## 常用配置
 
@@ -72,6 +81,7 @@ node apps/server/dist/bin.js
 | `KIT_EVAL_WORKSPACES` | 空 | 管理端评测浏览的 workspace 根目录，逗号分隔 |
 
 完整配置与限制参数见 `src/config.ts` 与根 `.env.example`。凭据不会下发浏览器，也不会写进日志。
+`.env.example` 只作为模板，启动时不读取。
 
 ### 接入已有 Keycloak
 
@@ -128,7 +138,7 @@ macOS / Linux 的开发入口在未配置认证模式和 issuer 时默认启用�
 Keycloak 监听 `127.0.0.1:8180`，自动创建缺失的 `kit` Realm 和 `kit-web` 客户端。
 客户端使用 PKCE S256 与 `kit-api` audience。Web 与本地 Keycloak 共用 `KIT_WEB_DEV_PORT`，
 React 体验页默认使用 5173，Vue 体验页使用 5175。两端均登记 localhost 与 127.0.0.1 的精确回跳地址。端口被占用时 Web 启动会报错，
-可在根 `.env` 或启动命令中指定其他端口。首次启动会登记对应地址，后续启动也会补齐已有本地客户端
+可在 `.env.development` 或启动命令中指定其他端口。首次启动会登记对应地址，后续启动也会补齐已有本地客户端
 的回跳地址和 Web Origin。只配置 `KIT_AUTH_MODE=oidc` 也会采用这些默认值。
 设置 `KIT_KEYCLOAK_ENABLED=false` 后，启动器直接启动 Kit Server，`oidc` 模式使用 Kit 成员登录。
 
@@ -139,7 +149,7 @@ React 体验页默认使用 5173，Vue 体验页使用 5175。两端均登记 lo
 本地管理员凭据生成在 `.scratch/keycloak-bootstrap-admin.json`，权限为 `0600`。
 重启时复用这些文件以及已有的 Realm 和客户端。
 
-已有本地实例可在根 `.env` 指定包含 `bin/kc.sh` 的 `KIT_KEYCLOAK_HOME`、回环 issuer 和
+已有本地实例可在 `.env.development` 指定包含 `bin/kc.sh` 的 `KIT_KEYCLOAK_HOME`、回环 issuer 和
 `KIT_KEYCLOAK_ADMIN_FILE`，以便启动时查询和补齐资源。设置 `KIT_AUTH_MODE=member` 或
 `anonymous` 即可使用对应的开发登录模式。接入独立部署的 Keycloak 时，填写完整 OIDC 连接参数。
 
@@ -151,7 +161,7 @@ Realm 就绪后以 `tsx watch` 启动 Kit Server。先在 Keycloak 创建员工�
 也可以用 `$kit-database` 让 coding agent 按项目配置接入数据库并核对启动结果。[数据库接入 Skill](../../assets/skills/kit-database/SKILL.md)
 
 默认启动使用 `KIT_DATA_DIR/kit.sqlite`。如需外部数据库，先创建 Kit 专用库，并授予连接账户
-在该库中建表和读写的权限。在根 `.env` 或服务端进程环境中设置以下一组变量，重启后会在所选库中初始化表结构。
+在该库中建表和读写的权限。在 `.env.development`、`.env.production` 或服务端进程环境中设置以下一组变量，重启后会在所选库中初始化表结构。
 
 MySQL 8.4 使用 InnoDB。
 

@@ -229,20 +229,26 @@ OpenAgentKit 原生对接百炼 Managed Agent（MA）协议，围绕会话、事
 
 ```bash
 pnpm install
-pnpm start                 # 首次引导配置，随后启动 server :8787 + web :5173 + web-vue :5175 + console :5174
+pnpm start:dev             # 首次引导配置，随后启动 server :8787 + web :5173 + console :5174
+pnpm start                 # 读取 .env.production，构建并启动服务端 :8787
 ```
 
-没有根 `.env` 时，启动器引导选择 Mock 或真实百炼，生成随机 `ADMIN_TOKEN`，并以仅当前用户
-可读写的权限创建 `.env`。Mock 无需百炼凭据；真实百炼需输入 API Key（不回显），再选择
-Workspace ID 或 Base URL。管理员令牌只写入 `.env`，登录管理端时从本地文件读取。
+没有 `.env.development` 和旧 `.env` 时，`pnpm start:dev` 引导选择 Mock 或真实百炼，生成随机 `ADMIN_TOKEN`，
+并以仅当前用户可读写的权限创建 `.env.development`。`.env.example` 只作模板，不会在启动时读取。
+Mock 无需百炼凭据；真实百炼需输入 API Key（不回显），再选择 Workspace ID 或 Base URL。
+管理员令牌只写入 `.env.development`，登录管理端时从本地文件读取。
 Mock 数据位于 `.scratch/local-demo/data`，真实百炼数据位于 `.data`。
 
-已有 `.env` 时直接复用，不重新选择模式、不替换令牌或补写字段；后续仍运行 `pnpm start`。
-根 `.env` 的非空值覆盖 shell 同名变量。填入 Workspace ID 或 Base URL 后，另一地址字段的显式空值
-也会覆盖 shell 继承值。启动日志只打印被覆盖的变量名。
+已有 `.env.development` 时直接复用，不重新选择模式、不替换令牌或补写字段。若只有旧 `.env`，
+`pnpm start:dev` 或 `pnpm dev` 会在启动前把它的原始内容复制到缺失的 `.env.development` 和
+`.env.production`，不覆盖已有模式文件，也不删除 `.env`。`pnpm start` 不执行这次复制；没有
+`.env.production` 时直接退出。复制后开发命令只读 `.env.development`，生产启动只读 `.env.production`。
+模式文件中的非空值覆盖 shell 同名变量。填入 Workspace ID 或 Base URL 后，另一地址字段的显式空值
+也会覆盖 shell 继承值。启动日志只打印被覆盖的变量名和被创建的文件名。
 
 开发时可用 `pnpm dev` 启动 server、web、web-vue 与 console；文档站用 `pnpm dev storybook`
-单独启动。也可用 `pnpm start server web` / `pnpm dev server web` 只启动指定目标。
+单独启动。也可用 `pnpm start:dev server web` / `pnpm dev server web` 只启动指定目标。
+`pnpm start` 不接受这些目标，只启动已构建的服务端。
 `pnpm setup` 可选，仅用于启用仓库 Git hooks。
 
 macOS 或 Linux 上，干净的 checkout 安装依赖后可直接执行 `pnpm dev server`。
@@ -251,7 +257,8 @@ macOS 或 Linux 上，干净的 checkout 安装依赖后可直接执行 `pnpm de
 
 ### 配置
 
-`pnpm start` 自动生成配置；也可以复制 `.env.example` 为 `.env` 后手动填写：
+`pnpm start:dev` 自动生成 `.env.development`；也可以复制 `.env.example` 为 `.env.development` 后手动填写。
+`pnpm start` 使用 `.env.production`，不会由引导自动生成。请复制 `.env.example` 为 `.env.production` 后填写：
 
 | 变量 | 必填 | 说明 |
 | --- | --- | --- |

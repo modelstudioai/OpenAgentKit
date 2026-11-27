@@ -12,14 +12,26 @@
 
 体验页采用 CSR，构建产物可独立静态部署。
 
-本地 `pnpm start` 由 `scripts/start.mjs` 提供首次配置引导：根 `.env` 不存在时选择 Mock 或
-真实百炼，生成 32 字节随机管理员令牌，并从 `.env.example` 创建权限为 `0600` 的 `.env`；
-API Key 输入隐藏回显，凭据和管理员令牌不写启动日志。已有 `.env` 原样复用，不轮换令牌或补写字段；
+本地 `pnpm start:dev` 由 `scripts/start.mjs` 提供首次配置引导。`.env.development` 与旧 `.env` 都不存在时，
+选择 Mock 或真实百炼，生成 32 字节随机管理员令牌，并从 `.env.example` 创建权限为 `0600` 的
+`.env.development`。`.env.example` 只作模板，启动时不读取。API Key 输入隐藏回显，凭据和管理员令牌不写启动日志。
+已有 `.env.development`，或仅有旧 `.env` 时，不进入引导、不轮换令牌。若存在旧 `.env`，且
+`.env.development` 或 `.env.production` 缺失，启动前把 `.env` 的原始字节复制到缺失文件；已存在的模式文件不覆盖，
+也不删除 `.env`。复制完成后，开发命令只读 `.env.development`，生产启动只读 `.env.production`，不再打开 `.env`。
 引导取消不创建配置，独占创建防止并发覆盖。Mock 与真实百炼分别使用
-`.scratch/local-demo/data` 与 `.data`。配置完成后接续 `scripts/dev.mjs`，默认启动 server、web、web-vue、console，
-也可传入指定目标；文档站用 `pnpm dev storybook` 单独启动。两者都在启动应用前构建其工作区依赖。
-启动器按 Node dotenv 语义解析根 `.env`，非空值覆盖 shell 同名变量。`BAILIAN_BASE_URL` 与
-`BAILIAN_WORKSPACE_ID` 中一项已配置地址时，另一项的显式空值也覆盖 shell。合并结果只传给子进程。
+`.scratch/local-demo/data` 与 `.data`。配置完成后接续 `scripts/dev.mjs`。`pnpm start:dev` 默认启动
+server、web、console；`pnpm dev` 默认再包含 web-vue。也可传入指定目标；文档站用 `pnpm dev storybook`
+单独启动。两者都在启动应用前构建其工作区依赖。
+`pnpm start` 进入同一个 `scripts/start.mjs`，由 `KIT_ENV=production` 走生产分支：不引导，要求
+`.env.production` 已经存在，不从旧 `.env` 复制。构建 `@openagentpack/kit-server` 后运行该包的生产入口。
+不启动 Vite、源码 watch 或本地 Keycloak。生产启动不接受开发目标参数。
+启动器用 `dotenv.parse` 解析当前模式文件。`pnpm dev` 与 `pnpm start:dev` 使用 development，`pnpm start`
+使用 production。这两条 start 命令在根 `package.json` 用 cross-env 写入 `KIT_ENV`。直接运行
+`scripts/start.mjs` 且未设置 `KIT_ENV` 时退出。`pnpm dev` 以及服务端开发脚本在 `KIT_ENV` 不是
+development 时退出。其他值在启动前失败。文件选择不看 `NODE_ENV`。非空值覆盖 shell 同名变量。
+`BAILIAN_BASE_URL` 与 `BAILIAN_WORKSPACE_ID` 中一项已配置地址时，另一项的显式空值也覆盖 shell。
+相对 `KIT_DATA_DIR` 与 `KIT_EVAL_WORKSPACES` 只相对仓库根解析一次。未设置 `KIT_DATA_DIR` 时使用仓库根
+`.data`。合并结果只传给子进程。旧 `.env` 的一次性复制只发生在开发命令。
 
 macOS 和 Linux 的开发入口在认证模式与 issuer 未配置时启动本地 Keycloak。
 发行包按需下载和校验，Realm 和客户端就绪后再启动 Kit Server。连接参数作为环境变量传给
@@ -317,7 +329,8 @@ location / { try_files $uri $uri/ /index.html; }
 独立发布使用 Next 内置 Webpack，显式执行原有 prebuild 与搜索索引复制，避免依赖
 Turbopack 编译进程的临时监听端口；文档站自身的开发及默认构建命令保持原配置。
 
-发布产物不复制根 `.env` 或本地数据库；凭据由部署环境仅向后端注入。
+发布产物不复制 `.env`、`.env.development`、`.env.production` 或本地数据库；凭据由部署环境仅向后端注入。
+发行包没有仓库 `scripts/` 时，服务端沿用平台已经注入的环境，不再查找配置文件。
 数据目录与本地资源必须位于持久化磁盘，独立于可替换的代码产物，并避免并发启动多个写实例。
 
 ## Server 内部结构

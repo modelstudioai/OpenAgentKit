@@ -3,7 +3,7 @@ import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { parseEnv } from "node:util";
+import { parse } from "dotenv";
 import { initializeEnv } from "./start.mjs";
 
 // 保护首次配置、既有凭据不变与中断恢复；只在临时目录使用虚构凭据。
@@ -37,8 +37,10 @@ function fixture(t, answers = []) {
 test("首次选择 Mock 后生成管理员令牌，认证模式由开发入口决定", async (t) => {
 	const config = fixture(t, [""]);
 	assert.equal(await initializeEnv(config.root, config), true);
-	const path = join(config.root, ".env");
-	const env = parseEnv(readFileSync(path, "utf8"));
+	const path = join(config.root, ".env.development");
+	const env = parse(readFileSync(path, "utf8"));
+	assert.equal(existsSync(join(config.root, ".env")), false);
+	assert.equal(existsSync(join(config.root, ".env.production")), false);
 	assert.equal(env.KIT_GATEWAY, "mock");
 	assert.equal(env.KIT_AUTH_MODE, "");
 	assert.equal(env.KIT_KEYCLOAK_ENABLED, "true");
@@ -59,7 +61,7 @@ for (const [address, value, field, unusedField] of [
 		const apiKey = "test-key#with 'quotes' and spaces";
 		const config = fixture(t, ["2", apiKey, address, value]);
 		assert.equal(await initializeEnv(config.root, config), true);
-		const env = parseEnv(readFileSync(join(config.root, ".env"), "utf8"));
+		const env = parse(readFileSync(join(config.root, ".env.development"), "utf8"));
 		assert.equal(env.KIT_GATEWAY, "sdk");
 		assert.equal(env.KIT_AUTH_MODE, "");
 		assert.equal(env.KIT_DATA_DIR, ".data");
@@ -101,34 +103,34 @@ test("拒绝空凭据、换行注入与无效地址后，完成引导才创建�
 		"not-a-url",
 		"https://user:password@example.com/?secret=value",
 		(root) => {
-			assert.equal(existsSync(join(root, ".env")), false);
+			assert.equal(existsSync(join(root, ".env.development")), false);
 			return "https://example.com/agents";
 		},
 	]);
 	assert.equal(await initializeEnv(config.root, config), true);
-	const env = parseEnv(readFileSync(join(config.root, ".env"), "utf8"));
+	const env = parse(readFileSync(join(config.root, ".env.development"), "utf8"));
 	assert.equal(env.KIT_AUTH_MODE, "");
 	assert.equal(env.BAILIAN_API_KEY, "test-key");
 	assert.equal(env.BAILIAN_BASE_URL, "https://example.com/agents");
 	assert.equal(config.closed, true);
 });
 
-test("引导取消后不留下半份 .env，并关闭输入", async (t) => {
+test("引导取消后不留下半份配置，并关闭输入", async (t) => {
 	const config = fixture(t, ["2", "test-key", new Error("cancelled")]);
 	await assert.rejects(initializeEnv(config.root, config), /cancelled/);
-	assert.equal(existsSync(join(config.root, ".env")), false);
+	assert.equal(existsSync(join(config.root, ".env.development")), false);
 	assert.equal(config.closed, true);
 });
 
-test("引导期间其他进程创建 .env 时，保留新出现的配置", async (t) => {
+test("引导期间其他进程创建 .env.development 时，保留新出现的配置", async (t) => {
 	const original = "ADMIN_TOKEN=another-process-token\nKIT_GATEWAY=mock\n";
 	const config = fixture(t, [
 		(root) => {
-			writeFileSync(join(root, ".env"), original);
+			writeFileSync(join(root, ".env.development"), original);
 			return "1";
 		},
 	]);
 	assert.equal(await initializeEnv(config.root, config), false);
-	assert.equal(readFileSync(join(config.root, ".env"), "utf8"), original);
+	assert.equal(readFileSync(join(config.root, ".env.development"), "utf8"), original);
 	assert.equal(config.closed, true);
 });
