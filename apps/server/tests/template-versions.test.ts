@@ -23,7 +23,7 @@ afterEach(() => {
 const selected = { remote_agent_id: "agent_mock_assistant", remote_environment_id: "env_mock_analysis" };
 const headers = { authorization: "Bearer template-admin", "content-type": "application/json" };
 
-function setup(initialise?: (dataDir: string) => void) {
+async function setup(initialise?: (dataDir: string) => void) {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-template-versions-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
 	initialise?.(dataDir);
@@ -35,8 +35,8 @@ function setup(initialise?: (dataDir: string) => void) {
 		KIT_ADMIN_TOKENS: "auditor:auditor",
 		KIT_RATE_LIMIT_RPS: "0",
 	});
-	function reopen() {
-		const db = openDatabase(dataDir);
+	async function reopen() {
+		const db = await openDatabase(dataDir);
 		cleanup.push(() => {
 			if (db.isOpen) db.close();
 		});
@@ -96,18 +96,18 @@ function setup(initialise?: (dataDir: string) => void) {
 		}
 		return { app, db, services, save, edit, edited, publish, history, write };
 	}
-	return { ...reopen(), reopen };
+	return { ...(await reopen()), reopen };
 }
 
 describe("模版版本", () => {
 	it("默认环境配置可保存上架；从显式环境应用默认环境历史时清除覆盖，员工新会话不传环境 ID", async () => {
-		const { app, services, save, edited, publish, history, reopen, write } = setup();
+		const { app, services, save, edited, publish, history, reopen, write } = await setup();
 		const environments = vi
 			.spyOn(services.gateway, "listRemoteEnvironments")
 			.mockRejectedValue(new Error("环境目录暂不可用"));
 		const first = await save({ remote_environment_id: undefined, agent_version: 1 });
 		for (const key of ["remote_environment_id", "remote_environment_name"]) expect(first).not.toHaveProperty(key);
-		const persisted = await reopen().services.templates.get(first.template_id);
+		const persisted = await (await reopen()).services.templates.get(first.template_id);
 		expect(persisted).toEqual(first);
 		expect((await services.templates.list({ limit: 20 })).data[0]).toEqual(first);
 		const entry = await publish(first);
@@ -161,7 +161,7 @@ describe("模版版本", () => {
 
 	// 历史版本保留完整的资源与展示快照；列表只返回当前版本，重启不丢失或重建版本。
 	it("新建为V1，连续编辑追加V2/V3而不改写历史配置", async () => {
-		const { services, save, edited, history, reopen } = setup();
+		const { services, save, edited, history, reopen } = await setup();
 		vi.useFakeTimers({ toFake: ["Date"] });
 		vi.setSystemTime(new Date("2026-10-30T01:00:00.000Z"));
 		const file = await services.files.upload("admin", { filename: "首版指南.md", bytes: new Uint8Array([1]) });
@@ -216,7 +216,7 @@ describe("模版版本", () => {
 		expect(history(first.template_id).slice(0, 2)).toEqual(twoVersions);
 		expect(history(first.template_id).map((row) => row.version)).toEqual([1, 2, 3]);
 		expect((await services.templates.list({ limit: 10 })).data).toEqual([third]);
-		const restarted = reopen();
+		const restarted = await reopen();
 		expect(await restarted.services.templates.get(first.template_id)).toEqual(third);
 		expect(restarted.history(first.template_id)).toEqual(history(first.template_id));
 		await restarted.publish(third);
@@ -257,7 +257,7 @@ describe("模版版本", () => {
 
 	// 独立版本列表须保留每版名称，版本号游标不因后续编辑而重复或跳过较早快照。
 	it("历史列表倒序分页，新增版本不干扰游标，摘要与详情仅供管理员身份读取", async () => {
-		const { app, services, save, edited } = setup();
+		const { app, services, save, edited } = await setup();
 		let template = await save({ name: "历史名称 1" });
 		for (let version = 2; version <= 4; version += 1)
 			template = await edited(template, { name: `历史名称 ${version}` });
@@ -295,7 +295,7 @@ describe("模版版本", () => {
 
 	// 游标不可跨模版复用，非法边界不能落到错误版本；不存在的版本不返回当前配置。
 	it("拒绝跨模版或无效游标及非法版本，缺失模版和历史版本返回404", async () => {
-		const { app, save, edited } = setup();
+		const { app, save, edited } = await setup();
 		const first = await save();
 		await edited(first, { name: "第二版" });
 		const other = await save({ name: "另一个模版" });
@@ -338,7 +338,7 @@ describe("模版版本", () => {
 			vault_ids: ["vlt_mock_1"],
 		};
 		const original = { config_json: JSON.stringify(config), created_at: createdAt };
-		const upgraded = setup((dataDir) => {
+		const upgraded = await setup((dataDir) => {
 			const legacy = historicalSqlite(dataDir, "017_template_listings");
 			try {
 				legacy
@@ -378,12 +378,12 @@ describe("模版版本", () => {
 		expect((await upgraded.services.templates.versions(templateId, { limit: 20 })).data[0]?.category).toBe("general");
 		expect((await upgraded.services.templates.version(templateId, 1)).category).toBe("general");
 		expect(upgraded.history(templateId)[0]?.config).not.toHaveProperty("category");
-		expect(upgraded.reopen().history(templateId)).toEqual(upgraded.history(templateId));
+		expect((await upgraded.reopen()).history(templateId)).toEqual(upgraded.history(templateId));
 	});
 
 	// 并发编辑必须拒绝旧基线，不能丢失胜出者的配置或产生空洞版本。
 	it("同一base_version并发保存仅成功一次，过期基线返回409", async () => {
-		const { save, edit, services, history } = setup();
+		const { save, edit, services, history } = await setup();
 		const template = await save();
 		const responses = await Promise.all([
 			edit(template, { description: "管理员甲" }),
@@ -401,7 +401,7 @@ describe("模版版本", () => {
 
 	// 已上架目录自动采用最新模版，但上架状态和运营字段保持；员工已有Session不被重新创建或换资源。
 	it("同步已上架条目，新员工会话使用最新配置，旧会话及运营字段保留", async () => {
-		const { app, services, save, publish, edited } = setup();
+		const { app, services, save, publish, edited } = await setup();
 		const oldFile = await services.gateway.uploadFile({ filename: "v1.txt", bytes: new Uint8Array([1]) });
 		const newFile = await services.gateway.uploadFile({ filename: "v2.txt", bytes: new Uint8Array([2]) });
 		const first = await save({
@@ -501,7 +501,7 @@ describe("模版版本", () => {
 	it.each(["listed", "unlisted"] as const)(
 		"应用历史配置生成新版本，同步条目并保留 %s 状态；旧基线不能重复应用",
 		async (status) => {
-			const { app, services, save, publish, edit, edited, history } = setup();
+			const { app, services, save, publish, edit, edited, history } = await setup();
 			const file = await services.gateway.uploadFile({ filename: "历史指南.md", bytes: new Uint8Array([1]) });
 			const first = await save({
 				name: "历史模版名称",
@@ -570,7 +570,7 @@ describe("模版版本", () => {
 
 	// 未上架条目也同步当前配置，但不能通过编辑绕过上架状态；已发出的上架计划不能用于新版本。
 	it("未上架保持不可见，编辑使旧上架计划失效，展示名称按60字符同步", async () => {
-		const { services, save, publish, edited } = setup();
+		const { services, save, publish, edited } = await setup();
 		const first = await save();
 		const entry = await publish(first);
 		await services.catalog.setStatus(entry.slug, "unlisted");
@@ -595,7 +595,7 @@ describe("模版版本", () => {
 
 	// 名称冲突可能来自模板本身或关联目录；资源失效、任何同步失败均不留下部分版本或目录变更。
 	it("名称冲突、资源失效和目录同步失败全部回滚，不增加版本", async () => {
-		const { services, save, publish, edit, history } = setup();
+		const { services, save, publish, edit, history } = await setup();
 		const first = await save({ description: "保留内容" });
 		const entry = await publish(first);
 		const initial = await services.templates.get(first.template_id);

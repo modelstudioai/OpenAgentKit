@@ -28,7 +28,7 @@ it("旧目录批次原样归档并释放活动名额，YAML 记录和磁盘文�
 		throw new Error("migration must be local");
 	});
 	setDefaultFetch(network);
-	t.restart();
+	await t.restart();
 	const archive = t.db.prepare("SELECT * FROM kit_retired_directory_drafts WHERE draft_id=?").get(legacyId)!;
 	expect(JSON.parse(String(archive.record_json))).toEqual(original);
 	expect(JSON.parse(String(archive.document_json))).toMatchObject({
@@ -48,7 +48,7 @@ it("旧目录批次原样归档并释放活动名额，YAML 记录和磁盘文�
 		"/api/admin/projects/main/agents/assistant/debug-sessions",
 	])
 		expect((await t.request(path)).status).toBe(404);
-	t.restart();
+	await t.restart();
 	expect(t.db.prepare("SELECT count(*) AS n FROM kit_retired_directory_drafts").get()?.n).toBe(1);
 	expect(await t.document(yaml.draft_id)).toEqual(before);
 	expect(network).not.toHaveBeenCalled();
@@ -144,6 +144,6 @@ it("密钥引用不能跨批次或回退全局环境，丢弃只释放本批，�
 	second.seedYaml(b.draft_id, String(changed.revision), docB.yaml);
 	await first.value(`/api/admin/resource-drafts/${a.draft_id}/discard`, "POST");
 	await second.plan(b);
-	second.restart();
+	await second.restart();
 	expect((await second.request(`${second.base(b)}/plan`, "POST", { action: "publish" })).status).toBe(400);
 });

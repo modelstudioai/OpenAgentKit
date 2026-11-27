@@ -9,7 +9,7 @@ import { createKitServices } from "./helpers/services.ts";
 
 const json = { "content-type": "application/json", "x-kit-protocol-version": "3.0.0" };
 
-function makeApp(env: Record<string, string> = {}) {
+async function makeApp(env: Record<string, string> = {}) {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-quota-"));
 	const config = loadConfig({
 		KIT_GATEWAY: "mock",
@@ -19,17 +19,17 @@ function makeApp(env: Record<string, string> = {}) {
 		KIT_ADMIN_TOKENS: "aud-token:auditor",
 		...env,
 	});
-	const services = createKitServices(config, openDatabase(dataDir));
+	const services = createKitServices(config, await openDatabase(dataDir));
 	return { app: createApp(services), services };
 }
 
 /** 上架一个 mock agent（数据面可见才能建会话/扣费）。 */
-async function listAgent(ctx: ReturnType<typeof makeApp>, slug: string, extra: Record<string, unknown> = {}) {
+async function listAgent(ctx: Awaited<ReturnType<typeof makeApp>>, slug: string, extra: Record<string, unknown> = {}) {
 	await ctx.services.catalog.upsert({ slug, display_name: slug, remote_agent_id: "agent_mock_assistant", ...extra });
 	await ctx.services.catalog.setStatus(slug, "listed");
 }
 
-async function createSession(ctx: ReturnType<typeof makeApp>, subject: string, slug = "assistant") {
+async function createSession(ctx: Awaited<ReturnType<typeof makeApp>>, subject: string, slug = "assistant") {
 	const res = await ctx.app.request("/api/kit/sessions", {
 		method: "POST",
 		headers: { ...json, cookie: `kit_subject=${subject}` },
@@ -41,7 +41,7 @@ async function createSession(ctx: ReturnType<typeof makeApp>, subject: string, s
 }
 
 async function send(
-	ctx: ReturnType<typeof makeApp>,
+	ctx: Awaited<ReturnType<typeof makeApp>>,
 	subject: string,
 	sessionId: string,
 	text = "hi",
@@ -59,7 +59,7 @@ const auditor = { authorization: "Bearer aud-token", ...json };
 
 describe("Credits 配额与提额审批", () => {
 	it("默认政策 200/月；send 受理即扣费并进入 plaza 统计", async () => {
-		const ctx = makeApp();
+		const ctx = await makeApp();
 		await listAgent(ctx, "assistant");
 		const sessionId = await createSession(ctx, "alice");
 		expect((await send(ctx, "alice", sessionId)).status).toBe(202);
@@ -90,7 +90,7 @@ describe("Credits 配额与提额审批", () => {
 	});
 
 	it("override 生效：超限 403 quota_exceeded 且不写账本；client_message_id 重放不重复扣", async () => {
-		const ctx = makeApp();
+		const ctx = await makeApp();
 		await listAgent(ctx, "assistant");
 		const put = await ctx.app.request("/api/admin/quota/overrides/alice", {
 			method: "PUT",
@@ -119,7 +119,7 @@ describe("Credits 配额与提额审批", () => {
 	});
 
 	it("加油包叠加当月额度；删除后回落；-1 不限量", async () => {
-		const ctx = makeApp();
+		const ctx = await makeApp();
 		await listAgent(ctx, "assistant");
 		await ctx.app.request("/api/admin/quota/overrides/alice", {
 			method: "PUT",
@@ -154,7 +154,7 @@ describe("Credits 配额与提额审批", () => {
 	});
 
 	it("申请生命周期：pending 唯一 → approve 必须二选一 → pack/override 两种生效 → reject 必须带理由", async () => {
-		const ctx = makeApp();
+		const ctx = await makeApp();
 		const cookie = { cookie: "kit_subject=alice" };
 		const created = await ctx.app.request("/api/kit/quota/requests", {
 			method: "POST",
@@ -229,7 +229,7 @@ describe("Credits 配额与提额审批", () => {
 	});
 
 	it("auditor 只读：写政策/override 被拒；读政策与用量放行", async () => {
-		const ctx = makeApp();
+		const ctx = await makeApp();
 		expect((await ctx.app.request("/api/admin/quota/policy", { headers: auditor })).status).toBe(200);
 		expect((await ctx.app.request("/api/admin/quota/usage", { headers: auditor })).status).toBe(200);
 		expect(
@@ -244,7 +244,7 @@ describe("Credits 配额与提额审批", () => {
 	});
 
 	it("广场视图：精选/分类/搜索/热门回退 ordering", async () => {
-		const ctx = makeApp();
+		const ctx = await makeApp();
 		await listAgent(ctx, "writer", { category: "writing", featured: true, ordering: 10 });
 		await listAgent(ctx, "coder", { category: "coding", ordering: 20 });
 		await listAgent(ctx, "generalist", { category: "general", ordering: 30 });
@@ -272,7 +272,7 @@ describe("Credits 配额与提额审批", () => {
 	});
 
 	it("历史月加油包不计入当月余额（pack 仅其 month 内有效）", async () => {
-		const ctx = makeApp();
+		const ctx = await makeApp();
 		await ctx.services.catalog.upsert({
 			slug: "assistant",
 			display_name: "A",

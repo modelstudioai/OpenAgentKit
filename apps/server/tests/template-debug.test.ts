@@ -22,7 +22,7 @@ const headers = {
 };
 const selected = { remote_agent_id: "agent_mock_assistant", remote_environment_id: "env_mock_analysis" };
 
-function setup() {
+async function setup() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-template-debug-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
 	const config = loadConfig({
@@ -33,7 +33,7 @@ function setup() {
 		KIT_ADMIN_TOKENS: "other-admin:admin,auditor:auditor",
 		KIT_RATE_LIMIT_RPS: "0",
 	});
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	cleanup.push(() => db.close());
 	const services = createKitServices(config, db);
 	const app = createApp(services);
@@ -46,14 +46,14 @@ function setup() {
 	return { app, services, db, dataDir, create };
 }
 
-async function adminSubject(app: ReturnType<typeof setup>["app"]) {
+async function adminSubject(app: Awaited<ReturnType<typeof setup>>["app"]) {
 	const response = await app.request("/api/admin/identity", { headers });
 	return ((await response.json()) as { data: AdminIdentityView }).data.subject;
 }
 
 describe("模版远端资源调试", () => {
 	it("未选择环境时沿用所选 Agent 版本的默认环境，不查询或持久化环境覆盖", async () => {
-		const { app, services, db, dataDir, create } = setup();
+		const { app, services, db, dataDir, create } = await setup();
 		const environments = vi
 			.spyOn(services.gateway, "listRemoteEnvironments")
 			.mockRejectedValue(new Error("环境目录暂不可用"));
@@ -68,7 +68,7 @@ describe("模版远端资源调试", () => {
 			db.prepare("SELECT remote_environment_id FROM kit_sessions WHERE session_id=?").get(session.session_id)
 				?.remote_environment_id,
 		).toBeNull();
-		const reopened = openDatabase(dataDir);
+		const reopened = await openDatabase(dataDir);
 		cleanup.push(() => reopened.close());
 		const persisted = await new SessionIndexService(createSqliteDatabase(reopened)).getDebugForSubject(
 			session.session_id,
@@ -80,7 +80,7 @@ describe("模版远端资源调试", () => {
 	});
 
 	it("复核全部选择并创建远端调试，持久回显配置且不伪造项目或授予上传归属", async () => {
-		const { app, services, db, dataDir, create } = setup();
+		const { app, services, db, dataDir, create } = await setup();
 		const file = await services.gateway.uploadFile({ filename: "source.txt", bytes: new Uint8Array([1, 2]) });
 		const memories = [
 			{ memory_store_id: "memory-guide", access: "read_only", instructions: "检索说明" },
@@ -119,7 +119,7 @@ describe("模版远端资源调试", () => {
 		expect(session).not.toHaveProperty("project_name");
 		expect(session).not.toHaveProperty("agent_key");
 		const subject = (await services.debug.requireSession(await adminSubject(app), session.session_id)).subject_id;
-		const reopened = openDatabase(dataDir);
+		const reopened = await openDatabase(dataDir);
 		cleanup.push(() => reopened.close());
 		expect(
 			await new SessionIndexService(createSqliteDatabase(reopened)).getDebugForSubject(session.session_id, subject),
@@ -140,7 +140,7 @@ describe("模版远端资源调试", () => {
 	});
 
 	it("拒绝选择后失效的资源、非法配置与auditor写入，均不创建Provider会话", async () => {
-		const { create, services } = setup();
+		const { create, services } = await setup();
 		const createRemote = vi.spyOn(services.gateway, "createSession");
 		for (const input of [
 			{ ...selected, remote_environment_id: "" },
@@ -159,7 +159,7 @@ describe("模版远端资源调试", () => {
 	});
 
 	it("调试流与多Agent线程沿用管理员归属，其他管理员和员工均不能读取已存在资源", async () => {
-		const { app, services, create } = setup();
+		const { app, services, create } = await setup();
 		const { data: session } = (await (await create()).json()) as { data: DebugSessionDetail };
 		const path = `/api/admin/debug/sessions/${session.session_id}`;
 		expect(

@@ -11,7 +11,7 @@ import { createKitServices } from "./helpers/services.ts";
  * 服务端健壮性与管控面：角色分离、限流、请求体上限、附件扫描闸门、指标暴露。
  * 保护的不变量见 apps/server/AGENTS.md（凭据不出服务端、auditor 只读、破坏性动作闸门）。
  */
-function makeApp(env: Record<string, string> = {}) {
+async function makeApp(env: Record<string, string> = {}) {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-hardening-"));
 	const config = loadConfig({
 		KIT_GATEWAY: "mock",
@@ -20,7 +20,7 @@ function makeApp(env: Record<string, string> = {}) {
 		ADMIN_TOKEN: "admin-token",
 		...env,
 	});
-	const services = createKitServices(config, openDatabase(dataDir));
+	const services = createKitServices(config, await openDatabase(dataDir));
 	return { app: createApp(services), services, config };
 }
 
@@ -29,7 +29,7 @@ const asAdmin = { authorization: "Bearer admin-token", ...json };
 
 describe("管理端角色分离（admin / auditor）", () => {
 	it("auditor 可读、不可写；未知令牌 403；缺令牌 401", async () => {
-		const { app, services } = makeApp({ KIT_ADMIN_TOKENS: "audit-token:auditor" });
+		const { app, services } = await makeApp({ KIT_ADMIN_TOKENS: "audit-token:auditor" });
 		await services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
 
 		const auditor = { authorization: "Bearer audit-token", ...json };
@@ -87,7 +87,7 @@ describe("管理端角色分离（admin / auditor）", () => {
 	});
 
 	it("审计主体是令牌指纹，不含令牌原文", async () => {
-		const { app, services } = makeApp({ KIT_ADMIN_TOKENS: "audit-token:admin" });
+		const { app, services } = await makeApp({ KIT_ADMIN_TOKENS: "audit-token:admin" });
 		await services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
 		const updated = await app.request("/api/admin/agents/assistant", {
 			method: "PUT",
@@ -108,7 +108,7 @@ describe("管理端角色分离（admin / auditor）", () => {
 
 describe("限流与请求体上限", () => {
 	it("超过令牌桶 → 429 rate_limited + retry-after；rps=0 关闭限流", async () => {
-		const { app } = makeApp({ KIT_RATE_LIMIT_RPS: "1", KIT_RATE_LIMIT_BURST: "2" });
+		const { app } = await makeApp({ KIT_RATE_LIMIT_RPS: "1", KIT_RATE_LIMIT_BURST: "2" });
 		const cookie = "kit_subject=bursty";
 		const statuses: number[] = [];
 		for (let i = 0; i < 5; i++) {
@@ -123,14 +123,14 @@ describe("限流与请求体上限", () => {
 		expect(body.error.code).toBe("rate_limited");
 		expect(body.error.retryable).toBe(true);
 
-		const off = makeApp({ KIT_RATE_LIMIT_RPS: "0" });
+		const off = await makeApp({ KIT_RATE_LIMIT_RPS: "0" });
 		for (let i = 0; i < 30; i++) {
 			expect((await off.app.request("/api/kit/agents", { headers: { cookie } })).status).toBe(200);
 		}
 	});
 
 	it("请求体超过 KIT_BODY_LIMIT_BYTES → 413；上传走自己的上限", async () => {
-		const { app } = makeApp({ KIT_BODY_LIMIT_BYTES: "64", KIT_UPLOAD_MAX_BYTES: "4096" });
+		const { app } = await makeApp({ KIT_BODY_LIMIT_BYTES: "64", KIT_UPLOAD_MAX_BYTES: "4096" });
 		const big = await app.request("/api/kit/sessions", {
 			method: "POST",
 			headers: { ...json, cookie: "kit_subject=big" },
@@ -151,7 +151,7 @@ describe("限流与请求体上限", () => {
 
 describe("附件扫描闸门", () => {
 	it("未就绪 → 409 conflict 且 retryable；就绪后 → 201", async () => {
-		const strict = makeApp({ KIT_MOCK_FILE_SCAN_DELAY_MS: "400", KIT_FILE_SCAN_TIMEOUT_MS: "50" });
+		const strict = await makeApp({ KIT_MOCK_FILE_SCAN_DELAY_MS: "400", KIT_FILE_SCAN_TIMEOUT_MS: "50" });
 		await strict.services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
 		await strict.services.catalog.setStatus("assistant", "listed");
 		const cookie = "kit_subject=scan";
@@ -171,7 +171,7 @@ describe("附件扫描闸门", () => {
 		expect(conflict.error.retryable).toBe(true);
 		expect(conflict.error.message).toContain("附件仍在处理中");
 
-		const patient = makeApp({ KIT_MOCK_FILE_SCAN_DELAY_MS: "200", KIT_FILE_SCAN_TIMEOUT_MS: "3000" });
+		const patient = await makeApp({ KIT_MOCK_FILE_SCAN_DELAY_MS: "200", KIT_FILE_SCAN_TIMEOUT_MS: "3000" });
 		await patient.services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
 		await patient.services.catalog.setStatus("assistant", "listed");
 		const form2 = new FormData();
@@ -189,7 +189,7 @@ describe("附件扫描闸门", () => {
 
 describe("指标暴露", () => {
 	it("GET /api/admin/metrics 输出 Prometheus 文本，含请求/限流/会话计数", async () => {
-		const { app, services } = makeApp({ KIT_RATE_LIMIT_RPS: "1000", KIT_RATE_LIMIT_BURST: "1000" });
+		const { app, services } = await makeApp({ KIT_RATE_LIMIT_RPS: "1000", KIT_RATE_LIMIT_BURST: "1000" });
 		await services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
 		await services.catalog.setStatus("assistant", "listed");
 		await app.request("/api/kit/agents");
@@ -212,13 +212,16 @@ describe("指标暴露", () => {
 });
 
 /** 播种一个未上架条目（多个用例共用）。 */
-async function seed(_app: ReturnType<typeof makeApp>["app"], services: ReturnType<typeof makeApp>["services"]) {
+async function seed(
+	_app: Awaited<ReturnType<typeof makeApp>>["app"],
+	services: Awaited<ReturnType<typeof makeApp>>["services"],
+) {
 	await services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
 }
 
 describe("上下架确认闸门（AGENTS.md 红线：上下架必须 plan → 确认）", () => {
 	it("缺令牌 400 / 伪造令牌 428 / plan+令牌 200 / 令牌重放 428", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		await seed(app, services);
 
 		const noToken = await app.request("/api/admin/agents/assistant", {
@@ -268,7 +271,7 @@ describe("上下架确认闸门（AGENTS.md 红线：上下架必须 plan → �
 	});
 
 	it("同一条目可反复上/下架：plan id 每次唯一，第二次不被误判为重放", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		await seed(app, services);
 		const flip = async (status: "listed" | "unlisted") => {
 			const planRes = await app.request("/api/admin/agents/assistant/plan", {
@@ -294,7 +297,7 @@ describe("上下架确认闸门（AGENTS.md 红线：上下架必须 plan → �
 
 describe("上架条目：展示信息编辑与删除闸门", () => {
 	/** 建条目并走闸门上架，返回确认后的条目。 */
-	async function listEntry(app: ReturnType<typeof makeApp>["app"]) {
+	async function listEntry(app: Awaited<ReturnType<typeof makeApp>>["app"]) {
 		const plan = (await (
 			await app.request("/api/admin/agents/assistant/plan", {
 				method: "POST",
@@ -311,7 +314,7 @@ describe("上架条目：展示信息编辑与删除闸门", () => {
 	}
 
 	it("PUT 改展示信息不需要令牌，但改不了 status；数据面立刻同步", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		await seed(app, services);
 		await listEntry(app);
 
@@ -342,7 +345,7 @@ describe("上架条目：展示信息编辑与删除闸门", () => {
 	});
 
 	it("删除条目必须 plan(action=delete) → 确认：缺令牌 400 / 伪造 428 / 有效 200 / 重放 428", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		await seed(app, services);
 
 		expect(
@@ -399,7 +402,7 @@ describe("上架条目：展示信息编辑与删除闸门", () => {
 	});
 
 	it("auditor 只读：PUT/DELETE 上架条目一律 403", async () => {
-		const { app, services } = makeApp({ KIT_ADMIN_TOKENS: "audit-token:auditor" });
+		const { app, services } = await makeApp({ KIT_ADMIN_TOKENS: "audit-token:auditor" });
 		await services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
 		const auditor = { authorization: "Bearer audit-token", ...json };
 
@@ -420,7 +423,7 @@ describe("上架条目：展示信息编辑与删除闸门", () => {
 
 describe("CORS 接线（壳用 127.0.0.1 随机端口访问 server）", () => {
 	it("loopback 随机端口回显 allow-origin；外站不回显", async () => {
-		const { app } = makeApp();
+		const { app } = await makeApp();
 		const shell = await app.request("/api/kit/agents", { headers: { origin: "http://127.0.0.1:41237" } });
 		expect(shell.status).toBe(200);
 		expect(shell.headers.get("access-control-allow-origin")).toBe("http://127.0.0.1:41237");
@@ -431,7 +434,7 @@ describe("CORS 接线（壳用 127.0.0.1 随机端口访问 server）", () => {
 	});
 
 	it("显式白名单生效后，随机 loopback 端口不再被放行", async () => {
-		const { app } = makeApp({ KIT_CORS_ORIGINS: "https://kit.example.com" });
+		const { app } = await makeApp({ KIT_CORS_ORIGINS: "https://kit.example.com" });
 		const res = await app.request("/api/kit/agents", { headers: { origin: "http://127.0.0.1:41237" } });
 		expect(res.headers.get("access-control-allow-origin")).toBeNull();
 	});

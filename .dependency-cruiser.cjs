@@ -30,6 +30,13 @@ module.exports = {
 			to: { path: "(^|/)(mysql2|pg)(/|$)|^(node:)?sqlite$", dependencyTypesNot: ["type-only"] },
 		},
 		{
+			name: "server-entity-no-upgrade-history",
+			comment: "实体映射、建表与物理结构校验独立于旧库升级代码",
+			severity: "error",
+			from: { path: "^apps/server/src/(entity/|store/(metadata/|typeorm\\.ts$|entity-tables\\.ts$|baseline\\.ts$))" },
+			to: { path: "^apps/server/src/store/schema/" },
+		},
+		{
 			name: "server-typeorm-in-persistence",
 			comment: "Service 通过 TypeORM 访问实体，数据库驱动归 Store 管理",
 			severity: "error",

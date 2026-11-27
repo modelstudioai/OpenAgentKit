@@ -22,7 +22,7 @@ const headers = {
 const other = { ...headers, authorization: "Bearer other-admin" };
 const auditor = { ...headers, authorization: "Bearer auditor" };
 
-function setup() {
+async function setup() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-debug-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
 	const config = loadConfig({
@@ -33,7 +33,7 @@ function setup() {
 		KIT_ADMIN_TOKENS: "other-admin:admin,auditor:auditor",
 		KIT_RATE_LIMIT_RPS: "0",
 	});
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	cleanup.push(() => db.close());
 	const services = createKitServices(config, db);
 	const resolve = vi.spyOn(services.gateway, "listRemoteAgents");
@@ -52,7 +52,7 @@ function setup() {
 }
 
 async function upload(
-	app: ReturnType<typeof setup>["app"],
+	app: Awaited<ReturnType<typeof setup>>["app"],
 	path = "/api/admin/debug/files",
 	customHeaders: Record<string, string> = { authorization: headers.authorization },
 ) {
@@ -77,7 +77,7 @@ async function readUntilReady(response: Response) {
 
 describe("管理员调试合同", () => {
 	it("从已发布目标建会话，消息/审批复用运行时且不产生 Catalog 或员工 Credits", async () => {
-		const { app, create, services, db, resolve } = setup();
+		const { app, create, services, db, resolve } = await setup();
 		const session = await create({ title: "调试" });
 		expect(resolve).toHaveBeenCalled();
 		expect(session).toMatchObject({
@@ -122,7 +122,7 @@ describe("管理员调试合同", () => {
 	});
 
 	it("未发布拒绝且不创建 Provider Session；角色与跨管理员/跨用途隔离验证已存在资源", async () => {
-		const { app, create, createPath, resolve, services } = setup();
+		const { app, create, createPath, resolve, services } = await setup();
 		const identity = (
 			(await (await app.request("/api/admin/identity", { headers })).json()) as {
 				data: { subject: string; role: string };
@@ -171,7 +171,7 @@ describe("管理员调试合同", () => {
 	});
 
 	it("调试历史分页独立，SSE 就绪和游标失效都不读取历史", async () => {
-		const { app, create, services } = setup();
+		const { app, create, services } = await setup();
 		const session = await create();
 		const path = `/api/admin/debug/sessions/${session.session_id}`;
 		expect((await app.request(`${path}/stream`, { headers: { authorization: headers.authorization } })).status).toBe(
@@ -221,7 +221,7 @@ describe("管理员调试合同", () => {
 	});
 
 	it("上传、挂载与交付下载都按用途及管理员主体隔离，中途附件拒绝", async () => {
-		const { app, create, services, db } = setup();
+		const { app, create, services, db } = await setup();
 		const identity = (
 			(await (await app.request("/api/admin/identity", { headers })).json()) as { data: { subject: string } }
 		).data;
@@ -281,7 +281,7 @@ describe("管理员调试合同", () => {
 	});
 
 	it("删除必须先确认，令牌绑定实际调试会话，不可用于另一会话", async () => {
-		const { app, create, services } = setup();
+		const { app, create, services } = await setup();
 		const one = await create();
 		const two = await create();
 		const path = `/api/admin/debug/sessions/${one.session_id}`;

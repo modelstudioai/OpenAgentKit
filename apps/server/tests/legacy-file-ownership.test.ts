@@ -27,9 +27,9 @@ function legacyDatabase(version: "004" | "005") {
 		get db() {
 			return db;
 		},
-		reopen() {
+		async reopen() {
 			db.close();
-			db = openDatabase(dataDir);
+			db = await openDatabase(dataDir);
 			return db;
 		},
 	};
@@ -62,7 +62,7 @@ describe("历史附件归属升级", () => {
 				.prepare("SELECT 1 FROM kit_sessions WHERE session_id = ? AND subject_id = ?")
 				.get("session_before_upgrade", owner),
 		).not.toBeNull();
-		const db = legacy.reopen();
+		const db = await legacy.reopen();
 		const files = createFileService(db, gateway);
 		expect(new TextDecoder().decode((await files.download(owner, file.file_id)).body)).toBe("old contents");
 		await files.requireUploads(owner, [file]);
@@ -71,7 +71,7 @@ describe("历史附件归属升级", () => {
 		// 重开不重复迁移；删掉会话索引也不会丢掉已恢复的上传归属。
 		await new SessionIndexService(createSqliteDatabase(db)).remove("session_before_upgrade");
 		await new SessionIndexService(createSqliteDatabase(db)).remove("session_same_owner");
-		const reopened = legacy.reopen();
+		const reopened = await legacy.reopen();
 		await createFileService(reopened, gateway).requireUploads(owner, [file]);
 		expect(reopened.prepare("SELECT COUNT(*) AS count FROM kit_uploaded_files").get()?.count).toBe(1);
 	});
@@ -96,7 +96,7 @@ describe("历史附件归属升级", () => {
 			mount(legacy.db, `malformed_${i}`, owner, "placeholder");
 			legacy.db.prepare("UPDATE kit_sessions SET files_json = ? WHERE session_id = ?").run(value, `malformed_${i}`);
 		}
-		const db = legacy.reopen();
+		const db = await legacy.reopen();
 		const files = createFileService(db, gateway);
 		for (const subjectId of [owner, other]) {
 			await expect(files.requireUploads(subjectId, [ambiguous])).rejects.toThrow("文件不存在");

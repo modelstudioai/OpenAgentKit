@@ -3,14 +3,14 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, w
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { readEntityDefinition, renderEntityDefinition } from "../../entity/definition.ts";
+import { readEntityDefinition } from "../../entity/definition.ts";
 import { validateEntityDefinitions } from "../../entity/schema.ts";
+import type { Dialect, Migration, MigrationProgram, Schema, Step, Table } from "../metadata/model.ts";
+import manifest from "../migration-manifest.json" with { type: "json" };
 import { sqliteHistory } from "../sqlite-history.ts";
 import { compileChange, dialects, type ExplicitMigration, parseExplicit, readDefinition } from "./changes.ts";
 import { compileHistory } from "./history.ts";
-import manifest from "./manifest.json" with { type: "json" };
-import type { Dialect, Migration, MigrationProgram, Schema, Step, Table } from "./model.ts";
-import { createTableSteps, forDialect, orderedNewTables, sameSchema } from "./render.ts";
+import { createTableSteps, forDialect, orderedNewTables, renderEntityDefinition, sameSchema } from "./render.ts";
 
 const root = fileURLToPath(new URL("./", import.meta.url));
 const initialVersion = 33;
@@ -90,7 +90,7 @@ function appendVersion(version: Version) {
 		}
 	}
 	const entry = { id: version.id, source: "version", ...(version.explicit ? { steps: true } : {}) };
-	write("manifest.json", `${JSON.stringify([...manifest, entry], null, 2)}\n`);
+	write("../migration-manifest.json", `${JSON.stringify([...manifest, entry], null, 2)}\n`);
 }
 
 function sqlArtifact(sql: string[]) {
@@ -140,7 +140,7 @@ function typescriptArtifact(program: MigrationProgram) {
 	const legacy = program.legacy ? `\tlegacy: ${list(program.legacy)},\n` : "";
 	const tables = [...tableReferences.keys()].map((table) => `\t${table},`).join("\n");
 	return `// ${generatedHeader}
-import type { MigrationProgram, Table } from "../model.ts";
+import type { MigrationProgram, Table } from "../../metadata/model.ts";
 
 const tables: Table[] = [
 ${tables}

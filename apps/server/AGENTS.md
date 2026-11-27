@@ -63,10 +63,11 @@
 13. 数据库驱动归 `src/store/`，由 `server-database-drivers-in-store` 检查。Nest 应用装配时
     为 Service 提供同一个 `StoreDatabase`，业务事务内的读写共用连接。
     Service 使用 `@Inject(StoreDatabase)` 取得实体读写接口，使用 `@Inject(类名)` 获取共用的 Service 实例，配置、Gateway 和事件缓冲按对应令牌注入。
-    实体是三库当前结构的唯一来源，各库分别登记已覆盖的迁移。
+    DataSource 直接注册实体类。空库由 TypeORM 驱动按实体元数据建表，已达当前版本的库按实体校验，待升级的旧库按历史版本执行迁移。
+    `server-entity-no-upgrade-history` 检查实体映射、当前建表和结构校验独立于历史升级。
     `server-typeorm-in-persistence` 允许 `service/`、`entity/` 和 `store/` 使用 TypeORM。每张业务表对应一个手写的
     `@Entity` 类，列装饰器声明与数据库列同名的属性。Store 在当前连接执行实体查询，TypeORM 的自动同步和迁移关闭。
-    [迁移清单](src/store/schema/manifest.json) 决定完整顺序。已交付的迁移保留原 ID、内容和顺序，
+    [迁移清单](src/store/migration-manifest.json) 决定完整顺序。已交付的迁移保留原 ID、内容和顺序，
     新变更由生成命令追加到清单。
 14. Controller 调用 Service。Service 的实例方法承担业务校验、实体读写与事务。多个用例共用的能力放在 `service/shared/`。Provider 访问走 Service → Gateway。
     Controller 使用 `http/` 的传输组件，`module/` 将已注册的 Controller 清单传入 OpenAPI 生成器。

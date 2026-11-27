@@ -14,7 +14,7 @@ const admin = { ...json, authorization: "Bearer admin-token" };
 
 it("目录环境持久化并用于后续体验会话；省略保留，null 清除，终端用户不能覆盖", async () => {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-catalog-environment-"));
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	try {
 		const config = loadConfig({
 			KIT_GATEWAY: "mock",
@@ -74,7 +74,7 @@ it("目录环境持久化并用于后续体验会话；省略保留，null 清�
 
 it("已有目录迁移后保持默认环境及空资源配置，再次打开不重复迁移或丢失选择", async () => {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-catalog-environment-migration-"));
-	let db = openDatabase(dataDir);
+	let db = await openDatabase(dataDir);
 	try {
 		await new CatalogService(createSqliteDatabase(db)).create({
 			slug: "existing",
@@ -91,7 +91,7 @@ it("已有目录迁移后保持默认环境及空资源配置，再次打开不�
 		db.prepare("DELETE FROM _kit_migrations WHERE id = ?").run("012_catalog_memory_stores");
 		db.prepare("DELETE FROM _kit_migrations WHERE id = ?").run("013_catalog_vaults");
 		db.close();
-		db = openDatabase(dataDir);
+		db = await openDatabase(dataDir);
 		const catalog = new CatalogService(createSqliteDatabase(db));
 		expect(await catalog.getBySlug("existing")).toMatchObject({
 			display_name: "历史条目",
@@ -105,7 +105,7 @@ it("已有目录迁移后保持默认环境及空资源配置，再次打开不�
 		const vault_ids = ["vlt-persisted"];
 		await catalog.updateBySlug("existing", { remote_environment_id: "env-persisted", files, memory_stores, vault_ids });
 		db.close();
-		db = openDatabase(dataDir);
+		db = await openDatabase(dataDir);
 		expect((await new CatalogService(createSqliteDatabase(db)).getBySlug("existing"))?.remote_environment_id).toBe(
 			"env-persisted",
 		);

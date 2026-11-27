@@ -10,7 +10,7 @@ export async function openDatabaseConnection(
 ): Promise<StoreDatabase> {
 	if (config.database.driver === "sqlite") {
 		const { openDatabase } = await import("./db.ts");
-		const connection = openDatabase(config.dataDir);
+		const connection = await openDatabase(config.dataDir);
 		try {
 			const database = createSqliteDatabase(connection);
 			await database.initializeEntities();

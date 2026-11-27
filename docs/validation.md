@@ -115,7 +115,7 @@ KIT_LIVE=1 pnpm --filter @openagentpack/kit-server exec tsx tests/live/smoke.ts
 
 表结构改动运行 `db:check`，核对从实体派生的结构、版本快照、迁移清单和逐条保存的历史，并验证三库产物可生成。
 直接运行下面的 Vitest 用例前，用 `db:render` 准备本地生成文件。服务端的 `test` 入口包含这一步。
-迁移用例 `apps/server/tests/database-migrations.test.ts` 覆盖空库直接建表、带数据的历史升级、旧外部库
+迁移用例 `apps/server/tests/database-migrations.test.ts` 覆盖三库直接注册实体类、空库按实体建表、带数据的历史升级、旧外部库
 接续和 DDL 中途恢复。外部库用例用测试账号创建和清理独立的临时数据库。
 存储改动使用 `apps/server/tests/database-backends.test.ts` 验证登录、实体读写与跨业务 Service 的事务回滚、
 模版事务、会话索引、重复扣减、Logo 和资源发布。默认运行 SQLite。将 `KIT_TEST_MYSQL_URL` 和 `KIT_TEST_POSTGRES_URL`

@@ -112,13 +112,13 @@ async function setup() {
 		KIT_ADMIN_TOKENS: "preset-auditor:auditor",
 		KIT_RATE_LIMIT_RPS: "0",
 	});
-	const reopen = () => {
-		const db = openDatabase(dataDir);
+	const reopen = async () => {
+		const db = await openDatabase(dataDir);
 		cleanup.push(() => db.close());
 		const services = createKitServices(config, db);
 		return { app: createApp(services), services, db };
 	};
-	const state = reopen();
+	const state = await reopen();
 	const gateway = state.services.gateway;
 	const memory = (await gateway.listRemoteMemoryStores())[0]!;
 	const file = await gateway.uploadFile({ filename: "guide.txt", bytes: new Uint8Array([1, 2]) });
@@ -188,7 +188,7 @@ it("只保存所选版本及资源，元数据由服务端校准，重启可读�
 	expect(db.prepare("SELECT COUNT(*) AS count FROM kit_sessions").get()).toMatchObject({ count: 0 });
 	for (const write of writes) expect(write).not.toHaveBeenCalled();
 	expect(vaultDetail).not.toHaveBeenCalled();
-	const restarted = reopen();
+	const restarted = await reopen();
 	vi.spyOn(restarted.services.gateway, "listRemoteAgents").mockRejectedValue(new Error("offline"));
 	const path = `/api/admin/preset-packs/${preset.preset_pack_id}`;
 	expect((await restarted.app.request(path)).status).toBe(401);

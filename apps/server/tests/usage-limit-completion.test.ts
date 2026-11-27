@@ -39,7 +39,7 @@ async function ready(iterator: AsyncGenerator<SseFrame>) {
 async function setup(reuseAcrossTurns = false) {
 	const directory = mkdtempSync(join(tmpdir(), "kit-limit-completion-"));
 	cleanups.push(() => rmSync(directory, { recursive: true, force: true }));
-	const db = openDatabase(directory);
+	const db = await openDatabase(directory);
 	cleanups.push(() => db.close());
 	const services = createKitServices(loadConfig({ KIT_GATEWAY: "mock", KIT_DATA_DIR: directory }), db);
 	const now = new Date().toISOString();

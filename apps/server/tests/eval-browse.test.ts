@@ -73,7 +73,7 @@ function fixtureWorkspace(): string {
 	return ws;
 }
 
-function makeApp(ws: string) {
+async function makeApp(ws: string) {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-evalbrowse-"));
 	const config = loadConfig({
 		KIT_GATEWAY: "mock",
@@ -81,13 +81,13 @@ function makeApp(ws: string) {
 		ADMIN_TOKEN: "admin-token",
 		KIT_EVAL_WORKSPACES: ws,
 	});
-	return createApp(createKitServices(config, openDatabase(dataDir)));
+	return createApp(createKitServices(config, await openDatabase(dataDir)));
 }
 
 describe("评测浏览 ops（只读）", () => {
 	it("workspaces/runs/run 三级只读视图，残 run 被跳过", async () => {
 		const ws = fixtureWorkspace();
-		const app = makeApp(ws);
+		const app = await makeApp(ws);
 		const list = (await (await app.request("/api/admin/eval/workspaces", { headers: admin })).json()) as {
 			data: { path: string; skill_name?: string; runs: number }[];
 		};
@@ -113,7 +113,7 @@ describe("评测浏览 ops（只读）", () => {
 
 	it("未配置 workspace 与数据面身份都被拒", async () => {
 		const ws = fixtureWorkspace();
-		const app = makeApp(ws);
+		const app = await makeApp(ws);
 		const missing = await app.request("/api/admin/eval/runs?workspace=/nope", { headers: admin });
 		expect(missing.status).toBe(404);
 		const noAuth = await app.request("/api/admin/eval/workspaces");

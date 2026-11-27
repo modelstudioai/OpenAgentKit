@@ -26,7 +26,7 @@ async function makeServices() {
 		ADMIN_TOKEN: "test-admin",
 		KIT_FILE_SCAN_TIMEOUT_MS: "200",
 	});
-	const db = openDatabase(directory);
+	const db = await openDatabase(directory);
 	cleanup.push(() => db.close());
 	const services = createKitServices(config, db);
 	return { services, sessions: services.sessions };
@@ -41,7 +41,7 @@ async function makeApp() {
 		KIT_DATA_DIR: directory,
 		ADMIN_TOKEN: "admin-token",
 	});
-	const db = openDatabase(directory);
+	const db = await openDatabase(directory);
 	cleanup.push(() => db.close());
 	const services = createKitServices(config, db);
 	await services.catalog.upsert({

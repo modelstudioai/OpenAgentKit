@@ -20,7 +20,7 @@ const selected = {
 	category: "general" as const,
 };
 
-function setup() {
+async function setup() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-template-listing-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
 	const config = loadConfig({
@@ -31,8 +31,8 @@ function setup() {
 		KIT_ADMIN_TOKENS: "auditor:auditor,other-admin:admin",
 		KIT_RATE_LIMIT_RPS: "0",
 	});
-	function reopen() {
-		const db = openDatabase(dataDir);
+	async function reopen() {
+		const db = await openDatabase(dataDir);
 		cleanup.push(() => db.close());
 		const services = createKitServices(config, db);
 		const app = createApp(services);
@@ -58,7 +58,7 @@ function setup() {
 		}
 		return { app, db, services, post, save, listing, plan };
 	}
-	return { ...reopen(), reopen };
+	return { ...(await reopen()), reopen };
 }
 
 function confirmed(plan: PlanResponse, displayName = "项目助手") {
@@ -68,7 +68,7 @@ function confirmed(plan: PlanResponse, displayName = "项目助手") {
 describe("模版上架", () => {
 	// 保护 plan→取消无写入→确认后员工可见，配置与关联持久化，且模版版本快照不锁定运行时。
 	it("计划只读，确认后完整映射配置并持久记录当前上架状态", async () => {
-		const { app, services, db, save, plan, listing, reopen } = setup();
+		const { app, services, db, save, plan, listing, reopen } = await setup();
 		const file = await services.gateway.uploadFile({ filename: "guide.txt", bytes: new Uint8Array([1, 2]) });
 		const template = await save({
 			category: "data",
@@ -106,7 +106,7 @@ describe("模版上架", () => {
 		expect(createSession).not.toHaveBeenCalled();
 		const publicCatalog = await app.request("/api/kit/agents");
 		expect(await publicCatalog.json()).toMatchObject({ data: [{ slug: entry.slug }] });
-		const restarted = reopen();
+		const restarted = await reopen();
 		vi.spyOn(restarted.services.gateway, "listRemoteAgents").mockRejectedValue(new Error("offline"));
 		expect((await restarted.services.templates.get(template.template_id)).listing).toEqual({
 			catalog_id: entry.id,
@@ -129,7 +129,7 @@ describe("模版上架", () => {
 		const first = "2026-11-02T01:00:00.000Z";
 		const second = "2026-11-02T01:02:00.000Z";
 		vi.setSystemTime(first);
-		const { save, plan, listing, services, reopen } = setup();
+		const { save, plan, listing, services, reopen } = await setup();
 		const template = await save();
 		const prepared = await plan(template);
 		expect((await services.templates.get(template.template_id)).listing).toBeUndefined();
@@ -151,7 +151,7 @@ describe("模版上架", () => {
 		});
 		vi.setSystemTime(second);
 		expect((await listing(template, confirmed(await plan(template)))).status).toBe(200);
-		const restarted = reopen();
+		const restarted = await reopen();
 		const response = await restarted.app.request("/api/admin/templates", {
 			headers: { authorization: "Bearer template-admin" },
 		});
@@ -161,22 +161,22 @@ describe("模版上架", () => {
 	});
 
 	it("旧目录迁移保留上架状态与配置，不把创建或更新时间补作上架时间", async () => {
-		const { save, plan, listing, db, reopen } = setup();
+		const { save, plan, listing, db, reopen } = await setup();
 		const template = await save();
 		expect((await listing(template, confirmed(await plan(template)))).status).toBe(200);
 		db.exec(`ALTER TABLE catalog_agents DROP COLUMN listed_at;
 			DELETE FROM _kit_migrations WHERE id='023_catalog_listed_at';`);
-		const restarted = reopen();
+		const restarted = await reopen();
 		const migrated = await restarted.services.templates.get(template.template_id);
 		expect(migrated).toMatchObject({ ...template, listing: { status: "listed" } });
 		expect(migrated.listing?.listed_at).toBeUndefined();
 		expect((await restarted.services.catalog.all())[0]?.status).toBe("listed");
-		expect(await reopen().services.templates.get(template.template_id)).toEqual(migrated);
+		expect(await (await reopen()).services.templates.get(template.template_id)).toEqual(migrated);
 	});
 
 	// 确认必须绑定主体、模版和展示名称；缺失、伪造、错用和重放均不得产生目录写入。
 	it("拒绝缺失、伪造、跨主体或跨模版的令牌、计划外改名及确认重放", async () => {
-		const { services, save, listing, plan } = setup();
+		const { services, save, listing, plan } = await setup();
 		const template = await save();
 		const other = await save({ name: "另一模版" });
 		expect((await listing(template, { display_name: "项目助手" })).status).toBe(428);
@@ -196,7 +196,7 @@ describe("模版上架", () => {
 
 	// 同一模版只对应一个条目；重新上架同步模版字段，保留目录运营信息，并拒绝覆盖计划之后的编辑。
 	it("并发上架不重复，重新上架复用条目且拒绝过期目录快照", async () => {
-		const { services, save, listing, plan, post } = setup();
+		const { services, save, listing, plan, post } = await setup();
 		const template = await save();
 		const plans = await Promise.all([plan(template), plan(template)]);
 		const responses = await Promise.all(plans.map((prepared) => listing(template, confirmed(prepared))));
@@ -238,7 +238,7 @@ describe("模版上架", () => {
 
 	// 真实存在的占用条目必须保持不变；删除后的关联不误认同 slug 的外来条目。
 	it("删除条目清除关联，名称或稳定 ID 冲突不会覆盖其他条目", async () => {
-		const { services, save, plan, listing, post, db } = setup();
+		const { services, save, plan, listing, post, db } = await setup();
 		const template = await save();
 		const foreign = await services.catalog.create({
 			slug: "another-agent",
@@ -271,7 +271,7 @@ describe("模版上架", () => {
 	it.each(["agent", "environment", "file", "memory", "vault"] as const)(
 		"%s 在计划后失效时拒绝上架",
 		async (resource) => {
-			const { services, save, plan, listing, db } = setup();
+			const { services, save, plan, listing, db } = await setup();
 			const file = await services.gateway.uploadFile({ filename: "guide.txt", bytes: new Uint8Array([1]) });
 			const template = await save({
 				files: [{ file_id: file.file_id }],
@@ -292,7 +292,7 @@ describe("模版上架", () => {
 
 	// 数据库提交后半段失败也必须回滚已插入的目录记录，不能留下草稿或半完成关联。
 	it("确认写入失败时回滚目录和关联", async () => {
-		const { services, save, plan, listing, db } = setup();
+		const { services, save, plan, listing, db } = await setup();
 		const template = await save();
 		const prepared = await plan(template);
 		vi.spyOn(services.catalog, "setStatus").mockImplementation(() => {

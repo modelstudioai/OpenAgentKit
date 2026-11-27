@@ -1,37 +1,26 @@
-import { type EntitySchemaColumnOptions, getMetadataArgsStorage } from "typeorm";
-import type { Column, Schema, Table } from "../store/schema/model.ts";
-import { createIndex, createTable } from "../store/schema/render.ts";
+import { type ColumnOptions, getMetadataArgsStorage } from "typeorm";
+import type { Column, Schema, Table } from "../store/metadata/model.ts";
 import { entityClasses } from "./tables/index.ts";
 
-export function decoratedTable(name: string) {
+function decoratedTable(name: string) {
 	if (!Object.hasOwn(entityClasses, name)) throw new Error(`未注册表 ${name} 的实体类`);
 	const target = entityClasses[name as keyof typeof entityClasses];
 	const metadata = getMetadataArgsStorage();
 	const tables = metadata.filterTables(target);
 	if (tables.length !== 1 || tables[0]?.name !== name) throw new Error(`实体 ${target.name} 的表名应为 ${name}`);
-	const columns = new Map<string, EntitySchemaColumnOptions>();
+	const columns = new Map<string, ColumnOptions>();
 	for (const { propertyName, options } of metadata.columns.filter((entry) => entry.target === target)) {
 		if (columns.has(propertyName) || (options.name && options.name !== propertyName)) {
 			throw new Error(`实体属性与表列必须一一对应：${name}.${propertyName}`);
 		}
 		if (!options.type) throw new Error(`未声明实体列类型：${name}.${propertyName}`);
 		const generation = metadata.findGenerated(target, propertyName)?.strategy;
-		columns.set(propertyName, {
-			type: options.type,
-			length: options.length,
-			nullable: options.nullable,
-			primary: options.primary,
-			unique: options.unique,
-			collation: options.collation,
-			default: options.default,
-			generated: generation,
-			transformer: options.transformer,
-		});
+		columns.set(propertyName, { ...options, generated: generation });
 	}
 	return { target, columns };
 }
 
-export function sqlType(options: EntitySchemaColumnOptions) {
+function sqlType(options: ColumnOptions) {
 	return `${String(options.type).toUpperCase()}${options.length ? `(${options.length})` : ""}`;
 }
 
@@ -44,7 +33,7 @@ function sqlDefault(value: unknown): string {
 	throw new Error("实体列需要 SQL 标量默认值或返回 SQL 表达式的函数");
 }
 
-function entityColumn(name: string, options: EntitySchemaColumnOptions): Column {
+function entityColumn(name: string, options: ColumnOptions): Column {
 	if (options.generated && options.generated !== "increment") throw new Error(`不支持的列生成策略：${name}`);
 	return {
 		name,
@@ -124,14 +113,4 @@ function entityTable(name: string): Table {
 /** 实体字段、索引和约束共同定义当前逻辑结构。 */
 export function readEntityDefinition(): Schema {
 	return Object.keys(entityClasses).sort().map(entityTable);
-}
-
-/** 新增版本保存可复查的 SQL 快照，三库从同一逻辑结构派生。 */
-export function renderEntityDefinition(schema: Schema = readEntityDefinition()): string {
-	const statements = schema.flatMap((table) => [
-		// SQLite 系统目录按声明的逆序列出外键，快照重读后需还原相同顺序。
-		createTable({ ...table, foreignKeys: [...table.foreignKeys].reverse() }, "sqlite"),
-		...table.indexes.map((index) => createIndex(table.name, index, "sqlite")),
-	]);
-	return `${statements.map((sql) => `${sql};`).join("\n\n")}\n`;
 }

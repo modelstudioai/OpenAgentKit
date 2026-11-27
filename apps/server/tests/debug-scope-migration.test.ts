@@ -21,7 +21,7 @@ INSERT INTO kit_sessions (session_id,subject_id,agent_slug,remote_agent_id,title
 INSERT INTO kit_uploaded_files VALUES ('old-file','same-subject','2026-10-20');
 `);
 		db.close();
-		db = openDatabase(dataDir);
+		db = await openDatabase(dataDir);
 		expect(
 			db
 				.prepare("SELECT error,publication_json,error_details_json FROM kit_operations WHERE operation_id=?")
@@ -55,7 +55,7 @@ INSERT INTO kit_uploaded_files VALUES ('old-file','same-subject','2026-10-20');
 			"admin_debug",
 		);
 		db.close();
-		db = openDatabase(dataDir);
+		db = await openDatabase(dataDir);
 		const reopened = new SessionIndexService(createSqliteDatabase(db));
 		expect((await reopened.listForSubject("same-subject")).map((row) => row.session_id)).toEqual(["old-session"]);
 		expect(
@@ -82,7 +82,7 @@ INSERT INTO kit_sessions VALUES ('project-debug','admin','admin_debug',NULL,'age
 INSERT INTO kit_sessions VALUES ('employee','admin','experience','assistant','agent_remote',NULL,NULL,NULL,NULL,'员工会话','idle','2026-10-20',NULL,'[]');
 `);
 		db.close();
-		db = openDatabase(dataDir);
+		db = await openDatabase(dataDir);
 		const index = new SessionIndexService(createSqliteDatabase(db));
 		expect((await index.getDebugForSubject("project-debug", "admin"))?.summary).toMatchObject({
 			source: "project",
@@ -104,7 +104,7 @@ INSERT INTO kit_sessions VALUES ('employee','admin','experience','assistant','ag
 			},
 		});
 		db.close();
-		db = openDatabase(dataDir);
+		db = await openDatabase(dataDir);
 		const reopened = new SessionIndexService(createSqliteDatabase(db));
 		expect(await reopened.getDebugForSubject("template-debug", "admin")).toMatchObject({
 			summary: { source: "template", remote_environment_id: "env_remote" },
@@ -141,7 +141,7 @@ INSERT INTO kit_sessions (session_id, subject_id, purpose, remote_agent_id, debu
 		).toThrow(/CHECK/);
 		const originalRows = db.prepare("SELECT * FROM kit_sessions ORDER BY session_id").all();
 		db.close();
-		db = openDatabase(dataDir);
+		db = await openDatabase(dataDir);
 		expect(db.prepare("SELECT * FROM kit_sessions ORDER BY session_id").all()).toMatchObject(originalRows);
 		const upgraded = new SessionIndexService(createSqliteDatabase(db));
 		expect(await upgraded.getDebugForSubject("template-explicit", "admin")).toMatchObject({
@@ -171,7 +171,7 @@ INSERT INTO kit_sessions (session_id, subject_id, purpose, remote_agent_id, debu
 			expect(() => db.exec(`UPDATE kit_sessions SET ${invalidUpdate} WHERE session_id='template-default'`)).toThrow();
 		}
 		db.close();
-		db = openDatabase(dataDir);
+		db = await openDatabase(dataDir);
 		expect(
 			(await new SessionIndexService(createSqliteDatabase(db)).getDebugForSubject("template-default", "admin"))?.runtime
 				.agent_version,

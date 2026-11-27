@@ -31,7 +31,7 @@ const unlimited: UsageLimitConfig = {
 	daily_active_seconds: null,
 };
 /** 模版条目 fixture：catalog slug 与 setup 的会话 agentSlug 同名，限额外部数据最少。 */
-async function listing(db: ReturnType<typeof openDatabase>) {
+async function listing(db: Awaited<ReturnType<typeof openDatabase>>) {
 	const catalog = new CatalogService(createSqliteDatabase(db));
 	const templates = new TemplateCatalogService(createSqliteDatabase(db));
 	await catalog.create({ slug: "agent", display_name: "模版条目", remote_agent_id: "remote-x" });
@@ -63,7 +63,7 @@ function detail(id: string, input = 0, output = 0, seconds = 0): GatewaySessionI
 async function setup() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-usage-limits-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	cleanup.push(() => db.close());
 	const index = new SessionIndexService(createSqliteDatabase(db));
 	const snapshots = new SessionUsageSnapshotService(createSqliteDatabase(db));
@@ -217,7 +217,7 @@ describe("成员月度 Session 用量准入", () => {
 		await f.run("november");
 		f.complete("s", 300, 200, 5);
 		expect((await f.service.member("member_a")).tokens.used).toBe(300);
-		const reopened = openDatabase(f.dataDir);
+		const reopened = await openDatabase(f.dataDir);
 		cleanup.push(() => reopened.close());
 		const recovered = f.make(reopened);
 		expect((await recovered.member("member_a")).tokens.used).toBe(300);
@@ -274,7 +274,7 @@ describe("成员月度 Session 用量准入", () => {
 				"DELETE FROM _kit_migrations WHERE id IN ('020_usage_limit_days', '021_usage_limit_days_backfill', '022_usage_limit_days_rebuild')",
 			)
 			.run();
-		const reopened = openDatabase(f.dataDir);
+		const reopened = await openDatabase(f.dataDir);
 		cleanup.push(() => reopened.close());
 		const days = reopened
 			.prepare("SELECT day, tokens, active_seconds FROM kit_usage_limit_days WHERE member_id = ? ORDER BY day")
@@ -349,7 +349,7 @@ describe("成员月度 Session 用量准入", () => {
 		await expect(
 			f.service.runSend("s", { text: "private prompt", clientMessageId: "uncertain" }, undefined, failing),
 		).rejects.toMatchObject({ code: "conflict", retryable: false });
-		const reopened = openDatabase(f.dataDir);
+		const reopened = await openDatabase(f.dataDir);
 		cleanup.push(() => reopened.close());
 		const recovered = f.make(reopened);
 		await expect(

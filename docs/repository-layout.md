@@ -65,7 +65,7 @@ packages/<name>/
   `service/shared/` 放共用的业务服务类和状态类，例如会话运行时、用量结算与确认闸门。
   `src/service/` 下的文件仅以类作为运行时导出。用例专属的校验、计算和映射写成所属 Service 的私有实例方法；跨业务域共用的规则由 `service/shared/` 中对应的类提供。
   `src/entity/tables/` 存放手写的 TypeORM 装饰器实体，每张业务表一个类。`src/entity/` 从装饰器派生当前结构，并将实体映射到所选数据库。
-  数据库适配和迁移放在 `src/store/`，`src/gateway/bailian/` 和 `src/gateway/mock/` 分别实现真实与离线 Provider，共用的协议转换放在 `src/gateway/shared/`。
+  数据库适配和空库建表放在 `src/store/`，`metadata/` 提供方言映射和物理结构校验，`schema/` 维护旧库升级和版本生成工具，`src/gateway/bailian/` 和 `src/gateway/mock/` 分别实现真实与离线 Provider，共用的协议转换放在 `src/gateway/shared/`。
   Nest 应用、Controller 注册和依赖装配放在 `src/module/`。
   注入令牌、签名、UTC 日期和事件缓存等内部技术组件放在 `src/utils/`。
 - Chat UI 的独立组件放 `packages/chat-ui/src/components/<component>/`，执行过程组件放

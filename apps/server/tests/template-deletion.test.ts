@@ -25,10 +25,10 @@ const selected = {
 };
 const admin = { authorization: "Bearer template-admin", "content-type": "application/json" };
 
-function setup() {
+async function setup() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-template-delete-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	cleanup.push(() => db.close());
 	const config = loadConfig({
 		KIT_GATEWAY: "mock",
@@ -86,7 +86,7 @@ function confirmation(plan: PlanResponse): ApplyRequest {
 describe("模版删除", () => {
 	// 计划仅本地只读；删除显式清理全部历史，不依赖SQLite部署是否启用级联。
 	it("未关联模版可离线预览删除，确认后当前配置和全部历史均不可见", async () => {
-		const { app, services, db, save, plan, remove, localRows } = setup();
+		const { app, services, db, save, plan, remove, localRows } = await setup();
 		const first = await save();
 		const template = await services.templates.update(
 			first.template_id,
@@ -122,7 +122,7 @@ describe("模版删除", () => {
 
 	// 关联条目随模版一起移除，员工已有Session仍可读；Provider删除与本地会话索引不受影响。
 	it("删除已上架模版使公开目录消失，保留既有员工会话和远端资源", async () => {
-		const { app, services, db, save, publish, plan, remove, localRows } = setup();
+		const { app, services, db, save, publish, plan, remove, localRows } = await setup();
 		const template = await save();
 		const entry = await publish(template);
 		const employee = { "content-type": "application/json", cookie: "kit_subject=template-delete-employee" };
@@ -162,7 +162,7 @@ describe("模版删除", () => {
 
 	// 确认严格绑定目标、主体和用途；失败不能消费另一主体/目标的有效计划，也不能复用已执行令牌。
 	it("拒绝缺令牌、伪造、错主体或目标及重放，合法确认仅删目标模版", async () => {
-		const { services, save, plan, remove } = setup();
+		const { services, save, plan, remove } = await setup();
 		const template = await save();
 		const other = await save("另一个模版");
 		expect((await remove(template)).status).toBe(428);
@@ -179,7 +179,7 @@ describe("模版删除", () => {
 
 	// 计划之后任何模版版本或关联目录变化都需重新确认，不能删除用户未审阅的状态。
 	it("编辑、上下架及目录运营信息变化使删除计划过期，未上架条目也可重新确认删除", async () => {
-		const { services, save, publish, plan, remove } = setup();
+		const { services, save, publish, plan, remove } = await setup();
 		const first = await save();
 		const oldVersionPlan = await plan(first);
 		const template = await services.templates.update(
@@ -209,7 +209,7 @@ describe("模版删除", () => {
 
 	// 在最后删除当前记录时注入数据库失败，证明已执行的Catalog/历史/映射删除也会一起回滚。
 	it("删除后半段失败会回滚全部目录和历史记录", async () => {
-		const { services, db, save, publish, plan, remove, localRows } = setup();
+		const { services, db, save, publish, plan, remove, localRows } = await setup();
 		const template = await save();
 		const entry = await publish(template);
 		const before = localRows(template.template_id);

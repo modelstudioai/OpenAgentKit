@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
 import { createPool, type ExecuteValues, type PoolConnection, type QueryOptions } from "mysql2";
-import type { Pool, RowDataPacket } from "mysql2/promise";
+import type { DataSource } from "typeorm";
 import type { DatabaseConfig } from "../config.ts";
 import { createStoreDatabase } from "./connection.ts";
 import type { SqlValue } from "./database.ts";
-import { program } from "./schema/generated/mysql.ts";
-import { MigrationError, migrateMysqlSchema } from "./schema/runner.ts";
+import { MigrationError } from "./external-execution.ts";
+import { initializeExternal } from "./external-schema.ts";
 import { createEntityDataSource } from "./typeorm.ts";
 
 function errorCode(error: unknown) {
@@ -24,44 +24,42 @@ async function mysqlCall<T>(work: () => Promise<T>): Promise<T> {
 	}
 }
 
-async function migrate(pool: Pool, name: string) {
+async function initialize(source: DataSource, name: string) {
 	const lock = `kit-schema:${createHash("sha256").update(name).digest("hex").slice(0, 48)}`;
-	await mysqlCall(async () => {
-		const connection = await pool.getConnection();
+	const runner = source.createQueryRunner();
+	const client: ReturnType<typeof entityConnection> = await runner.connect();
+	try {
+		const rows: { acquired: number }[] = await runner.query("SELECT GET_LOCK(?, 15) AS acquired", [lock]);
+		if (rows[0]?.acquired !== 1) throw Object.assign(new Error(), { code: "KIT_MYSQL_SCHEMA_LOCK" });
 		try {
-			const [rows] = await connection.execute<RowDataPacket[]>("SELECT GET_LOCK(?, 15) AS acquired", [lock]);
-			if (rows[0]?.acquired !== 1) throw Object.assign(new Error(), { code: "KIT_MYSQL_SCHEMA_LOCK" });
-			try {
-				await migrateMysqlSchema(
-					{
-						async rows<T>(sql: string, ...values: SqlValue[]) {
-							const [rows] = await connection.execute<RowDataPacket[]>(sql, values);
-							return rows as T[];
-						},
-						async execute(sql, ...values) {
-							if (values.length) await connection.execute(sql, values);
-							else await connection.query(sql);
-						},
+			await initializeExternal(
+				{
+					rows<T>(sql: string, ...values: SqlValue[]): Promise<T[]> {
+						return runner.query(sql, values);
 					},
-					program,
-					async (work) => {
-						await connection.beginTransaction();
-						try {
-							await work();
-							await connection.commit();
-						} catch (error) {
-							await connection.rollback().catch(() => connection.destroy());
-							throw error;
-						}
+					async execute(sql, ...values) {
+						await runner.query(sql, values);
 					},
-				);
-			} finally {
-				await connection.execute("SELECT RELEASE_LOCK(?)", [lock]).catch(() => connection.destroy());
-			}
+				},
+				"mysql",
+				source,
+				async (work) => {
+					await runner.startTransaction();
+					try {
+						await work();
+						await runner.commitTransaction();
+					} catch (error) {
+						await runner.rollbackTransaction().catch(() => client.destroy());
+						throw error;
+					}
+				},
+			);
 		} finally {
-			connection.release();
+			await runner.query("SELECT RELEASE_LOCK(?)", [lock]).catch(() => client.destroy());
 		}
-	});
+	} finally {
+		await runner.release();
+	}
 }
 
 // TypeORM 的 MySQL QueryRunner 使用 mysql2.query() 的文本协议。带参数的普通查询和流式查询
@@ -101,7 +99,7 @@ export async function connectMysql(config: Extract<DatabaseConfig, { driver: "my
 	});
 	const pool = driverPool.promise();
 	// 迁移与 TypeORM 的实体管理器复用同一个 mysql2 连接池。
-	const source = createEntityDataSource(program.current, {
+	const source = createEntityDataSource({
 		type: "mysql",
 		database: config.name,
 		driver: {
@@ -117,10 +115,11 @@ export async function connectMysql(config: Extract<DatabaseConfig, { driver: "my
 		},
 	});
 	try {
-		await migrate(pool, config.name);
 		await mysqlCall(() => source.initialize());
+		await mysqlCall(() => initialize(source, config.name));
 	} catch (error) {
-		await pool.end().catch(() => undefined);
+		if (source.isInitialized) await source.destroy().catch(() => undefined);
+		else await pool.end().catch(() => undefined);
 		throw error;
 	}
 	return createStoreDatabase("mysql", {

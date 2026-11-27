@@ -22,10 +22,10 @@ const adminToken = "audit-test-admin";
 const headers = { authorization: `Bearer ${adminToken}`, "content-type": "application/json" };
 const config = { name: "操作记录助手", category: "general", remote_agent_id: "agent_mock_assistant" };
 
-function setup() {
+async function setup() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-audit-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	cleanup.push(() => db.close());
 	const services = createKitServices(
 		loadConfig({
@@ -62,7 +62,7 @@ function setup() {
 describe("操作日志", () => {
 	// 兼容目录入口仍属于智能体管理；非白名单动作在持久化入口直接忽略。
 	it("兼容接口保留智能体五类操作，其他操作及未知动作不写入", async () => {
-		const { request, services, db } = setup();
+		const { request, services, db } = await setup();
 		const path = "/api/admin/agents/audit-compat";
 		await request("/api/admin/agents", "POST", {
 			slug: "audit-compat",
@@ -114,7 +114,7 @@ describe("操作日志", () => {
 
 	// 保护完整管理流程：只记成功操作，名称在重命名、删除后仍来自当时的快照。
 	it("新建、编辑、上下架与删除均可查询，包含操作者和名称，拒绝的操作不冒充成功", async () => {
-		const { app, request } = setup();
+		const { app, request } = await setup();
 		const created = await request("/api/admin/templates", "POST", config);
 		const { data: template } = (await created.json()) as { data: TemplateView };
 		const target = `/api/admin/templates/${template.template_id}`;
@@ -172,7 +172,7 @@ describe("操作日志", () => {
 
 	// 服务端在分页与总数统计前按已认证主体隔离，不能由查询参数选择其他人的日志。
 	it("各管理员只读本人记录，成员和无主体记录不可见，分页总数也按本人计算", async () => {
-		const { app, services, request, historical } = setup();
+		const { app, services, request, historical } = await setup();
 		const { data: mine } = (await (await request("/api/admin/templates", "POST", config)).json()) as {
 			data: TemplateView;
 		};
@@ -207,7 +207,7 @@ describe("操作日志", () => {
 
 	// 先证明历史非智能体操作确实存在，再验证白名单在分页与统计前生效。
 	it("历史非智能体操作不展示，也不占用管理操作分页", async () => {
-		const { request, db, historical } = setup();
+		const { request, db, historical } = await setup();
 		const { data: identity } = (await (await request("/api/admin/identity")).json()) as { data: unknown };
 		const subject = AdminIdentityViewSchema.parse(identity).subject;
 		await request("/api/admin/templates", "POST", config);
@@ -230,7 +230,7 @@ describe("操作日志", () => {
 
 	// 兼容旧记录；分页边界限制请求规模，新名称快照不得把疑似凭据写入审计。
 	it("保留旧日志，校验分页边界并对新增名称快照脱敏", async () => {
-		const { app, request, historical } = setup();
+		const { app, request, historical } = await setup();
 		const { data: identity } = (await (await request("/api/admin/identity")).json()) as { data: unknown };
 		historical(AdminIdentityViewSchema.parse(identity).subject, "catalog.update", "legacy-id", ["display_name"]);
 		await request("/api/admin/templates", "POST", { ...config, name: "测试 sk-secret-value-123456" });

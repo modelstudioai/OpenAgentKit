@@ -13,7 +13,7 @@ async function setup(text = "approval") {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-approval-"));
 	const services = createKitServices(
 		loadConfig({ KIT_GATEWAY: "mock", KIT_AUTH_MODE: "anonymous", KIT_DATA_DIR: dataDir, ADMIN_TOKEN: "test" }),
-		openDatabase(dataDir),
+		await openDatabase(dataDir),
 	);
 	await services.catalog.upsert({ slug: "assistant", display_name: "Assistant", remote_agent_id: "mock" });
 	await services.catalog.setStatus("assistant", "listed");

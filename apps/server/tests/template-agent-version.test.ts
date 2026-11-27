@@ -29,7 +29,7 @@ function deferred() {
 	return { promise, resolve };
 }
 
-function setup() {
+async function setup() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-template-agent-version-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
 	const config = loadConfig({
@@ -39,7 +39,7 @@ function setup() {
 		ADMIN_TOKEN: "template-admin",
 		KIT_RATE_LIMIT_RPS: "0",
 	});
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	cleanup.push(() => db.close());
 	const services = createKitServices(config, db);
 	const app = createApp(services);
@@ -84,7 +84,7 @@ function setup() {
 describe("模版智能体版本绑定", () => {
 	// 文案更新不能把异步校验前的版本绑定写回；并发变更后提示重试并保留已提交的绑定。
 	it("目录文案编辑保留版本，校验期间版本变化时拒绝覆盖并可重试", async () => {
-		const { services, write } = setup();
+		const { services, write } = await setup();
 		const entry = await services.catalog.create({
 			slug: "concurrent-agent-version",
 			display_name: "并发版本目录",
@@ -120,7 +120,7 @@ describe("模版智能体版本绑定", () => {
 
 	// 保护用户选择的历史版本贯穿保存、调试、上架和员工创建；切回最新必须真正清除目录旧绑定。
 	it("固定历史版本贯穿两种会话，编辑回最新版本后清空绑定", async () => {
-		const { app, services, write, save, plan, listing, employeeSession } = setup();
+		const { app, services, write, save, plan, listing, employeeSession } = await setup();
 		const template = await save(1);
 		expect(template).toMatchObject({ agent_version: 1, remote_agent_version: 1, version: 1 });
 		const readback = await app.request(`/api/admin/templates/${template.template_id}`, { headers });
@@ -163,7 +163,7 @@ describe("模版智能体版本绑定", () => {
 
 	// 失效版本不能退回最新，也不能创建调试会话、覆盖已存模版或在计划后偷偷上架。
 	it("拒绝不存在和计划后失效的版本，保留原配置且不创建会话或目录", async () => {
-		const { services, write, save, plan, listing } = setup();
+		const { services, write, save, plan, listing } = await setup();
 		const template = await save(2);
 		const create = vi.spyOn(services.gateway, "createSession");
 		for (const [path, body, method] of [
@@ -190,7 +190,7 @@ describe("模版智能体版本绑定", () => {
 
 	// 旧记录只有展示版本快照，仍跟随最新；历史版本接口故障不得阻断未锁版本的既有流程。
 	it("旧模版展示快照不变成运行时锁定，最新版本无需读取历史接口", async () => {
-		const { services, write, save, plan, listing, employeeSession } = setup();
+		const { services, write, save, plan, listing, employeeSession } = await setup();
 		const template = await save();
 		expect(template.remote_agent_version).toBe(3);
 		expect(template.agent_version).toBeUndefined();

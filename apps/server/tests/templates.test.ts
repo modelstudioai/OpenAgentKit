@@ -20,7 +20,7 @@ const selected = {
 	category: "general" as const,
 };
 
-function setup() {
+async function setup() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-saved-templates-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
 	const config = loadConfig({
@@ -31,16 +31,16 @@ function setup() {
 		KIT_ADMIN_TOKENS: "auditor:auditor",
 		KIT_RATE_LIMIT_RPS: "0",
 	});
-	function reopen() {
-		const db = openDatabase(dataDir);
+	async function reopen() {
+		const db = await openDatabase(dataDir);
 		cleanup.push(() => db.close());
 		const services = createKitServices(config, db);
 		return { app: createApp(services), services, db };
 	}
-	return { ...reopen(), reopen };
+	return { ...(await reopen()), reopen };
 }
 
-type App = ReturnType<typeof setup>["app"];
+type App = Awaited<ReturnType<typeof setup>>["app"];
 function request(app: App, path: string, body?: unknown, authorization = headers.authorization) {
 	return app.request(path, {
 		method: body === undefined ? "GET" : "POST",
@@ -72,7 +72,7 @@ async function listTemplate(app: App, template: TemplateView): Promise<CatalogAg
 describe("已保存模版目录", () => {
 	// 保护保存→重启→列表/详情，资源快照只保留公开引用，不依赖 Provider 在线。
 	it("完整配置持久化，资源元数据由服务端校准，不建会话或上架", async () => {
-		const { app, services, db, reopen } = setup();
+		const { app, services, db, reopen } = await setup();
 		const file = await services.gateway.uploadFile({ filename: "guide.txt", bytes: new Uint8Array([1, 2]) });
 		const createSession = vi.spyOn(services.gateway, "createSession");
 		const input = {
@@ -104,7 +104,7 @@ describe("已保存模版目录", () => {
 		expect(createSession).not.toHaveBeenCalled();
 		expect(await services.catalog.all()).toEqual([]);
 		expect(db.prepare("SELECT count(*) AS count FROM kit_sessions").get()?.count).toBe(0);
-		const restarted = reopen();
+		const restarted = await reopen();
 		vi.spyOn(restarted.services.gateway, "listRemoteAgents").mockRejectedValue(new Error("Provider offline"));
 		expect((await list(restarted.app)).data).toEqual([template]);
 		const detail = await request(restarted.app, `/api/admin/templates/${template.template_id}`);
@@ -122,7 +122,7 @@ describe("已保存模版目录", () => {
 
 	// 保护重名并发与列表分页：不会覆盖已存配置，搜索按字面量，游标不能跨查询复用。
 	it("重名保存返回冲突，分页搜索不遗漏配置且无效游标被拒", async () => {
-		const { app } = setup();
+		const { app } = await setup();
 		const attempts = await Promise.all([
 			request(app, "/api/admin/templates", { ...selected, name: " 团队_one " }),
 			request(app, "/api/admin/templates", { ...selected, name: "团队_one" }),
@@ -150,7 +150,7 @@ describe("已保存模版目录", () => {
 
 	// 状态筛选必须先于分页，使用当前 Catalog；未关联和已删除条目都归为未上架。
 	it("上架状态与搜索共同筛选完整分页，状态变更立即生效且不依赖 Provider", async () => {
-		const { app, services } = setup();
+		const { app, services } = await setup();
 		const first = await created(app, { ...selected, name: "筛选_上架一" });
 		const draft = await created(app, { ...selected, name: "筛选_未上架" });
 		const second = await created(app, { ...selected, name: "筛选_上架二" });
@@ -192,7 +192,7 @@ describe("已保存模版目录", () => {
 
 	// 分类取自模版配置，与目录运营分类无关；多条件先筛选后分页，旧配置视为通用。
 	it("模版分类与搜索状态组合分页，旧无分类记录归入通用且不借用目录分类", async () => {
-		const { app, services, db } = setup();
+		const { app, services, db } = await setup();
 		const first = await created(app, { ...selected, name: "分类_数据一", category: "data" });
 		const draft = await created(app, { ...selected, name: "分类_数据草稿", category: "data" });
 		const second = await created(app, { ...selected, name: "分类_数据二", category: "data" });
@@ -243,7 +243,7 @@ describe("已保存模版目录", () => {
 
 	// 游标不能跨状态、分类或搜索串复用；旧格式游标只兼容未筛选项，非法值在 HTTP 边界被拒。
 	it("分页游标绑定全部筛选条件且拒绝非法值，兼容旧未筛选游标", async () => {
-		const { app } = setup();
+		const { app } = await setup();
 		await created(app, { ...selected, name: "游标_一" });
 		await created(app, { ...selected, name: "游标_二" });
 		const listed = await created(app, { ...selected, name: "游标_三", category: "data" });
@@ -286,7 +286,7 @@ describe("已保存模版目录", () => {
 
 	// 保护保存时校验和失败原子性；只读身份先证明已存在的模版可见，再断言不能写入。
 	it("拒绝非法或失效资源及 auditor 保存，失败不落库且已有配置保留", async () => {
-		const { app, services } = setup();
+		const { app, services } = await setup();
 		const existing = await created(app, { ...selected, name: "已有模版" });
 		for (const path of ["/api/admin/templates", `/api/admin/templates/${existing.template_id}`]) {
 			const read = await request(app, path, undefined, "Bearer auditor");

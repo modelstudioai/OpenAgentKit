@@ -28,7 +28,7 @@ async function makeApp() {
 		KIT_DATA_DIR: dataDir,
 		ADMIN_TOKEN: "admin-token",
 	});
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	cleanup.push(() => db.close());
 	const services = createKitServices(config, db);
 	await services.catalog.upsert({ slug: "assistant", display_name: "Assistant", remote_agent_id: "agent_mock" });
@@ -86,7 +86,7 @@ describe("文件授权与成员隔离", () => {
 		expect(denied.status).toBe(404);
 		expect(missing.status).toBe(404);
 		expect(await denied.json()).toEqual(await missing.json());
-		const reopenedDb = openDatabase(dataDir);
+		const reopenedDb = await openDatabase(dataDir);
 		cleanup.push(() => reopenedDb.close());
 		const reopened = createApp(createKitServices(config, reopenedDb));
 		expect((await reopened.request(url, { headers: headersFor(owner) })).status).toBe(200);

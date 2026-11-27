@@ -16,7 +16,7 @@ afterEach(() => {
 async function setup() {
 	const directory = mkdtempSync(join(tmpdir(), "kit-index-status-"));
 	close.push(() => rmSync(directory, { recursive: true, force: true }));
-	const db = openDatabase(directory);
+	const db = await openDatabase(directory);
 	close.push(() => db.close());
 	const config = loadConfig({ KIT_GATEWAY: "mock", KIT_DATA_DIR: directory, ADMIN_TOKEN: "test-admin" });
 	const services = createKitServices(config, db);

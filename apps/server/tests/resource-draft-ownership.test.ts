@@ -24,7 +24,7 @@ it("批次清理归属跨服务重启保留；另一浏览器和缺失凭证均�
 		KIT_PROJECT_DIR: join(root, "main"),
 		ADMIN_TOKEN: "fixture-admin",
 	});
-	let db = openDatabase(root);
+	let db = await openDatabase(root);
 	let app = createApp(createKitServices(config, db));
 	const request = (path: string, method = "GET", key?: string, body?: unknown) =>
 		app.request(path, {
@@ -50,7 +50,7 @@ it("批次清理归属跨服务重启保留；另一浏览器和缺失凭证均�
 		const declarations = await data<unknown[]>(await request(`${path}/declarations`));
 		expect(declarations).toHaveLength(1);
 		db.close();
-		db = openDatabase(root);
+		db = await openDatabase(root);
 		app = createApp(createKitServices(config, db));
 		for (const key of [otherKey, undefined]) {
 			expect((await request("/api/admin/resource-drafts", "POST", key)).status).toBe(409);
@@ -91,7 +91,7 @@ it("两个浏览器同时首次创建时只有一个归属成功，失败方不�
 		KIT_PROJECT_DIR: join(root, "main"),
 		ADMIN_TOKEN: "fixture-admin",
 	});
-	const db = openDatabase(root);
+	const db = await openDatabase(root);
 	const app = createApp(createKitServices(config, db));
 	try {
 		const results = await Promise.all(

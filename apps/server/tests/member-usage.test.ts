@@ -26,10 +26,10 @@ afterEach(() => {
 });
 const admin = { authorization: "Bearer admin-token" };
 const auditor = { authorization: "Bearer audit-token" };
-function setup(env: Record<string, string | undefined> = {}) {
+async function setup(env: Record<string, string | undefined> = {}) {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-member-usage-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	cleanup.push(() => db.close());
 	const config = loadConfig({
 		KIT_GATEWAY: "mock",
@@ -71,7 +71,7 @@ function detail(id: string, input = 10): GatewaySessionInfo {
 
 describe("成员累计会话用量", () => {
 	it("遍历超过100条会话，累计快照替换不重复计费；成员与用途隔离，筛选和分页同一口径", async () => {
-		const { services, member, session } = setup();
+		const { services, member, session } = await setup();
 		await member("member_a");
 		await member("member_b");
 		for (let i = 0; i < 125; i++)
@@ -120,7 +120,7 @@ describe("成员累计会话用量", () => {
 	});
 
 	it("同成员刷新合并、全局四并发、60秒内查询不重复访问Provider", async () => {
-		const { services, member, session } = setup();
+		const { services, member, session } = await setup();
 		for (const id of ["member_a", "member_b"]) {
 			await member(id);
 			for (let i = 0; i < 8; i++) await session(`${id}-${i}`, id);
@@ -147,7 +147,7 @@ describe("成员累计会话用量", () => {
 	});
 
 	it("请求超时释放采集槽位，迟到结果不能写入；TTL内新增会话仍触发采集", async () => {
-		const { services, member, session } = setup();
+		const { services, member, session } = await setup();
 		const usage = services.memberUsage;
 		await member("member_a");
 		for (let i = 0; i < 8; i++) await session(`s${i}`, "member_a");
@@ -188,7 +188,7 @@ describe("成员累计会话用量", () => {
 	});
 
 	it("缺失、零、远端不存在和查询失败分别显示；失败保留上次快照，恢复后更新", async () => {
-		const { services, member, session } = setup();
+		const { services, member, session } = await setup();
 		await member("member_a");
 		await member("member_empty");
 		for (const id of ["known-zero", "partial", "missing", "failed"]) await session(id, "member_a");
@@ -230,7 +230,7 @@ describe("成员累计会话用量", () => {
 	});
 
 	it("删除快照持久化后抵抗迟到刷新，删除成功仍计入总量；解封重试也不接受旧响应", async () => {
-		const { services, member, session, usageStore, dataDir } = setup();
+		const { services, member, session, usageStore, dataDir } = await setup();
 		await member("member_a");
 		await session("deleted", "member_a");
 		await session("retry", "member_a");
@@ -249,7 +249,7 @@ describe("成员累计会话用量", () => {
 			deleted_session_count: 1,
 			metrics: { input_tokens: { value: 70, covered_sessions: 2 } },
 		});
-		const reopened = openDatabase(dataDir);
+		const reopened = await openDatabase(dataDir);
 		cleanup.push(() => reopened.close());
 		const recovered = new SessionUsageSnapshotService(createSqliteDatabase(reopened));
 		expect((await recovered.get("deleted"))?.input_tokens).toBe(30);
@@ -258,7 +258,7 @@ describe("成员累计会话用量", () => {
 	});
 
 	it("读取同步不让本地过期running覆盖采集后的idle或已封存状态", async () => {
-		const { services, member, session } = setup();
+		const { services, member, session } = await setup();
 		await member("member_a");
 		await session("s", "member_a");
 		await services.sessionIndex.setStatus("s", "running");
@@ -273,7 +273,7 @@ describe("成员累计会话用量", () => {
 	});
 
 	it("缺少主要用量或SQLite提交失败不能封存，已有值与会话索引保留", async () => {
-		const { services, member, session, usageStore, db } = setup();
+		const { services, member, session, usageStore, db } = await setup();
 		await member("member_a");
 		await session("s", "member_a");
 		await expect(services.memberUsage.captureFinal("s", { session_id: "s", status: "idle" })).rejects.toThrow(
@@ -295,7 +295,7 @@ describe("成员累计会话用量", () => {
 	});
 
 	it("管理端列表和详情合同，auditor可读，非管理员拒绝，游标绑定成员与Agent", async () => {
-		const { services, member, session, app } = setup();
+		const { services, member, session, app } = await setup();
 		await member("member_a");
 		await member("member_b");
 		await session("s1", "member_a");
@@ -333,7 +333,7 @@ describe("成员累计会话用量", () => {
 	});
 
 	it("模版用量以模版为主键：只统计从其上架条目发起的会话，旧条目会话不计入，0 会话模版也返回", async () => {
-		const { services, member, session, db, app } = setup();
+		const { services, member, session, db, app } = await setup();
 		await member("member_a");
 		await member("member_b");
 		// 模拟同智能体两个条目：只有模版上架条目计入，手动创建的旧条目会话不算。
@@ -434,7 +434,7 @@ describe("成员累计会话用量", () => {
 	});
 
 	it("模版会话明细跨成员返回上架条目的用量行并附带成员资料；游标与合同", async () => {
-		const { services, member, session, db, app } = setup();
+		const { services, member, session, db, app } = await setup();
 		await member("member_a");
 		await member("member_b");
 		await services.catalog.create({
@@ -497,7 +497,7 @@ describe("成员累计会话用量", () => {
 	});
 
 	it("模版限额路由：auditor 可读不可写，未设置返回不限量，模版不存在 404", async () => {
-		const { services, db, app } = setup();
+		const { services, db, app } = await setup();
 		await services.catalog.create({ slug: "tpl-l", display_name: "限额条目", remote_agent_id: "agent_z" });
 		const templates = new TemplateCatalogService(createSqliteDatabase(db));
 		const created = await templates.createInitialVersion({
@@ -541,7 +541,7 @@ describe("成员累计会话用量", () => {
 	});
 
 	it("模版用量逐日趋势路由：auditor 可读、days 校验、模版 404，只计模版上架条目", async () => {
-		const { services, db, app, member } = setup();
+		const { services, db, app, member } = await setup();
 		await member("member_a");
 		await services.catalog.create({ slug: "trend-tpl", display_name: "趋势条目", remote_agent_id: "agent_t" });
 		const templates = new TemplateCatalogService(createSqliteDatabase(db));
@@ -594,7 +594,7 @@ describe("成员累计会话用量", () => {
 	});
 
 	it("模型/工具用量明细：auditor 可读、workspace 由服务端注入、区间与参数校验", async () => {
-		const { db, services, app, member, session } = setup();
+		const { db, services, app, member, session } = await setup();
 		let captured: ModelUsageRequest | undefined;
 		const original = services.gateway.listModelUsage.bind(services.gateway);
 		services.gateway.listModelUsage = async (request) => {
@@ -661,7 +661,7 @@ describe("成员累计会话用量", () => {
 	});
 
 	it("遥测 workspace 注入跟随网关模式：sdk 显式工作空间生效，仅 Base URL 配置时明确报错", async () => {
-		const explicit = setup({
+		const explicit = await setup({
 			KIT_GATEWAY: "sdk",
 			BAILIAN_API_KEY: "sk-telemetry",
 			BAILIAN_WORKSPACE_ID: "ws-real",
@@ -685,7 +685,7 @@ describe("成员累计会话用量", () => {
 
 		// 仅凭 BAILIAN_API_KEY + BAILIAN_BASE_URL 是合法启动配置；查询无法确定工作空间时
 		// 明确报错，不得退回演示值 ws-mock（会把查询发到错误范围）。
-		const missing = setup({
+		const missing = await setup({
 			KIT_GATEWAY: "sdk",
 			BAILIAN_API_KEY: "sk-telemetry",
 			BAILIAN_BASE_URL: "https://provider.example.test/api/v1/agentstudio",

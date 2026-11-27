@@ -19,7 +19,7 @@ const auditor = { ...json, authorization: "Bearer limits-auditor" };
 async function setup() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-usage-limit-routes-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	cleanup.push(() => db.close());
 	const services = createKitServices(
 		loadConfig({

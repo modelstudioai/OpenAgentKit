@@ -8,10 +8,10 @@ import { openDatabase } from "../src/store/db.ts";
 import { createTestApp as createApp } from "./helpers/http.ts";
 import { createKitServices } from "./helpers/services.ts";
 
-function setup() {
+async function setup() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-threads-"));
 	const config = loadConfig({ KIT_GATEWAY: "mock", KIT_AUTH_MODE: "anonymous", KIT_DATA_DIR: dataDir });
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	const services = createKitServices(config, db);
 	return { db, services, app: createApp(services) };
 }
@@ -27,7 +27,7 @@ describe("员工线程查询的归属与分页", () => {
 			BAILIAN_API_KEY: secret,
 			BAILIAN_BASE_URL: "https://provider.example.test/api/v1/agentstudio",
 		});
-		const db = openDatabase(dataDir);
+		const db = await openDatabase(dataDir);
 		const services = createKitServices(config, db);
 		await services.sessionIndex.create({ sessionId: "session", subjectId: "alice", agentSlug: "assistant" });
 		const app = createApp(services);
@@ -51,7 +51,7 @@ describe("员工线程查询的归属与分页", () => {
 		}
 	});
 	it("真实存在的本人子线程可分页；跨用户、跨 Session 及管理员调试域均不可读取", async () => {
-		const { app, services, db } = setup();
+		const { app, services, db } = await setup();
 		try {
 			const own = await services.gateway.createSession({ agentId: "mock" });
 			await services.sessionIndex.create({ sessionId: own.session_id, subjectId: "alice", agentSlug: "assistant" });

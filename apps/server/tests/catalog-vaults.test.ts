@@ -18,10 +18,10 @@ afterEach(() => {
 const json = { "content-type": "application/json", "x-kit-protocol-version": "3.0.0" };
 const admin = { ...json, authorization: "Bearer admin-token" };
 
-function setup() {
+async function setup() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-catalog-vaults-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	cleanup.push(() => db.close());
 	const services = createKitServices(
 		loadConfig({ KIT_GATEWAY: "mock", KIT_AUTH_MODE: "anonymous", KIT_DATA_DIR: dataDir, ADMIN_TOKEN: "admin-token" }),
@@ -47,7 +47,7 @@ function setup() {
 
 describe("上架目录的密钥库白名单", () => {
 	it("只有管理端可列出密钥库；最多10个可保存并持久化，省略保留、[]清空", async () => {
-		const { app, services, create, update, dataDir } = setup();
+		const { app, services, create, update, dataDir } = await setup();
 		const path = "/api/admin/remote/vaults";
 		const list = await app.request(path, { headers: admin });
 		expect(list.status).toBe(200);
@@ -59,7 +59,7 @@ describe("上架目录的密钥库白名单", () => {
 		const selected = data.slice(0, 10).map(({ vault_id }) => vault_id);
 		expect((await create(selected)).status).toBe(201);
 		expect((await update({ description: "保留密钥库" })).status).toBe(200);
-		const reopened = openDatabase(dataDir);
+		const reopened = await openDatabase(dataDir);
 		cleanup.push(() => reopened.close());
 		expect((await new CatalogService(createSqliteDatabase(reopened)).getBySlug("vault-agent"))?.vault_ids).toEqual(
 			selected,
@@ -69,7 +69,7 @@ describe("上架目录的密钥库白名单", () => {
 	});
 
 	it("新会话只采用目录的密钥库且保留环境/文件/记忆，公开目录不暴露绑定", async () => {
-		const { app, services, create, update } = setup();
+		const { app, services, create, update } = await setup();
 		const file = await services.files.upload("uploader", { filename: "guide.txt", bytes: new Uint8Array([1]) });
 		const memory = { memory_store_id: "memory-guide", access: "read_only", instructions: "查阅约定" };
 		expect(
@@ -117,7 +117,7 @@ describe("上架目录的密钥库白名单", () => {
 	});
 
 	it("拒绝失效/归档库、重复及超限；非法ID不能触发凭据子路由，查询失败保留原配置", async () => {
-		const { services, create, update } = setup();
+		const { services, create, update } = await setup();
 		expect((await create(["vlt_mock_1"])).status).toBe(201);
 		for (const invalid of [
 			["missing-vault"],

@@ -18,10 +18,10 @@ afterEach(() => {
 const json = { "content-type": "application/json", "x-kit-protocol-version": "3.0.0" };
 const admin = { ...json, authorization: "Bearer admin-token" };
 
-function setup() {
+async function setup() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-catalog-memory-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	cleanup.push(() => db.close());
 	const config = loadConfig({
 		KIT_GATEWAY: "mock",
@@ -50,7 +50,7 @@ function setup() {
 
 describe("上架目录的记忆挂载配置", () => {
 	it("只有管理端可列出记忆库；保存权限/说明并持久化，省略保留、[]清空", async () => {
-		const { app, services, create, update, dataDir } = setup();
+		const { app, services, create, update, dataDir } = await setup();
 		const path = "/api/admin/remote/memory-stores";
 		const list = await app.request(path, { headers: admin });
 		expect(list.status).toBe(200);
@@ -73,7 +73,7 @@ describe("上架目录的记忆挂载配置", () => {
 		];
 		expect((await services.catalog.getBySlug("memory-agent"))?.memory_stores).toEqual(expected);
 		expect((await update({ description: "保留记忆配置" })).status).toBe(200);
-		const reopened = openDatabase(dataDir);
+		const reopened = await openDatabase(dataDir);
 		cleanup.push(() => reopened.close());
 		expect((await new CatalogService(createSqliteDatabase(reopened)).getBySlug("memory-agent"))?.memory_stores).toEqual(
 			expected,
@@ -83,7 +83,7 @@ describe("上架目录的记忆挂载配置", () => {
 	});
 
 	it("新会话采用管理员权限/说明并保留文件与环境，成员不能覆盖；公开目录不暴露配置", async () => {
-		const { app, services, create, update } = setup();
+		const { app, services, create, update } = await setup();
 		const file = await services.files.upload("uploader", { filename: "guide.txt", bytes: new Uint8Array([1]) });
 		const memory = { memory_store_id: "memory-guide", access: "read_only", instructions: "管理员限定的检索说明" };
 		expect((await create([memory], { files: [file], remote_environment_id: "env_mock_analysis" })).status).toBe(201);
@@ -137,7 +137,7 @@ describe("上架目录的记忆挂载配置", () => {
 	});
 
 	it("记忆库读取失败时成员详情整体降级省略，不影响详情可用性", async () => {
-		const { app, services, create } = setup();
+		const { app, services, create } = await setup();
 		expect((await create([{ memory_store_id: "memory-guide", access: "read_only" }])).status).toBe(201);
 		await services.catalog.setStatus("memory-agent", "listed");
 		vi.spyOn(services.gateway, "getAgentMemoryStores").mockRejectedValue(
@@ -152,7 +152,7 @@ describe("上架目录的记忆挂载配置", () => {
 	});
 
 	it("拒绝失效/归档库、重复ID、非法权限及数量/说明超限；查询失败不能覆盖已有配置", async () => {
-		const { services, create, update } = setup();
+		const { services, create, update } = await setup();
 		const original = { memory_store_id: "memory-guide", access: "read_only", instructions: "a".repeat(4090) };
 		expect((await create([original])).status).toBe(201);
 		for (const invalid of [

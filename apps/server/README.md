@@ -205,12 +205,12 @@ pnpm --filter @openagentpack/kit-server db:check
 MySQL 的每个 DDL 步骤只写一条原子语句。SQLite 需要重建被外键引用的表时，在 JSON 顶层设置
 `sqliteRebuild: true`，迁移将在提交前检查外键。
 
-三库按 [迁移清单](src/store/schema/manifest.json) 的条目顺序执行。原有 36 条在
+三库按 [迁移清单](src/store/migration-manifest.json) 的条目顺序执行。原有 36 条在
 [history/](src/store/schema/history) 中逐条保存。生成命令会将新版本追加到同一份清单，并在
-[versions/](src/store/schema/versions) 保存版本快照和显式步骤。全新空库按当前实体一次建表、写入初始数据，并登记已覆盖的版本。
+[versions/](src/store/schema/versions) 保存版本快照和显式步骤。Store 在迁移锁下识别全新空库，通过 TypeORM 的方言驱动根据当前 Entity 元数据建表、写入产品初始数据，并登记已覆盖的版本。
 已有库根据已完成的迁移 ID 逐版升级，数据回填或转换使用对应的历史步骤。产品初始数据变更时，同时更新空库的初始记录和旧库的数据迁移。
 
-每张业务表在 `src/entity/tables/` 中有一个手写的 `@Entity` 类，列类型、可空性、主键和默认值写在对应属性的 TypeORM 装饰器上。JSON 文本列保留字符串属性。迁移完成后，Store 从这些装饰器构建当前连接的 `EntitySchema`，按目标库绑定物理类型、排序规则等差异。SQLite 复用 `node:sqlite` 连接，MySQL 和 PostgreSQL 复用已有池。
+每张业务表在 `src/entity/tables/` 中有一个手写的 `@Entity` 类，列类型、可空性、主键和默认值写在对应属性的 TypeORM 装饰器上。JSON 文本列保留字符串属性。Store 将这些类直接注册为 TypeORM DataSource 的实体。每个连接独立解析列的物理类型、长度和排序规则；MySQL 保留生成列、前缀索引和表级排序规则。SQLite 复用 `node:sqlite` 连接，MySQL 和 PostgreSQL 复用已有池。
 业务 Service 通过 Store 提供的 TypeORM EntityManager 访问实体。分页、统计和带条件的更新使用 QueryBuilder，同一事务内的操作共用连接。
 TypeORM 的 `synchronize` 和 `migrationsRun` 均关闭。
 

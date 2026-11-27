@@ -1,8 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
-import { type Dialect, type Migration, type Schema, type Step, splitSql, tableDifference } from "./model.ts";
+import { type Dialect, type Migration, type Schema, type Step, splitSql, tableDifference } from "../metadata/model.ts";
+import { readSqliteSchema } from "../metadata/sqlite-model.ts";
 import { additiveSteps, createTableSteps, forDialect, orderedNewTables, sameSchema } from "./render.ts";
-import { readSqliteSchema } from "./sqlite-model.ts";
 
 export const dialects = ["sqlite", "mysql", "postgres"] as const;
 const explicitSchema = z.strictObject({

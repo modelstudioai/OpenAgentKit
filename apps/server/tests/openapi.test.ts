@@ -14,10 +14,10 @@ import { createKitServices } from "./helpers/services.ts";
  * `{ message: "Unknown zod object type…" }`，前端类型与接口文档同时失效。
  * 该失败过去只在 `pnpm gen:openapi` 时可见，故在此固化成测试。
  */
-function makeDocApp() {
+async function makeDocApp() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-openapi-"));
 	const config = loadConfig({ KIT_GATEWAY: "mock", KIT_DATA_DIR: dataDir, ADMIN_TOKEN: "t" });
-	return createApp(createKitServices(config, openDatabase(dataDir)));
+	return createApp(createKitServices(config, await openDatabase(dataDir)));
 }
 
 const REQUIRED_PATHS = [
@@ -43,7 +43,7 @@ const REQUIRED_PATHS = [
 
 describe("openapi 文档", () => {
 	it("可渲染、无 zod 错误、覆盖数据面与控制面关键路由", async () => {
-		const doc = (await (await makeDocApp().request("/openapi.json")).json()) as {
+		const doc = (await (await (await makeDocApp()).request("/openapi.json")).json()) as {
 			message?: string;
 			paths?: Record<string, unknown>;
 		};
@@ -59,7 +59,7 @@ describe("openapi 文档", () => {
 	});
 
 	it("流式、发送和审批文档声明必填协议版本头，示例可直接调用", async () => {
-		const doc = (await (await makeDocApp().request("/openapi.json")).json()) as {
+		const doc = (await (await (await makeDocApp()).request("/openapi.json")).json()) as {
 			paths: Record<
 				string,
 				Record<string, { parameters: { name: string; in: string; required: boolean; schema: { example?: string } }[] }>
@@ -78,7 +78,7 @@ describe("openapi 文档", () => {
 	});
 
 	it("multipart 上传路由以 string/binary 描述（不是 zod custom/file）", async () => {
-		const doc = (await (await makeDocApp().request("/openapi.json")).json()) as {
+		const doc = (await (await (await makeDocApp()).request("/openapi.json")).json()) as {
 			paths: Record<string, Record<string, { requestBody?: { content: Record<string, { schema: unknown }> } }>>;
 		};
 		const schema = doc.paths["/api/kit/files"]?.post?.requestBody?.content["multipart/form-data"]?.schema;
@@ -87,7 +87,7 @@ describe("openapi 文档", () => {
 
 	it("仓库内 openapi.json 与路由定义不漂移（改路由后需 pnpm gen:openapi）", async () => {
 		const committed = JSON.parse(readFileSync(join(process.cwd(), "openapi.json"), "utf8")) as unknown;
-		const fresh = await (await makeDocApp().request("/openapi.json")).json();
+		const fresh = await (await (await makeDocApp()).request("/openapi.json")).json();
 		expect(committed).toEqual(fresh);
 	});
 });

@@ -19,10 +19,10 @@ const auditorToken = "branding-auditor";
 const adminHeaders = { authorization: `Bearer ${adminToken}`, "content-type": "application/json" };
 const auditorHeaders = { authorization: `Bearer ${auditorToken}`, "content-type": "application/json" };
 
-function setup() {
+async function setup() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-branding-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	cleanup.push(() => db.close());
 	const services = createKitServices(
 		loadConfig({
@@ -38,7 +38,7 @@ function setup() {
 }
 
 async function request(
-	app: ReturnType<typeof setup>["app"],
+	app: Awaited<ReturnType<typeof setup>>["app"],
 	path: string,
 	init: { method?: string; body?: unknown; headers?: Record<string, string> } = {},
 ) {
@@ -56,7 +56,7 @@ async function view(response: Response) {
 
 describe("员工端品牌配置", () => {
 	it("默认公开配置返回产品名；管理员保存 URL 后立即反映到 /api/config", async () => {
-		const { app } = setup();
+		const { app } = await setup();
 		const initial = await view(await request(app, "/api/admin/branding"));
 		expect(initial.productName).toBe("OpenAgentKit");
 		expect(initial.logoUrl).toBeUndefined();
@@ -87,7 +87,7 @@ describe("员工端品牌配置", () => {
 			logoUrl: "/brand/team-logo.svg",
 			expectedName: "OpenAgentPack Kit",
 		},
-	])("升级旧库时正确处理$scenario", ({ updatedBy, logoUrl, expectedName }) => {
+	])("升级旧库时正确处理$scenario", async ({ updatedBy, logoUrl, expectedName }) => {
 		const dataDir = mkdtempSync(join(tmpdir(), "kit-branding-upgrade-"));
 		cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
 		const previous = historicalSqlite(dataDir, "030_branding_logo");
@@ -98,7 +98,7 @@ describe("员工端品牌配置", () => {
 		} finally {
 			previous.close();
 		}
-		const upgraded = openDatabase(dataDir);
+		const upgraded = await openDatabase(dataDir);
 		cleanup.push(() => upgraded.close());
 		expect(upgraded.prepare("SELECT product_name, logo_url, updated_by FROM kit_branding WHERE id = 1").get()).toEqual({
 			product_name: expectedName,
@@ -108,7 +108,7 @@ describe("员工端品牌配置", () => {
 	});
 
 	it("上传 Logo 后由公开图片接口提供；省略 logoUrl 保持上传，null 清除", async () => {
-		const { app, services } = setup();
+		const { app, services } = await setup();
 		const form = new FormData();
 		form.append(
 			"file",
@@ -151,7 +151,7 @@ describe("员工端品牌配置", () => {
 
 	// 上传是图片输入边界；直接打开 SVG 不能变成拥有站点权限的活动文档。
 	it("公开 SVG 保留图片内容，并通过响应策略隔离脚本、外部资源与同源权限", async () => {
-		const { app } = setup();
+		const { app } = await setup();
 		const svg =
 			'<svg xmlns="http://www.w3.org/2000/svg" onload="document.documentElement.dataset.executed=1"><rect width="16" height="16" /></svg>';
 		const form = new FormData();
@@ -175,7 +175,7 @@ describe("员工端品牌配置", () => {
 	});
 
 	it("非法 URL / 文件类型被拒，审计员不能写", async () => {
-		const { app, services, db } = setup();
+		const { app, services, db } = await setup();
 		const invalid = await request(app, "/api/admin/branding", {
 			method: "PUT",
 			body: { productName: "品牌", logoUrl: "javascript:alert(1)" },

@@ -4,26 +4,30 @@ import { tmpdir } from "node:os";
 import { DatabaseSync } from "node:sqlite";
 import { createConnection, type RowDataPacket } from "mysql2/promise";
 import { Client, types } from "pg";
+import { DataSource } from "typeorm";
 import { expect, it } from "vitest";
 import { loadConfig } from "../src/config.ts";
-import { renderEntityDefinition } from "../src/entity/definition.ts";
-import { createEntitySchemas, validateEntityDefinitions } from "../src/entity/schema.ts";
+import { readEntityDefinition } from "../src/entity/definition.ts";
+import { validateEntityDefinitions } from "../src/entity/schema.ts";
 import { entityClasses } from "../src/entity/tables/index.ts";
 import type { SqlValue } from "../src/store/database.ts";
 import { migrateSqliteSchema } from "../src/store/db.ts";
+import { inspectRegistry, type MysqlTransaction, validateCurrent } from "../src/store/external-execution.ts";
+import { initializeExternal } from "../src/store/external-schema.ts";
+import { type ExternalDialect, externalTableNames, type MigrationConnection } from "../src/store/metadata/catalog.ts";
+import type { MigrationProgram, Table } from "../src/store/metadata/model.ts";
+import manifest from "../src/store/migration-manifest.json" with { type: "json" };
 import { connectMysql } from "../src/store/mysql.ts";
 import { connectPostgres } from "../src/store/postgres.ts";
-import { type ExternalDialect, externalTableNames, type MigrationConnection } from "../src/store/schema/catalog.ts";
 import { compileChange, readDefinition } from "../src/store/schema/changes.ts";
 import { buildArtifacts } from "../src/store/schema/generate.ts";
 import { program as mysqlProgram } from "../src/store/schema/generated/mysql.ts";
 import { program as postgresProgram } from "../src/store/schema/generated/postgres.ts";
 import { program as sqliteProgram } from "../src/store/schema/generated/sqlite.ts";
-import manifest from "../src/store/schema/manifest.json" with { type: "json" };
-import type { MigrationProgram, Table } from "../src/store/schema/model.ts";
-import { forDialect, mysqlTableOptions } from "../src/store/schema/render.ts";
-import { migrateMysqlSchema, migratePostgresSchema } from "../src/store/schema/runner.ts";
+import { forDialect, mysqlTableOptions, renderEntityDefinition } from "../src/store/schema/render.ts";
+import { upgradeExternal } from "../src/store/schema/runner.ts";
 import { sqliteHistory } from "../src/store/sqlite-history.ts";
+import { createEntityDataSource } from "../src/store/typeorm.ts";
 import { mysqlSchema } from "./fixtures/before-shared-mysql.ts";
 import { postgresSchema } from "./fixtures/before-shared-postgres.ts";
 
@@ -86,7 +90,7 @@ it("共享定义生成三库新增列、索引及显式迁移，未生成变更�
 });
 
 it("实体生成的 SQL 快照可以回读，并能检出字段约束漂移", () => {
-	const snapshot = readDefinition(renderEntityDefinition());
+	const snapshot = readDefinition(renderEntityDefinition(readEntityDefinition()));
 	expect(() => validateEntityDefinitions(snapshot)).not.toThrow();
 	const email = snapshot.find(({ name }) => name === "kit_members")!.columns.find(({ name }) => name === "email")!;
 	email.nullable = !email.nullable;
@@ -94,42 +98,44 @@ it("实体生成的 SQL 快照可以回读，并能检出字段约束漂移", ()
 });
 
 it("三库实体沿用当前结构、组合主键、自增和二进制类型", () => {
-	for (const [program, binaryType, usernameCollation, draftEngine] of [
-		[sqliteProgram, "blob", "NOCASE", "directory"],
-		[mysqlProgram, "longblob", "ascii_general_ci", "yaml"],
-		[postgresProgram, "bytea", undefined, "yaml"],
-	] as const) {
-		const schemas = createEntitySchemas(program.current).map((entity) => entity.options);
-		const tableNames = program.current.map(({ name }) => name);
-		expect(schemas.map(({ tableName }) => tableName)).toEqual(tableNames);
-		expect(Object.keys(entityClasses)).toEqual(tableNames);
-		expect(new Set(schemas.map(({ target }) => target)).size).toBe(tableNames.length);
-		for (const [index, table] of program.current.entries()) {
-			const entity = schemas[index]!;
-			expect(entity.target).toBe(entityClasses[table.name as keyof typeof entityClasses]);
-			expect(entity.synchronize).toBe(false);
-			expect(Object.keys(entity.columns)).toEqual(table.columns.map(({ name }) => name));
-			expect(
-				Object.keys(entity.columns)
-					.filter((name) => entity.columns[name]?.primary)
-					.sort(),
-			).toEqual([...table.primary].sort());
+	const connections = [
+		[
+			sqliteProgram,
+			createEntityDataSource({ type: "better-sqlite3", database: ":memory:", driver: class {} }),
+			"blob",
+			"NOCASE",
+			"directory",
+		],
+		[mysqlProgram, createEntityDataSource({ type: "mysql", database: "kit" }), "longblob", "ascii_general_ci", "yaml"],
+		[postgresProgram, createEntityDataSource({ type: "postgres" }), "bytea", undefined, "yaml"],
+	] as const;
+	for (const [program, source, binaryType, usernameCollation, draftEngine] of connections) {
+		expect(source.options.entities).toEqual(Object.values(entityClasses));
+		expect(source.options.synchronize).toBe(false);
+		expect(source.entityMetadatas).toHaveLength(program.current.length);
+		for (const table of program.current) {
+			const target = entityClasses[table.name as keyof typeof entityClasses];
+			const entity = source.getMetadata(target);
+			expect(entity.target).toBe(target);
+			expect(entity.tableName).toBe(table.name);
+			expect(entity.columns.map((column) => column.databaseName)).toEqual(table.columns.map((column) => column.name));
+			expect(entity.primaryColumns.map((column) => column.databaseName).sort()).toEqual([...table.primary].sort());
 		}
-		expect(schemas.find(({ tableName }) => tableName === "kit_audit")?.columns.id?.generated).toBe("increment");
-		expect(schemas.find(({ tableName }) => tableName === "kit_branding_logo")?.columns.bytes?.type).toBe(binaryType);
-		const members = schemas.find(({ tableName }) => tableName === "kit_members")!.columns;
-		expect(members.email?.nullable).toBe(true);
-		expect(members.username?.unique).toBe(true);
-		expect(members.username?.collation).toBe(usernameCollation);
-		const drafts = schemas.find(({ tableName }) => tableName === "kit_resource_drafts")!.columns;
-		expect(drafts.engine?.default).toBe(draftEngine);
+		const column = (table: keyof typeof entityClasses, name: string) =>
+			source.getMetadata(entityClasses[table]).columns.find((column) => column.databaseName === name);
+		expect(column("kit_audit", "id")?.generationStrategy).toBe(program === postgresProgram ? "identity" : "increment");
+		expect(column("kit_branding_logo", "bytes")?.type).toBe(binaryType);
+		expect(column("kit_members", "email")?.isNullable).toBe(true);
+		expect(column("kit_members", "username")?.collation).toBe(usernameCollation);
+		expect(column("kit_resource_drafts", "engine")?.default).toBe(draftEngine);
+		const activeOwner = column("kit_resource_drafts", "active_owner");
 		if (program === mysqlProgram) {
-			expect(drafts.active_owner).toMatchObject({
+			expect(activeOwner).toMatchObject({
 				generatedType: "STORED",
 				asExpression: "CASE WHEN status != 'published' OR cleanup_pending = 1 THEN owner END",
 			});
 		} else {
-			expect(drafts.active_owner).toBeUndefined();
+			expect(activeOwner).toBeUndefined();
 		}
 	}
 	// 三个连接的方言配置也不能污染下一次启动时读取的原始类元数据。
@@ -143,11 +149,11 @@ it("MySQL 和 PostgreSQL 的迁移产物沿用完整清单顺序", () => {
 	}
 });
 
-it("没有迁移记录的非空 SQLite 不进入实体建库流程", () => {
+it("没有迁移记录的非空 SQLite 不进入实体建库流程", async () => {
 	const db = new DatabaseSync(":memory:");
 	try {
 		db.exec("CREATE TABLE unrelated (id INTEGER); INSERT INTO unrelated VALUES (9)");
-		expect(() => migrateSqliteSchema(db)).toThrow(/已有表但缺少 Kit 迁移记录/);
+		await expect(migrateSqliteSchema(db)).rejects.toThrow(/已有表但缺少 Kit 迁移记录/);
 		expect(db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all()).toEqual([{ name: "unrelated" }]);
 		expect(db.prepare("SELECT id FROM unrelated").get()).toEqual({ id: 9 });
 	} finally {
@@ -155,7 +161,7 @@ it("没有迁移记录的非空 SQLite 不进入实体建库流程", () => {
 	}
 });
 
-it("SQLite 空库直接按实体建表，与历史升级的业务初始数据、版本基线一致", () => {
+it("SQLite 空库直接按实体建表，与历史升级的业务初始数据、版本基线一致", async () => {
 	const fresh = new DatabaseSync(":memory:");
 	const legacy = new DatabaseSync(":memory:");
 	try {
@@ -163,9 +169,9 @@ it("SQLite 空库直接按实体建表，与历史升级的业务初始数据、
 		legacy.exec("CREATE TABLE _kit_migrations (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL)");
 		legacy.exec(first.sql!);
 		legacy.prepare("INSERT INTO _kit_migrations VALUES (?, ?)").run(first.id, "2026-10-20");
-		migrateSqliteSchema(legacy);
+		await migrateSqliteSchema(legacy);
 		// 旧版的数据迁移只能在升级旧库时运行。
-		migrateSqliteSchema(fresh, {
+		await migrateSqliteSchema(fresh, {
 			...sqliteProgram,
 			upgrades: sqliteProgram.upgrades.map((version) => ({
 				...version,
@@ -184,10 +190,10 @@ it("SQLite 空库直接按实体建表，与历史升级的业务初始数据、
 	}
 });
 
-it("SQLite 在已有成员上应用生成的变更，失败时回滚 DDL 和版本记录", () => {
+it("SQLite 在已有成员上应用生成的变更，失败时回滚 DDL 和版本记录", async () => {
 	const db = new DatabaseSync(":memory:");
 	try {
-		migrateSqliteSchema(db);
+		await migrateSqliteSchema(db);
 		expect(
 			db
 				.prepare("SELECT id FROM _kit_migrations ORDER BY rowid")
@@ -211,11 +217,11 @@ it("SQLite 在已有成员上应用生成的变更，失败时回滚 DDL 和版�
 				},
 			],
 		};
-		expect(() => migrateSqliteSchema(db, broken)).toThrow(/missing_table/);
+		await expect(migrateSqliteSchema(db, broken)).rejects.toThrow(/missing_table/);
 		expect(db.prepare("SELECT 1 FROM pragma_table_info('kit_members') WHERE name = 'remark'").get()).toBeUndefined();
 		expect(db.prepare("SELECT 1 FROM _kit_migrations WHERE id = ?").get(versions[0]!.id)).toBeUndefined();
-		migrateSqliteSchema(db, expected);
-		migrateSqliteSchema(db, expected);
+		await migrateSqliteSchema(db, expected);
+		await migrateSqliteSchema(db, expected);
 		expect(db.prepare("SELECT display_name, note, label FROM kit_members").get()).toEqual({
 			display_name: "成员",
 			note: "legacy",
@@ -226,28 +232,39 @@ it("SQLite 在已有成员上应用生成的变更，失败时回滚 DDL 和版�
 	}
 });
 
-it("SQLite 升级保留额外的非唯一索引并继续校验已登记索引和唯一约束", () => {
+it("SQLite 升级保留额外的非唯一索引并继续校验已登记索引和唯一约束", async () => {
 	const db = new DatabaseSync(":memory:");
 	try {
-		migrateSqliteSchema(db);
+		await migrateSqliteSchema(db);
 		db.exec(`CREATE INDEX local_members_name ON kit_members (display_name);
 			CREATE INDEX local_members_lower_name ON kit_members (lower(display_name));`);
 		const upgraded = withUpgrades(sqliteProgram, "sqlite");
-		migrateSqliteSchema(db, upgraded);
-		migrateSqliteSchema(db, upgraded);
+		await migrateSqliteSchema(db, upgraded);
+		await migrateSqliteSchema(db, upgraded);
 		const indexes = db.prepare("SELECT name FROM pragma_index_list('kit_members')").all();
 		expect(indexes.map(({ name }) => name)).toEqual(
 			expect.arrayContaining(["local_members_name", "local_members_lower_name", "idx_members_remark"]),
 		);
 
 		db.exec("CREATE UNIQUE INDEX local_members_unique_name ON kit_members (display_name)");
-		expect(() => migrateSqliteSchema(db, upgraded)).toThrow(/kit_members.*indexes/);
+		await expect(migrateSqliteSchema(db, upgraded)).rejects.toThrow(/kit_members.*indexes/);
 		db.exec("DROP INDEX local_members_unique_name; DROP INDEX idx_members_remark;");
-		expect(() => migrateSqliteSchema(db, upgraded)).toThrow(/kit_members.*indexes/);
+		await expect(migrateSqliteSchema(db, upgraded)).rejects.toThrow(/kit_members.*indexes/);
 	} finally {
 		db.close();
 	}
 });
+
+async function runExternal(
+	target: MigrationProgram | DataSource,
+	db: MigrationConnection,
+	dialect: ExternalDialect,
+	transaction?: MysqlTransaction,
+) {
+	if (target instanceof DataSource) return initializeExternal(db, dialect, target, transaction);
+	const state = await inspectRegistry(db, dialect);
+	await upgradeExternal(db, dialect, state, target, target.current, transaction);
+}
 
 async function openExternal(dialect: ExternalDialect, url: string) {
 	const config = loadConfig({
@@ -276,8 +293,10 @@ async function openExternal(dialect: ExternalDialect, url: string) {
 		};
 		return {
 			db,
-			run: (program: MigrationProgram, connection = db) =>
-				migrateMysqlSchema(connection, program, async (work) => {
+			source: () =>
+				createEntityDataSource({ type: "mysql", ...options, username: options.user, ssl, database: name }).initialize(),
+			run: (program: MigrationProgram | DataSource, connection = db) =>
+				runExternal(program, connection, "mysql", async (work) => {
 					await client.beginTransaction();
 					try {
 						await work();
@@ -324,10 +343,19 @@ async function openExternal(dialect: ExternalDialect, url: string) {
 	};
 	return {
 		db,
-		async run(program: MigrationProgram, connection = db) {
+		source: () =>
+			createEntityDataSource({
+				type: "postgres",
+				...options,
+				username: options.user,
+				ssl: settings.ssl,
+				database: name,
+				installExtensions: false,
+			}).initialize(),
+		async run(program: MigrationProgram | DataSource, connection = db) {
 			await client.query("BEGIN");
 			try {
-				await migratePostgresSchema(connection, program);
+				await runExternal(program, connection, "postgres");
 				await client.query("COMMIT");
 			} catch (error) {
 				await client.query("ROLLBACK");
@@ -488,6 +516,77 @@ for (const [dialect, url, program] of [
 				}
 				await expect(fixture.connect()).rejects.toThrow(/kit_members.*与预期结构不符/);
 			} finally {
+				await fixture.close();
+			}
+		},
+		45_000,
+	);
+
+	it.skipIf(!url)(
+		`${dialect} 原生实体建库并发启动只写一份初始数据，物理结构对齐旧基线`,
+		async () => {
+			const fixture = await openExternal(dialect, url!);
+			try {
+				const stores = await Promise.all([fixture.connect(), fixture.connect()]);
+				try {
+					await validateCurrent(fixture.db, dialect, program.current);
+					expect(await fixture.db.rows("SELECT monthly_credits FROM quota_policy")).toEqual([{ monthly_credits: 200 }]);
+					expect(await fixture.db.rows("SELECT id FROM _kit_migrations")).toHaveLength(
+						program.history.length + program.upgrades.length,
+					);
+				} finally {
+					await Promise.all(stores.map((store) => store.close()));
+				}
+			} finally {
+				await fixture.close();
+			}
+		},
+		45_000,
+	);
+
+	it.skipIf(!url)(
+		`${dialect} TypeORM 建表中断后可用原版本续建或接续新版迁移`,
+		async () => {
+			const fixture = await openExternal(dialect, url!);
+			let source: DataSource | undefined;
+			try {
+				source = await fixture.source();
+				const failed: MigrationConnection = {
+					...fixture.db,
+					async execute(sql, ...values) {
+						await fixture.db.execute(sql, ...values);
+						if (/^CREATE TABLE [`"]catalog_agents[`"] /i.test(sql)) throw new Error("injected interruption");
+					},
+				};
+				await expect(fixture.run(source, failed)).rejects.toThrow(/kit_typeorm_bootstrap_\d+ 第 1 步失败/);
+				const names = await externalTableNames(fixture.db, dialect);
+				expect(names.includes("catalog_agents")).toBe(dialect === "mysql");
+				// MySQL 中断的非事务 DDL 在更新的发布版本中可核对原指纹并恢复。
+				const upgraded = withUpgrades(program, dialect);
+				if (dialect === "mysql") {
+					// 同版本接续首次 DDL。制造最后登记失败，保证种子和基线一起回滚，
+					// 随后换版本从已落库的 DDL 继续，无需重发任何写入。
+					await expect(
+						fixture.run(source, {
+							...fixture.db,
+							async execute(sql, ...values) {
+								await fixture.db.execute(sql, ...values);
+								if (sql.startsWith("INSERT INTO _kit_migrations"))
+									throw new Error("injected finalization interruption");
+							},
+						}),
+					).rejects.toThrow(/kit_typeorm_bootstrap_\d+ 第 \d+ 步失败/);
+					expect(await fixture.db.rows("SELECT id FROM _kit_migrations")).toEqual([]);
+					expect(await fixture.db.rows("SELECT id FROM quota_policy")).toEqual([]);
+					await fixture.run(upgraded);
+				} else {
+					await fixture.run(source);
+					await fixture.run(upgraded);
+				}
+				await validateCurrent(fixture.db, dialect, upgraded.current);
+				expect(await fixture.db.rows("SELECT monthly_credits FROM quota_policy")).toEqual([{ monthly_credits: 200 }]);
+			} finally {
+				await source?.destroy();
 				await fixture.close();
 			}
 		},

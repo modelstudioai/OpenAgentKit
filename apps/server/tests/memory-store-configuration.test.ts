@@ -109,7 +109,7 @@ it.each(["missing-cursor", "repeated-cursor", "missing-content", "changed-digest
 
 it("条目配置只供管理身份读取，缺失404，原记忆库在本地修改前后保持不变", async () => {
 	const root = mkdtempSync(join(tmpdir(), "kit-memory-entry-read-"));
-	const db = openDatabase(root);
+	const db = await openDatabase(root);
 	try {
 		const services = createKitServices(
 			loadConfig({

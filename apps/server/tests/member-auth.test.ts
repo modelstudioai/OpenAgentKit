@@ -21,7 +21,7 @@ async function makeApp(env: Record<string, string> = {}) {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-member-auth-"));
 	dispose.push(() => rmSync(dataDir, { recursive: true, force: true }));
 	const config = loadConfig({ KIT_GATEWAY: "mock", KIT_DATA_DIR: dataDir, ADMIN_TOKEN: "admin-token", ...env });
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	const services = createKitServices(config, db);
 	dispose.push(services.close);
 	await services.catalog.upsert({ slug: "assistant", display_name: "助手", remote_agent_id: "agent_mock" });
@@ -139,7 +139,7 @@ describe("本地成员认证", () => {
 		};
 		expect(list.data.map((entry) => entry.session_id)).toEqual([sessionId]);
 		expect((await services.sessionIndex.get(sessionId))?.subject_id).toBe(first.member.member_id);
-		const restoredDb = openDatabase(dataDir);
+		const restoredDb = await openDatabase(dataDir);
 		dispose.push(() => restoredDb.close());
 		const restarted = createApp(createKitServices(config, restoredDb));
 		const me = await restarted.request("/api/kit/auth/me", { headers: headers(first.access_token) });

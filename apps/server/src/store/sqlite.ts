@@ -1,15 +1,18 @@
 import type { DatabaseSync } from "node:sqlite";
+import type { DataSource } from "typeorm";
 import type { BetterSqlite3Driver } from "typeorm/driver/better-sqlite3/BetterSqlite3Driver.js";
 import { createStoreDatabase } from "./connection.ts";
 import type { SqlValue, StoreDatabase } from "./database.ts";
-import { program } from "./schema/generated/sqlite.ts";
 import { createEntityDataSource } from "./typeorm.ts";
 
-const adapters = new WeakMap<DatabaseSync, StoreDatabase & { initializeEntities(): Promise<void> }>();
+const adapters = new WeakMap<
+	DatabaseSync,
+	StoreDatabase & { source: DataSource; initializeEntities(): Promise<void> }
+>();
 
 function sqliteEntitySource(db: DatabaseSync) {
-	// TypeORM 的 SQLite 驱动可注入连接实现，复用已完成迁移的 Node 内置连接。
-	return createEntityDataSource(program.current, {
+	// 建表和业务读写共用同一个 DataSource 与 node:sqlite 连接。
+	return createEntityDataSource({
 		type: "better-sqlite3",
 		database: db.location() ?? ":memory:",
 		driver: class {
@@ -53,6 +56,7 @@ export function createSqliteDatabase(db: DatabaseSync) {
 	});
 	const database = {
 		...store,
+		source,
 		async initializeEntities() {
 			await entitySource();
 		},

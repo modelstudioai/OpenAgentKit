@@ -29,7 +29,7 @@ afterEach(() => {
 });
 
 /** 模版条目 fixture：catalog slug 与 setup 的会话 agentSlug 同名，限额外部数据最少。 */
-async function listing(db: ReturnType<typeof openDatabase>) {
+async function listing(db: Awaited<ReturnType<typeof openDatabase>>) {
 	const catalog = new CatalogService(createSqliteDatabase(db));
 	const templates = new TemplateCatalogService(createSqliteDatabase(db));
 	await catalog.create({ slug: "agent", display_name: "模版条目", remote_agent_id: "remote-x" });
@@ -54,7 +54,7 @@ async function listing(db: ReturnType<typeof openDatabase>) {
 async function setup() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-send-rejection-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	cleanup.push(() => db.close());
 	const members = new MemberDirectoryService(createSqliteDatabase(db));
 	const index = new SessionIndexService(createSqliteDatabase(db));
@@ -330,7 +330,7 @@ describe("明确拒绝与未知发送结果的恢复边界（合成 HTTP，不�
 		await expect(pendingA).rejects.toMatchObject({ code: "provider_error", details: { request_rejected: true } });
 		// 回滚只撤销本次请求引入的变更：B 已入账的 100 保留，重启后仍在，重复采集不重计。
 		expect(await f.store.agentTotals("agent", "2026-10")).toMatchObject({ tokens: 100, tokens_unknown: 0 });
-		const reopened = openDatabase(f.dataDir);
+		const reopened = await openDatabase(f.dataDir);
 		cleanup.push(() => reopened.close());
 		expect(
 			(await new UsageAccountingService(createSqliteDatabase(reopened)).agentTotals("agent", "2026-10")).tokens,

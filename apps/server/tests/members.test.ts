@@ -14,7 +14,7 @@ afterEach(() => {
 	for (const close of cleanup.splice(0).reverse()) close();
 });
 
-function makeApp() {
+async function makeApp() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-members-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
 	const config = loadConfig({
@@ -23,7 +23,7 @@ function makeApp() {
 		ADMIN_TOKEN: "admin-token",
 		KIT_ADMIN_TOKENS: "audit-token:auditor",
 	});
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	cleanup.push(() => db.close());
 	const services = createKitServices(config, db);
 	return { app: createApp(services), services, db, dataDir, config };
@@ -33,13 +33,13 @@ const admin = { authorization: "Bearer admin-token", "content-type": "applicatio
 const auditor = { authorization: "Bearer audit-token", "content-type": "application/json" };
 const autoInput = { username: "alice", display_name: "Alice", auth_type: "local", password_mode: "auto" };
 
-function create(app: ReturnType<typeof makeApp>["app"], input: unknown = autoInput, headers = admin) {
+function create(app: Awaited<ReturnType<typeof makeApp>>["app"], input: unknown = autoInput, headers = admin) {
 	return app.request("/api/admin/members", { method: "POST", headers, body: JSON.stringify(input) });
 }
 
 describe("成员创建与凭据隔离", () => {
 	it("自动密码仅创建响应展示一次；数据库只存可验证的加盐派生值，目录与审计无密码", async () => {
-		const { app, services, db } = makeApp();
+		const { app, services, db } = await makeApp();
 		const input = { ...autoInput, username: " Alice ", display_name: " 艾丽丝 ", email: " alice@example.com " };
 		const response = await create(app, input);
 		expect(response.status).toBe(201);
@@ -78,7 +78,7 @@ describe("成员创建与凭据隔离", () => {
 	});
 
 	it("成员深链按 ID 读取公开资料，拒绝未认证访问并区分不存在的成员", async () => {
-		const { app } = makeApp();
+		const { app } = await makeApp();
 		const created = await create(app);
 		const { data } = (await created.json()) as CreateMemberResponse;
 		const path = `/api/admin/members/${data.member.member_id}`;
@@ -93,7 +93,7 @@ describe("成员创建与凭据隔离", () => {
 	});
 
 	it("自定义密码不回显；同一密码产生不同盐，用户名大小写重复并发创建只有一个成功", async () => {
-		const { app, db } = makeApp();
+		const { app, db } = await makeApp();
 		const password = "Unique!Pass2026";
 		const input = { ...autoInput, password_mode: "custom", password };
 		const responses = await Promise.all([create(app, input), create(app, { ...input, username: "ALICE" })]);
@@ -119,7 +119,7 @@ describe("成员创建与凭据隔离", () => {
 		{ password_mode: "custom", password: "ALICE!Test2026" },
 		{ password_mode: "auto", password: "Unwanted!2026" },
 	])("无效字段返回 400 且错误不携带密码：%j", async (patch) => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		const response = await create(app, { ...autoInput, ...patch });
 		expect(response.status).toBe(400);
 		const body = await response.text();
@@ -131,7 +131,7 @@ describe("成员创建与凭据隔离", () => {
 	});
 
 	it("auditor 可读取真实存在的成员但不能创建，缺令牌 401、未知令牌 403", async () => {
-		const { app } = makeApp();
+		const { app } = await makeApp();
 		expect((await create(app)).status).toBe(201);
 		const read = await app.request("/api/admin/members", { headers: auditor });
 		expect(read.status).toBe(200);
@@ -145,7 +145,7 @@ describe("成员创建与凭据隔离", () => {
 
 describe("成员目录持久化与分页搜索", () => {
 	it("重新打开数据库后可按名称/用户名搜索，游标翻页无重复且绑定搜索条件", async () => {
-		const { app, dataDir, config } = makeApp();
+		const { app, dataDir, config } = await makeApp();
 		for (const [username, displayName, email] of [
 			["member_one", "张三", "one@example.com"],
 			["member_two", "李四", "two@example.com"],
@@ -153,7 +153,7 @@ describe("成员目录持久化与分页搜索", () => {
 		] as const) {
 			expect((await create(app, { ...autoInput, username, display_name: displayName, email })).status).toBe(201);
 		}
-		const db = openDatabase(dataDir);
+		const db = await openDatabase(dataDir);
 		cleanup.push(() => db.close());
 		const reopened = createApp(createKitServices(config, db));
 		const list = async (query: string) => {

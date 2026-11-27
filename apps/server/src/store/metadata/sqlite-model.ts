@@ -1,5 +1,14 @@
 import type { DatabaseSync } from "node:sqlite";
-import { type Column, type ForeignKey, type Index, identifier, type Schema, splitSql, type Table } from "./model.ts";
+import {
+	type Column,
+	type ForeignKey,
+	type Index,
+	identifier,
+	type Schema,
+	splitSql,
+	type Table,
+	tableDifference,
+} from "./model.ts";
 
 type ColumnRow = { name: string; type: string; notnull: number; pk: number; dflt_value: string | null };
 type IndexRow = { name: string; origin: string; unique: number };
@@ -133,4 +142,10 @@ export function readSqliteSchema(db: DatabaseSync): Schema {
 		if (!table) throw new Error(`缺少 SQLite 表：${name}`);
 		return table;
 	});
+}
+
+export function sqliteTableDifference(db: DatabaseSync, name: string, expected: Table | null, other?: Table | null) {
+	// 检查迁移前后声明的索引，允许存量库保留额外的非唯一索引。
+	const indexes = new Set([expected, other].flatMap((table) => table?.indexes.map((index) => index.name) ?? []));
+	return tableDifference(expected, readSqliteTable(db, name, indexes));
 }

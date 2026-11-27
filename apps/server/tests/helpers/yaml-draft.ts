@@ -35,7 +35,7 @@ export async function fixture(mode: "sdk" | "mock" = "mock", mainName = "main") 
 		BAILIAN_API_KEY: "fixture-provider-secret",
 		BAILIAN_BASE_URL: "https://fixtures.invalid/api/v1/agentstudio",
 	});
-	let db = openDatabase(root);
+	let db = await openDatabase(root);
 	let services = createKitServices(config, db);
 	let app = createApp(services);
 	function document(id: string) {
@@ -136,9 +136,9 @@ export async function fixture(mode: "sdk" | "mock" = "mock", mainName = "main") 
 		get db() {
 			return db;
 		},
-		restart() {
+		async restart() {
 			db.close();
-			db = openDatabase(root);
+			db = await openDatabase(root);
 			services = createKitServices(config, db);
 			app = createApp(services);
 		},

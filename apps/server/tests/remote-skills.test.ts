@@ -55,7 +55,7 @@ it("管理员和auditor可读既有候选，未认证和非法来源不可访问
 		KIT_ADMIN_TOKENS: "skill-auditor:auditor",
 		KIT_RATE_LIMIT_RPS: "0",
 	});
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	cleanup.push(async () => {
 		db.close();
 		await rm(dataDir, { recursive: true, force: true });

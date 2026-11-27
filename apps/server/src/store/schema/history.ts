@@ -1,5 +1,4 @@
 import { DatabaseSync } from "node:sqlite";
-import { sqliteHistory } from "../sqlite-history.ts";
 import {
 	type DataStep,
 	type DdlStep,
@@ -9,9 +8,10 @@ import {
 	type Step,
 	splitSql,
 	type Table,
-} from "./model.ts";
+} from "../metadata/model.ts";
+import { readSqliteSchema } from "../metadata/sqlite-model.ts";
+import { sqliteHistory } from "../sqlite-history.ts";
 import { additiveSteps, change, createTableSteps, forDialect } from "./render.ts";
-import { readSqliteSchema } from "./sqlite-model.ts";
 
 const sessionRebuilds = new Set([
 	"007_admin_debug_scope",

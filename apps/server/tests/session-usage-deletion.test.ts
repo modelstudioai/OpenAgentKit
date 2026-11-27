@@ -36,7 +36,7 @@ function savedDeletion(db: DatabaseSync, sessionId: string) {
 }
 async function setup() {
 	const directory = mkdtempSync(join(tmpdir(), "kit-usage-delete-"));
-	const db = openDatabase(directory);
+	const db = await openDatabase(directory);
 	close.push(() => {
 		db.close();
 		rmSync(directory, { recursive: true, force: true });
@@ -77,8 +77,8 @@ async function setup() {
 		usage,
 		stats,
 	});
-	const restart = () => {
-		const reopened = openDatabase(directory);
+	const restart = async () => {
+		const reopened = await openDatabase(directory);
 		close.push(() => reopened.close());
 		const restored = createKitServices(config, reopened);
 
@@ -138,7 +138,7 @@ describe("成员会话删除前用量快照", () => {
 		expect(await t.services.sessionIndex.get(t.sessionId)).toBeNull();
 		expect((await t.services.memberUsage.summary(t.member.member_id)).metrics.input_tokens.value).toBe(120);
 		expect((await t.services.memberUsage.summary(t.member.member_id)).deleted_session_count).toBe(1);
-		const reopened = openDatabase(t.config.dataDir);
+		const reopened = await openDatabase(t.config.dataDir);
 		try {
 			expect(
 				reopened.prepare("SELECT output_tokens, deleted_at FROM kit_session_usage").get()?.deleted_at,
@@ -288,7 +288,7 @@ describe("成员会话删除前用量快照", () => {
 		).rejects.toMatchObject({ code: "conflict" });
 		// 请求报错后远端才执行删除；重开数据库后仍禁止新执行，也不自动再次 DELETE。
 		read.mockResolvedValue(null);
-		const restarted = t.restart();
+		const restarted = await t.restart();
 		await expect(restarted.sessions.send(t.sessionId, { text: "after restart" })).rejects.toMatchObject({
 			code: "conflict",
 		});
@@ -312,7 +312,7 @@ describe("成员会话删除前用量快照", () => {
 			details: { stage: "delete", deletion_uncertain: true },
 		});
 		expect(remove).toHaveBeenCalledOnce();
-		const restarted = t.restart();
+		const restarted = await t.restart();
 		expect(await restarted.services.sessionIndex.get(t.sessionId)).not.toBeNull();
 		expect((await savedDeletion(restarted.db, t.sessionId))?.stage).toBe("deleting");
 		expect(await restarted.services.memberUsage.hasFinalSnapshot(t.sessionId)).toBe(true);
@@ -355,7 +355,7 @@ describe("成员会话删除前用量快照", () => {
 			const remove = vi.spyOn(t.services.gateway, "deleteSession");
 			t.db.exec(`CREATE TRIGGER fail_deleting BEFORE UPDATE OF stage ON kit_session_deletions
 				WHEN NEW.stage = 'deleting' BEGIN SELECT RAISE(ABORT, 'disk failed'); END`);
-			const recovering = t.restart();
+			const recovering = await t.restart();
 			await expect(recovering.sessions.delete(t.sessionId)).rejects.toMatchObject({
 				details: { stage: "delete", deletion_uncertain: true },
 			});
@@ -363,7 +363,7 @@ describe("成员会话删除前用量快照", () => {
 			expect(await recovering.services.memberUsage.hasFinalSnapshot(t.sessionId)).toBe(true);
 			expect((await recovering.services.memberUsage.summary(t.member.member_id)).metrics.output_tokens.value).toBe(90);
 			expect(remove).not.toHaveBeenCalled();
-			const restarted = t.restart();
+			const restarted = await t.restart();
 			expect(await restarted.services.sessionIndex.get(t.sessionId)).not.toBeNull();
 			await expect(restarted.sessions.send(t.sessionId, { text: "new execution" })).rejects.toMatchObject({
 				code: "conflict",
@@ -398,7 +398,7 @@ describe("成员会话删除前用量快照", () => {
 			details: { stage: "finalize", deletion_uncertain: false },
 		});
 		expect(remove).toHaveBeenCalledOnce();
-		const restarted = t.restart();
+		const restarted = await t.restart();
 		expect(await restarted.services.sessionIndex.get(t.sessionId)).not.toBeNull();
 		expect(await restarted.services.memberUsage.hasFinalSnapshot(t.sessionId)).toBe(true);
 		expect((await restarted.services.memberUsage.summary(t.member.member_id)).deleted_session_count).toBe(0);
@@ -485,7 +485,7 @@ describe("成员会话删除前用量快照", () => {
 			await expect(t.sessions.send(t.sessionId, { text: "before late interrupt" })).rejects.toMatchObject({
 				code: "conflict",
 			});
-			const restarted = t.restart();
+			const restarted = await t.restart();
 			await expect(restarted.sessions.delete(t.sessionId)).rejects.toMatchObject({ details: { stage: "capture" } });
 			await expect(restarted.sessions.send(t.sessionId, { text: "after restart" })).rejects.toMatchObject({
 				code: "conflict",

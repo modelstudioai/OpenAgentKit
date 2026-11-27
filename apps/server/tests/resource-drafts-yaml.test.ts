@@ -32,13 +32,13 @@ it("早期 029 批次缺少上传清单列时可升级，保留已有声明并�
 	// 开发服务曾应用不含 assets_json 的 029；同一迁移 ID 不会再次执行。
 	t.db.exec("ALTER TABLE kit_resource_draft_documents DROP COLUMN assets_json");
 	t.db.prepare("DELETE FROM _kit_migrations WHERE id=?").run("030_resource_draft_assets");
-	t.restart();
+	await t.restart();
 	expect(await t.value(`${t.base(draft)}/declarations`)).toContainEqual(
 		expect.objectContaining({ type: "agent", id: created.agent.id }),
 	);
 	expect(await t.value(`${t.base(draft)}/resource-bindings`)).toEqual({ resources: [] });
 	expect(await t.document(draft.draft_id)).toEqual(before);
-	t.restart();
+	await t.restart();
 	expect(await t.document(draft.draft_id)).toEqual(before);
 	expect(await t.value(`${t.base(draft)}/declarations`)).toHaveLength(1);
 });
@@ -191,7 +191,7 @@ it("真实 SDK 对象发布保留原文和 state；回执写入失败后重启�
 	const persisted = await t.document(draft.draft_id);
 	t.db.exec("ALTER TABLE kit_resource_draft_documents DROP COLUMN assets_json");
 	t.db.prepare("DELETE FROM _kit_migrations WHERE id=?").run("030_resource_draft_assets");
-	t.restart();
+	await t.restart();
 	expect(await t.document(draft.draft_id)).toEqual(persisted);
 	// 恢复期间读到另一属主的成功证明时，保留资料以便核对。
 	const proof = persisted!.proof_json!;
@@ -321,7 +321,7 @@ it("部分 SDK 成功保留 state，重启后只允许读取核对，不能重�
 	expect((await t.document(draft.draft_id))?.sdk_state_json).toContain("env_created");
 	expect((await t.document(draft.draft_id))?.proof_json).toBeNull();
 	const count = posts;
-	t.restart();
+	await t.restart();
 	expect(await t.value(`/api/admin/resource-drafts/${draft.draft_id}`)).toMatchObject({
 		recovery_action: "read_result",
 	});

@@ -23,7 +23,7 @@ it("admin/auditor 发现指定 Agent 的会话与挂载，未认证拒绝且不�
 		KIT_ADMIN_TOKENS: "preset-auditor:auditor",
 		KIT_RATE_LIMIT_RPS: "0",
 	});
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	cleanup.push(async () => {
 		db.close();
 		await rm(dataDir, { recursive: true, force: true });

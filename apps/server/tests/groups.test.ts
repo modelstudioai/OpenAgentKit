@@ -15,7 +15,7 @@ afterEach(() => {
 	for (const close of cleanup.splice(0).reverse()) close();
 });
 
-function setup() {
+async function setup() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-groups-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
 	const config = loadConfig({
@@ -26,13 +26,13 @@ function setup() {
 		KIT_RATE_LIMIT_RPS: "1000",
 		KIT_RATE_LIMIT_BURST: "1000",
 	});
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	cleanup.push(() => db.close());
 	const services = createKitServices(config, db);
 	return { app: createApp(services), services, config, dataDir };
 }
 
-type App = ReturnType<typeof setup>["app"];
+type App = Awaited<ReturnType<typeof setup>>["app"];
 const password = "Private!Password2026";
 const adminToken = "group-admin-token";
 const missingMember = "member_00000000-0000-4000-8000-000000000000";
@@ -86,7 +86,7 @@ const confirmation = (value: PlanResponse) => ({ plan_id: value.plan_id, confirm
 
 describe("用户组目录与成员关系", () => {
 	it("名称规范化、并发唯一性、编辑冲突和重启后的分页搜索", async () => {
-		const { app, config, dataDir } = setup();
+		const { app, config, dataDir } = await setup();
 		const created = await Promise.all([
 			request(app, "/api/admin/groups", "POST", { name: " 团队_one ", description: " 第一组 " }),
 			request(app, "/api/admin/groups", "POST", { name: "团队_one" }),
@@ -102,7 +102,7 @@ describe("用户组目录与成员关系", () => {
 		);
 		expect(edited).toMatchObject({ group_id: second.group_id, description: "变更后的描述" });
 		expect((await request(app, "/api/admin/groups", "POST", { name: "  " })).status).toBe(400);
-		const reopenedDb = openDatabase(dataDir);
+		const reopenedDb = await openDatabase(dataDir);
 		cleanup.push(() => reopenedDb.close());
 		const reopened = createApp(createKitServices(config, reopenedDb));
 		const query = `/api/admin/groups?search=${encodeURIComponent("团队_")}&limit=1`;
@@ -123,7 +123,7 @@ describe("用户组目录与成员关系", () => {
 	});
 
 	it("两侧编辑同一多对多关系；分页选择、重复提交和任一无效 ID 都不会误改其他关系", async () => {
-		const { app, config, dataDir } = setup();
+		const { app, config, dataDir } = await setup();
 		const alice = await member(app);
 		const bob = await member(app, "bob");
 		const first = await group(app, "研发组");
@@ -179,7 +179,7 @@ describe("用户组目录与成员关系", () => {
 		]);
 		const summary = await page<MemberView & { groups: { group_id: string }[] }>(app, "/api/admin/members?search=alice");
 		expect(summary.data[0]?.groups.map((row) => row.group_id)).toEqual([second.group_id]);
-		const reopenedDb = openDatabase(dataDir);
+		const reopenedDb = await openDatabase(dataDir);
 		cleanup.push(() => reopenedDb.close());
 		const restarted = createApp(createKitServices(config, reopenedDb));
 		expect(
@@ -190,7 +190,7 @@ describe("用户组目录与成员关系", () => {
 
 describe("用户组管理权限与删除确认", () => {
 	it("auditor 能读取已存在的组和成员关系，但所有写入口都被统一拒绝", async () => {
-		const { app } = setup();
+		const { app } = await setup();
 		const alice = await member(app);
 		const existing = await group(app, "已有组");
 		await data(await request(app, groupMembersPath(existing.group_id), "PATCH", { add_member_ids: [alice.member_id] }));
@@ -220,7 +220,7 @@ describe("用户组管理权限与删除确认", () => {
 	});
 
 	it("删除必须重新确认当前影响，成功后只删除组关系并拒绝重放；账号、登录和 Agent 访问保留", async () => {
-		const { app, services } = setup();
+		const { app, services } = await setup();
 		const alice = await member(app);
 		const existing = await group(app, "将被删除的组");
 		await services.catalog.upsert({ slug: "assistant", display_name: "助手", remote_agent_id: "agent_mock" });
@@ -276,7 +276,7 @@ describe("用户组管理权限与删除确认", () => {
 	});
 
 	it("过期删除计划被拒且保留组；重新生成计划可正常删除", async () => {
-		const { app } = setup();
+		const { app } = await setup();
 		const existing = await group(app, "过期测试组");
 		const initial = await plan(app, existing.group_id);
 		vi.useFakeTimers({ toFake: ["Date"] });
@@ -290,7 +290,7 @@ describe("用户组管理权限与删除确认", () => {
 	});
 
 	it("确认令牌验证期间从用户侧新增成员关系，删除重新核对影响并保留组", async () => {
-		const { app, services } = setup();
+		const { app, services } = await setup();
 		const alice = await member(app);
 		const existing = await group(app, "并发变更组");
 		const reviewed = await plan(app, existing.group_id);

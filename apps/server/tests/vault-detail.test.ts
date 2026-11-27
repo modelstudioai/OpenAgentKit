@@ -130,7 +130,7 @@ it("非法 ID 不请求 Provider；不存在、归档或 ID 不一致的库不�
 
 it("详情只供管理员和审计员读取，不缓存；未认证拒绝、缺失库404、查看不执行写操作", async () => {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-vault-detail-"));
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	try {
 		const services = createKitServices(
 			loadConfig({

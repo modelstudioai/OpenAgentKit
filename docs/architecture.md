@@ -392,9 +392,9 @@ HTTP 边界接收退出信号后取消流式请求，HTTP 停止监听后释放�
 
 `loadConfig` 解析 `KIT_DB_DRIVER`，启动时经 `store/connect.ts` 打开数据库。
 `entity/tables/` 的装饰器定义当前结构。每个类对应一张表，属性和类装饰器记录字段、主键、索引、外键和检查约束。
-构建从实体派生 SQLite、MySQL、PostgreSQL 的物理结构。空库直接建立当前结构并写入初始数据和版本记录。
+TypeORM DataSource 直接注册原始实体类，按当前连接的方言绑定列、约束和索引。空库在锁内使用驱动根据实体元数据生成的 DDL 建表，写入初始数据和版本记录。
 已有库按已完成的版本执行后续迁移。MySQL 在迁移锁下保存步骤进度并核对 DDL 执行结果。
-结构就绪后，Store 用同一物理连接或连接池初始化 TypeORM DataSource。
+已达当前版本的数据库按实体校验结构。历史升级与建库共用版本登记表，业务查询沿用同一 SQLite 连接或外部数据库连接池。
 随后 `module/infrastructure.ts` 调用 `StartupService` 标记中断操作和待核对的发布批次，并应用默认 Credits 策略。
 默认 SQLite 从 `KIT_DATA_DIR/kit.sqlite` 打开。MySQL 8.4 和 PostgreSQL 从 `KIT_DATABASE_URL` 连接已创建的数据库。
 应用装配将同一 `StoreDatabase` 注入各个 Service。附件归属、成员登录凭据和预设包由各自的 Service 通过 EntityManager 读写。

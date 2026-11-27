@@ -1,10 +1,12 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { constants, DatabaseSync } from "node:sqlite";
 import type { DataSource } from "typeorm";
 import { expect, it, vi } from "vitest";
+import { migrationIds } from "../src/store/baseline.ts";
 import { createStoreDatabase } from "../src/store/connection.ts";
+import { migrateSqliteSchema, openDatabase } from "../src/store/db.ts";
 import { createSqliteDatabase } from "../src/store/sqlite.ts";
 
 it("回滚失败时淘汰借出的连接，保留业务错误并脱敏后续连接错误", async () => {
@@ -78,5 +80,42 @@ it("SQLite 锁释放后可再次开启事务，查询失败不会公开 SQL 和�
 		writer.close();
 		await store.close();
 		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+it("SQLite 同一空库并发首次打开只登记一组基线与初始数据", async () => {
+	const directory = mkdtempSync(join(tmpdir(), "kit-concurrent-bootstrap-"));
+	try {
+		const connections = await Promise.all([openDatabase(directory), openDatabase(directory)]);
+		try {
+			const baseline = "SELECT id, applied_at FROM _kit_migrations ORDER BY rowid";
+			const versions = connections[0].prepare(baseline).all();
+			expect(versions.map(({ id }) => id)).toEqual(migrationIds);
+			expect(connections[1].prepare(baseline).all()).toEqual(versions);
+			expect(connections[1].prepare("SELECT id, monthly_credits FROM quota_policy").all()).toEqual([
+				{ id: 1, monthly_credits: 200 },
+			]);
+		} finally {
+			for (const db of connections) db.close();
+		}
+	} finally {
+		rmSync(directory, { recursive: true, force: true });
+	}
+});
+
+it("SQLite 实体建表中途失败回滚所有表与迁移记录，可再次启动", async () => {
+	const db = new DatabaseSync(":memory:");
+	try {
+		db.setAuthorizer((action, name) =>
+			action === constants.SQLITE_CREATE_TABLE && name === "kit_members" ? constants.SQLITE_DENY : constants.SQLITE_OK,
+		);
+		await expect(migrateSqliteSchema(db)).rejects.toThrow();
+		expect(db.prepare("SELECT name FROM sqlite_schema WHERE type = 'table'").all()).toEqual([]);
+		expect(db.isTransaction).toBe(false);
+		db.setAuthorizer(null);
+		await migrateSqliteSchema(db);
+		expect(db.prepare("SELECT COUNT(*) AS n FROM _kit_migrations").get()).toEqual({ n: migrationIds.length });
+	} finally {
+		db.close();
 	}
 });

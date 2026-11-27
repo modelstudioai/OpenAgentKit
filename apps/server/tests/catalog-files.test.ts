@@ -16,10 +16,10 @@ afterEach(() => {
 const json = { "content-type": "application/json", "x-kit-protocol-version": "3.0.0" };
 const admin = { ...json, authorization: "Bearer admin-token" };
 
-function setup() {
+async function setup() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-catalog-files-"));
 	cleanup.push(() => rmSync(dataDir, { recursive: true, force: true }));
-	const db = openDatabase(dataDir);
+	const db = await openDatabase(dataDir);
 	cleanup.push(() => db.close());
 	const config = loadConfig({
 		KIT_GATEWAY: "mock",
@@ -55,7 +55,7 @@ function setup() {
 
 describe("上架目录的共享文件白名单", () => {
 	it("管理端列表有认证保护；保存校准元数据与默认路径，持久化后省略保留、[]清空", async () => {
-		const { app, services, upload, create, update, dataDir, config } = setup();
+		const { app, services, upload, create, update, dataDir, config } = await setup();
 		const file = await upload("uploader", "文档 v1.txt");
 		const path = "/api/admin/remote/files";
 		const listed = await app.request(path, { headers: admin });
@@ -66,7 +66,7 @@ describe("上架目录的共享文件白名单", () => {
 		const expected = [{ ...file, mount_path: "/mnt/session/uploads/文档_v1.txt" }];
 		expect((await services.catalog.getBySlug("files-agent"))?.files).toEqual(expected);
 		expect((await update({ description: "保留文件" })).status).toBe(200);
-		const reopened = openDatabase(dataDir);
+		const reopened = await openDatabase(dataDir);
 		cleanup.push(() => reopened.close());
 		expect((await createKitServices(config, reopened).catalog.getBySlug("files-agent"))?.files).toEqual(expected);
 		expect((await update({ files: [] })).status).toBe(200);
@@ -74,7 +74,7 @@ describe("上架目录的共享文件白名单", () => {
 	});
 
 	it("保存拒绝不存在/非上传/不可用文件以及重复ID和路径；失败保留原配置", async () => {
-		const { services, upload, create, update } = setup();
+		const { services, upload, create, update } = await setup();
 		const first = await upload("uploader", "first.txt");
 		const second = await upload("uploader", "second.txt");
 		expect((await create([first])).status).toBe(201);
@@ -103,7 +103,7 @@ describe("上架目录的共享文件白名单", () => {
 	});
 
 	it("新会话合并目录文件与本人附件；目录授权不能被请求借用或转成直接下载权限", async () => {
-		const { app, services, upload, create, update, session } = setup();
+		const { app, services, upload, create, update, session } = await setup();
 		const shared = await upload("another-uploader");
 		const own = await upload("member-one");
 		const privateFile = await upload("another-uploader", "private.txt");
@@ -132,7 +132,7 @@ describe("上架目录的共享文件白名单", () => {
 	});
 
 	it("相同本人文件与目录去重，合并超过10项在创建远端会话前拒绝", async () => {
-		const { services, upload, create, session } = setup();
+		const { services, upload, create, session } = await setup();
 		const files = await Promise.all(
 			Array.from({ length: 10 }, (_, index) => upload("member-one", `file-${index}.txt`)),
 		);

@@ -8,7 +8,7 @@ import { openDatabase } from "../src/store/db.ts";
 import { createTestApp as createApp } from "./helpers/http.ts";
 import { createKitServices } from "./helpers/services.ts";
 
-function makeApp() {
+async function makeApp() {
 	const dataDir = mkdtempSync(join(tmpdir(), "kit-test-"));
 	const config = loadConfig({
 		KIT_GATEWAY: "mock",
@@ -17,14 +17,14 @@ function makeApp() {
 		ADMIN_TOKEN: "admin-token",
 		KIT_CORS_ORIGINS: "http://localhost:5173",
 	});
-	const services = createKitServices(config, openDatabase(dataDir));
+	const services = createKitServices(config, await openDatabase(dataDir));
 	return { app: createApp(services), services };
 }
 
 const json = { "content-type": "application/json", "x-kit-protocol-version": "3.0.0" };
 
 it("智能体版本注册到控制面：已存在历史版本可读，未认证或非法 ID 被拒", async () => {
-	const { app, services } = makeApp();
+	const { app, services } = await makeApp();
 	const path = "/api/admin/remote/agents/agent_mock_designer/versions";
 	const headers = { authorization: "Bearer admin-token" };
 	const response = await app.request(path, { headers });
@@ -53,7 +53,7 @@ it("智能体版本注册到控制面：已存在历史版本可读，未认证�
 });
 
 it("模版保存和列表注册到控制面：管理员可保存读取，未认证不可访问", async () => {
-	const { app } = makeApp();
+	const { app } = await makeApp();
 	const headers = { ...json, authorization: "Bearer admin-token" };
 	const saved = await app.request("/api/admin/templates", {
 		method: "POST",
@@ -81,7 +81,7 @@ it("模版保存和列表注册到控制面：管理员可保存读取，未认�
 });
 
 it("用户组注册到控制面：管理员可查，未认证不可查", async () => {
-	const { app } = makeApp();
+	const { app } = await makeApp();
 	const response = await app.request("/api/admin/groups", { headers: { authorization: "Bearer admin-token" } });
 	expect(response.status).toBe(200);
 	expect(await response.json()).toEqual({ data: [] });
@@ -89,7 +89,7 @@ it("用户组注册到控制面：管理员可查，未认证不可查", async (
 });
 
 it("模版编辑注册到控制面：需有效版本基线，auditor不可编辑已存在的模版", async () => {
-	const { app, services } = makeApp();
+	const { app, services } = await makeApp();
 	const input = {
 		name: "可编辑模版",
 		category: "general" as const,
@@ -118,7 +118,7 @@ it("模版编辑注册到控制面：需有效版本基线，auditor不可编辑
 });
 
 it("模版删除路由注册：只读身份不可计划或删除，管理员需确认后删除", async () => {
-	const { app, services } = makeApp();
+	const { app, services } = await makeApp();
 	const template = await services.templates.create(
 		{
 			name: "删除路由模版",
@@ -155,7 +155,7 @@ it("模版删除路由注册：只读身份不可计划或删除，管理员需�
 });
 
 it("模版上架路由要求显式确认，管理员确认后可上架且 auditor 不能写", async () => {
-	const { app, services } = makeApp();
+	const { app, services } = await makeApp();
 	const headers = { ...json, authorization: "Bearer admin-token" };
 	const template = await services.templates.create(
 		{
@@ -186,7 +186,7 @@ it("模版上架路由要求显式确认，管理员确认后可上架且 audito
 });
 
 it("远端环境列表注册到管理端：已认证可读网关结果，匿名不可读", async () => {
-	const { app, services } = makeApp();
+	const { app, services } = await makeApp();
 	const expected = await services.gateway.listRemoteEnvironments();
 	expect(expected.length).toBeGreaterThan(0);
 	const path = "/api/admin/remote/environments";
@@ -198,7 +198,7 @@ it("远端环境列表注册到管理端：已认证可读网关结果，匿名�
 
 // 环境抽屉只读同一资源：管理员与审计员可查看，匿名和路径注入被拒，不创建调试会话。
 it("远端环境详情注册到管理端：校验读取权限、资源存在性与环境 ID", async () => {
-	const { app, services } = makeApp();
+	const { app, services } = await makeApp();
 	const environment = (await services.gateway.listRemoteEnvironments()).find(
 		(item) => item.environment_id === "env_mock_default",
 	);
@@ -224,7 +224,7 @@ it("远端环境详情注册到管理端：校验读取权限、资源存在性�
 });
 
 it("Session 月度限额注册到控制面；未登录不可读，匿名数据面明确没有成员额度", async () => {
-	const { app } = makeApp();
+	const { app } = await makeApp();
 	const path = "/api/admin/usage-limits/policy";
 	const response = await app.request(path, { headers: { authorization: "Bearer admin-token" } });
 	expect(response.status).toBe(200);
@@ -236,7 +236,7 @@ it("Session 月度限额注册到控制面；未登录不可读，匿名数据�
 });
 
 it("成员创建注册到控制面：管理员可创建并查询，匿名请求被拒", async () => {
-	const { app } = makeApp();
+	const { app } = await makeApp();
 	const headers = { ...json, authorization: "Bearer admin-token" };
 	const created = await app.request("/api/admin/members", {
 		method: "POST",
@@ -252,7 +252,7 @@ it("成员创建注册到控制面：管理员可创建并查询，匿名请求�
 });
 
 /** 会话生命周期用例共用的建会话助手（附件块也要用）。 */
-async function seedAndCreate(app: ReturnType<typeof makeApp>["app"], subject = "lifecycle") {
+async function seedAndCreate(app: Awaited<ReturnType<typeof makeApp>>["app"], subject = "lifecycle") {
 	const cookie = `kit_subject=${subject}`;
 	const created = await app.request("/api/kit/sessions", {
 		method: "POST",
@@ -265,7 +265,7 @@ async function seedAndCreate(app: ReturnType<typeof makeApp>["app"], subject = "
 
 describe("数据面路由", () => {
 	it("GET /api/config 不要求身份；apiBaseUrl 默认空串=同源语义", async () => {
-		const { app } = makeApp();
+		const { app } = await makeApp();
 		const res = await app.request("/api/config");
 		expect(res.status).toBe(200);
 		const body = (await res.json()) as { data: { apiBaseUrl: string; protocolVersion: string } };
@@ -281,14 +281,14 @@ describe("数据面路由", () => {
 			ADMIN_TOKEN: "t",
 			KIT_PUBLIC_BASE_URL: "https://kit.example.com/",
 		});
-		const app = createApp(createKitServices(config, openDatabase(dataDir)));
+		const app = createApp(createKitServices(config, await openDatabase(dataDir)));
 		const res = await app.request("/api/config");
 		const body = (await res.json()) as { data: { apiBaseUrl: string } };
 		expect(body.data.apiBaseUrl).toBe("https://kit.example.com");
 	});
 
 	it("未上架 agent 不出现在数据面列表", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		await services.catalog.upsert({ slug: "hidden", display_name: "Hidden", remote_agent_id: "agent_1" });
 		const before = (await (await app.request("/api/kit/agents")).json()) as { data: { slug: string }[] };
 		expect(before.data).toHaveLength(0);
@@ -298,7 +298,7 @@ describe("数据面路由", () => {
 	});
 
 	it("agents.get 附带远端资源投影：绑定的 mock agent 返回 tools/skills/mcp_servers", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		await services.catalog.upsert({
 			slug: "assistant",
 			display_name: "Assistant",
@@ -315,7 +315,7 @@ describe("数据面路由", () => {
 	});
 
 	it("agents.get 资源降级：未绑定远端或 Provider 失败时省略 resources，不影响详情", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		await services.catalog.upsert({ slug: "ghost", display_name: "Ghost", remote_agent_id: "agent_unknown" });
 		await services.catalog.setStatus("ghost", "listed");
 		const unbound = (await (await app.request("/api/kit/agents/ghost")).json()) as {
@@ -340,7 +340,7 @@ describe("数据面路由", () => {
 	});
 
 	it("员工历史独立分页，SSE 先就绪再传用户回显和实时回复", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		await services.catalog.upsert({
 			slug: "assistant",
 			display_name: "Assistant",
@@ -400,7 +400,7 @@ describe("数据面路由", () => {
 	});
 
 	it("他人会话返回 404（不泄露存在性）", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		await services.catalog.upsert({
 			slug: "assistant",
 			display_name: "Assistant",
@@ -420,7 +420,7 @@ describe("数据面路由", () => {
 	});
 
 	it("本人上传的附件下载走服务端代理", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		const file = await services.files.upload("x", {
 			filename: "report.md",
 			bytes: new TextEncoder().encode("# Report"),
@@ -436,7 +436,7 @@ describe("数据面路由", () => {
 
 describe("控制面", () => {
 	it("无/错/对 ADMIN_TOKEN 分别 401/403/200", async () => {
-		const { app } = makeApp();
+		const { app } = await makeApp();
 		expect((await app.request("/api/admin/agents")).status).toBe(401);
 		expect((await app.request("/api/admin/agents", { headers: { authorization: "Bearer wrong" } })).status).toBe(403);
 		expect((await app.request("/api/admin/agents", { headers: { authorization: "Bearer admin-token" } })).status).toBe(
@@ -445,7 +445,7 @@ describe("控制面", () => {
 	});
 
 	it("目录 ID 接受原样 Provider ID 并区分大小写，拒绝无效字符且不创建条目", async () => {
-		const { app } = makeApp();
+		const { app } = await makeApp();
 		const path = "/api/admin/agents";
 		const headers = { ...json, authorization: "Bearer admin-token" };
 		const providerId = "agent_01M5YFTK4FPG5XZ046D6MZK59A";
@@ -468,7 +468,7 @@ describe("控制面", () => {
 	});
 
 	it("新建目录拒绝重复 ID，不覆盖已上架条目；换 ID 后可创建", async () => {
-		const { app } = makeApp();
+		const { app } = await makeApp();
 		const path = "/api/admin/agents";
 		const headers = { ...json, authorization: "Bearer admin-token" };
 		const original = {
@@ -525,7 +525,7 @@ describe("控制面", () => {
 	});
 
 	it.each(["unlisted", "listed"] as const)("新建目录拒绝与 %s 条目同名，换展示名后可创建", async (status) => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		const path = "/api/admin/agents";
 		const headers = { ...json, authorization: "Bearer admin-token" };
 		const original = { slug: "existing-agent", display_name: "原有助手", remote_agent_id: "agent_original" };
@@ -555,7 +555,7 @@ describe("控制面", () => {
 	});
 
 	it("编辑目录拒绝其他条目的展示名，保留自身名称保存正常", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		const path = "/api/admin/agents";
 		const headers = { ...json, authorization: "Bearer admin-token" };
 		for (const label of ["first", "second"]) {
@@ -603,13 +603,13 @@ describe("控制面", () => {
 	});
 
 	it("历史同名条目可保留自身名称编辑，也可改为唯一展示名", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		const path = "/api/admin/agents";
 		const headers = { ...json, authorization: "Bearer admin-token" };
 		for (const label of ["first", "second"]) {
 			await services.catalog.create({ slug: `${label}-agent`, display_name: label, remote_agent_id: `agent_${label}` });
 		}
-		const legacyDb = openDatabase(services.config.dataDir);
+		const legacyDb = await openDatabase(services.config.dataDir);
 		// 模拟旧版本已经保存的重复名，跳过新建合同，不要求迁移改写已有数据。
 		legacyDb.prepare("UPDATE catalog_agents SET display_name = ?").run("历史助手");
 		legacyDb.close();
@@ -639,7 +639,7 @@ describe("控制面", () => {
 		{ field: "ID", message: "ID 已存在，请使用其他 ID" },
 		{ field: "展示名", message: "展示名已存在，请使用其他展示名" },
 	])("同 $field 并发新建只有一个成功，保留成功请求的条目", async ({ field, message }) => {
-		const { app } = makeApp();
+		const { app } = await makeApp();
 		const path = "/api/admin/agents";
 		const headers = { ...json, authorization: "Bearer admin-token" };
 		const responses = await Promise.all(
@@ -668,7 +668,7 @@ describe("控制面", () => {
 
 describe("会话生命周期与文件（B1/B2）", () => {
 	it("archive 闸门：空令牌 400 / 伪造令牌 428 / 有效令牌 200 且状态归档", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		await services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
 		await services.catalog.setStatus("assistant", "listed");
 		const { cookie, sessionId } = await seedAndCreate(app);
@@ -724,7 +724,7 @@ describe("会话生命周期与文件（B1/B2）", () => {
 	});
 
 	it("delete 带令牌后索引移除（再读 404）", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		await services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
 		await services.catalog.setStatus("assistant", "listed");
 		const { cookie, sessionId } = await seedAndCreate(app);
@@ -745,7 +745,7 @@ describe("会话生命周期与文件（B1/B2）", () => {
 	});
 
 	it("文件上传 → 下载 roundtrip", async () => {
-		const { app } = makeApp();
+		const { app } = await makeApp();
 		const form = new FormData();
 		form.append("file", new Blob([new Uint8Array([1, 2, 3, 4])], { type: "application/octet-stream" }), "bin.dat");
 		const uploaded = await app.request("/api/kit/files", {
@@ -765,7 +765,7 @@ describe("会话生命周期与文件（B1/B2）", () => {
 	});
 
 	it("黑名单扩展名上传被拒（.mjs 实测被 provider 415 拒绝，服务端前置拦截）", async () => {
-		const { app } = makeApp();
+		const { app } = await makeApp();
 		const form = new FormData();
 		form.append("file", new Blob([new Uint8Array([1])], { type: "text/javascript" }), "stylelint.config.mjs");
 		const rejected = await app.request("/api/kit/files", {
@@ -781,7 +781,7 @@ describe("会话生命周期与文件（B1/B2）", () => {
 	});
 
 	it("文件扫描状态：本人可查，越权 404", async () => {
-		const { app } = makeApp();
+		const { app } = await makeApp();
 		const form = new FormData();
 		form.append("file", new Blob([new Uint8Array([1])], { type: "application/octet-stream" }), "scan.bin");
 		const uploaded = await app.request("/api/kit/files", {
@@ -802,7 +802,7 @@ describe("会话生命周期与文件（B1/B2）", () => {
 	});
 
 	it("会话运营接口已移除，体验页仍可读取自己的会话和事件", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		await services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
 		await services.catalog.setStatus("assistant", "listed");
 		const cookie = "kit_subject=timeline";
@@ -832,14 +832,17 @@ describe("会话生命周期与文件（B1/B2）", () => {
 });
 
 describe("附件挂载语义（B1）", () => {
-	async function listAgent(app: ReturnType<typeof makeApp>["app"], services: ReturnType<typeof makeApp>["services"]) {
+	async function listAgent(
+		app: Awaited<ReturnType<typeof makeApp>>["app"],
+		services: Awaited<ReturnType<typeof makeApp>>["services"],
+	) {
 		await services.catalog.upsert({ slug: "assistant", display_name: "A", remote_agent_id: "agent_mock" });
 		await services.catalog.setStatus("assistant", "listed");
 		return app;
 	}
 
 	it("建会话携带 files → 服务端解析 mount_path 并可在详情回显", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		await listAgent(app, services);
 		const cookie = "kit_subject=mounts";
 		const files = await Promise.all(
@@ -886,7 +889,7 @@ describe("附件挂载语义（B1）", () => {
 			ADMIN_TOKEN: "t",
 			KIT_UPLOAD_MAX_BYTES: "8",
 		});
-		const app = createApp(createKitServices(config, openDatabase(dataDir)));
+		const app = createApp(createKitServices(config, await openDatabase(dataDir)));
 		const tooBig = new FormData();
 		tooBig.append("file", new Blob([new Uint8Array(9)], { type: "application/octet-stream" }), "big.dat");
 		expect(
@@ -902,7 +905,7 @@ describe("附件挂载语义（B1）", () => {
 	});
 
 	it("上传 → 建会话挂载 → 下载 roundtrip 一致", async () => {
-		const { app, services } = makeApp();
+		const { app, services } = await makeApp();
 		await listAgent(app, services);
 		const cookie = "kit_subject=roundtrip";
 		const form = new FormData();

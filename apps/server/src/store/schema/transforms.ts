@@ -1,6 +1,6 @@
 import type { SqlValue } from "../database.ts";
-import type { ExternalDialect, MigrationConnection } from "./catalog.ts";
-import type { DataStep } from "./model.ts";
+import type { ExternalDialect, MigrationConnection } from "../metadata/catalog.ts";
+import type { DataStep } from "../metadata/model.ts";
 
 function attachedIds(json: string): string[] {
 	try {
@@ -103,12 +103,12 @@ async function retireDrafts(db: MigrationConnection) {
 	}
 }
 
-export async function executeData(db: MigrationConnection, dialect: ExternalDialect, step: DataStep) {
-	if ("data" in step) {
-		for (const sql of step.data) await db.execute(sql);
-		return;
-	}
-	switch (step.transform) {
+export async function executeTransform(
+	db: MigrationConnection,
+	dialect: ExternalDialect,
+	transform: Extract<DataStep, { transform: string }>["transform"],
+) {
+	switch (transform) {
 		case "legacyFiles":
 			return legacyFiles(db, dialect);
 		case "rebuildDailyUsage":

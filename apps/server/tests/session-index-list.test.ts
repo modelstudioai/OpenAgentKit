@@ -15,15 +15,20 @@ afterEach(() => {
 	for (const fn of close.splice(0).reverse()) fn();
 });
 
-function setupDb() {
+async function setupDb() {
 	const directory = mkdtempSync(join(tmpdir(), "kit-index-list-"));
 	close.push(() => rmSync(directory, { recursive: true, force: true }));
-	const db = openDatabase(directory);
+	const db = await openDatabase(directory);
 	close.push(() => db.close());
 	return db;
 }
 
-function stamp(db: ReturnType<typeof openDatabase>, sessionId: string, createdAt: string, lastEventAt: string | null) {
+function stamp(
+	db: Awaited<ReturnType<typeof openDatabase>>,
+	sessionId: string,
+	createdAt: string,
+	lastEventAt: string | null,
+) {
 	db.prepare("UPDATE kit_sessions SET created_at = ?, last_event_at = ? WHERE session_id = ?").run(
 		createdAt,
 		lastEventAt,
@@ -41,7 +46,7 @@ const T = {
 /** 列表读取是侧栏「最近/智能体分组」的数据源：排序与单页上限在这里锁定。 */
 describe("会话索引列表", () => {
 	it("先查本人完整智能体目录，再按组分页；归档在截取前排除，游标绑定身份和筛选", async () => {
-		const db = setupDb();
+		const db = await setupDb();
 		const index = new SessionIndexService(createSqliteDatabase(db));
 		for (let i = 0; i < 205; i++) {
 			await index.create({ sessionId: `a-${String(i).padStart(3, "0")}`, subjectId: "owner", agentSlug: "assistant" });
@@ -87,7 +92,7 @@ describe("会话索引列表", () => {
 	});
 
 	it("按最近活动排序：last_event_at 优先，缺失时回落 created_at", async () => {
-		const db = setupDb();
+		const db = await setupDb();
 		const index = new SessionIndexService(createSqliteDatabase(db));
 		// 打乱创建顺序，证明结果只由活动时间决定
 		for (const id of ["s3", "s1", "s4", "s2"])
@@ -97,7 +102,7 @@ describe("会话索引列表", () => {
 	});
 
 	it("点开回看不改排序：状态回落不推进 last_event_at，发消息才推进", async () => {
-		const db = setupDb();
+		const db = await setupDb();
 		const index = new SessionIndexService(createSqliteDatabase(db));
 		await index.create({ sessionId: "s1", subjectId: "user-1", agentSlug: "assistant" });
 		await index.create({ sessionId: "s2", subjectId: "user-1", agentSlug: "assistant" });
@@ -113,7 +118,7 @@ describe("会话索引列表", () => {
 	});
 
 	it("agent 过滤分支同样按最近活动排序", async () => {
-		const db = setupDb();
+		const db = await setupDb();
 		const index = new SessionIndexService(createSqliteDatabase(db));
 		await index.create({ sessionId: "w-old", subjectId: "user-1", agentSlug: "writer" });
 		await index.create({ sessionId: "a-new", subjectId: "user-1", agentSlug: "assistant" });
@@ -128,7 +133,7 @@ describe("会话索引列表", () => {
 	});
 
 	it("关键词在分页前检索标题与智能体，游标绑定关键词", async () => {
-		const db = setupDb();
+		const db = await setupDb();
 		const index = new SessionIndexService(createSqliteDatabase(db));
 		await index.create({ sessionId: "s1", subjectId: "owner", agentSlug: "assistant", title: "年度复盘" });
 		await index.create({ sessionId: "s2", subjectId: "owner", agentSlug: "writer", title: "周报" });
@@ -172,7 +177,7 @@ describe("会话索引列表", () => {
 	});
 
 	it("缺省单页 50 条并保留最近活动的头部；显式 limit 生效", async () => {
-		const db = setupDb();
+		const db = await setupDb();
 		const index = new SessionIndexService(createSqliteDatabase(db));
 		for (let i = 0; i < 55; i += 1) {
 			const id = `s-${String(i).padStart(2, "0")}`;
@@ -189,7 +194,7 @@ describe("会话索引列表", () => {
 	it("HTTP 合同：limit 高于单页上限 200 被拒，200 可用", async () => {
 		const directory = mkdtempSync(join(tmpdir(), "kit-index-list-http-"));
 		close.push(() => rmSync(directory, { recursive: true, force: true }));
-		const db = openDatabase(directory);
+		const db = await openDatabase(directory);
 		close.push(() => db.close());
 		const config = loadConfig({ KIT_GATEWAY: "mock", KIT_DATA_DIR: directory, ADMIN_TOKEN: "test-admin" });
 		const services = createKitServices(config, db);

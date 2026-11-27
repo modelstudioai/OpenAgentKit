@@ -1,9 +1,10 @@
 import { Pool, type PoolClient, types } from "pg";
+import type { DataSource } from "typeorm";
 import type { DatabaseConfig } from "../config.ts";
 import { createStoreDatabase } from "./connection.ts";
 import type { SqlValue } from "./database.ts";
-import { program } from "./schema/generated/postgres.ts";
-import { MigrationError, migratePostgresSchema } from "./schema/runner.ts";
+import { MigrationError } from "./external-execution.ts";
+import { initializeExternal } from "./external-schema.ts";
 import { createEntityDataSource } from "./typeorm.ts";
 
 // Store 的 ? 由驱动绑定。保留字符串、引用标识符和注释中的问号。
@@ -32,40 +33,33 @@ async function postgresCall<T>(work: () => Promise<T>): Promise<T> {
 	}
 }
 
-async function transaction<T>(pool: Pool, work: (client: PoolClient) => Promise<T>): Promise<T> {
-	const client = await postgresCall(() => pool.connect());
-	let discard = false;
+async function initialize(source: DataSource) {
+	const runner = source.createQueryRunner();
+	const client: PoolClient = await runner.connect();
 	try {
-		await postgresCall(() => client.query("BEGIN"));
-		const result = await work(client);
-		await postgresCall(() => client.query("COMMIT"));
-		return result;
+		await runner.startTransaction();
+		await runner.query("SET LOCAL lock_timeout = '15s'");
+		await runner.query("SELECT pg_advisory_xact_lock(hashtext('openagentpack.kit.schema')::bigint)");
+		await initializeExternal(
+			{
+				rows<T>(sql: string, ...values: SqlValue[]): Promise<T[]> {
+					return runner.query(values.length ? bindParameters(sql) : sql, values);
+				},
+				async execute(sql, ...values) {
+					await runner.query(values.length ? bindParameters(sql) : sql, values);
+				},
+			},
+			"postgres",
+			source,
+		);
+		await runner.commitTransaction();
 	} catch (error) {
-		try {
-			await client.query("ROLLBACK");
-		} catch {
-			discard = true;
-		}
+		if (runner.isTransactionActive)
+			await runner.rollbackTransaction().catch(() => client.emit("error", new Error("数据库迁移回滚失败")));
 		throw error;
 	} finally {
-		client.release(discard);
+		await runner.release();
 	}
-}
-
-async function migrate(client: PoolClient) {
-	await client.query("SET LOCAL lock_timeout = '15s'");
-	await client.query("SELECT pg_advisory_xact_lock(hashtext('openagentpack.kit.schema')::bigint)");
-	await migratePostgresSchema(
-		{
-			async rows<T>(sql: string, ...values: SqlValue[]) {
-				return (await client.query(bindParameters(sql), values)).rows as T[];
-			},
-			async execute(sql, ...values) {
-				await client.query(bindParameters(sql), values.length ? values : undefined);
-			},
-		},
-		program,
-	);
 }
 
 export async function connectPostgres(config: Extract<DatabaseConfig, { driver: "postgres" }>) {
@@ -85,7 +79,7 @@ export async function connectPostgres(config: Extract<DatabaseConfig, { driver: 
 		},
 	});
 	pool.on("error", () => console.warn("[kit-server] PostgreSQL 空闲连接已断开"));
-	const source = createEntityDataSource(program.current, {
+	const source = createEntityDataSource({
 		type: "postgres",
 		database: config.name,
 		driver: {
@@ -98,10 +92,11 @@ export async function connectPostgres(config: Extract<DatabaseConfig, { driver: 
 		poolErrorHandler: () => undefined,
 	});
 	try {
-		await transaction(pool, (client) => postgresCall(() => migrate(client)));
 		await postgresCall(() => source.initialize());
+		await postgresCall(() => initialize(source));
 	} catch (error) {
-		await pool.end().catch(() => undefined);
+		if (source.isInitialized) await source.destroy().catch(() => undefined);
+		else await pool.end().catch(() => undefined);
 		throw error;
 	}
 	return createStoreDatabase("postgres", {
