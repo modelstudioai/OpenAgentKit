@@ -1,6 +1,7 @@
 import type { KitRuntimeServices } from "../../src/app-env.ts";
 import type { ServerConfig } from "../../src/config.ts";
-import { createGateway, createInfrastructure } from "../../src/module/infrastructure.ts";
+import { createGateway } from "../../src/module/gateways.ts";
+import { createInfrastructure } from "../../src/module/infrastructure.ts";
 import { AdminCatalogService } from "../../src/service/admin/catalog/catalog.ts";
 import { PresetPackService } from "../../src/service/admin/catalog/preset-packs.ts";
 import { TemplateDeletionService } from "../../src/service/admin/catalog/template-deletion.ts";

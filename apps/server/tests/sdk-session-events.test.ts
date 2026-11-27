@@ -3,7 +3,7 @@ import { createSessionStore } from "@openagentkit/sdk/chat";
 import type { SessionEvent } from "@openagentkit/sdk/protocol";
 import { setDefaultFetch } from "@openagentpack/sdk";
 import { afterEach, describe, expect, it } from "vitest";
-import { createSdkGateway } from "../src/gateway/sdk.ts";
+import { createSdkGateway } from "../src/module/gateways.ts";
 
 const secret = "sk-unit-test-credential";
 const gateway = () => createSdkGateway({ apiKey: secret, baseUrl: "https://provider.example.test/api/v1/agentstudio" });

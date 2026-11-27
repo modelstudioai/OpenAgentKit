@@ -51,7 +51,7 @@ kit 的 catalog 存的是**远端 agent id**，因此数据面建会话不能用
 
 ## 对 kit 的影响（2026-10-14 当时的落地；已被 2026-11-02/11-03 两节修订）
 
-1. `SdkGateway.createSession` **统一走 REST** `POST /sessions`（`gateway/bailian-rest.ts`），
+1. `SdkGateway.createSession` **统一走 REST** `POST /sessions`（`gateway/bailian/bailian-rest.ts`），
    入参 `{ agent: <远端 id>, title?, resources?: [{ type: "file_resource", … }] }`，
    同时解决上面两条限制；空 `resources` 省略不发。
 2. 附件只在**建会话**时挂载；`POST /api/kit/sessions/:id/messages` 带 `attachments` 一律 400
@@ -156,6 +156,6 @@ kit 的 catalog 存的是**远端 agent id**，因此数据面建会话不能用
    `uploadSizeRejectionReason`，服务端与前端共用同一份文案）：命中黑名单服务端 400
    `invalid_request`、前端不发网络请求；体积上限 `UPLOAD_MAX_BYTES = 20 MiB`（kit 收得比
    provider 合同的 50MB 更紧，服务端 `KIT_UPLOAD_MAX_BYTES` 缺省同源）；
-4. 415 不再落 500：gateway `ApiError → KitError` 映射（`gateway/sdk.ts` 的
+4. 415 不再落 500：gateway `ApiError → KitError` 映射（`gateway/bailian/sdk.ts` 的
    `providerUploadError`），带 provider message 的 4xx 归 `invalid_request`、429/5xx 归
    `provider_error`（retryable）。

@@ -1,8 +1,7 @@
 import { setDefaultFetch } from "@openagentpack/sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createMockGateway } from "../src/gateway/mock.ts";
-import { createSdkGateway } from "../src/gateway/sdk.ts";
-import { sessionUsageFromAttributes } from "../src/gateway/session-usage.ts";
+import { sessionUsageFromAttributes } from "../src/gateway/bailian/session-usage.ts";
+import { createMockGateway, createSdkGateway } from "../src/module/gateways.ts";
 
 const gateway = () =>
 	createSdkGateway({ apiKey: "sk-usage-unit-test", baseUrl: "https://provider.example.test/api/v1/agentstudio" });

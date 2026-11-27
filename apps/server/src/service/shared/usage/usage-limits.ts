@@ -20,7 +20,7 @@ import { KitTemplateListingsEntity } from "../../../entity/tables/kit-template-l
 import { KitUsageLimitOverridesEntity } from "../../../entity/tables/kit-usage-limit-overrides.entity.ts";
 import { KitUsageLimitPolicyEntity } from "../../../entity/tables/kit-usage-limit-policy.entity.ts";
 import { KitUsageLimitTemplatesEntity } from "../../../entity/tables/kit-usage-limit-templates.entity.ts";
-import { GatewaySendRejectedError } from "../../../gateway/send-error.ts";
+import { GatewaySendRejectedError } from "../../../gateway/shared/send-error.ts";
 import type { GatewaySendInput, GatewaySessionInfo, ProviderGateway } from "../../../gateway/types.ts";
 import { StoreDatabase } from "../../../store/database.ts";
 import { createEventBufferRegistry, type EventBufferRegistry } from "../../../utils/event-buffer.ts";

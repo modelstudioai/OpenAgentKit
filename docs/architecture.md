@@ -342,7 +342,11 @@ apps/server/src/
     shared/         共享会话运行时、本地及 Keycloak OIDC 认证、用量与确认等业务类
   entity/           一表一类的实体定义与三库 TypeORM 映射
   store/            异步数据库接口、SQLite / MySQL / PostgreSQL 驱动、共享结构与迁移生成
-  gateway/          ProviderGateway 的真实 SDK 与 Mock 实现；bailian-rest.ts 承载附件挂载窄入口
+  gateway/
+    types.ts        ProviderGateway 和批次资源接口
+    bailian/        百炼 SDK 与建会话的 REST 适配
+    mock/           离线会话、目录与模拟发布
+    shared/         共用的结果转换、错误及 YAML 声明与计划适配
   module/           Nest 应用与 Controller 注册、数据库初始化与应用级实例管理
   utils/            注入令牌、密码与签名、UTC 日期、事件缓存、限流和指标
 ```
@@ -365,6 +369,9 @@ HTTP 边界接收退出信号后取消流式请求，HTTP 停止监听后释放�
 关键不变量：
 
 1. **Provider 访问经 Service 和 Gateway**。Mock 与真实 SDK 实现共享 Gateway 合同。
+   `module/gateways.ts` 将文件和 Skill 素材存取依赖传入适配器。批次上传、内容复核及暂存目录清理归
+   `service/admin/resource-draft/`。该模块还负责持久化成功证明、核对回执，并在可恢复阶段释放暂存。
+   共用的发布器先验证修订号和计划指纹，再调用当前适配器提供的执行函数。
    SDK 的形状事实（list 返回 `{data}`、会话只认
    声明键、建会话必须带 environment、apply 需走 backend 感知的 sync 等）记录在
    `docs/research/sdk-session-runtime.md`，改 gateway 前必读。

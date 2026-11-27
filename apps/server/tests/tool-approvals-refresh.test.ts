@@ -1,6 +1,6 @@
 import { deriveApprovalState, type SessionEvent } from "@openagentkit/sdk/protocol";
 import { describe, expect, it, vi } from "vitest";
-import { createMockGateway } from "../src/gateway/mock.ts";
+import { createMockGateway } from "../src/module/gateways.ts";
 import { SessionHistoryService } from "../src/service/shared/session/session-history.ts";
 import { ToolApprovalService } from "../src/service/shared/session/tool-approvals.ts";
 import { createEventBufferRegistry } from "../src/utils/event-buffer.ts";

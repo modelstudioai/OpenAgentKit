@@ -20,8 +20,8 @@ import type { ProjectExecutionPlan, ProviderGateway, ResourceDraftGateway } from
 import type { AuditService } from "../../shared/audit.ts";
 import type { ConfirmGate } from "../../shared/confirm-gate.ts";
 import type { OperationService } from "../../shared/operations.ts";
-import { ProjectFileUploads } from "./project-file-uploads.ts";
-import { ProjectSkillUploads } from "./project-skill-uploads.ts";
+import { ProjectFileUploads } from "./uploads/project-file-uploads.ts";
+import { ProjectSkillUploads } from "./uploads/project-skill-uploads.ts";
 
 export type DraftResourceActions = Pick<DraftResourceService, keyof DraftResourceService>;
 

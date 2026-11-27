@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { setDefaultFetch } from "@openagentpack/sdk";
 import { afterEach, expect, it, vi } from "vitest";
 import { loadConfig } from "../src/config.ts";
-import { createSdkGateway } from "../src/gateway/sdk.ts";
+import { createSdkGateway } from "../src/module/gateways.ts";
 import { openDatabase } from "../src/store/db.ts";
 import { createTestApp as createApp } from "./helpers/http.ts";
 import { createKitServices } from "./helpers/services.ts";

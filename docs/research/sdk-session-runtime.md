@@ -25,7 +25,7 @@
 ## 2026-10-14：初始运行时核对
 
 以下结论来自真实 workspace 的 live 验证，
-用于约束 `apps/server/src/gateway/sdk.ts` 的实现，避免按文档猜测。
+用于约束 `apps/server/src/gateway/bailian/sdk.ts` 的实现，避免按文档猜测。
 
 1. **`listRemoteAgents` 返回 `{ data: [...] }`**，元素主键是 `id`（不是 `agent_id`），
    `name` 为展示名。gateway 已按 `data ?? items ?? agents` 与 `id ?? agent_id` 兼容读取。

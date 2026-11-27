@@ -12,7 +12,7 @@
 | `src/service/` | `admin/` 管理端用例、`staff/` 员工端用例、`shared/` 共用的业务服务类和状态类 |
 | `src/entity/` | `tables/` 下手写的 TypeORM 装饰器实体和三库映射 |
 | `src/store/` | 三库连接、SQL 执行、实体查询、事务与迁移 |
-| `src/gateway/` | SDK / Mock 适配、Provider 分页、规范化与安全投影 |
+| `src/gateway/` | `bailian/` 百炼适配、`mock/` 离线实现、`shared/` 共用的转换和声明适配 |
 | `src/module/` | Nest 应用与 Controller 注册、配置、连接及依赖装配 |
 | `src/utils/` | 注入令牌、密码与签名、UTC 日期、事件缓存、限流和指标 |
 | `tests/` / `tests/live/` | 服务端与 Provider 合同 / 显式启用的 Cloud 验证 |
@@ -25,7 +25,10 @@
    同域 Controller 共享业务实例。Service 实例方法负责简单实体读写、Gateway 调用与多步业务编排。
    `service/` 文件的运行时导出均为类，会话订阅与发布批次的状态由各自的实例管理。
    单一用例的业务校验、计算和映射写在所属 Service 的实例方法中。多个业务域复用的规则由 `service/shared/` 中对应的 Service 提供。依赖装配与工厂位于模块层，Service 构造器初始化依赖和实例状态。
-   上游 SDK 底层调用和事件转换归 Gateway。
+   上游 SDK 底层调用和事件转换归 Gateway。`server-bailian-no-mock` 与 `server-mock-no-bailian` 隔离两种实现。
+   `server-no-concrete-provider-imports` 约束 Gateway 共享代码、公共合同和业务 Service 通过接口使用具体实现。
+   `service/admin/resource-draft/uploads/` 管理上传、校验和素材哈希，`recovery/` 管理成功证明、回执及清理。
+   素材访问从 `module/gateways.ts` 装配进发布适配器，发布结果未知时由批次服务核对恢复。
    现存 REST 窄入口的原因与范围以架构、接口及研究证据为准，不自行扩展旁路。
 2. Provider 凭据只在服务端解析并显式传入 SDK；Vault 明文仅存所属批次的内存。
    不写全局环境变量、YAML、SDK state、回执、响应、日志或错误。

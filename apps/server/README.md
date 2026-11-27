@@ -227,7 +227,7 @@ src/service/staff/  员工端用例，如已上架智能体查询与本人会话
 src/service/shared/ 跨用例共用的业务类和规则，如附件挂载、会话状态推导、限额与确认闸门
 src/entity/         一表一类的实体定义与三库 TypeORM 映射
 src/store/          三库连接、SQL 执行、实体查询、事务与迁移
-src/gateway/        Provider 适配与脱敏投影
+src/gateway/        bailian/ 和 mock/ 实现 Provider，shared/ 维护共享转换与 YAML 发布适配
 src/module/         Nest 与 Express 应用、Controller 注册、配置与服务依赖装配
 src/utils/          注入令牌、密码与签名、UTC 日期、事件缓存、限流和指标
 tests/              路由、Gateway 合同、服务与恢复场景

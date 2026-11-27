@@ -1,25 +1,10 @@
 import type { ServerConfig } from "../config.ts";
-import { createMockGateway } from "../gateway/mock.ts";
-import { createSdkGateway } from "../gateway/sdk.ts";
-import type { ProviderGateway } from "../gateway/types.ts";
 import { StartupService } from "../service/shared/startup.ts";
-import type { SessionUsageSnapshotService } from "../service/shared/usage/session-usage-snapshot.ts";
 import { openDatabaseConnection } from "../store/connect.ts";
 import type { StoreDatabase } from "../store/database.ts";
 import { createEventBufferRegistry } from "../utils/event-buffer.ts";
 import { createMetrics } from "../utils/metrics.ts";
 import { createRateLimiter } from "../utils/rate-limit.ts";
-
-export function createGateway(config: ServerConfig, snapshots: SessionUsageSnapshotService): ProviderGateway {
-	if (config.resolvedGateway === "sdk" && config.bailian) return createSdkGateway(config.bailian);
-	return createMockGateway({
-		fileScanDelayMs: config.mockFileScanDelayMs,
-		telemetry: {
-			byAgent: () => snapshots.telemetryByAgent(),
-			bySession: (id) => snapshots.telemetryBySession(id),
-		},
-	});
-}
 
 export async function connectDatabase(config: Pick<ServerConfig, "database" | "dataDir" | "quotaDefaultMonthly">) {
 	const database = await openDatabaseConnection(config);

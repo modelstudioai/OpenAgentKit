@@ -29,7 +29,6 @@ import type {
 	SessionUsage,
 } from "@openagentkit/sdk/protocol";
 import type { ModelUsagePage, ModelUsageRequest, ToolUsagePage, ToolUsageRequest } from "@openagentpack/sdk";
-import type { YamlDraftStorage } from "./yaml-draft-document.ts";
 
 export interface GatewaySessionInfo {
 	session_id: string;
@@ -135,6 +134,12 @@ export interface SessionArtifactFile {
 	filename: string;
 	content_type?: string;
 	size?: number;
+}
+
+export interface YamlDraftStorage {
+	read(): Promise<{ revision: number; yaml: string; sdk_state_json: string; assets_json: string }>;
+	write(expected: string, yaml: string, assets?: string): Promise<string>;
+	writeState(state: string): Promise<void>;
 }
 
 export interface ProviderGateway {

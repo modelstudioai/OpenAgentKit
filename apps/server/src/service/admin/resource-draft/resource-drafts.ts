@@ -1,5 +1,4 @@
 import { createHash, randomUUID } from "node:crypto";
-import { join } from "node:path";
 import { Inject, Injectable } from "@nestjs/common";
 import {
 	KitError,
@@ -12,8 +11,6 @@ import { Not } from "typeorm";
 import type { ServerConfig } from "../../../config.ts";
 import { KitResourceDraftDocumentsEntity } from "../../../entity/tables/kit-resource-draft-documents.entity.ts";
 import { KitResourceDraftsEntity } from "../../../entity/tables/kit-resource-drafts.entity.ts";
-import { type ResourceDraftProof, ResourceDraftProofSchema } from "../../../gateway/resource-draft-proof.ts";
-import { createResourceDraftYamlFiles } from "../../../gateway/resource-draft-yaml-files.ts";
 import type { ProjectExecutionPlan, ProviderGateway, ResourceDraftGateway } from "../../../gateway/types.ts";
 import { PublicationError } from "../../../publication-error.ts";
 import type { ResourceDraftPublishedBinding } from "../../../resource-draft-types.ts";
@@ -24,6 +21,7 @@ import { ConfirmGate } from "../../shared/confirm-gate.ts";
 import { type OperationLogger, OperationService } from "../../shared/operations.ts";
 import { DraftResourceService } from "./draft-resources.ts";
 import { DraftRuntime } from "./draft-runtime.ts";
+import { ResourceDraftRecovery } from "./recovery/resource-draft-recovery.ts";
 
 interface ResourceDraftRecord {
 	draft_id: string;
@@ -68,7 +66,7 @@ function completionFailure(phase: "receipt" | "bindings" | "cleanup") {
 export class ResourceDraftService {
 	private readonly creating;
 	private readonly discarding;
-	private readonly files;
+	private readonly recovery;
 	private readonly runtimes;
 	private readonly loadingRuntimes;
 	private readonly documents;
@@ -82,18 +80,8 @@ export class ResourceDraftService {
 		@Inject(OperationService) private readonly operations: OperationService,
 		@Inject(AuditService) private readonly audit: AuditService,
 	) {
-		const documents = new Map<string, ReturnType<NonNullable<ProviderGateway["resourceDraftDocument"]>>>();
-		this.documents = documents;
-		this.files = createResourceDraftYamlFiles(config.dataDir, {
-			read: async (id) => await this.readDocument(id),
-			initialize: async (id, yaml) => await this.initializeDocument(id, yaml),
-			proof: async (id, proof) => await this.saveProof(id, proof),
-			clear: async (id) => await this.removeDocument(id),
-			release: (id) => {
-				documents.get(id)?.clearSecrets();
-				documents.delete(id);
-			},
-		});
+		this.documents = new Map<string, ResourceDraftGateway>();
+		this.recovery = new ResourceDraftRecovery(config.dataDir, db, (id) => this.releaseDocument(id));
 		this.runtimes = new Map<string, DraftRuntime>();
 		this.loadingRuntimes = new Map<string, Promise<DraftRuntime>>();
 		this.creating = new Map<string, Promise<ResourceDraftView>>();
@@ -147,7 +135,7 @@ export class ResourceDraftService {
 				row = await this.createDraftRecord(owner, cleanupKey);
 				await this.audit.append({ subject: owner, action: "resourceDraft.create", target: row.draft_id });
 			}
-			if (row.phase === "editable") await this.files.initialize(row.draft_id);
+			if (row.phase === "editable") await this.recovery.initialize(row.draft_id);
 			return await this.view(row);
 		})();
 		this.creating.set(owner, task);
@@ -174,7 +162,7 @@ export class ResourceDraftService {
 			await this.assertDiscardable(current);
 			return this.exclusive(id, async () => {
 				scoped.clearTransientState();
-				await this.files.cleanup(id, async () => await this.assertDiscardable(await this.owned(id, owner)));
+				await this.recovery.clearDocument(id, async () => await this.assertDiscardable(await this.owned(id, owner)));
 				await this.deleteEditableDraft(id, owner);
 				scoped.retire("discarded");
 				this.runtimes.delete(id);
@@ -208,7 +196,7 @@ export class ResourceDraftService {
 		}
 		if (!read && row.phase !== "editable")
 			throw new KitError("conflict", "此批次发布中或结果待核对，不能修改或重新发布");
-		await this.files.assertSafe(name);
+		await this.recovery.assertSafe(name);
 		return (await this.runtimeFor(row)).actions;
 	}
 
@@ -237,40 +225,22 @@ export class ResourceDraftService {
 
 	private async view(row: ResourceDraftRecord): Promise<ResourceDraftView> {
 		const result = this.storedView(row);
-		if (row.phase === "uncertain") {
-			try {
-				const text = (await this.readDocument(row.draft_id))?.proof_json;
-				const proof = text ? ResourceDraftProofSchema.safeParse(JSON.parse(text)) : undefined;
-				if (
-					proof?.success &&
-					proof.data.draft_id === row.draft_id &&
-					proof.data.owner === row.owner &&
-					proof.data.project_revision === row.expected_revision
-				)
-					result.recovery_action = "finalize";
-			} catch {
-				/* 无效或缺失证明一律继续核对，不能从报告推断成功。 */
-			}
-		}
+		if (row.phase === "uncertain" && (await this.recovery.hasSuccessProof(row))) result.recovery_action = "finalize";
 		return result;
 	}
 
 	private scopedGateway(row: ResourceDraftRecord): ResourceDraftGateway {
 		let document = this.documents.get(row.draft_id);
 		if (!document) {
-			document = this.gateway.resourceDraftDocument(
-				row.draft_id,
-				join(this.config.dataDir, "resource-draft-uploads", row.draft_id),
-				{
-					read: async () => {
-						const value = await this.readDocument(row.draft_id);
-						if (!value) throw new KitError("conflict", "发布批次声明已清理");
-						return value;
-					},
-					write: async (revision, yaml, assets) => await this.updateDocument(row.draft_id, revision, yaml, assets),
-					writeState: async (state) => await this.saveSdkState(row.draft_id, state),
+			document = this.gateway.resourceDraftDocument(row.draft_id, this.recovery.assetRoot(row.draft_id), {
+				read: async () => {
+					const value = await this.recovery.readDocument(row.draft_id);
+					if (!value) throw new KitError("conflict", "发布批次声明已清理");
+					return value;
 				},
-			);
+				write: async (revision, yaml, assets) => await this.updateDocument(row.draft_id, revision, yaml, assets),
+				writeState: async (state) => await this.saveSdkState(row.draft_id, state),
+			});
 			this.documents.set(row.draft_id, document);
 		}
 		return document;
@@ -316,37 +286,13 @@ export class ResourceDraftService {
 		}
 	}
 
-	private async bindings(proof: ResourceDraftProof, scoped: ResourceDraftGateway) {
-		if ((await scoped.overview()).project_revision !== proof.project_revision)
-			throw new KitError("conflict", "发布后的批次配置已变化，保留批次等待核对");
-		const resources = await scoped.publicationBindings();
-		const keys = new Set(resources.map((resource) => `${resource.type}:${resource.id}`));
-		if (
-			resources.length !== proof.required.length ||
-			proof.required.some((resource) => !keys.has(`${resource.type}:${resource.id}`))
-		)
-			throw new KitError("conflict", "发布结果缺少资源绑定，已保留批次");
-		return resources;
-	}
-
-	private async clean(row: ResourceDraftRecord, scoped: ResourceDraftGateway) {
-		if (await this.files.exists(row.draft_id)) {
-			const proof = await this.files.readProof(row.draft_id, row.owner);
-			if (!proof || proof.project_revision !== row.expected_revision || !proof.resources)
-				throw new KitError("conflict", "发布成功凭证不完整，不能清理批次");
-			await this.files.cleanup(row.draft_id, async () => {
-				if (proof.cleanup_started) return;
-				if ((await scoped.overview()).project_revision !== row.expected_revision)
-					throw new KitError("conflict", "发布后的批次配置已变化，保留批次等待核对");
-				await this.files.writeProof({ ...proof, cleanup_started: true });
-			});
-		}
-		await this.finishCleanup(row.draft_id);
+	private releaseDocument(id: string) {
+		this.documents.get(id)?.clearSecrets();
+		this.documents.delete(id);
 	}
 
 	private releaseDraft(id: string) {
-		this.documents.get(id)?.clearSecrets();
-		this.documents.delete(id);
+		this.releaseDocument(id);
 		this.runtimes.get(id)?.retire();
 		this.runtimes.delete(id);
 		this.loadingRuntimes.delete(id);
@@ -357,19 +303,10 @@ export class ResourceDraftService {
 		scoped: ResourceDraftGateway,
 		onPhase?: (phase: "bindings" | "receipt" | "cleanup") => void,
 	) {
-		if (row.status !== "published") {
-			const proof = await this.files.readProof(row.draft_id, row.owner);
-			if (!proof || proof.project_revision !== row.expected_revision)
-				throw new KitError("conflict", "尚无已确认的发布成功凭证，不能清理或自动重新发布");
-			onPhase?.("bindings");
-			const resources = proof.resources ?? (await this.bindings(proof, scoped));
-			onPhase?.("receipt");
-			if (!proof.resources) await this.files.writeProof({ ...proof, resources });
-			await this.saveReceipt(row.draft_id, resources);
-		}
+		if (row.status !== "published") await this.recovery.recordReceipt(row, scoped, onPhase);
 		try {
 			onPhase?.("cleanup");
-			await this.clean((await this.readDraft(row.draft_id))!, scoped);
+			await this.recovery.cleanPublished((await this.readDraft(row.draft_id))!, scoped);
 		} finally {
 			// 回执已持久化后批次不可再编辑；磁盘清理重试也不需要保留上传字节或旧计划。
 			this.releaseDraft(row.draft_id);
@@ -395,13 +332,12 @@ export class ResourceDraftService {
 			try {
 				const result = await scoped.execute(expected, logger);
 				remoteSucceeded = true;
-				const proof: ResourceDraftProof = {
+				await this.recovery.writeProof({
 					draft_id: id,
 					owner: row.owner,
 					project_revision: expected.project_revision,
 					required,
-				};
-				await this.files.writeProof(proof);
+				});
 				logger?.progress(0.85, "saving_receipt");
 				await this.finish((await this.readDraft(id))!, scoped, (value) => {
 					phase = value;
@@ -508,13 +444,6 @@ export class ResourceDraftService {
 			),
 		);
 	}
-	private async readDocument(id: string) {
-		const row = await this.db.read((manager) => manager.findOneBy(KitResourceDraftDocumentsEntity, { draft_id: id }));
-		return row ? { ...row, draft_id: id } : undefined;
-	}
-	private async initializeDocument(id: string, yaml: string) {
-		await this.db.insertEntityIfAbsent(KitResourceDraftDocumentsEntity, { draft_id: id, yaml }, ["draft_id"]);
-	}
 	private async updateDocument(id: string, expected: string, yaml: string, assets?: string) {
 		return this.db.transaction(async () => {
 			const result = await this.db.write((manager) => {
@@ -531,7 +460,7 @@ export class ResourceDraftService {
 					.execute();
 			});
 			if (!result.affected) throw new KitError("conflict", "批次配置已变化，请重新加载");
-			return String((await this.readDocument(id))!.revision);
+			return String((await this.recovery.readDocument(id))!.revision);
 		});
 	}
 	private async saveSdkState(id: string, state: string) {
@@ -539,15 +468,6 @@ export class ResourceDraftService {
 			manager.update(KitResourceDraftDocumentsEntity, { draft_id: id }, { sdk_state_json: state }),
 		);
 		if (!result.affected) throw new KitError("conflict", "发布批次已关闭");
-	}
-	private async saveProof(id: string, proof: string) {
-		const result = await this.db.write((manager) =>
-			manager.update(KitResourceDraftDocumentsEntity, { draft_id: id }, { proof_json: proof }),
-		);
-		if (!result.affected) throw new KitError("conflict", "发布批次已关闭");
-	}
-	private async removeDocument(id: string) {
-		await this.db.write((manager) => manager.delete(KitResourceDraftDocumentsEntity, { draft_id: id }));
 	}
 	private async beginPublication(id: string, revision: string) {
 		const result = await this.db.write((manager) =>
@@ -565,30 +485,6 @@ export class ResourceDraftService {
 				KitResourceDraftsEntity,
 				{ draft_id: id, status: Not("published") },
 				{ status: "failed", phase: retryable ? "editable" : "uncertain", updated_at: new Date().toISOString() },
-			),
-		);
-	}
-	private async saveReceipt(id: string, resources: ResourceDraftPublishedBinding[]) {
-		await this.db.write((manager) =>
-			manager.update(
-				KitResourceDraftsEntity,
-				{ draft_id: id },
-				{
-					status: "published",
-					phase: "succeeded",
-					resources_json: JSON.stringify(resources),
-					cleanup_pending: 1,
-					updated_at: new Date().toISOString(),
-				},
-			),
-		);
-	}
-	private async finishCleanup(id: string) {
-		await this.db.write((manager) =>
-			manager.update(
-				KitResourceDraftsEntity,
-				{ draft_id: id, status: "published" },
-				{ cleanup_pending: 0, updated_at: new Date().toISOString() },
 			),
 		);
 	}

@@ -1,7 +1,7 @@
 import { RemoteEnvironmentDetailSchema } from "@openagentkit/sdk/protocol";
 import { setDefaultFetch } from "@openagentpack/sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createSdkGateway } from "../src/gateway/sdk.ts";
+import { createSdkGateway } from "../src/module/gateways.ts";
 
 const gateway = () =>
 	createSdkGateway({ apiKey: "sk-unit-test-credential", baseUrl: "https://provider.example.test/api/v1/agentstudio" });

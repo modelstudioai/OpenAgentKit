@@ -1,6 +1,6 @@
 import type { SessionEvent, SseFrame } from "@openagentkit/sdk/protocol";
 import { describe, expect, it, vi } from "vitest";
-import { createMockGateway } from "../src/gateway/mock.ts";
+import { createMockGateway } from "../src/module/gateways.ts";
 import { SessionHistoryService } from "../src/service/shared/session/session-history.ts";
 import { SessionRuntimeService } from "../src/service/shared/session/session-runtime.ts";
 import { SessionStreams, type SessionStreamsOptions } from "../src/service/shared/session/session-streams.ts";

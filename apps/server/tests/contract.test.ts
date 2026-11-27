@@ -10,8 +10,8 @@ import { createSessionStore } from "@openagentkit/sdk/chat";
 import { artifactOf, bucketOf, isTurnEndEvent, type SessionEvent, threadIdOf } from "@openagentkit/sdk/protocol";
 import { toBailianSessionEvent } from "@openagentpack/sdk/session-events";
 import { describe, expect, it } from "vitest";
-import { createMockGateway } from "../src/gateway/mock.ts";
-import { normalizeAgentPage, normalizeAgentResources, toContractEvent } from "../src/gateway/sdk.ts";
+import { normalizeAgentPage, normalizeAgentResources, toContractEvent } from "../src/gateway/bailian/sdk.ts";
+import { createMockGateway } from "../src/module/gateways.ts";
 
 const FIXTURES = join(process.cwd(), "tests/fixtures");
 

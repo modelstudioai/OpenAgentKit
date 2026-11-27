@@ -1,5 +1,5 @@
 import { KitError, type ToolApprovalDecision, type ToolApprovalsResponse } from "@openagentkit/sdk/protocol";
-import { GatewaySendRejectedError } from "../../../gateway/send-error.ts";
+import { GatewaySendRejectedError } from "../../../gateway/shared/send-error.ts";
 import type { ProviderGateway } from "../../../gateway/types.ts";
 import type { EventBufferRegistry } from "../../../utils/event-buffer.ts";
 import type { SessionHistoryService } from "./session-history.ts";

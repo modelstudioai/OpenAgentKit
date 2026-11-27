@@ -7,7 +7,7 @@ import {
 	sessionStatusOf,
 	threadIdOf,
 } from "@openagentkit/sdk/protocol";
-import { sessionEventError } from "../../../gateway/session-event-error.ts";
+import { sessionEventError } from "../../../gateway/shared/session-event-error.ts";
 import type { GatewaySessionInfo, ProviderGateway } from "../../../gateway/types.ts";
 import type { EventBufferRegistry, EventChange } from "../../../utils/event-buffer.ts";
 import { createLiveEventJournal } from "../../../utils/live-event-journal.ts";

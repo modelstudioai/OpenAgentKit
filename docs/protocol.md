@@ -440,7 +440,7 @@ POST /api/kit/sessions/:id/messages       body { text, attachments?: [{ file_id,
     报 `No such file or directory`）——比拒绝更隐蔽；SDK 0.8 发的 `type: "file"` 被判
     `400 Invalid resource`，顶层 `files: [...]` 也是假成功（200 但不挂载）。创建载荷对文件
     只有陷阱没有正路，`GatewayCreateSessionInput` 刻意没有 `files`；gateway 的
-    `src/gateway/bailian-rest.ts` 窄口子只承载版本绑定与记忆/密钥资源（上游修复后删除）；
+    `src/gateway/bailian/bailian-rest.ts` 窄口子只承载版本绑定与记忆/密钥资源（上游修复后删除）；
   - 运行时挂载不产生会话事件，也**不会**出现在 `GET /sessions/:id` 的 `resources` 回显里——
     本地 `kit_sessions.files_json` 是展示权威；
 - `mount_path` 省略时由服务端解析为 `/mnt/session/uploads/<安全文件名>`（bailian sandbox 前缀是

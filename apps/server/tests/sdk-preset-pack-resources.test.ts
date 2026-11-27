@@ -1,6 +1,6 @@
 import { setDefaultFetch } from "@openagentpack/sdk";
 import { afterEach, expect, it } from "vitest";
-import { createSdkGateway } from "../src/gateway/sdk.ts";
+import { createSdkGateway } from "../src/module/gateways.ts";
 
 const agentId = "agent_selected";
 const gateway = () =>

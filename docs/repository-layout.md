@@ -65,7 +65,7 @@ packages/<name>/
   `service/shared/` 放共用的业务服务类和状态类，例如会话运行时、用量结算与确认闸门。
   `src/service/` 下的文件仅以类作为运行时导出。用例专属的校验、计算和映射写成所属 Service 的私有实例方法；跨业务域共用的规则由 `service/shared/` 中对应的类提供。
   `src/entity/tables/` 存放手写的 TypeORM 装饰器实体，每张业务表一个类。`src/entity/` 从装饰器派生当前结构，并将实体映射到所选数据库。
-  数据库适配和迁移放在 `src/store/`，Provider 适配放在 `src/gateway/`。
+  数据库适配和迁移放在 `src/store/`，`src/gateway/bailian/` 和 `src/gateway/mock/` 分别实现真实与离线 Provider，共用的协议转换放在 `src/gateway/shared/`。
   Nest 应用、Controller 注册和依赖装配放在 `src/module/`。
   注入令牌、签名、UTC 日期和事件缓存等内部技术组件放在 `src/utils/`。
 - Chat UI 的独立组件放 `packages/chat-ui/src/components/<component>/`，执行过程组件放
@@ -126,8 +126,8 @@ packages/<name>/
   `features/catalog/use-remote-agents.ts` 查询完整远端 Agent，浏览器内每页展示 10 条；不读取本地模版或创建资源。
   `preset-pack-session-resources.tsx` 按类型分组展示单选 Agent 的运行时资源，`preset-pack-resource-groups.ts`
   负责同类型按资源 ID 跨会话去重及挂载信息合并；页面不展示会话。DTO 位于 protocol `preset-packs.ts`，
-  server `controller/admin/admin-preset-packs.ts` 提供预览、保存和查询入口，`gateway/sdk-preset-pack-resources.ts` 承载 SDK 分页与限并发读取，
-  `gateway/preset-pack-resources.ts` 统一引用白名单投影与去重；Mock 投影独立于已有的大型模拟消息生成器。
+  server `controller/admin/admin-preset-packs.ts` 提供预览、保存和查询入口，`gateway/bailian/sdk-preset-pack-resources.ts` 承载 SDK 分页与限并发读取，
+  `gateway/shared/preset-pack-resources.ts` 统一引用白名单投影与去重；Mock 投影独立于已有的大型模拟消息生成器。
   `service/admin/catalog/preset-packs.ts` 核验当前选择，在预览时只读，并通过实体访问已保存的预设包；
   `create-template-page.tsx` 初始展示导入或从零创建的方式选择，选择后挂载既有编辑器，并保留已导入的内存草稿；`template-draft.ts` 负责回填映射。
   `template-preset-picker.tsx` 在创建页抽屉中使用 `PresetPackSelection` 的远端列表和资源多选，并处理替换确认；不提供独立导入页面。
@@ -150,8 +150,9 @@ packages/<name>/
   `features/navigation/console-route.ts` 归一到成员列表，界面回归放 `apps/web/e2e/member-groups-removal.spec.ts`。
 - `protocol/resource-drafts.ts` 定义一次性资源批次及最小回执；server 的
   `service/admin/resource-draft/resource-drafts.ts`、`controller/admin/admin-resource-drafts.ts` 管理所有权、发布恢复及生命周期，
-  `service/admin/resource-draft/draft-resources.ts` 管理批次内资源，`gateway/resource-draft-yaml-files.ts` 管理数据库成功证明与上传清理。
-  `gateway/yaml-draft-*` 分别负责声明、独立上传、SDK state 与发布，`mock-yaml-draft.ts` 负责模拟远端写入。console 的
+  `service/admin/resource-draft/draft-resources.ts` 管理批次内资源，`service/admin/resource-draft/recovery/` 管理成功证明、回执恢复与批次清理。
+  `service/admin/resource-draft/uploads/` 负责文件和 Skill 暂存、路径校验及素材哈希复核。
+  `gateway/shared/resource-draft/` 负责 YAML 声明、SDK state 与发布计划；实际执行分别由百炼适配器与 `gateway/mock/mock-yaml-draft.ts` 提供。console 的
   `template-resource-draft.tsx` / `use-template-draft-project.ts` 供资源创建和发布流程共用批次。
   `template-resource-draft-owner.ts` 管理页面对批次的所有权、退出/迟到创建清理及跨标签页互斥；
   发布结果未知的批次仍交由原发布恢复流程处理。
@@ -168,16 +169,16 @@ packages/<name>/
   `use-template-publish.ts` 在资源无变更且计划复核通过时直接继续保存，有变更时审阅清单并显式确认发布；
   `use-template-resource-resolution.ts` 在发布成功或确认无需资源变更后读取完整绑定，原子更新全部候选及草稿，失败后只读重试；
   `protocol/project-resource-bindings.ts` 定义完整绑定列表与严格解析合同，`controller/admin/admin-draft-resource-bindings.ts` 与
-  `gateway/yaml-draft-publish.ts` 经独立批次资源服务精确读取 SDK state 的 ID/Agent 版本，不访问凭据。
+  `gateway/shared/resource-draft/yaml-draft-publish.ts` 经独立批次资源服务精确读取 SDK state 的 ID/Agent 版本，不访问凭据。
   `template-agent-list.tsx` 默认选取远端 Agent 列表中的具体版本；`template-agent-version-picker.tsx`
   经 console 管理端 client 与查询 hook 按需读取历史版本，缺失默认版本时自动查询并取最大正整数；
   `template-agent-version-history.tsx` 在选择抽屉中展示版本时间线并查询展开版本的配置；
   `agent-version-configuration.ts` 适配历史配置展示形状，`agent-version-configuration-view.tsx`
   负责只读模型/工具/MCP 卡片与技能标签，
-  `gateway/agent-version-detail.ts` 负责白名单配置投影与脱敏，浏览器不接收 Provider 原始属性；
+  `gateway/bailian/agent-version-detail.ts` 负责白名单配置投影与脱敏，浏览器不接收 Provider 原始属性；
   `template-agent-multiagent-fields.tsx` 负责协调模式开关与已有子 Agent 搜索多选；
-  `gateway/agent-multiagent.ts` 仅投影名册与协调模式标记，无损转换受支持的远端成员身份。
-  `gateway/sdk-agent-skill-names.ts` 通过公开 SDK 按技能引用补齐名称，结果仍经过上述脱敏投影；
+  `gateway/shared/agent-multiagent.ts` 仅投影名册与协调模式标记，无损转换受支持的远端成员身份。
+  `gateway/bailian/sdk-agent-skill-names.ts` 通过公开 SDK 按技能引用补齐名称，结果仍经过上述脱敏投影；
   `template-environment-detail-drawer.tsx` 按打开时查询环境详情，`environment-detail-view.tsx`
   负责概览、云端预装包和脱敏元数据的展示，确认选择由调用方处理；
   `template-environment-configuration.tsx` 提供默认展开的环境表单和配置导入抽屉，
@@ -203,15 +204,15 @@ packages/<name>/
   每项成功立即移除页面密钥输入，部分失败重试不重复创建已成功项；未修改复用原库，修改后新建副本，原库不变；
   `template-vault-detail-drawer.tsx` 提供 `useTemplateVaultDetail`：配置页导入后加载可编辑基线，候选列表通过只读抽屉按需查看；
   读取远端详情或待发布声明，只展示密钥名称、变量名和生效域名；
-  `gateway/sdk-vaults.ts` 通过 SDK 公开 runtime 查询并投影密钥元数据，`controller/admin/admin-vaults.ts` 提供管理端详情路由；
+  `gateway/bailian/sdk-vaults.ts` 通过 SDK 公开 runtime 查询并投影密钥元数据，`controller/admin/admin-vaults.ts` 提供管理端详情路由；
   `template-vault-credentials.tsx` 管理待添加密钥列表，`template-vault-credential-dialog.tsx` 提供名称、变量值和生效域名的嵌套编辑弹窗；
-  `gateway/yaml-draft-document.ts` 将显式 MA 配置传给 SDK，Vault 随机引用只在本批内存 Map 解析，不写全局环境；
+  `gateway/shared/resource-draft/yaml-draft-document.ts` 将显式 MA 配置传给 SDK，Vault 随机引用只在本批内存 Map 解析，不写全局环境；
   `template-agent-form.tsx` 收集 Agent 配置，`template-agent-model-picker.tsx` 复用表单下拉选择模型，
   `managed-agent-models.ts` 保存用户要求的实际目录固定快照；`template-agent-capability-picker.tsx` 按需查询并多选 Skill/MCP 引用，
   在「我的 Skill」中合并本地共享声明与云端自定义 Skill，保留各自引用形状和失败恢复；
   `template-skill-upload-dialog.tsx` 先选择单个 Skill 文件并展示卡片，确认后复用项目上传队列保存共享 Skill，
   将返回的共享声明交给能力选择区自动合并已选引用，再刷新父表单 revision，不创建远端资源；
-  `controller/admin/admin-remote-skills.ts`、`service/admin/provider-admin.ts` 与 `gateway/sdk-remote-skills.ts` 通过公开 SDK 读取云端 Skill 安全摘要，
+  `controller/admin/admin-remote-skills.ts`、`service/admin/provider-admin.ts` 与 `gateway/bailian/sdk-remote-skills.ts` 通过公开 SDK 读取云端 Skill 安全摘要，
   `DraftResourceService` 在保存前复核 Skill 来源和固定版本，不读取 Skill 正文或触发远端写操作；`controller/admin/admin-draft-agents.ts` 经独立批次资源服务
   将新批次分派到 `yaml-draft-gateway.ts`；YAML 批次通过独立的 draft-resources service 和 yaml-draft-gateway 处理声明、确认和发布。
 - console 已移除旧 `features/project/` 工作台页面，仍使用的文件与 Skill 暂存队列放在

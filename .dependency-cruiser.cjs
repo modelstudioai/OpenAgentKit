@@ -118,6 +118,24 @@ module.exports = {
 		},
 
 		{
+			name: "server-bailian-no-mock",
+			severity: "error",
+			from: { path: "^apps/server/src/gateway/bailian/" },
+			to: { path: "^apps/server/src/gateway/mock/" },
+		},
+		{
+			name: "server-mock-no-bailian",
+			severity: "error",
+			from: { path: "^apps/server/src/gateway/mock/" },
+			to: { path: "^apps/server/src/gateway/bailian/" },
+		},
+		{
+			name: "server-no-concrete-provider-imports",
+			severity: "error",
+			from: { path: "^apps/server/src/(service/|gateway/(shared/|types\\.ts$))" },
+			to: { path: "^apps/server/src/gateway/(bailian|mock)/" },
+		},
+		{
 			name: "no-circular",
 			comment: "循环依赖会让分层与打包顺序失效",
 			severity: "error",

@@ -193,6 +193,16 @@ it("真实 SDK 对象发布保留原文和 state；回执写入失败后重启�
 	t.db.prepare("DELETE FROM _kit_migrations WHERE id=?").run("030_resource_draft_assets");
 	t.restart();
 	expect(await t.document(draft.draft_id)).toEqual(persisted);
+	// 恢复期间读到另一属主的成功证明时，保留资料以便核对。
+	const proof = persisted!.proof_json!;
+	const updateProof = t.db.prepare("UPDATE kit_resource_draft_documents SET proof_json = ? WHERE draft_id = ?");
+	updateProof.run(JSON.stringify({ ...JSON.parse(proof), owner: "other-owner" }), draft.draft_id);
+	expect(await t.value(`/api/admin/resource-drafts/${draft.draft_id}`)).toMatchObject({
+		recovery_action: "read_result",
+	});
+	expect((await t.request(`/api/admin/resource-drafts/${draft.draft_id}/finalize`, "POST")).status).toBe(409);
+	expect((await t.document(draft.draft_id))?.sdk_state_json).toBe(persisted!.sdk_state_json);
+	updateProof.run(proof, draft.draft_id);
 	const saved = await t.value<ResourceDraftView>(`/api/admin/resource-drafts/${draft.draft_id}/finalize`, "POST");
 	expect(saved).toMatchObject({ status: "published", cleanup_pending: false });
 	expect(saved.resources).toEqual([expect.objectContaining({ remote_id: "agent_fixture", version: 1 })]);

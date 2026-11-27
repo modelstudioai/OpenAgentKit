@@ -27,7 +27,7 @@ import {
 } from "@openagentpack/sdk";
 import { sanitizeSessionEvent } from "@openagentpack/sdk/session-events";
 import { loadConfig, redactSecrets } from "../../src/config.ts";
-import { createSdkGateway } from "../../src/gateway/sdk.ts";
+import { createSdkGateway } from "../../src/module/gateways.ts";
 
 const PREFIX =
 	process.env.KIT_LIVE_PREFIX ??

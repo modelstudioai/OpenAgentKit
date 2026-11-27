@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
-import { createMockGateway } from "../src/gateway/mock.ts";
+import { createMockGateway } from "../src/module/gateways.ts";
 import { SessionIndexService } from "../src/service/shared/session/session-index.ts";
 import { openDatabase } from "../src/store/db.ts";
 import { createSqliteDatabase } from "../src/store/sqlite.ts";

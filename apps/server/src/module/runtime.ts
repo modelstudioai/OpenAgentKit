@@ -46,7 +46,8 @@ import {
 	KIT_RATE_LIMITER,
 	KIT_SERVICES,
 } from "../utils/injection-tokens.ts";
-import { connectDatabase, createGateway, createInfrastructure, type Infrastructure } from "./infrastructure.ts";
+import { createGateway } from "./gateways.ts";
+import { connectDatabase, createInfrastructure, type Infrastructure } from "./infrastructure.ts";
 
 const sharedServices = [
 	AuditService,

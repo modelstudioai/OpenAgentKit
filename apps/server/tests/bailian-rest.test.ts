@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { filesFromResources, workspaceBaseUrl } from "../src/gateway/bailian-rest.ts";
-import { createSdkGateway } from "../src/gateway/sdk.ts";
+import { filesFromResources, workspaceBaseUrl } from "../src/gateway/bailian/bailian-rest.ts";
+import { createSdkGateway } from "../src/module/gateways.ts";
 
 afterEach(() => vi.unstubAllGlobals());
 
 /**
  * 保护的是「挂载回显 → kit 契约」的映射与 base url 推导：
- * 这条路径绕过 SDK（原因见 gateway/bailian-rest.ts 与 docs/research/bailian-session-file-mount.md），
+ * 这条路径绕过 SDK（原因见 gateway/bailian/bailian-rest.ts 与 docs/research/bailian-session-file-mount.md），
  * 没有 SDK 类型兜底，映射写错会让 UI 显示不存在的挂载。
  */
 describe("bailian REST 窄口子", () => {
