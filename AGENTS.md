@@ -115,7 +115,8 @@ Mock / 离线通过不代表真实 Cloud 已验收。Live 必须显式启用，�
 ```bash
 pnpm install
 pnpm setup              # 可选：启用仓库 .githooks
-pnpm start              # 首次引导配置并启动 server / web / web-vue / console；已有 .env 原样复用
+pnpm start              # 读取 .env.production，构建并启动服务端
+pnpm start:dev          # 首次引导写入 .env.development 并启动 server / web / console；已有配置原样复用
 pnpm dev                # server :8787 / web :5173 / web-vue :5175 / console :5174
 pnpm dev storybook      # 文档站单独启动 :3000
 pnpm typecheck

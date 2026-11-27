@@ -32,7 +32,7 @@
   "scripts": {
     "build": "pnpm db:render && tsup",
     "dev": "pnpm db:render && node scripts/dev.mjs",
-    "start": "node --env-file-if-exists=../../.env dist/bin.js",
+    "start": "node dist/bin.js",
     "typecheck": "pnpm db:render && tsc --noEmit",
     "test": "pnpm db:render && vitest run",
     "db:generate": "node --import tsx src/store/schema/generate.ts",

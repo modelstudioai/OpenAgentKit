@@ -13,8 +13,11 @@ scripts/         仓库级脚本（start、dev、kit、skills、check-docs、che
 
 - 上游 SDK 使用 npm 正式发布的 `@openagentpack/sdk@0.10.0`，由精确版本与
   `pnpm-lock.yaml` integrity 锁定。
-- `scripts/start.mjs` 提供 `pnpm start`：仅在根 `.env` 不存在时交互配置 Mock / 真实百炼并生成
-  管理员令牌，已有文件原样复用；完成后接续 `scripts/dev.mjs` 的依赖构建与启动流程。
+- `scripts/start.mjs` 按 `KIT_ENV` 分流。`pnpm start:dev` 在 `.env.development` 和旧 `.env` 都不存在时
+  交互配置 Mock / 真实百炼并生成管理员令牌，写入 `.env.development`；已有文件原样复用，然后接续
+  `scripts/dev.mjs`。`pnpm start` 读取已有的 `.env.production`，构建并启动服务端，不进入开发编排，
+  也不从旧 `.env` 复制。旧 `.env` 只在开发命令启动时复制到缺失的模式文件，之后不再读取。
+  未设置 `KIT_ENV` 时 `scripts/start.mjs` 退出。
 - `scripts/build-release.mjs` 负责构建四个部署目标并收集后端生产依赖；产物放在被忽略的
   `.scratch/releases/kit-*`，不把 `.env` 或本地数据库纳入发布产物。
 - `scripts/kit/` 承载组件复制与组件目录命令：`kit:add`、`catalog:list`。

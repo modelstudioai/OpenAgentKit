@@ -1,17 +1,24 @@
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { setTimeout as wait } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { parseEnv } from "node:util";
 import { resolveWebDevPort } from "../../../scripts/dev-web-port.ts";
+import { loadLocalEnv, requestedKitEnv } from "../../../scripts/load-env.mjs";
 import { createKeycloakAdmin, provisionKeycloak, readKeycloakAdmin } from "./keycloak-dev.mjs";
 import { prepareKeycloakHome, prepareKeycloakJava } from "./keycloak-runtime.mjs";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const serverDir = fileURLToPath(new URL("../", import.meta.url));
-const envFile = resolve(root, ".env");
-const env = { ...(existsSync(envFile) ? parseEnv(readFileSync(envFile, "utf8")) : {}), ...process.env };
+// 仓库根启动器已经合并过环境时不再解析，避免把绝对数据目录再拼一次。
+const requestedMode = requestedKitEnv();
+if (process.env.KIT_ENV_LOADED !== "1" && requestedMode && requestedMode !== "development") {
+	console.error(`[dev] 只读取 .env.development。当前 KIT_ENV=${requestedMode}。生产配置请使用 pnpm start。`);
+	process.exit(1);
+}
+const env =
+	process.env.KIT_ENV_LOADED === "1"
+		? process.env
+		: loadLocalEnv({ root, defaultMode: "development", env: process.env }).env;
 const shutdown = new AbortController();
 const { signal } = shutdown;
 const children = [];

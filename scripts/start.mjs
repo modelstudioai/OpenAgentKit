@@ -1,16 +1,17 @@
 #!/usr/bin/env node
-/** 首次引导生成本地配置，随后复用 dev 启动流程；已有 .env 永不改写。 */
+/** KIT_ENV=production 构建并启动服务端；development 时引导开发配置并接续 dev。未设置则退出。 */
+import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { Writable } from "node:stream";
 import { fileURLToPath } from "node:url";
-import { parseEnv } from "node:util";
+import { encodeEnvValue as encodeEnv, loadLocalEnv, requestedKitEnv, resolveMode } from "./load-env.mjs";
 
 function createTerminalPrompt() {
 	if (!process.stdin.isTTY || !process.stdout.isTTY) {
-		throw new Error("首次配置需要交互式终端，请在终端运行 pnpm start；或先手动创建根 .env 后重试。");
+		throw new Error("首次配置需要交互式终端，请在终端运行 pnpm start:dev；或先手动创建 .env.development 后重试。");
 	}
 	let muted = false;
 	const output = new Writable({
@@ -33,7 +34,7 @@ function createTerminalPrompt() {
 				}
 				return await terminal.question(secret ? "" : question, { signal: controller.signal });
 			} catch {
-				throw new Error("配置已取消，未生成 .env。");
+				throw new Error("配置已取消，未生成 .env.development。");
 			} finally {
 				muted = false;
 				if (secret) process.stdout.write("\n");
@@ -56,13 +57,6 @@ async function choose(ask, question, choices) {
 	}
 }
 
-// 使用 Node 自身的 dotenv 解析语义检查往返，避免 #、空格或引号改变凭据内容。
-function encodeEnv(value) {
-	return [value, `'${value}'`, `"${value}"`, `\`${value}\``].find(
-		(candidate) => parseEnv(`VALUE=${candidate}`).VALUE === value,
-	);
-}
-
 async function required(ask, question, { secret = false, validate = () => true } = {}) {
 	while (true) {
 		const value = (await ask(question, { secret })).trim();
@@ -82,8 +76,9 @@ function isBaseUrl(value) {
 
 /** 返回是否新建；测试使用隔离目录和输入，不读取开发者凭据。 */
 export async function initializeEnv(root, { createPrompt = createTerminalPrompt } = {}) {
-	const envFile = join(root, ".env");
-	if (existsSync(envFile)) return false;
+	const envFile = join(root, ".env.development");
+	// 旧 .env 留给启动加载时复制，引导本身不改写、不合并。
+	if (existsSync(envFile) || existsSync(join(root, ".env"))) return false;
 	const template = readFileSync(join(root, ".env.example"), "utf8");
 	const prompt = createPrompt();
 	const ask = prompt.ask.bind(prompt);
@@ -129,14 +124,99 @@ export async function initializeEnv(root, { createPrompt = createTerminalPrompt 
 	}
 }
 
+function terminate(child, group, signal) {
+	if (!child.pid) return;
+	if (!group) {
+		child.kill(signal);
+		return;
+	}
+	try {
+		process.kill(-child.pid, signal);
+	} catch (error) {
+		if (error.code === "ESRCH") return;
+		if (error.code !== "EPERM") throw error;
+		child.kill(signal);
+	}
+}
+
+function waitForServer(child, group) {
+	return new Promise((resolve) => {
+		let stopping = false;
+		const stop = () => {
+			if (stopping) return;
+			stopping = true;
+			terminate(child, group, "SIGTERM");
+			setTimeout(() => {
+				terminate(child, group, "SIGKILL");
+				resolve(0);
+			}, 12_000).unref();
+		};
+		process.on("SIGINT", stop);
+		process.on("SIGTERM", stop);
+		child.on("exit", (code) => resolve(stopping ? 0 : (code ?? 1)));
+		child.on("error", (error) => {
+			console.error(`[start] 无法启动服务端：${error.message}`);
+			resolve(1);
+		});
+	});
+}
+
+async function startProduction(root) {
+	if (process.argv.length > 2) {
+		throw new Error("生产启动不接受参数。开发进程请使用 pnpm start:dev。");
+	}
+	// 生产启动不复制旧 .env，避免用过期凭据写出 .env.production 或 .env.development。
+	if (!existsSync(join(root, ".env.production"))) {
+		throw new Error(
+			"缺少 .env.production。请复制 .env.example 为 .env.production 后填写。已有旧 .env 时，先运行 pnpm start:dev 完成一次性复制并核对生产文件。",
+		);
+	}
+	const { env, filename } = loadLocalEnv({
+		root,
+		defaultMode: "production",
+		env: process.env,
+		migrate: false,
+	});
+	if (!filename) {
+		throw new Error("缺少 .env.production。请复制 .env.example 为 .env.production 后填写。");
+	}
+	console.log("[start] 使用 .env.production 启动已构建的服务端。");
+	const build = spawnSync("pnpm", ["exec", "turbo", "run", "build", "--filter=@openagentpack/kit-server"], {
+		cwd: root,
+		env,
+		stdio: "inherit",
+	});
+	if (build.error) console.error(`[start] 无法启动服务端构建：${build.error.message}`);
+	if (build.status !== 0) process.exit(build.status ?? 1);
+	const detached = process.platform !== "win32";
+	const child = spawn("pnpm", ["--filter", "@openagentpack/kit-server", "start"], {
+		cwd: root,
+		env,
+		detached,
+		stdio: "inherit",
+	});
+	process.exitCode = await waitForServer(child, detached);
+}
+
 async function main() {
 	if (Number(process.versions.node.split(".")[0]) < 24) {
 		throw new Error(`需要 Node.js >=24，当前为 ${process.version}。请切换到 Node.js 24 后重试。`);
 	}
 	const root = dirname(dirname(fileURLToPath(import.meta.url)));
+	const requested = requestedKitEnv();
+	if (!requested) throw new Error("请使用 pnpm start 或 pnpm start:dev。");
+	const mode = resolveMode("development");
+	if (mode === "production") {
+		await startProduction(root);
+		return;
+	}
 	const created = await initializeEnv(root);
-	console.log(created ? "[start] 已生成根 .env 和随机管理员令牌。" : "[start] 复用已有根 .env，未修改配置。");
-	console.log("[start] 管理端登录请使用根 .env 中的 ADMIN_TOKEN。员工 SSO 登录需要绑定 Keycloak 用户和 Kit 成员。");
+	console.log(
+		created ? "[start] 已生成 .env.development 和随机管理员令牌。" : "[start] 复用已有环境配置，未修改配置。",
+	);
+	console.log(
+		"[start] 管理端登录请使用 .env.development 中的 ADMIN_TOKEN。员工 SSO 登录需要绑定 Keycloak 用户和 Kit 成员。",
+	);
 	// 同一进程接续现有依赖构建、日志与退出流程，不另起一套服务编排。
 	if (!process.argv.slice(2).length) process.argv.push("server", "web", "console");
 	await import("./dev.mjs");

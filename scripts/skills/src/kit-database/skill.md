@@ -3,8 +3,9 @@
 Kit Server 每次启动选择一种存储后端。本地开发默认使用 SQLite。已有专用 MySQL 或
 PostgreSQL 实例时，通过服务端配置接入该库。
 
-先核对当前项目的 `apps/server/README.md` 和服务进程的配置来源。使用仓库启动命令时，
-配置在仓库根目录的 `.env`。部署时可由进程环境提供相同变量。已有配置满足目标时直接复用。
+先核对当前项目的 `apps/server/README.md` 和服务进程的配置来源。
+开发命令读取仓库根目录的 `.env.development`，生产启动读取 `.env.production`。
+部署时可由进程环境提供相同变量。已有配置满足目标时直接复用。
 用户要求切库时，只调整与所选数据库有关的配置项；其余配置照常使用。连接凭据通过本地配置或
 部署环境注入，输出中用占位符表示。
 
@@ -48,8 +49,9 @@ MySQL 和 PostgreSQL 示例的用户名、密码、地址、端口和库名均�
 
 1. 确认目标库。启动会在空库初始化表结构，在已有库按各自的 `_kit_migrations` 记录补齐待执行迁移。
    切换后端后，服务使用目标库自己的数据。需要搬迁已有记录时，单独确认源库、目标库和迁移方式。
-2. 从仓库根目录运行 `pnpm start server`。首次运行先执行 `pnpm install`。已有配置的开发启动
-   也可用 `pnpm dev server`。启动时沿用用户当前选择的 Provider 模式。
+2. 从仓库根目录运行 `pnpm start:dev server`。首次运行先执行 `pnpm install`。已有配置的开发启动
+   也可用 `pnpm dev server`。生产服务端用 `pnpm start`，读取 `.env.production`。
+   启动时沿用用户当前选择的 Provider 模式。
 3. 从启动日志确认 `db=sqlite`、`db=mysql` 或 `db=postgres`，并使用实际监听端口检查
    健康接口。默认端口的检查命令如下。
 

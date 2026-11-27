@@ -9,13 +9,12 @@
  *   pnpm dev storybook              # 文档站按需单独启动
  *
  * 目标：server(:8787) web(:5173) web-vue(:5175) console(:5174)；storybook(:3000) 需显式指定
- * 根 `.env` 会被读进子进程环境。
+ * 开发配置来自 .env.development。KIT_ENV 不是 development 时退出。合并结果只传给子进程。
  */
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseEnv } from "node:util";
+import { loadLocalEnv, requestedKitEnv } from "./load-env.mjs";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 if (Number(process.versions.node.split(".")[0]) < 24) {
@@ -23,37 +22,13 @@ if (Number(process.versions.node.split(".")[0]) < 24) {
 	process.exit(1);
 }
 
-const envFile = join(root, ".env");
-const env = { ...process.env };
-// 仓库 `.env` 的非空值覆盖 shell。同一组百炼地址有本地配置时，也应用另一字段的显式空值。
-// 只打印被覆盖的变量名，绝不打印值（AGENTS.md：凭据不进日志）。
-const overridden = [];
-if (existsSync(envFile)) {
-	const localEnv = parseEnv(readFileSync(envFile, "utf8"));
-	const bailianAddressKeys = ["BAILIAN_BASE_URL", "BAILIAN_WORKSPACE_ID"];
-	const hasLocalBailianAddress = bailianAddressKeys.some((key) => localEnv[key]?.trim());
-	for (const [key, value] of Object.entries(localEnv)) {
-		if (!value && !(hasLocalBailianAddress && bailianAddressKeys.includes(key))) continue;
-		if (key in env && env[key] !== value) overridden.push(key);
-		env[key] = value;
-	}
+const requestedMode = requestedKitEnv();
+if (requestedMode && requestedMode !== "development") {
+	console.error(`[dev] 只读取 .env.development。当前 KIT_ENV=${requestedMode}。生产配置请使用 pnpm start。`);
+	process.exit(1);
 }
-if (overridden.length) console.log(`[dev] .env 覆盖了 shell 同名变量：${overridden.join(", ")}`);
 
-// KIT_DATA_DIR 允许写相对路径：一律相对仓库根解析，
-// 否则 pnpm --filter 的 cwd 是 apps/server，数据会落到 apps/server/.data（换个启动方式就“丢数据”）。
-for (const key of ["KIT_DATA_DIR"]) {
-	const value = env[key];
-	if (value && !value.startsWith("/")) env[key] = join(root, value);
-}
-// KIT_EVAL_WORKSPACES 是逗号分隔多值，逐段相对仓库根解析
-if (env.KIT_EVAL_WORKSPACES) {
-	env.KIT_EVAL_WORKSPACES = env.KIT_EVAL_WORKSPACES.split(",")
-		.map((segment) => segment.trim())
-		.filter(Boolean)
-		.map((segment) => (segment.startsWith("/") ? segment : join(root, segment)))
-		.join(",");
-}
+const { env } = loadLocalEnv({ root, defaultMode: "development", env: process.env });
 
 const ALL_TARGETS = {
 	server: { args: ["--filter", "@openagentpack/kit-server", "dev"] },
