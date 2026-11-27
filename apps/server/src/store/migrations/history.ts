@@ -223,7 +223,7 @@ export function compileHistory() {
 			postgres.push(versionExternal(migration.id, before, after, statements, "postgres"));
 			sqlite.push({
 				id: migration.id,
-				sql: migration.sql?.trim() ?? `-- TypeScript 步骤见 schema/history/${migration.id}.ts。`,
+				sql: migration.sql?.trim() ?? `-- TypeScript 步骤见 migrations/history/${migration.id}.ts。`,
 			});
 			before = after;
 		}

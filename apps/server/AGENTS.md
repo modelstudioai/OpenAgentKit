@@ -104,7 +104,7 @@
    ```
 
    服务端各开发和构建入口先运行 `db:render`，校验实体类并将迁移产物写入 Git 忽略的
-   `schema/generated/`。`db:entities` 只读校验实体声明和派生的表结构。
+   `migrations/generated/`。`db:entities` 只读校验实体声明和派生的表结构。
 
 ## 验收
 

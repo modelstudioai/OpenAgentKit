@@ -263,7 +263,7 @@ async function executeData(db: MigrationConnection, dialect: ExternalDialect, st
 	if ("data" in step) {
 		for (const sql of step.data) await db.execute(sql);
 	} else {
-		const history = await import("./schema/transforms.ts");
+		const history = await import("./migrations/transforms.ts");
 		await history.executeTransform(db, dialect, step.transform);
 	}
 }

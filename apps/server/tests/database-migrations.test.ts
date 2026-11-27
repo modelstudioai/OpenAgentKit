@@ -17,22 +17,22 @@ import { initializeExternal } from "../src/store/external-schema.ts";
 import { type ExternalDialect, externalTableNames, type MigrationConnection } from "../src/store/metadata/catalog.ts";
 import type { MigrationProgram, Table } from "../src/store/metadata/model.ts";
 import manifest from "../src/store/migration-manifest.json" with { type: "json" };
+import { compileChange, readDefinition } from "../src/store/migrations/changes.ts";
+import { buildArtifacts } from "../src/store/migrations/generate.ts";
+import { program as mysqlProgram } from "../src/store/migrations/generated/mysql.ts";
+import { program as postgresProgram } from "../src/store/migrations/generated/postgres.ts";
+import { program as sqliteProgram } from "../src/store/migrations/generated/sqlite.ts";
+import { forDialect, mysqlTableOptions, renderEntityDefinition } from "../src/store/migrations/render.ts";
+import { upgradeExternal } from "../src/store/migrations/runner.ts";
 import { connectMysql } from "../src/store/mysql.ts";
 import { connectPostgres } from "../src/store/postgres.ts";
-import { compileChange, readDefinition } from "../src/store/schema/changes.ts";
-import { buildArtifacts } from "../src/store/schema/generate.ts";
-import { program as mysqlProgram } from "../src/store/schema/generated/mysql.ts";
-import { program as postgresProgram } from "../src/store/schema/generated/postgres.ts";
-import { program as sqliteProgram } from "../src/store/schema/generated/sqlite.ts";
-import { forDialect, mysqlTableOptions, renderEntityDefinition } from "../src/store/schema/render.ts";
-import { upgradeExternal } from "../src/store/schema/runner.ts";
 import { sqliteHistory } from "../src/store/sqlite-history.ts";
 import { createEntityDataSource } from "../src/store/typeorm.ts";
 import { mysqlSchema } from "./fixtures/before-shared-mysql.ts";
 import { postgresSchema } from "./fixtures/before-shared-postgres.ts";
 
 const original = readFileSync(
-	new URL("../src/store/schema/versions/034_oidc_member_auth.sql", import.meta.url),
+	new URL("../src/store/migrations/versions/034_oidc_member_auth.sql", import.meta.url),
 	"utf8",
 );
 const label = "O'Brien \\ data";

@@ -193,10 +193,10 @@ pnpm --filter @openagentpack/kit-server db:check
 
 开发时主动运行 `db:generate` 登记版本并查看三库 SQL。提交改动的实体、更新后的迁移清单、生成的版本快照和需要的显式步骤。`db:check` 校验这些来源、实体类及其可生成的迁移。
 
-`schema/generated/` 是本地生成目录。构建、开发启动、类型检查、测试和 OpenAPI 生成会先运行 `db:render`
+`migrations/generated/` 是本地生成目录。构建、开发启动、类型检查、测试和 OpenAPI 生成会先运行 `db:render`
 校验实体类并渲染迁移。也可以单独运行 `pnpm --filter @openagentpack/kit-server db:render` 查看 SQL。
 可用 `pnpm --filter @openagentpack/kit-server db:entities` 只读核对实体声明和方言映射。
-构建后的 `dist/schema/` 提供三库迁移 SQL 和结构快照。部署启动时，服务自动执行所选库待处理的
+构建后的 `dist/migrations/` 提供三库迁移 SQL 和结构快照。部署启动时，服务自动执行所选库待处理的
 迁移，并登记结果。
 
 新增表、可空列、带常量默认值的非空列和普通索引可由工具生成。
@@ -206,8 +206,8 @@ MySQL 的每个 DDL 步骤只写一条原子语句。SQLite 需要重建被外�
 `sqliteRebuild: true`，迁移将在提交前检查外键。
 
 三库按 [迁移清单](src/store/migration-manifest.json) 的条目顺序执行。原有 36 条在
-[history/](src/store/schema/history) 中逐条保存。生成命令会将新版本追加到同一份清单，并在
-[versions/](src/store/schema/versions) 保存版本快照和显式步骤。Store 在迁移锁下识别全新空库，通过 TypeORM 的方言驱动根据当前 Entity 元数据建表、写入产品初始数据，并登记已覆盖的版本。
+[history/](src/store/migrations/history) 中逐条保存。生成命令会将新版本追加到同一份清单，并在
+[versions/](src/store/migrations/versions) 保存版本快照和显式步骤。Store 在迁移锁下识别全新空库，通过 TypeORM 的方言驱动根据当前 Entity 元数据建表、写入产品初始数据，并登记已覆盖的版本。
 已有库根据已完成的迁移 ID 逐版升级，数据回填或转换使用对应的历史步骤。产品初始数据变更时，同时更新空库的初始记录和旧库的数据迁移。
 
 每张业务表在 `src/entity/tables/` 中有一个手写的 `@Entity` 类，列类型、可空性、主键和默认值写在对应属性的 TypeORM 装饰器上。JSON 文本列保留字符串属性。Store 将这些类直接注册为 TypeORM DataSource 的实体。每个连接独立解析列的物理类型、长度和排序规则；MySQL 保留生成列、前缀索引和表级排序规则。SQLite 复用 `node:sqlite` 连接，MySQL 和 PostgreSQL 复用已有池。

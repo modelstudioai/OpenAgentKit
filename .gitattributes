@@ -1,1 +1,1 @@
-apps/server/src/store/schema/** text eol=lf
+apps/server/src/store/migrations/** text eol=lf

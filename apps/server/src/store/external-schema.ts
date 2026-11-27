@@ -39,8 +39,10 @@ export async function initializeExternal(
 		return;
 	}
 	// 跨版本续建固定原始物理表顺序和种子。历史指纹匹配后先完成旧基线，再执行增量。
-	const { upgradeExternal } = await import("./schema/runner.ts");
+	const { upgradeExternal } = await import("./migrations/runner.ts");
 	const { program } =
-		dialect === "mysql" ? await import("./schema/generated/mysql.ts") : await import("./schema/generated/postgres.ts");
+		dialect === "mysql"
+			? await import("./migrations/generated/mysql.ts")
+			: await import("./migrations/generated/postgres.ts");
 	await upgradeExternal(db, dialect, state, program, current, transaction);
 }

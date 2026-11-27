@@ -34,7 +34,7 @@ module.exports = {
 			comment: "实体映射、建表与物理结构校验独立于旧库升级代码",
 			severity: "error",
 			from: { path: "^apps/server/src/(entity/|store/(metadata/|typeorm\\.ts$|entity-tables\\.ts$|baseline\\.ts$))" },
-			to: { path: "^apps/server/src/store/schema/" },
+			to: { path: "^apps/server/src/store/migrations/" },
 		},
 		{
 			name: "server-typeorm-in-persistence",

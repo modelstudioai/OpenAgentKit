@@ -19,8 +19,8 @@ export default defineConfig({
 		options.packages = "external";
 	},
 	async onSuccess() {
-		const source = new URL("./src/store/schema/", import.meta.url);
-		const target = new URL("./dist/schema/", import.meta.url);
+		const source = new URL("./src/store/migrations/", import.meta.url);
+		const target = new URL("./dist/migrations/", import.meta.url);
 		await Promise.all([
 			copySql(new URL("generated/", source), target),
 			copySql(new URL("history/", source), new URL("history/", target)),

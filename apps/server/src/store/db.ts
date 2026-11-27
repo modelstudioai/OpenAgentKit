@@ -67,7 +67,7 @@ export async function migrateSqliteSchema(db: DatabaseSync, selected?: Migration
 		if (!known.has(id)) throw new Error(`SQLite 迁移记录包含未知版本：${id}`);
 	}
 	if ([...known].some((id) => !applied.has(id))) {
-		const { upgradeSqlite } = await import("./schema/sqlite-upgrade.ts");
+		const { upgradeSqlite } = await import("./migrations/sqlite-upgrade.ts");
 		upgradeSqlite(db, applied, selected?.upgrades);
 	}
 	validate(db, selected?.current ?? currentTables(createSqliteDatabase(db).source, "sqlite"));
