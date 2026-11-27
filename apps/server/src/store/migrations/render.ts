@@ -102,6 +102,10 @@ function scalarDefault(sql?: string) {
 	return sql != null && /^(?:[-+]?\d+(?:\.\d+)?|'(?:''|[^'])*')$/.test(sql);
 }
 
+function explicitMigration(target: string) {
+	return new Error(`${target} 需要显式迁移规则，请运行 db:generate --name <变更名> --steps <JSON 路径>`);
+}
+
 function growTable(before: Table, after: Table, dialect: Dialect, historical: boolean) {
 	const originalColumns = new Set(before.columns.map((column) => column.name));
 	const originalIndexes = new Set(before.indexes.map((index) => index.name));
@@ -115,13 +119,13 @@ function growTable(before: Table, after: Table, dialect: Dialect, historical: bo
 		checks: after.checks.filter((check) => !newChecks.includes(check)),
 	};
 	const unsupported = tableDifference(before, retained);
-	if (unsupported) throw new Error(`${before.name} 的 ${unsupported} 需要显式迁移规则`);
+	if (unsupported) throw explicitMigration(`${before.name} 的 ${unsupported}`);
 	const tableSql = identifier(before.name, dialect);
 	const steps: DdlStep[] = [];
 	let state = before;
 	for (const column of added) {
 		if (!historical && (column.identity || column.generated || (!column.nullable && !scalarDefault(column.default)))) {
-			throw new Error(`${before.name}.${column.name} 需要显式迁移规则`);
+			throw explicitMigration(`${before.name}.${column.name}`);
 		}
 		const next = { ...state, columns: [...state.columns, column] };
 		steps.push(change(`ALTER TABLE ${tableSql} ADD COLUMN ${sqlColumn(column, dialect)}`, state, next));
@@ -133,7 +137,7 @@ function growTable(before: Table, after: Table, dialect: Dialect, historical: bo
 		state = next;
 	}
 	for (const index of newIndexes) {
-		if (!historical && (index.unique || index.where)) throw new Error(`索引 ${index.name} 需要显式迁移规则`);
+		if (!historical && (index.unique || index.where)) throw explicitMigration(`索引 ${index.name}`);
 		const next = { ...state, indexes: [...state.indexes, index] };
 		steps.push(change(createIndex(before.name, index, dialect), state, next));
 		state = next;
@@ -146,7 +150,7 @@ export function additiveSteps(before: Schema, after: Schema, dialect: Dialect, h
 	const original = new Set(before.map((table) => table.name));
 	const steps = before.flatMap((table) => {
 		const next = targets.get(table.name);
-		if (!next) throw new Error(`删除表 ${table.name} 需要显式迁移规则`);
+		if (!next) throw explicitMigration(`删除表 ${table.name}`);
 		return growTable(table, next, dialect, historical);
 	});
 	for (const table of orderedNewTables(

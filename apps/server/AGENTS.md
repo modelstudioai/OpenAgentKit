@@ -94,17 +94,12 @@
    上层不重复映射。确认闸门必须验证无有效 token 拒绝与有效 token 通过。
 5. 改流或恢复时同步协议，覆盖静默断流、历史/实时交叉、游标续传或未知结果路径；
    live 结果不能由 Mock 代替。
-6. 改表时编辑对应的[实体类](src/entity/tables/)，新增表时在实体清单中登记。改名、改类型、删除和回填按同一
-   版本补充显式步骤。以成员表新增备注为例，从仓库根目录运行下列命令。审核生成的三库迁移，
-   提交实体修改、更新后的迁移清单、生成的版本快照和需要的显式步骤。
+6. 改表时编辑对应的[实体类](src/entity/tables/)，新增表时在实体清单中登记。运行 `pnpm dev server` 后，启动和保存 Entity 时会自动为可推导的结构变更生成版本，并在开发库启动时应用。
+   改名、改类型、删除和回填需要显式步骤，使用 `db:generate --name <变更名> --steps <JSON 路径>` 登记。
+   审核三库迁移，将 Entity、迁移清单、版本快照和显式步骤一起提交。
 
-   ```bash
-   pnpm --filter @openagentpack/kit-server db:generate --name add_member_remark
-   pnpm --filter @openagentpack/kit-server db:check
-   ```
-
-   服务端各开发和构建入口先运行 `db:render`，校验实体类并将迁移产物写入 Git 忽略的
-   `migrations/generated/`。`db:entities` 只读校验实体声明和派生的表结构。
+   构建、类型检查、测试和 OpenAPI 生成使用 `db:render` 核对已登记的版本并写入 Git 忽略的 `migrations/generated/`。
+   `db:check` 只读校验版本和迁移，`db:entities` 只读校验实体声明和方言映射。
 
 ## 验收
 

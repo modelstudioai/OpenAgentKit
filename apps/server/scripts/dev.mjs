@@ -205,10 +205,21 @@ try {
 	if (local) await startKeycloak(local);
 	signal.throwIfAborted();
 	const tsx = fileURLToPath(import.meta.resolve("tsx/cli"));
-	launch("server", process.execPath, [tsx, "watch", "src/bin.ts"], {
-		cwd: serverDir,
-		env: { ...env, ...local?.serverEnv },
-	});
+	// 即使某次生成失败，watch 也要能在补齐 Entity 或显式迁移后重新启动。
+	const watch = [
+		tsx,
+		"watch",
+		"--include",
+		"src/entity/**/*.ts",
+		"--include",
+		"src/store/migrations/versions/*.steps.json",
+		"--exclude",
+		"**/store/migrations/generated/**",
+		"--exclude",
+		"**/store/migration-manifest.json",
+		"scripts/dev-server.mjs",
+	];
+	launch("server", process.execPath, watch, { cwd: serverDir, env: { ...env, ...local?.serverEnv } });
 	const exit = await Promise.race(children.map(({ closed }) => closed));
 	if (!signal.aborted && exit.name === "keycloak") throw new Error("联动启动的 Keycloak 已退出");
 	if (!signal.aborted) process.exitCode = exit.code;

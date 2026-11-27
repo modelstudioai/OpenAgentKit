@@ -64,7 +64,7 @@ function validateReferences(schema: Schema) {
 	}
 }
 
-function changesBetween(before: Schema, after: Schema) {
+export function changesBetween(before: Schema, after: Schema) {
 	const names = new Set([...before, ...after].map((table) => table.name));
 	return [...names].flatMap((name) => {
 		const old = before.find((table) => table.name === name) ?? null;

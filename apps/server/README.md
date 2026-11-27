@@ -184,23 +184,21 @@ KIT_DATABASE_URL=postgresql://kit_user:password@127.0.0.1:5432/kit
 declare remark: string | null;
 ```
 
-新增表时，在 `src/entity/tables/index.ts` 登记实体类。从仓库根目录运行以下命令登记迁移并验证映射。
+从仓库根目录运行 `pnpm dev server`。开发服务在启动和 Entity 文件保存后检查结构差异。上例的可空列会自动生成一个新版本并写入迁移清单，然后服务启动，在配置的开发库上应用该版本。相同结构再次保存或重启会沿用已登记的版本。新增表时，在 `src/entity/tables/index.ts` 登记实体类。
+
+提交前审核三库的升级步骤，将 Entity、迁移清单、版本快照和需要的显式步骤一起提交。可以运行以下命令校验这些文件。
 
 ```bash
-pnpm --filter @openagentpack/kit-server db:generate --name add_member_remark
 pnpm --filter @openagentpack/kit-server db:check
 ```
 
-开发时主动运行 `db:generate` 登记版本并查看三库 SQL。提交改动的实体、更新后的迁移清单、生成的版本快照和需要的显式步骤。`db:check` 校验这些来源、实体类及其可生成的迁移。
-
-`migrations/generated/` 是本地生成目录。构建、开发启动、类型检查、测试和 OpenAPI 生成会先运行 `db:render`
-校验实体类并渲染迁移。也可以单独运行 `pnpm --filter @openagentpack/kit-server db:render` 查看 SQL。
+构建、类型检查、测试和 OpenAPI 生成通过 `db:render` 核对已登记的版本，将三库产物写入本地的 `migrations/generated/`。缺少版本时这些命令会报告结构差异。
 可用 `pnpm --filter @openagentpack/kit-server db:entities` 只读核对实体声明和方言映射。
 构建后的 `dist/migrations/` 提供三库迁移 SQL 和结构快照。部署启动时，服务自动执行所选库待处理的
 迁移，并登记结果。
 
 新增表、可空列、带常量默认值的非空列和普通索引可由工具生成。
-改名、改类型、删除或回填旧数据时，给生成命令追加 `--steps <JSON 路径>`。JSON 的 `steps` 按顺序列出步骤。
+改名、改类型、删除或回填旧数据时，需要写明旧数据的处理方式。准备好步骤文件后运行 `pnpm --filter @openagentpack/kit-server db:generate --name <变更名> --steps <JSON 路径>`。JSON 的 `steps` 按顺序列出步骤。
 每步填写 `kind`（`ddl` 或 `data`）及 `sqlite`、`mysql`、`postgres` 三个 SQL 字段。
 MySQL 的每个 DDL 步骤只写一条原子语句。SQLite 需要重建被外键引用的表时，在 JSON 顶层设置
 `sqliteRebuild: true`，迁移将在提交前检查外键。

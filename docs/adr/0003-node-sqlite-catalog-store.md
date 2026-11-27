@@ -3,7 +3,7 @@
 状态更新（实体作为当前表结构的权威来源）。手写的 TypeORM 实体声明列、主键、索引、外键和约束。
 DataSource 直接注册实体类并维护本连接的方言元数据。首次启动在迁移锁内使用 TypeORM 驱动为业务表生成建表语句、写入产品初始行并登记已覆盖的迁移版本。升级脚本位于 `src/store/migrations/`，版本清单位于 `src/store/migration-manifest.json`。
 已有库沿用版本化升级，包括数据回填、DDL 恢复和既有外部库的版本接续。此方式取代下文对新库回放历史的约定。
-后续实体修改使用 `db:generate` 生成可审查的版本快照。业务 Service 直接使用 Store 提供的事务内 TypeORM EntityManager 或 QueryBuilder。
+开发服务根据 Entity 的结构变更自动登记可审查的版本快照。需要数据转换时由开发者通过 `db:generate` 提供显式步骤。业务 Service 直接使用 Store 提供的事务内 TypeORM EntityManager 或 QueryBuilder。
 SQLite 继续使用 Node 内置驱动，MySQL 和 PostgreSQL 复用原有连接池，TypeORM 自动同步和自动迁移关闭。
 TypeORM 1.1.3 对应的 Node 24 下限为 24.11.0。
 
